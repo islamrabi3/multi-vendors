@@ -1,0 +1,8 @@
+project_id = "dvfbeaafekqdcwxogbqc"
+
+[functions.paymob-create-intention]
+verify_jwt = true
+
+# Paymob calls this endpoint directly; authenticity is HMAC-verified in code.
+[functions.paymob-webhook]
+verify_jwt = false
