@@ -14,3 +14,7 @@ abstract final class AppConfig {
 
   static bool get isConfigured => supabaseAnonKey.isNotEmpty;
 }
+
+
+// flutter pub get
+// flutter run --dart-define=SUPABASE_ANON_KEY=sb_publishable_vDEZfX6SkbQlTmjscrYkvA_aa0Zr3Mo

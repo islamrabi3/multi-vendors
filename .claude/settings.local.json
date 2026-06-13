@@ -1,11 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(claude mcp *)"
+      "PowerShell(claude mcp *)",
+      "Bash(flutter pub *)",
+      "Bash(dart analyze *)",
+      "Bash(flutter analyze *)",
+      "Bash(git stash *)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

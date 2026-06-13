@@ -1,6 +1,8 @@
 -- Demo/seed data so the app has something to show immediately.
 -- Demo vendor login: demo.vendor@example.com / Demo1234!
 
+create extension if not exists pgcrypto;
+
 -- Vendor categories (cuisines today; other verticals like Electronics later).
 insert into public.vendor_categories (id, name, image_url, sort_order) values
   ('11111111-0000-0000-0000-000000000001', 'Burgers',  'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400', 1),
@@ -29,7 +31,7 @@ insert into auth.users (
   '22222222-0000-0000-0000-000000000001',
   'authenticated', 'authenticated',
   'demo.vendor@example.com',
-  crypt('Demo1234!', gen_salt('bf')),
+  extensions.crypt('Demo1234!', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
   '{"full_name":"Demo Vendor","role":"vendor","phone":"+201000000001"}',
