@@ -35,14 +35,54 @@ class VendorOrdersState extends Equatable {
   List<AppOrder> get past =>
       orders.where((o) => o.status.isTerminal).toList();
 
+  List<AppOrder> get preparing => orders
+      .where((o) =>
+          o.status == OrderStatus.accepted ||
+          o.status == OrderStatus.preparing)
+      .toList();
+
+  List<AppOrder> get ready => orders
+      .where((o) =>
+          o.status == OrderStatus.readyForPickup ||
+          o.status == OrderStatus.outForDelivery)
+      .toList();
+
+  /// Today's gross revenue from non-cancelled / non-rejected orders.
+  double get todayRevenue {
+    final now = DateTime.now();
+    return orders
+        .where((o) =>
+            !_isVoided(o.status) &&
+            o.createdAt.year == now.year &&
+            o.createdAt.month == now.month &&
+            o.createdAt.day == now.day)
+        .fold(0.0, (sum, o) => sum + o.total);
+  }
+
+  /// Today's order count (excludes cancelled / rejected).
+  int get todayOrderCount {
+    final now = DateTime.now();
+    return orders
+        .where((o) =>
+            !_isVoided(o.status) &&
+            o.createdAt.year == now.year &&
+            o.createdAt.month == now.month &&
+            o.createdAt.day == now.day)
+        .length;
+  }
+
+  bool _isVoided(OrderStatus s) =>
+      s == OrderStatus.cancelled || s == OrderStatus.rejected;
+
   @override
   List<Object?> get props => [loading, orders, error, newOrderArrived];
 }
 
 /// Realtime feed of the vendor's orders, partitioned for the dashboard.
 class VendorOrdersCubit extends Cubit<VendorOrdersState> {
-  VendorOrdersCubit(this._repository, this.vendorId)
-      : super(const VendorOrdersState()) {
+  VendorOrdersCubit(this._repository, this.vendorId, {bool autoAccept = false})
+      : _autoAccept = autoAccept,
+        super(const VendorOrdersState()) {
     _subscription =
         _repository.vendorOrdersStream(vendorId).listen(_onOrders,
             onError: (Object error) => emit(VendorOrdersState(
@@ -54,6 +94,10 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState> {
   StreamSubscription<List<AppOrder>>? _subscription;
   Set<String> _knownPendingIds = {};
 
+  /// When enabled, freshly-arrived pending orders are accepted automatically.
+  bool _autoAccept;
+  set autoAccept(bool value) => _autoAccept = value;
+
   void _onOrders(List<AppOrder> orders) {
     final sorted = List<AppOrder>.of(orders)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -61,11 +105,36 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState> {
         .where((o) => o.status == OrderStatus.pending)
         .map((o) => o.id)
         .toSet();
-    final hasNew =
-        !state.loading && pendingIds.difference(_knownPendingIds).isNotEmpty;
+    final freshPending = pendingIds.difference(_knownPendingIds);
+    final hasNew = !state.loading && freshPending.isNotEmpty;
     _knownPendingIds = pendingIds;
     emit(VendorOrdersState(
         loading: false, orders: sorted, newOrderArrived: hasNew));
+
+    if (_autoAccept && freshPending.isNotEmpty) {
+      for (final order
+          in sorted.where((o) => freshPending.contains(o.id))) {
+        accept(order);
+      }
+    }
+  }
+
+  /// Pull-to-refresh: re-fetch the vendor's orders once, covering a missed
+  /// realtime event. Does not fire the "new order" alert.
+  Future<void> refresh() async {
+    try {
+      final orders = await _repository.fetchVendorOrders(vendorId);
+      final sorted = List<AppOrder>.of(orders)
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      _knownPendingIds = sorted
+          .where((o) => o.status == OrderStatus.pending)
+          .map((o) => o.id)
+          .toSet();
+      emit(VendorOrdersState(loading: false, orders: sorted));
+    } catch (error) {
+      emit(VendorOrdersState(
+          loading: false, orders: state.orders, error: error.toString()));
+    }
   }
 
   Future<void> accept(AppOrder order) =>

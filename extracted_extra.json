@@ -1,0 +1,10 @@
+{
+  "missingSupabaseConfigurationnn": "Missing Supabase configuration.\\n\\n",
+  "deleteAddress": "Delete address?",
+  "areYouSureYouWantToDeleteThisAddress": "Are you sure you want to delete this address?",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "whereShouldWeDeliver": "Where should we deliver?",
+  "addYourDeliveryAddressesToOrderDeliciousFoodAndTrackItStraightToYourDoorstep": "Add your delivery addresses to order delicious food and track it straight to your doorstep.",
+  "useThisAsPrimaryDeliveryOption": "Use this as primary delivery option"
+}

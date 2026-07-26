@@ -8,6 +8,14 @@ import '../features/auth/auth_cubit.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
+import '../features/admin/admin_shell.dart';
+import '../features/admin/screens/admin_dashboard_screen.dart';
+import '../features/admin/screens/admin_order_detail_screen.dart';
+import '../features/admin/screens/admin_orders_screen.dart';
+import '../features/admin/screens/admin_promos_screen.dart';
+import '../features/admin/screens/admin_vendor_detail_screen.dart';
+import '../features/admin/screens/admin_vendors_screen.dart';
+import '../features/admin/screens/admin_categories_screen.dart';
 import '../features/auth/screens/vendor_onboarding_screen.dart';
 import '../features/customer/addresses/addresses_screen.dart';
 import '../features/customer/cart/cart_screen.dart';
@@ -51,14 +59,17 @@ const _authPaths = {'/login', '/signup'};
 String _roleHome(UserRole role) => switch (role) {
       UserRole.vendor => '/vendor-app/dashboard',
       UserRole.driver => '/driver-app/pool',
+      UserRole.admin => '/admin-app/overview',
       _ => '/home',
     };
 
 bool _allowedForRole(UserRole role, String location) => switch (role) {
       UserRole.vendor => location.startsWith('/vendor-app'),
       UserRole.driver => location.startsWith('/driver-app'),
+      UserRole.admin => location.startsWith('/admin-app'),
       _ => !location.startsWith('/vendor-app') &&
-          !location.startsWith('/driver-app'),
+          !location.startsWith('/driver-app') &&
+          !location.startsWith('/admin-app'),
     };
 
 GoRouter buildRouter(AuthCubit authCubit) {
@@ -73,7 +84,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
         return location == '/splash' ? null : '/splash';
       }
       if (auth.status == AuthStatus.unauthenticated) {
-        return _authPaths.contains(location) ? null : '/login';
+        return (_authPaths.contains(location) || location == '/splash') ? null : '/splash';
       }
 
       // Authenticated.
@@ -172,6 +183,53 @@ GoRouter buildRouter(AuthCubit authCubit) {
         builder: (_, state) => ProductEditorScreen(
           args: state.extra! as ProductEditorArgs,
         ),
+      ),
+
+      // Admin area.
+      StatefulShellRoute.indexedStack(
+        builder: (_, _, shell) => AdminShell(shell: shell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/admin-app/overview',
+              builder: (_, _) => const AdminDashboardScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/admin-app/vendors',
+              builder: (_, _) => const AdminVendorsScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/admin-app/orders',
+              builder: (_, _) => const AdminOrdersScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/admin-app/promos',
+              builder: (_, _) => const AdminPromosScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/admin-app/categories',
+              builder: (_, _) => const AdminCategoriesScreen(),
+            ),
+          ]),
+        ],
+      ),
+      GoRoute(
+        path: '/admin-app/vendors/:id',
+        builder: (_, state) =>
+            AdminVendorDetailScreen(vendorId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/admin-app/orders/:id',
+        builder: (_, state) =>
+            AdminOrderDetailScreen(orderId: state.pathParameters['id']!),
       ),
 
       // Driver area.

@@ -13,6 +13,8 @@ class DriverPoolState extends Equatable {
     this.isOnline = false,
     this.orders = const [],
     this.vendorLabels = const {},
+    this.todayEarnings = 0,
+    this.todayTrips = 0,
     this.error,
     this.claimedOrderId,
   });
@@ -21,6 +23,10 @@ class DriverPoolState extends Equatable {
   final bool isOnline;
   final List<AppOrder> orders;
   final Map<String, ({String name, String? logoUrl})> vendorLabels;
+
+  /// Delivery-fee payouts for orders delivered today.
+  final double todayEarnings;
+  final int todayTrips;
   final String? error;
 
   /// Set when a claim succeeds so the UI can navigate to the active tab.
@@ -31,6 +37,8 @@ class DriverPoolState extends Equatable {
     bool? isOnline,
     List<AppOrder>? orders,
     Map<String, ({String name, String? logoUrl})>? vendorLabels,
+    double? todayEarnings,
+    int? todayTrips,
     String? error,
     String? claimedOrderId,
     bool clearTransient = false,
@@ -40,13 +48,23 @@ class DriverPoolState extends Equatable {
         isOnline: isOnline ?? this.isOnline,
         orders: orders ?? this.orders,
         vendorLabels: vendorLabels ?? this.vendorLabels,
+        todayEarnings: todayEarnings ?? this.todayEarnings,
+        todayTrips: todayTrips ?? this.todayTrips,
         error: clearTransient ? null : error,
         claimedOrderId: clearTransient ? null : claimedOrderId,
       );
 
   @override
-  List<Object?> get props =>
-      [loading, isOnline, orders, vendorLabels, error, claimedOrderId];
+  List<Object?> get props => [
+        loading,
+        isOnline,
+        orders,
+        vendorLabels,
+        todayEarnings,
+        todayTrips,
+        error,
+        claimedOrderId,
+      ];
 }
 
 /// Online/offline presence plus the realtime pool of unclaimed
@@ -61,15 +79,51 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
   final OrderRepository _orders;
   final DriverRepository _driver;
   StreamSubscription<List<AppOrder>>? _subscription;
+  StreamSubscription<List<AppOrder>>? _mySubscription;
+  Timer? _refreshTimer;
 
   Future<void> _init() async {
+    _mySubscription = _orders.driverOrdersStream().listen(_onMyOrders,
+        onError: (Object _) {});
     try {
       final online = await _driver.fetchIsOnline();
       emit(state.copyWith(loading: false, isOnline: online));
-      if (online) _listen();
+      if (online) {
+        _listen();
+        _startTimer();
+      }
     } catch (_) {
       emit(state.copyWith(loading: false));
     }
+  }
+
+  void _startTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (state.isOnline) {
+        refresh();
+      }
+    });
+  }
+
+  void _stopTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  void _onMyOrders(List<AppOrder> orders) {
+    final now = DateTime.now();
+    final today = orders.where((o) =>
+        o.status == OrderStatus.delivered &&
+        o.createdAt.year == now.year &&
+        o.createdAt.month == now.month &&
+        o.createdAt.day == now.day);
+    // clearTransient so a consumed claim/error doesn't re-fire the listener.
+    emit(state.copyWith(
+      todayEarnings: today.fold<double>(0, (sum, o) => sum + o.deliveryFee),
+      todayTrips: today.length,
+      clearTransient: true,
+    ));
   }
 
   void _listen() {
@@ -100,13 +154,46 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
       await _driver.setOnline(online);
       if (online) {
         _listen();
+        _startTimer();
       } else {
         await _subscription?.cancel();
         _subscription = null;
+        _stopTimer();
         emit(state.copyWith(orders: const []));
       }
     } catch (error) {
       emit(state.copyWith(isOnline: !online, error: error.toString()));
+    }
+  }
+
+  /// Pull-to-refresh: re-check presence and re-fetch the pool once, in case a
+  /// realtime event was missed. Also (re)starts the live subscription.
+  Future<void> refresh() async {
+    try {
+      final online = await _driver.fetchIsOnline();
+      if (!online) {
+        await _subscription?.cancel();
+        _subscription = null;
+        _stopTimer();
+        emit(state.copyWith(
+            isOnline: false, orders: const [], clearTransient: true));
+        return;
+      }
+      final orders = await _orders.fetchDriverPool();
+      final labels = {
+        ...state.vendorLabels,
+        for (final o in orders)
+          if (o.vendorName != null)
+            o.vendorId: (name: o.vendorName!, logoUrl: o.vendorLogoUrl),
+      };
+      emit(state.copyWith(
+          isOnline: true,
+          orders: orders,
+          vendorLabels: labels,
+          clearTransient: true));
+      if (_subscription == null) _listen();
+    } catch (error) {
+      emit(state.copyWith(error: error.toString()));
     }
   }
 
@@ -128,6 +215,8 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
   @override
   Future<void> close() {
     _subscription?.cancel();
+    _mySubscription?.cancel();
+    _stopTimer();
     return super.close();
   }
 }

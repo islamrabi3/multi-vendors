@@ -105,6 +105,28 @@ class AuthCubit extends Cubit<AppAuthState> {
     }
   }
 
+  /*
+  Future<void> signInWithGoogle() async {
+    emit(state.copyWith(busy: true, clearMessages: true));
+    try {
+      await _repository.signInWithGoogle();
+      emit(state.copyWith(busy: false));
+    } catch (error) {
+      emit(state.copyWith(busy: false, error: error.toString()));
+    }
+  }
+
+  Future<void> signInWithApple() async {
+    emit(state.copyWith(busy: true, clearMessages: true));
+    try {
+      await _repository.signInWithApple();
+      emit(state.copyWith(busy: false));
+    } catch (error) {
+      emit(state.copyWith(busy: false, error: error.toString()));
+    }
+  }
+  */
+
   Future<void> signUp({
     required String email,
     required String password,
@@ -145,7 +167,15 @@ class AuthCubit extends Cubit<AppAuthState> {
   void vendorUpdated(Vendor vendor) => emit(state.copyWith(vendor: vendor));
 
   Future<void> signOut() async {
-    await _repository.signOut();
+    try {
+      await _repository.signOut();
+      // onAuthStateChange normally drives _refresh, but emit immediately so the
+      // router redirects without waiting on the stream.
+      emit(const AppAuthState(status: AuthStatus.unauthenticated));
+    } catch (_) {
+      // Even if the network sign-out fails, drop the local session.
+      emit(const AppAuthState(status: AuthStatus.unauthenticated));
+    }
   }
 
   @override

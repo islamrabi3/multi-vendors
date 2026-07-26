@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// Hosts Paymob's unified checkout in a WebView. The Edge Function sets the
 /// intention's redirection_url to https://payment-complete.local/ — when the
@@ -53,7 +54,7 @@ class _PaymobCheckoutScreenState extends State<PaymobCheckoutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment'),
+        title: Text(context.l10n.payment),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: _finish,

@@ -1,7 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../app/tokens.dart';
 import '../models/order.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class AppNetworkImage extends StatelessWidget {
   const AppNetworkImage({
@@ -24,8 +26,8 @@ class AppNetworkImage extends StatelessWidget {
     final placeholder = Container(
       width: width,
       height: height,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Icon(Icons.storefront_outlined, color: Colors.grey),
+      color: const Color(0xFFF3E7DE),
+      child: const Icon(Icons.restaurant, color: Color(0xFFB9A492)),
     );
     final child = url == null || url!.isEmpty
         ? placeholder
@@ -69,7 +71,7 @@ class ErrorView extends StatelessWidget {
             Text(message, textAlign: TextAlign.center),
             if (onRetry != null) ...[
               const SizedBox(height: 12),
-              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+              FilledButton(onPressed: onRetry, child: Text(context.l10n.retry)),
             ],
           ],
         ),
@@ -117,27 +119,139 @@ class QuantityStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton.outlined(
-          visualDensity: VisualDensity.compact,
-          onPressed: quantity > min ? () => onChanged(quantity - 1) : null,
-          icon: const Icon(Icons.remove, size: 18),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text('$quantity',
-              style: Theme.of(context).textTheme.titleMedium),
-        ),
-        IconButton.outlined(
-          visualDensity: VisualDensity.compact,
-          onPressed: () => onChanged(quantity + 1),
-          icon: const Icon(Icons.add, size: 18),
-        ),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StepButton(
+            icon: Icons.remove,
+            onTap: quantity > min ? () => onChanged(quantity - 1) : null,
+          ),
+          SizedBox(
+            width: 30,
+            child: Text(
+              '$quantity',
+              textAlign: TextAlign.center,
+              style: AppType.mono(15, weight: FontWeight.w700),
+            ),
+          ),
+          _StepButton(icon: Icons.add, onTap: () => onChanged(quantity + 1)),
+        ],
+      ),
     );
   }
+}
+
+class _StepButton extends StatelessWidget {
+  const _StepButton({required this.icon, this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Padding(
+        padding: const EdgeInsets.all(9),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? AppColors.primary : AppColors.textFaint,
+        ),
+      ),
+    );
+  }
+}
+
+/// Pill badge with a soft fill — used for ratings, statuses, tags.
+class SoftBadge extends StatelessWidget {
+  const SoftBadge({
+    super.key,
+    required this.label,
+    required this.fill,
+    required this.ink,
+    this.icon,
+    this.leading,
+  });
+
+  final String label;
+  final Color fill;
+  final Color ink;
+  final IconData? icon;
+  final Widget? leading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (leading != null) ...[leading!, const SizedBox(width: 4)],
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: ink),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+                color: ink, fontWeight: FontWeight.w700, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Star + score chip on amber fill (`★ 4.8`).
+class RatingChip extends StatelessWidget {
+  const RatingChip({super.key, required this.rating, this.count});
+
+  final double rating;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final isNew = count != null && count == 0;
+    return SoftBadge(
+      label: isNew ? 'New' : rating.toStringAsFixed(1),
+      fill: AppColors.amberFill,
+      ink: AppColors.amberInk,
+      leading: const Icon(Icons.star_rounded, size: 15, color: AppColors.rating),
+    );
+  }
+}
+
+/// Mono price text (`EGP 84.00`).
+class PriceText extends StatelessWidget {
+  const PriceText(
+    this.text, {
+    super.key,
+    this.size = 14,
+    this.color = AppColors.ink,
+    this.weight = FontWeight.w700,
+  });
+
+  final String text;
+  final double size;
+  final Color color;
+  final FontWeight weight;
+
+  @override
+  Widget build(BuildContext context) =>
+      Text(text, style: AppType.mono(size, color: color, weight: weight));
 }
 
 class OrderStatusChip extends StatelessWidget {
@@ -145,29 +259,24 @@ class OrderStatusChip extends StatelessWidget {
 
   final OrderStatus status;
 
-  Color get _color => switch (status) {
-        OrderStatus.pending => Colors.orange,
-        OrderStatus.accepted || OrderStatus.preparing => Colors.blue,
-        OrderStatus.readyForPickup => Colors.teal,
-        OrderStatus.outForDelivery => Colors.indigo,
-        OrderStatus.delivered => Colors.green,
-        OrderStatus.cancelled || OrderStatus.rejected => Colors.red,
+  (Color, Color) get _palette => switch (status) {
+        OrderStatus.pending => (AppColors.amberFill, AppColors.amberInk),
+        OrderStatus.accepted ||
+        OrderStatus.preparing =>
+          (AppColors.warmFill, AppColors.primaryDark),
+        OrderStatus.readyForPickup ||
+        OrderStatus.outForDelivery =>
+          (AppColors.successFill, AppColors.successInk),
+        OrderStatus.delivered => (AppColors.successFill, AppColors.successInk),
+        OrderStatus.cancelled ||
+        OrderStatus.rejected =>
+          (const Color(0xFFFBE7E4), const Color(0xFFC0392B)),
       };
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.label,
-        style: TextStyle(
-            color: _color, fontWeight: FontWeight.w600, fontSize: 12),
-      ),
-    );
+    final (fill, ink) = _palette;
+    return SoftBadge(label: status.localizedLabel(context), fill: fill, ink: ink);
   }
 }
 

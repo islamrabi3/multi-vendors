@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/payment_repository.dart';
@@ -11,6 +13,7 @@ import '../../../core/repositories/review_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import 'order_details_cubit.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   const OrderDetailsScreen({super.key, required this.orderId});
@@ -30,19 +33,10 @@ class OrderDetailsScreen extends StatelessWidget {
 class _OrderDetailsView extends StatelessWidget {
   const _OrderDetailsView();
 
-  static const _trackedStatuses = [
-    OrderStatus.pending,
-    OrderStatus.accepted,
-    OrderStatus.preparing,
-    OrderStatus.readyForPickup,
-    OrderStatus.outForDelivery,
-    OrderStatus.delivered,
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Order details')),
+      appBar: AppBar(title: Text(context.l10n.orderDetails)),
       body: BlocConsumer<OrderDetailsCubit, OrderDetailsState>(
         listenWhen: (previous, current) =>
             previous.error != current.error && current.error != null,
@@ -52,7 +46,7 @@ class _OrderDetailsView extends StatelessWidget {
           if (state.loading) return const LoadingView();
           final order = state.order;
           if (order == null) {
-            return const ErrorView(message: 'Order not found.');
+            return ErrorView(message: context.l10n.orderNotFound);
           }
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -79,9 +73,9 @@ class _OrderDetailsView extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(order.status == OrderStatus.rejected
-                        ? 'Rejected by store'
-                            '${order.rejectionReason != null ? ': ${order.rejectionReason}' : ''}'
-                        : 'This order was cancelled.'),
+                        ? context.l10n.rejectedByStore(
+                            order.rejectionReason != null ? ': ${order.rejectionReason}' : '')
+                        : context.l10n.orderCancelled),
                   ),
                 )
               else
@@ -89,11 +83,15 @@ class _OrderDetailsView extends StatelessWidget {
               if (order.status == OrderStatus.outForDelivery) ...[
                 const SizedBox(height: 16),
                 _TrackingMap(order: order, driverLocation: state.driverLocation),
+                if (state.driverContact != null) ...[
+                  const SizedBox(height: 12),
+                  _CallDriverCard(contact: state.driverContact!),
+                ],
               ],
               const Divider(height: 32),
               _PaymentCard(order: order, busy: state.busy),
               const SizedBox(height: 8),
-              Text('Items', style: Theme.of(context).textTheme.titleMedium),
+              Text(context.l10n.items, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
               for (final item in state.items)
                 ListTile(
@@ -108,27 +106,34 @@ class _OrderDetailsView extends StatelessWidget {
                   trailing: Text(formatMoney(item.lineTotal)),
                 ),
               const Divider(),
-              _Row(label: 'Subtotal', value: formatMoney(order.subtotal)),
-              _Row(label: 'Delivery fee', value: formatMoney(order.deliveryFee)),
+              _Row(label: context.l10n.subtotal, value: formatMoney(order.subtotal)),
+              _Row(label: context.l10n.deliveryFee1, value: formatMoney(order.deliveryFee)),
               if (order.discount > 0)
-                _Row(label: 'Discount', value: '-${formatMoney(order.discount)}'),
-              _Row(label: 'Total', value: formatMoney(order.total), bold: true),
+                _Row(label: context.l10n.discount1, value: '-${formatMoney(order.discount)}'),
+              _Row(label: context.l10n.total, value: formatMoney(order.total), bold: true),
               const SizedBox(height: 16),
-              Text('Delivering to ${order.addressSummary}',
+              Text(context.l10n.deliveringTo(order.addressSummary),
                   style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 24),
               if (order.status == OrderStatus.pending)
-                OutlinedButton(
-                  onPressed: state.busy
-                      ? null
-                      : () => context.read<OrderDetailsCubit>().cancelOrder(),
-                  child: const Text('Cancel order'),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: state.busy
+                        ? null
+                        : () =>
+                            context.read<OrderDetailsCubit>().cancelOrder(),
+                    child: Text(context.l10n.cancelOrder),
+                  ),
                 ),
               if (order.status == OrderStatus.delivered && !state.hasReview)
-                FilledButton.icon(
-                  onPressed: () => _showReviewSheet(context),
-                  icon: const Icon(Icons.star_outline),
-                  label: const Text('Rate this order'),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _showReviewSheet(context),
+                    icon: const Icon(Icons.star_outline),
+                    label: Text(context.l10n.rateThisOrder),
+                  ),
                 ),
               const SizedBox(height: 24),
             ],
@@ -156,38 +161,105 @@ class _StatusStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final steps = _OrderDetailsView._trackedStatuses;
-    final currentIndex = steps.indexOf(order.status);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            for (var i = 0; i < steps.length; i++)
-              Row(
-                children: [
-                  Icon(
-                    i <= currentIndex
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    color: i <= currentIndex
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    steps[i].label,
-                    style: TextStyle(
-                      fontWeight:
-                          i == currentIndex ? FontWeight.bold : FontWeight.normal,
-                      color: i <= currentIndex ? null : Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
+    int currentStep = 0;
+    if (order.status == OrderStatus.pending) {
+      currentStep = 0;
+    } else if (order.status == OrderStatus.accepted || order.status == OrderStatus.preparing) {
+      currentStep = 1;
+    } else if (order.status == OrderStatus.readyForPickup || order.status == OrderStatus.outForDelivery) {
+      currentStep = 2;
+    } else if (order.status == OrderStatus.delivered) {
+      currentStep = 3;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _buildStepNode(0, currentStep, isIcon: false, text: '✓'),
+              _buildLine(0, currentStep),
+              _buildStepNode(1, currentStep, isIcon: false, text: '✓'),
+              _buildLine(1, currentStep),
+              _buildStepNode(2, currentStep, isIcon: true, icon: Icons.delivery_dining),
+              _buildLine(2, currentStep),
+              _buildStepNode(3, currentStep, isIcon: false, text: ''),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStepLabel(context.l10n.statusConfirmed, 0, currentStep),
+              _buildStepLabel(context.l10n.statusPrepared, 1, currentStep),
+              _buildStepLabel(context.l10n.statusOnTheWay, 2, currentStep),
+              _buildStepLabel(context.l10n.statusDelivered, 3, currentStep),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepNode(int index, int currentStep, {required bool isIcon, IconData? icon, String text = ''}) {
+    final done = index < currentStep;
+    final active = index == currentStep;
+
+    Color bg = Colors.white;
+    Color border = const Color(0xFFE4DDD4);
+    Widget child = const SizedBox.shrink();
+
+    if (done) {
+      bg = AppColors.success;
+      border = AppColors.success;
+      child = const Icon(Icons.check, size: 12, color: Colors.white);
+    } else if (active) {
+      bg = AppColors.primary;
+      border = AppColors.primary;
+      child = Icon(icon ?? Icons.check, size: 12, color: Colors.white);
+    } else {
+      bg = Colors.white;
+      border = const Color(0xFFE4DDD4);
+    }
+
+    return Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: bg,
+        border: Border.all(color: border, width: 2),
+      ),
+      alignment: Alignment.center,
+      child: child,
+    );
+  }
+
+  Widget _buildLine(int index, int currentStep) {
+    final active = index < currentStep;
+    return Expanded(
+      child: Container(
+        height: 3,
+        color: active ? AppColors.success : const Color(0xFFE4DDD4),
+      ),
+    );
+  }
+
+  Widget _buildStepLabel(String label, int index, int currentStep) {
+    final active = index == currentStep;
+    final color = active ? AppColors.primary : AppColors.textMuted;
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 10.5,
+        fontWeight: FontWeight.w700,
+        color: color,
       ),
     );
   }
@@ -206,10 +278,10 @@ class _TrackingMap extends StatelessWidget {
         : null;
     final center = driverLocation ?? destination;
     if (center == null) {
-      return const Card(
+      return Card(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Your rider is on the way!'),
+          child: Text(context.l10n.yourRiderIsOnTheWay),
         ),
       );
     }
@@ -248,6 +320,38 @@ class _TrackingMap extends StatelessWidget {
   }
 }
 
+class _CallDriverCard extends StatelessWidget {
+  const _CallDriverCard({required this.contact});
+
+  final DriverContact contact;
+
+  Future<void> _call(BuildContext context) async {
+    final uri = Uri(scheme: 'tel', path: contact.phone);
+    if (!await launchUrl(uri) && context.mounted) {
+      showSnack(context, context.l10n.couldNotStartTheCall, error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const CircleAvatar(
+          backgroundColor: AppColors.warmFill,
+          child: Icon(Icons.delivery_dining, color: AppColors.primary),
+        ),
+        title: Text(contact.name),
+        subtitle: Text(context.l10n.yourDeliveryDriver),
+        trailing: FilledButton.icon(
+          onPressed: () => _call(context),
+          icon: const Icon(Icons.call, size: 18),
+          label: Text(context.l10n.call),
+        ),
+      ),
+    );
+  }
+}
+
 class _PaymentCard extends StatelessWidget {
   const _PaymentCard({required this.order, required this.busy});
 
@@ -261,8 +365,9 @@ class _PaymentCard extends StatelessWidget {
       child: ListTile(
         leading: Icon(
             order.isCod ? Icons.payments_outlined : Icons.credit_card),
-        title: Text(order.isCod ? 'Cash on delivery' : 'Card / wallet'),
-        subtitle: Text('Payment: ${order.paymentStatus}'),
+        title: Text(order.isCod ? context.l10n.cashOnDelivery : context.l10n.cardOrWallet),
+        subtitle: Text(context.l10n.paymentStatusLabel(
+            order.paymentStatus == 'paid' ? context.l10n.paymentStatusPaid : context.l10n.paymentStatusUnpaid)),
         trailing: needsPayment
             ? FilledButton(
                 onPressed: busy
@@ -276,7 +381,7 @@ class _PaymentCard extends StatelessWidget {
                               extra: {'url': url, 'orderId': order.id});
                         }
                       },
-                child: const Text('Pay now'),
+                child: Text(context.l10n.payNow),
               )
             : order.isPaid
                 ? const Icon(Icons.check_circle, color: Colors.green)
@@ -341,7 +446,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('How was your order?',
+          Text(context.l10n.howWasYourOrder,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
@@ -363,25 +468,28 @@ class _ReviewSheetState extends State<_ReviewSheet> {
             controller: _comment,
             maxLines: 3,
             decoration:
-                const InputDecoration(labelText: 'Comment (optional)'),
+                InputDecoration(labelText: context.l10n.commentOptional),
           ),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _submitting
-                ? null
-                : () async {
-                    setState(() => _submitting = true);
-                    final ok = await widget.cubit
-                        .submitReview(_rating, _comment.text);
-                    if (!context.mounted) return;
-                    if (ok) {
-                      Navigator.pop(context);
-                      showSnack(context, 'Thanks for your review!');
-                    } else {
-                      setState(() => _submitting = false);
-                    }
-                  },
-            child: const Text('Submit review'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _submitting
+                  ? null
+                  : () async {
+                      setState(() => _submitting = true);
+                      final ok = await widget.cubit
+                          .submitReview(_rating, _comment.text);
+                      if (!context.mounted) return;
+                      if (ok) {
+                        Navigator.pop(context);
+                        showSnack(context, context.l10n.thanksForYourReview);
+                      } else {
+                        setState(() => _submitting = false);
+                      }
+                    },
+              child: Text(context.l10n.submitReview),
+            ),
           ),
         ],
       ),

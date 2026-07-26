@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
 import 'core/config/app_config.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,14 +27,13 @@ class _MissingConfigApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       home: Scaffold(
         body: Center(
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              'Missing Supabase configuration.\n\n'
-              'Run with:\nflutter run --dart-define=SUPABASE_ANON_KEY=<key>',
+              '${context.l10n.missingSupabaseConfigurationnn}Run with:\nflutter run --dart-define=SUPABASE_ANON_KEY=<key>',
               textAlign: TextAlign.center,
             ),
           ),

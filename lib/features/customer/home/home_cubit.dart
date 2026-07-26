@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -53,25 +55,27 @@ class HomeState extends Equatable {
 
 class HomeCubit extends Cubit<HomeState> {
   HomeCubit(this._catalog) : super(const HomeState()) {
+    _categoriesSubscription = _catalog.vendorCategoriesStream().listen((list) {
+      emit(state.copyWith(categories: list));
+    }, onError: (_) {});
     load();
   }
 
   final CatalogRepository _catalog;
+  StreamSubscription<List<VendorCategory>>? _categoriesSubscription;
 
   Future<void> load() async {
     emit(state.copyWith(loading: true, clearError: true));
     try {
       final results = await Future.wait([
         _catalog.fetchBanners(),
-        _catalog.fetchVendorCategories(),
         _catalog.fetchVendors(
             categoryId: state.selectedCategoryId, search: state.search),
       ]);
       emit(state.copyWith(
         loading: false,
         banners: results[0] as List<BannerItem>,
-        categories: results[1] as List<VendorCategory>,
-        vendors: results[2] as List<Vendor>,
+        vendors: results[1] as List<Vendor>,
       ));
     } catch (error) {
       emit(state.copyWith(loading: false, error: error.toString()));
@@ -98,5 +102,11 @@ class HomeCubit extends Cubit<HomeState> {
     } catch (error) {
       emit(state.copyWith(error: error.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _categoriesSubscription?.cancel();
+    return super.close();
   }
 }

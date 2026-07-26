@@ -75,13 +75,20 @@ class CartCubit extends Cubit<CartState> {
     _persist();
   }
 
+  /// Drops the cart locally only — used on sign-out so one user's cart never
+  /// leaks into the next session. Does NOT write to the server (no session).
+  void resetLocal() => emit(const CartState());
+
   /// Restores the cart from the server after sign-in / app restart.
   Future<void> restoreFromServer(
       Future<Vendor> Function(String vendorId) fetchVendor) async {
     if (_repository == null) return;
     try {
       final saved = await _repository.loadCart();
-      if (saved == null) return;
+      if (saved == null) {
+        emit(const CartState());
+        return;
+      }
       final (vendorId, items) = saved;
       final vendor = await fetchVendor(vendorId);
       emit(CartState(vendor: vendor, items: items));

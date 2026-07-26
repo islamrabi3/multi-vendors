@@ -17,6 +17,7 @@ class OrderDetailsState extends Equatable {
     this.order,
     this.items = const [],
     this.driverLocation,
+    this.driverContact,
     this.hasReview = false,
     this.error,
     this.busy = false,
@@ -26,6 +27,7 @@ class OrderDetailsState extends Equatable {
   final AppOrder? order;
   final List<OrderItem> items;
   final LatLng? driverLocation;
+  final DriverContact? driverContact;
   final bool hasReview;
   final String? error;
   final bool busy;
@@ -35,6 +37,7 @@ class OrderDetailsState extends Equatable {
     AppOrder? order,
     List<OrderItem>? items,
     LatLng? driverLocation,
+    DriverContact? driverContact,
     bool? hasReview,
     String? error,
     bool? busy,
@@ -45,14 +48,23 @@ class OrderDetailsState extends Equatable {
         order: order ?? this.order,
         items: items ?? this.items,
         driverLocation: driverLocation ?? this.driverLocation,
+        driverContact: driverContact ?? this.driverContact,
         hasReview: hasReview ?? this.hasReview,
         error: clearError ? null : (error ?? this.error),
         busy: busy ?? this.busy,
       );
 
   @override
-  List<Object?> get props =>
-      [loading, order, items, driverLocation, hasReview, error, busy];
+  List<Object?> get props => [
+        loading,
+        order,
+        items,
+        driverLocation,
+        driverContact,
+        hasReview,
+        error,
+        busy,
+      ];
 }
 
 /// Streams a single order in realtime and, while it is out for delivery,
@@ -104,6 +116,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   void _maybeTrack(AppOrder order) {
     if (order.status == OrderStatus.outForDelivery &&
         _trackingChannel == null) {
+      _loadDriverContact();
       _trackingChannel = supabase.channel('order-tracking:$orderId')
         ..onBroadcast(
           event: 'location',
@@ -119,6 +132,18 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     } else if (order.status.isTerminal && _trackingChannel != null) {
       _trackingChannel?.unsubscribe();
       _trackingChannel = null;
+    }
+  }
+
+  Future<void> _loadDriverContact() async {
+    if (state.driverContact != null) return;
+    try {
+      final contact = await _orders.fetchDriverContact(orderId);
+      if (contact != null && !isClosed) {
+        emit(state.copyWith(driverContact: contact));
+      }
+    } catch (_) {
+      // Non-critical: the call button just stays hidden.
     }
   }
 

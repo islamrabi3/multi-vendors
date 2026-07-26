@@ -5,6 +5,7 @@ import '../../../core/models/vendor.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/widgets/common.dart';
 import '../auth_cubit.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// Shown once after a vendor-role signup: creates the `vendors` row.
 class VendorOnboardingScreen extends StatefulWidget {
@@ -62,7 +63,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Set up your store'),
+        title: Text(context.l10n.setUpYourStore),
         actions: [
           IconButton(
             onPressed: () => context.read<AuthCubit>().signOut(),
@@ -84,7 +85,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
               children: [
                 TextFormField(
                   controller: _name,
-                  decoration: const InputDecoration(labelText: 'Store name'),
+                  decoration: InputDecoration(labelText: context.l10n.storeName),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
@@ -92,12 +93,12 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                 TextFormField(
                   controller: _description,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Description'),
+                  decoration: InputDecoration(labelText: context.l10n.description),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _categoryId,
-                  decoration: const InputDecoration(labelText: 'Category'),
+                  decoration: InputDecoration(labelText: context.l10n.category),
                   items: [
                     for (final category in _categories)
                       DropdownMenuItem(
@@ -110,13 +111,13 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                 TextFormField(
                   controller: _phone,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Store phone'),
+                  decoration: InputDecoration(labelText: context.l10n.storePhone),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _address,
                   decoration:
-                      const InputDecoration(labelText: 'Store address'),
+                      InputDecoration(labelText: context.l10n.storeAddress),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
@@ -127,8 +128,8 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                       child: TextFormField(
                         controller: _deliveryFee,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                            labelText: 'Delivery fee (EGP)'),
+                        decoration: InputDecoration(
+                            labelText: context.l10n.deliveryFeeEgp),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -136,8 +137,8 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                       child: TextFormField(
                         controller: _minOrder,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                            labelText: 'Min order (EGP)'),
+                        decoration: InputDecoration(
+                            labelText: context.l10n.minOrderEgp),
                       ),
                     ),
                   ],
@@ -146,19 +147,22 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                 TextFormField(
                   controller: _prepMinutes,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                      labelText: 'Average prep time (minutes)'),
+                  decoration: InputDecoration(
+                      labelText: context.l10n.averagePrepTimeMinutes),
                 ),
                 const SizedBox(height: 24),
                 BlocBuilder<AuthCubit, AppAuthState>(
-                  builder: (context, state) => FilledButton(
-                    onPressed: state.busy ? null : _submit,
-                    child: state.busy
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Open my store'),
+                  builder: (context, state) => SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: state.busy ? null : _submit,
+                      child: state.busy
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(context.l10n.openMyStore),
+                    ),
                   ),
                 ),
               ],

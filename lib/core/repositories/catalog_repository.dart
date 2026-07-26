@@ -22,6 +22,14 @@ class CatalogRepository {
     return data.map(VendorCategory.fromMap).toList();
   }
 
+  /// Stream of active vendor categories for real-time customer updates.
+  Stream<List<VendorCategory>> vendorCategoriesStream() => supabase
+      .from('vendor_categories')
+      .stream(primaryKey: ['id'])
+      .eq('is_active', true)
+      .order('sort_order', ascending: true)
+      .map((rows) => rows.map(VendorCategory.fromMap).toList());
+
   Future<List<Vendor>> fetchVendors({String? categoryId, String? search}) async {
     var query = supabase.from('vendors').select().eq('is_active', true);
     if (categoryId != null) query = query.eq('category_id', categoryId);

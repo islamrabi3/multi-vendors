@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../auth/auth_cubit.dart';
+import '../../app/tokens.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class DriverShell extends StatelessWidget {
   const DriverShell({super.key, required this.shell});
@@ -12,33 +12,26 @@ class DriverShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Driver'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            onPressed: () => context.read<AuthCubit>().signOut(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
       body: shell,
       bottomNavigationBar: NavigationBar(
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.warmFill,
         selectedIndex: shell.currentIndex,
         onDestinationSelected: (index) => shell.goBranch(index,
             initialLocation: index == shell.currentIndex),
-        destinations: const [
+        destinations: [
           NavigationDestination(
               icon: Icon(Icons.list_alt_outlined),
               selectedIcon: Icon(Icons.list_alt),
-              label: 'Available'),
+              label: context.l10n.available),
           NavigationDestination(
               icon: Icon(Icons.delivery_dining_outlined),
               selectedIcon: Icon(Icons.delivery_dining),
-              label: 'Active'),
+              label: context.l10n.active),
           NavigationDestination(
-              icon: Icon(Icons.history),
-              label: 'History'),
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet),
+              label: context.l10n.earnings),
         ],
       ),
     );

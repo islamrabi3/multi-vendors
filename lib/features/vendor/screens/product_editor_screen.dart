@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../app/tokens.dart';
 import '../../../core/models/product.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class ProductEditorArgs {
   const ProductEditorArgs({
@@ -105,7 +107,7 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
       if (!mounted) return;
       setState(() => _product = saved);
       await _reloadProduct();
-      if (mounted) showSnack(context, 'Product saved');
+      if (mounted) showSnack(context, context.l10n.productSaved);
     } catch (error) {
       if (mounted) showSnack(context, readableError(error), error: true);
     } finally {
@@ -119,17 +121,17 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete product?'),
-        content: Text('Remove "${product.name}" from the menu?'),
+        title: Text(context.l10n.deleteProduct),
+        content: Text('${context.l10n.remove} "${product.name}" ${context.l10n.fromTheMenu}'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(context.l10n.cancel)),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -142,56 +144,133 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
   }
 
   Future<void> _addOptionGroup() async {
-    final product = _product;
-    if (product == null) return;
+    if (_product == null) {
+      if (!_formKey.currentState!.validate()) {
+        showSnack(context, 'Please enter product name and valid price first', error: true);
+        return;
+      }
+      await _save();
+      if (!mounted) return;
+      if (_product == null) return;
+    }
+    final product = _product!;
     final nameController = TextEditingController();
     final minController = TextEditingController(text: '0');
     final maxController = TextEditingController(text: '1');
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('New option group'),
-        content: Column(
+      isScrollControlled: true,
+      backgroundColor: AppColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+          left: 20,
+          right: 20,
+          top: 8,
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4.5,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+            Text(
+              context.l10n.newOptionGroup,
+              style: AppType.heading(19, color: AppColors.ink),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: nameController,
               autofocus: true,
-              decoration:
-                  const InputDecoration(labelText: 'Name (Size, Add-ons…)'),
+              decoration: InputDecoration(
+                labelText: context.l10n.nameSizeAddons,
+                prefixIcon: const Icon(Icons.drive_file_rename_outline_rounded),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: minController,
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'Min select'),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.minSelect,
+                      prefixIcon: const Icon(Icons.remove_circle_outline_rounded),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: TextField(
                     controller: maxController,
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'Max select'),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.maxSelect,
+                      prefixIcon: const Icon(Icons.add_circle_outline_rounded),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(sheetContext, false),
+                    child: Text(context.l10n.cancel),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(sheetContext, true),
+                      child: Text(context.l10n.add),
+                    ),
                   ),
                 ),
               ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Add')),
-        ],
       ),
     );
     if (confirmed == true && nameController.text.trim().isNotEmpty) {
@@ -208,35 +287,104 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
   Future<void> _addOption(ProductOptionGroup group) async {
     final nameController = TextEditingController();
     final priceController = TextEditingController(text: '0');
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Add option to ${group.name}'),
-        content: Column(
+      isScrollControlled: true,
+      backgroundColor: AppColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+          left: 20,
+          right: 20,
+          top: 8,
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4.5,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+            Text(
+              '${context.l10n.addOptionTo} ${group.name}',
+              style: AppType.heading(19, color: AppColors.ink),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: nameController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Option name'),
+              decoration: InputDecoration(
+                labelText: context.l10n.optionName,
+                prefixIcon: const Icon(Icons.label_outline_rounded),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration:
-                  const InputDecoration(labelText: 'Extra price (EGP)'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: context.l10n.extraPriceEgp,
+                prefixIcon: const Icon(Icons.payments_outlined),
+                suffixText: 'EGP',
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(sheetContext, false),
+                    child: Text(context.l10n.cancel),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(sheetContext, true),
+                      child: Text(context.l10n.add),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Add')),
-        ],
       ),
     );
     if (confirmed == true && nameController.text.trim().isNotEmpty) {
@@ -267,7 +415,7 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Text('Select section',
+              child: Text(context.l10n.selectSection,
                   style: Theme.of(ctx).textTheme.titleMedium),
             ),
             for (final cat in widget.args.categories)
@@ -293,13 +441,14 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(product == null ? 'New product' : 'Edit product'),
+        title: Text(product == null ? context.l10n.newProduct : context.l10n.editProduct),
         actions: [
           if (product != null)
             IconButton(
-              tooltip: 'Delete product',
-              icon: Icon(Icons.delete_outline, color: scheme.error),
+              tooltip: context.l10n.deleteProduct,
+              icon: Icon(Icons.delete_outline_rounded, color: scheme.error),
               onPressed: _confirmDelete,
             ),
         ],
@@ -307,13 +456,13 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
           children: [
-            // ── Image picker ─────────────────────────────────────────
+            // Image picker widget
             GestureDetector(
               onTap: _uploading ? null : _pickImage,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadii.xl),
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
@@ -331,7 +480,7 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
                     ),
                     if (_uploading)
                       const Positioned.fill(
-                          child: Center(child: CircularProgressIndicator()))
+                          child: Center(child: CircularProgressIndicator(color: Colors.white)))
                     else
                       Positioned.fill(
                         child: Center(
@@ -348,10 +497,10 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 _imageUrl != null
-                                    ? 'Tap to change photo'
-                                    : 'Tap to add photo',
+                                    ? context.l10n.tapToChangePhoto
+                                    : context.l10n.tapToAddPhoto,
                                 style:
-                                    const TextStyle(color: Colors.white70),
+                                    const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.5),
                               ),
                             ],
                           ),
@@ -363,71 +512,82 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Basic info ────────────────────────────────────────────
-            _SectionLabel('Basic info'),
+            // Basic Info Section
+            _SectionLabel(context.l10n.basicInfo),
             const SizedBox(height: 12),
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Product name',
-                prefixIcon: Icon(Icons.fastfood_outlined),
+              decoration: InputDecoration(
+                labelText: context.l10n.productName,
+                prefixIcon: const Icon(Icons.fastfood_outlined),
               ),
               validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  (v == null || v.trim().isEmpty) ? context.l10n.required : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _description,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Description',
+              decoration: InputDecoration(
+                labelText: context.l10n.description,
                 alignLabelWithHint: true,
-                prefixIcon: Padding(
+                prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 40),
                   child: Icon(Icons.notes_outlined),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Available for ordering'),
-              subtitle: Text(
-                _isAvailable
-                    ? 'Customers can add this to their cart'
-                    : 'Hidden from customers',
-                style: TextStyle(color: scheme.onSurfaceVariant),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+                border: Border.all(color: AppColors.border),
               ),
-              value: _isAvailable,
-              onChanged: (v) => setState(() => _isAvailable = v),
+              child: SwitchListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                title: Text(context.l10n.availableForOrdering,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5, color: AppColors.ink)),
+                subtitle: Text(
+                  _isAvailable
+                      ? context.l10n.customersCanAddThisToTheirCart
+                      : context.l10n.hiddenFromCustomers,
+                  style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+                ),
+                value: _isAvailable,
+                activeThumbColor: Colors.white,
+                activeTrackColor: AppColors.success,
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: AppColors.border,
+                onChanged: (v) => setState(() => _isAvailable = v),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-            // ── Pricing & category ────────────────────────────────────
-            _SectionLabel('Pricing & category'),
+            // Pricing & category section
+            _SectionLabel(context.l10n.pricingAndCategory),
             const SizedBox(height: 12),
             TextFormField(
               controller: _price,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Price',
-                prefixIcon: Icon(Icons.payments_outlined),
+              decoration: InputDecoration(
+                labelText: context.l10n.price,
+                prefixIcon: const Icon(Icons.payments_outlined),
                 suffixText: 'EGP',
               ),
               validator: (v) =>
-                  double.tryParse(v ?? '') == null ? 'Enter a valid price' : null,
+                  double.tryParse(v ?? '') == null ? context.l10n.enterAValidPrice : null,
             ),
             const SizedBox(height: 12),
-            // Section picker — tappable field that opens a bottom sheet
             InkWell(
               onTap: widget.args.categories.isEmpty ? null : _pickCategory,
               borderRadius: BorderRadius.circular(12),
               child: InputDecorator(
                 decoration: InputDecoration(
-                  labelText: 'Section',
+                  labelText: context.l10n.section,
                   prefixIcon: const Icon(Icons.category_outlined),
                   suffixIcon: const Icon(Icons.arrow_drop_down),
                   enabled: widget.args.categories.isNotEmpty,
@@ -435,8 +595,8 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
                 child: Text(
                   _selectedCategoryName ??
                       (widget.args.categories.isEmpty
-                          ? 'No sections — add one first'
-                          : 'Select a section'),
+                          ? context.l10n.noSectionsAddOneFirst
+                          : context.l10n.selectSection),
                   style: TextStyle(
                     color: _categoryId == null
                         ? Theme.of(context).hintColor
@@ -445,34 +605,47 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
-            // ── Options ───────────────────────────────────────────────
-            Row(
+            // Options list
+             Row(
               children: [
-                _SectionLabel('Options'),
+                _SectionLabel(context.l10n.options),
                 const Spacer(),
                 TextButton.icon(
-                  onPressed: product == null ? null : _addOptionGroup,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add group'),
+                  onPressed: _saving ? null : _addOptionGroup,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(context.l10n.addGroup, style: const TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
+            const SizedBox(height: 4),
             if (product == null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
                 child: Text(
-                  'Save the product first to add option groups.',
-                  style: TextStyle(color: scheme.onSurfaceVariant),
+                  context.l10n.saveProductFirstToOption,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13.5),
+                  textAlign: TextAlign.center,
                 ),
               )
             else if (product.optionGroups.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
                 child: Text(
-                  'No option groups yet.',
-                  style: TextStyle(color: scheme.onSurfaceVariant),
+                  context.l10n.noOptionGroupsYet,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13.5),
+                  textAlign: TextAlign.center,
                 ),
               )
             else
@@ -492,17 +665,43 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: FilledButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(product == null ? 'Create product' : 'Save changes'),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.borderSoft)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: SafeArea(
+          child: Container(
+            height: 54,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+              ),
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(product == null ? context.l10n.createProduct : context.l10n.saveChanges,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
           ),
         ),
       ),
@@ -515,12 +714,17 @@ class _SectionLabel extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: Theme.of(context)
-            .textTheme
-            .labelLarge
-            ?.copyWith(color: Theme.of(context).colorScheme.primary),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text.toUpperCase(),
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+            letterSpacing: 1.1,
+          ),
+        ),
       );
 }
 
@@ -540,10 +744,16 @@ class _OptionGroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        boxShadow: AppShadows.card,
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -554,25 +764,26 @@ class _OptionGroupCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(group.name,
-                          style: Theme.of(context).textTheme.titleSmall),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppColors.ink)),
+                      const SizedBox(height: 2),
                       Text(
-                        'Pick ${group.minSelect}–${group.maxSelect}',
-                        style: TextStyle(
-                            fontSize: 12, color: scheme.onSurfaceVariant),
+                        '${context.l10n.pick} ${group.minSelect}–${group.maxSelect}',
+                        style: const TextStyle(
+                            fontSize: 11.5, color: AppColors.textMuted, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.add_circle_outline),
-                  tooltip: 'Add option',
+                  icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+                  tooltip: context.l10n.addOption,
                   onPressed: onAddOption,
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: Icon(Icons.delete_outline, color: scheme.error),
-                  tooltip: 'Delete group',
+                  icon: Icon(Icons.delete_outline_rounded, color: scheme.error),
+                  tooltip: context.l10n.deleteGroup,
                   onPressed: onDeleteGroup,
                 ),
               ],
@@ -584,16 +795,16 @@ class _OptionGroupCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
-                      const Icon(Icons.radio_button_unchecked,
-                          size: 14, color: Colors.grey),
+                      const Icon(Icons.radio_button_unchecked_rounded,
+                          size: 14, color: AppColors.textFaint),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(option.name)),
+                      Expanded(child: Text(option.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink))),
                       if (option.priceDelta != 0)
                         Text('+${formatMoney(option.priceDelta)}',
-                            style: TextStyle(color: scheme.primary)),
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 12.5)),
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.close, size: 16),
+                        icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.textMuted),
                         onPressed: () => onDeleteOption(option.id),
                       ),
                     ],

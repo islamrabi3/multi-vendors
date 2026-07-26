@@ -1,0 +1,436 @@
+
+--- lib/main.dart ---
+  Line 35: [Missing Supabase configuration.\n\n] -> 'Missing Supabase configuration.\n\n'
+  Line 36: [Run with:\nflutter run --dart-define=SUPABASE_ANON_KEY=<key>] -> 'Run with:\nflutter run --dart-define=SUPABASE_ANON_KEY=<key>',
+
+--- lib/core/config/app_config.dart ---
+  Line 10: [https://dvfbeaafekqdcwxogbqc.supabase.co] -> defaultValue: 'https://dvfbeaafekqdcwxogbqc.supabase.co',
+  Line 15: [sb_publishable_vDEZfX6SkbQlTmjscrYkvA_aa0Zr3Mo] -> defaultValue: 'sb_publishable_vDEZfX6SkbQlTmjscrYkvA_aa0Zr3Mo',
+
+--- lib/core/repositories/driver_repository.dart ---
+  Line 32: [order-tracking:$orderId] -> supabase.channel('order-tracking:$orderId');
+
+--- lib/core/repositories/favorites_repository.dart ---
+  Line 11: [vendors(*)] -> final data = await supabase.from('favorites').select('vendors(*)');
+
+--- lib/core/repositories/cart_repository.dart ---
+  Line 53: [id, vendor_id, cart_items(*)] -> .select('id, vendor_id, cart_items(*)')
+
+--- lib/core/repositories/order_repository.dart ---
+  Line 5: [*, vendors(name, logo_url)] -> static const _vendorJoin = '*, vendors(name, logo_url)';
+  Line 39: [$_vendorJoin, order_items(*)] -> .select('$_vendorJoin, order_items(*)')
+  Line 61: [Driver] -> name: row['full_name'] as String? ?? 'Driver',
+  Line 176: [id, name, logo_url] -> .select('id, name, logo_url')
+
+--- lib/core/repositories/admin_repository.dart ---
+  Line 78: [full_name, phone] -> .select('full_name, phone')
+  Line 85: [Owner] -> : 'Owner',
+  Line 106: [*, vendors(name, logo_url), order_items(*)] -> .select('*, vendors(name, logo_url), order_items(*)')
+  Line 115: [id, profiles(full_name, phone)] -> .select('id, profiles(full_name, phone)')
+  Line 121: [Driver] -> name: p is Map ? (p['full_name'] as String?) ?? 'Driver' : 'Driver',
+  Line 121: [Driver] -> name: p is Map ? (p['full_name'] as String?) ?? 'Driver' : 'Driver',
+  Line 146: [id, name, logo_url] -> .select('id, name, logo_url')
+
+--- lib/core/repositories/payment_repository.dart ---
+  Line 8: [paymob-create-intention] -> 'paymob-create-intention',
+  Line 14: [Could not start payment] -> throw Exception(data['error'] ?? 'Could not start payment');
+
+--- lib/core/repositories/catalog_repository.dart ---
+  Line 29: [%${search.trim()}%] -> query = query.ilike('name', '%${search.trim()}%');
+  Line 58: [*, product_option_groups(*, product_options(*))] -> .select('*, product_option_groups(*, product_options(*))')
+  Line 69: [*, product_option_groups(*, product_options(*))] -> .select('*, product_option_groups(*, product_options(*))')
+
+--- lib/core/models/order.dart ---
+  Line 31: [Pending] -> pending => 'Pending',
+  Line 32: [Accepted] -> accepted => 'Accepted',
+  Line 33: [Preparing] -> preparing => 'Preparing',
+  Line 34: [Ready for pickup] -> readyForPickup => 'Ready for pickup',
+  Line 35: [Out for delivery] -> outForDelivery => 'Out for delivery',
+  Line 36: [Delivered] -> delivered => 'Delivered',
+  Line 37: [Cancelled] -> cancelled => 'Cancelled',
+  Line 38: [Rejected] -> rejected => 'Rejected',
+  Line 130: [Bldg ${a[] -> if ((a['building'] as String?)?.isNotEmpty ?? false) 'Bldg ${a['building']}',
+  Line 131: [Floor ${a[] -> if ((a['floor'] as String?)?.isNotEmpty ?? false) 'Floor ${a['floor']}',
+  Line 132: [Apt ${a[] -> if ((a['apartment'] as String?)?.isNotEmpty ?? false) 'Apt ${a['apartment']}',
+
+--- lib/core/models/address.dart ---
+  Line 30: [Bldg $building] -> if (building?.isNotEmpty ?? false) 'Bldg $building',
+  Line 31: [Floor $floor] -> if (floor?.isNotEmpty ?? false) 'Floor $floor',
+  Line 32: [Apt $apartment] -> if (apartment?.isNotEmpty ?? false) 'Apt $apartment',
+  Line 37: [Home] -> label: (map['label'] as String?) ?? 'Home',
+
+--- lib/core/models/cart_item.dart ---
+  Line 27: [${product.id}|${optionIds.join(] -> return '${product.id}|${optionIds.join(',')}|${notes ?? ''}';
+  Line 27: [)}|${notes ?? ] -> return '${product.id}|${optionIds.join(',')}|${notes ?? ''}';
+
+--- lib/core/widgets/common.dart ---
+  Line 138: [$quantity] -> '$quantity',
+  Line 294: [Your cart is empty.] -> 'CART_EMPTY': 'Your cart is empty.',
+  Line 295: [This store is currently closed.] -> 'VENDOR_CLOSED': 'This store is currently closed.',
+  Line 296: [Please choose a delivery address.] -> 'ADDRESS_NOT_FOUND': 'Please choose a delivery address.',
+  Line 297: [This coupon code is not valid.] -> 'COUPON_INVALID': 'This coupon code is not valid.',
+  Line 298: [Go online to claim orders.] -> 'NOT_AN_ONLINE_DRIVER': 'Go online to claim orders.',
+  Line 304: [Order total is below the store minimum.] -> return 'Order total is below the store minimum.';
+  Line 307: [Order total is below the coupon minimum.] -> return 'Order total is below the coupon minimum.';
+  Line 310: [An item in your cart is no longer available.] -> return 'An item in your cart is no longer available.';
+  Line 313: [This order was already updated. Refreshing…] -> return 'This order was already updated. Refreshing…';
+  Line 315: [Invalid login credentials] -> if (text.contains('Invalid login credentials')) {
+  Line 316: [Incorrect email or password.] -> return 'Incorrect email or password.';
+  Line 318: [Something went wrong. Please try again.] -> return 'Something went wrong. Please try again.';
+
+--- lib/app/tokens.dart ---
+  Line 5: [Eaty — Multi-Vendor Food Delivery · UI Kit] -> /// Mirrors the "Eaty — Multi-Vendor Food Delivery · UI Kit" design doc.
+  Line 33: [open now] -> static const successFill = Color(0xFFE4F6EC); // "open now" bg
+  Line 34: [open now] -> static const successInk = Color(0xFF0E7C3F); // "open now" text
+
+--- lib/app/router.dart ---
+  Line 139: [orderId] -> orderId: args['orderId']!,
+
+--- lib/features/auth/auth_cubit.dart ---
+  Line 128: [Account created. Check your email to confirm, then sign in.] -> : 'Account created. Check your email to confirm, then sign in.',
+
+--- lib/features/auth/screens/signup_screen.dart ---
+  Line 86: [Browse stores & get it delivered] -> subtitle: 'Browse stores & get it delivered',
+  Line 94: [Manage a store & menu] -> subtitle: 'Manage a store & menu',
+  Line 102: [Earn on your schedule] -> subtitle: 'Earn on your schedule',
+  Line 117: [Required] -> (v == null || v.trim().isEmpty) ? 'Required' : null,
+  Line 128: [Enter a valid phone] -> ? 'Enter a valid phone'
+  Line 140: [Enter a valid email] -> ? 'Enter a valid email'
+  Line 152: [Min 6 characters] -> ? 'Min 6 characters'
+
+--- lib/features/auth/screens/login_screen.dart ---
+  Line 122: [Enter a valid email] -> ? 'Enter a valid email'
+  Line 152: [Show] -> _obscurePassword ? 'Show' : 'Hide',
+  Line 152: [Hide] -> _obscurePassword ? 'Show' : 'Hide',
+  Line 162: [Min 6 characters] -> ? 'Min 6 characters'
+
+--- lib/features/auth/screens/vendor_onboarding_screen.dart ---
+  Line 90: [Required] -> (v == null || v.trim().isEmpty) ? 'Required' : null,
+  Line 108: [Pick a category] -> validator: (v) => v == null ? 'Pick a category' : null,
+  Line 122: [Required] -> (v == null || v.trim().isEmpty) ? 'Required' : null,
+
+--- lib/features/driver/active_delivery_cubit.dart ---
+  Line 104: [name, lat, lng] -> .select('name, lat, lng')
+  Line 128: [Location permission is needed to share your position.] -> error: 'Location permission is needed to share your position.'));
+
+--- lib/features/driver/driver_pool_cubit.dart ---
+  Line 186: [Another driver took this order.] -> error: 'Another driver took this order.',
+
+--- lib/features/driver/screens/driver_pool_screen.dart ---
+  Line 79: [${state.orders.length} ready] -> label: '${state.orders.length} ready',
+  Line 134: [Good morning] -> if (hour < 12) return 'Good morning';
+  Line 135: [Good afternoon] -> if (hour < 18) return 'Good afternoon';
+  Line 136: [Good evening] -> return 'Good evening';
+  Line 156: [$_greeting, $firstName] -> Text('$_greeting, $firstName',
+  Line 179: [You're online] -> ? "You're online"
+  Line 180: [You're offline] -> : "You're offline",
+  Line 209: [Earned today] -> _stat(formatMoney(state.todayEarnings), 'Earned today'),
+  Line 211: [${state.todayTrips}] -> _stat('${state.todayTrips}', 'Trips'),
+  Line 211: [Trips] -> _stat('${state.todayTrips}', 'Trips'),
+  Line 213: [${state.orders.length}] -> _stat(state.isOnline ? '${state.orders.length}' : '—',
+  Line 214: [In the pool] -> 'In the pool'),
+  Line 305: [Ready · ${DateFormat(] -> 'Ready · ${DateFormat('h:mm a').format(order.createdAt)}',
+  Line 305: [).format(order.createdAt)}] -> 'Ready · ${DateFormat('h:mm a').format(order.createdAt)}',
+  Line 357: [Claim · collect ${formatMoney(order.total)} cash] -> ? 'Claim · collect ${formatMoney(order.total)} cash'
+  Line 358: [Claim delivery] -> : 'Claim delivery'),
+
+--- lib/features/driver/screens/driver_history_screen.dart ---
+  Line 62: [${delivered.length} delivered] -> Text('${delivered.length} delivered',
+  Line 128: [EGP ${weekTotal.toStringAsFixed(0)}] -> Text('EGP ${weekTotal.toStringAsFixed(0)}',
+  Line 193: [Store] -> label?.name ?? 'Store',
+  Line 232: [${order.orderNumber} · ] -> '${order.orderNumber} · '
+  Line 233: [${DateFormat(] -> '${DateFormat('d MMM, h:mm a').format(order.createdAt)}',
+  Line 233: [).format(order.createdAt)}] -> '${DateFormat('d MMM, h:mm a').format(order.createdAt)}',
+  Line 242: [+${order.deliveryFee.toStringAsFixed(0)}] -> Text('+${order.deliveryFee.toStringAsFixed(0)}',
+
+--- lib/features/driver/screens/active_delivery_screen.dart ---
+  Line 117: [com.example.multi_vendor] -> userAgentPackageName: 'com.example.multi_vendor',
+  Line 197: [${km.toStringAsFixed(1)} km] -> return '${km.toStringAsFixed(1)} km';
+  Line 291: [Store] -> title: vendorName ?? 'Store',
+  Line 292: [Picked up] -> subtitle: 'Picked up',
+  Line 298: [Customer] -> title: order.customerName ?? 'Customer',
+  Line 316: [Collect ${formatMoney(order.total)} in cash] -> ? 'Collect ${formatMoney(order.total)} in cash'
+  Line 317: [Paid online — nothing to collect] -> : 'Paid online — nothing to collect',
+  Line 333: [Call ${order.customerName ?? ] -> label: Text('Call ${order.customerName ?? 'customer'}'),
+
+--- lib/features/admin/admin_dashboard_cubit.dart ---
+  Line 21: [Live orders] -> /// Most recent non-terminal orders for the "Live orders" feed.
+
+--- lib/features/admin/screens/admin_vendors_screen.dart ---
+  Line 80: [All ${state.vendors.length}] -> _chip('All ${state.vendors.length}', VendorFilter.all),
+  Line 81: [Pending ${state.pending.length}] -> _chip('Pending ${state.pending.length}', VendorFilter.pending,
+  Line 83: [Active] -> _chip('Active', VendorFilter.active),
+  Line 84: [Suspended] -> _chip('Suspended', VendorFilter.suspended),
+  Line 148: [Awaiting approval · ${state.pending.length}] -> _sectionLabel('Awaiting approval · ${state.pending.length}'),
+  Line 155: [Active · ${state.active.length}] -> _sectionLabel('Active · ${state.active.length}'),
+  Line 158: [Suspended · ${state.suspended.length}] -> _sectionLabel('Suspended · ${state.suspended.length}'),
+  Line 288: ["${vendor.name}" will be suspended and hidden from ] -> content: Text('"${vendor.name}" will be suspended and hidden from '
+  Line 288: [${vendor.name}] -> content: Text('"${vendor.name}" will be suspended and hidden from '
+  Line 289: [customers.] -> 'customers.'),
+  Line 344: [${vendor.ratingAvg.toStringAsFixed(1)} · ] -> '${vendor.ratingAvg.toStringAsFixed(1)} · '
+  Line 345: [${vendor.ratingCount} ratings] -> '${vendor.ratingCount} ratings',
+
+--- lib/features/admin/screens/admin_order_detail_screen.dart ---
+  Line 55: [Assigned to ${driver.name}] -> showSnack(context, 'Assigned to ${driver.name}');
+  Line 90: [Cancelled by admin] -> reason: reason.isEmpty ? 'Cancelled by admin' : reason);
+  Line 174: [Placed ${DateFormat(] -> 'Placed ${DateFormat('h:mm a').format(order.createdAt)} · '
+  Line 174: [).format(order.createdAt)} · ] -> 'Placed ${DateFormat('h:mm a').format(order.createdAt)} · '
+  Line 175: [${order.isCod ? ] -> '${order.isCod ? 'COD' : 'Card'}',
+  Line 208: [Stuck in ${order.status.label} · ${mins}m] -> Text('Stuck in ${order.status.label} · ${mins}m',
+  Line 215: [Past SLA · no driver assigned] -> ? 'Past SLA · no driver assigned'
+  Line 216: [Past SLA] -> : 'Past SLA',
+  Line 233: [Store] -> child: _party('VENDOR', order.vendorName ?? 'Store',
+  Line 234: [Store] -> order.addressSummary.isEmpty ? '—' : 'Store'),
+  Line 238: [Customer] -> child: _party('CUSTOMER', order.customerName ?? 'Customer',
+  Line 260: [Reason: ${order.rejectionReason}] -> child: Text('Reason: ${order.rejectionReason}',
+  Line 393: [$label — stalled] -> stalled ? '$label — stalled' : label,
+  Line 446: [Assigned] -> Text(assigned ? 'Assigned' : 'Not assigned',
+  Line 446: [Not assigned] -> Text(assigned ? 'Assigned' : 'Not assigned',
+  Line 501: [Order ${order.status.label.toLowerCase()}] -> child: Text('Order ${order.status.label.toLowerCase()}',
+
+--- lib/features/admin/screens/admin_orders_screen.dart ---
+  Line 57: [${state.liveCount} live] -> Text('${state.liveCount} live',
+  Line 115: [Flagged ${state.flaggedCount}] -> _chip('Flagged ${state.flaggedCount}', OrderMonitorFilter.flagged,
+  Line 117: [Preparing] -> _chip('Preparing', OrderMonitorFilter.preparing),
+  Line 118: [On the way] -> _chip('On the way', OrderMonitorFilter.onTheWay),
+  Line 160: [Store] -> final storeName = label ?? order.vendorName ?? 'Store';
+  Line 196: [STUCK ${mins}m] -> child: Text('STUCK ${mins}m',
+  Line 219: [ → ${order.customerName ?? ] -> TextSpan(text: ' → ${order.customerName ?? 'Customer'}'),
+  Line 244: [No driver assigned · past SLA] -> ? 'No driver assigned · past SLA'
+  Line 245: [Running late · past SLA] -> : 'Running late · past SLA',
+  Line 268: [${order.orderNumber} · ${_ago(order.createdAt)}] -> Text('${order.orderNumber} · ${_ago(order.createdAt)}',
+  Line 270: [$storeName → ${order.customerName ?? ] -> Text('$storeName → ${order.customerName ?? 'Customer'}',
+  Line 306: [just now] -> if (d.inMinutes < 1) return 'just now';
+  Line 307: [${d.inMinutes}m ago] -> if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+  Line 308: [${d.inHours}h ago] -> if (d.inHours < 24) return '${d.inHours}h ago';
+  Line 309: [${d.inDays}d ago] -> return '${d.inDays}d ago';
+
+--- lib/features/admin/screens/admin_promos_screen.dart ---
+  Line 69: [Home banners] -> _SectionLabel('Home banners'),
+  Line 73: [Coupons] -> _SectionLabel('Coupons'),
+  Line 143: [Home banners] -> if (text == 'Home banners')
+  Line 144: [  ·  $active active] -> Text('  ·  $active active',
+  Line 166: [No banners yet. Tap "New" to add one.] -> return _emptyCard('No banners yet. Tap "New" to add one.');
+  Line 217: [Untitled banner] -> Text(offer.title ?? 'Untitled banner',
+  Line 248: [Live] -> Text(offer.isActive ? 'Live' : 'Hidden',
+  Line 248: [Hidden] -> Text(offer.isActive ? 'Live' : 'Hidden',
+  Line 285: ["${offer.title ?? offer.imageUrl}" will be removed.] -> content: Text('"${offer.title ?? offer.imageUrl}" will be removed.'),
+  Line 285: [${offer.title ?? offer.imageUrl}] -> content: Text('"${offer.title ?? offer.imageUrl}" will be removed.'),
+  Line 314: [No coupons yet. Tap "New" to add one.] -> return _emptyCard('No coupons yet. Tap "New" to add one.');
+  Line 350: [${coupon.value.toStringAsFixed(0)}%] -> ? '${coupon.value.toStringAsFixed(0)}%'
+  Line 353: [ · max ${formatMoney(coupon.maxDiscount!)}] -> ? ' · max ${formatMoney(coupon.maxDiscount!)}'
+  Line 356: [ · min ${formatMoney(coupon.minOrderAmount)}] -> ? ' · min ${formatMoney(coupon.minOrderAmount)}'
+  Line 358: [$v · expired] -> if (coupon.isExpired) return '$v · expired';
+  Line 359: [$v off$cap$min] -> return '$v off$cap$min';
+  Line 363: [${coupon.usageLimit}] -> final limit = coupon.usageLimit == null ? '∞' : '${coupon.usageLimit}';
+  Line 364: [${coupon.usedCount} / $limit used] -> return '${coupon.usedCount} / $limit used';
+  Line 420: ["${coupon.code}" will be removed.] -> content: Text('"${coupon.code}" will be removed.'),
+  Line 420: [${coupon.code}] -> content: Text('"${coupon.code}" will be removed.'),
+  Line 550: [https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800] -> ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
+  Line 635: [Discount %] -> hintText: _percentage ? 'Discount %' : 'Discount amount (EGP)'),
+  Line 635: [Discount amount (EGP)] -> hintText: _percentage ? 'Discount %' : 'Discount amount (EGP)'),
+
+--- lib/features/admin/screens/admin_vendor_detail_screen.dart ---
+  Line 80: [Vendor approved] -> onApprove: () => _setStatus('active', 'Vendor approved'),
+  Line 81: [Vendor suspended] -> onSuspend: () => _setStatus('suspended', 'Vendor suspended'),
+  Line 178: [Delivery fee] -> _stat('Delivery fee', formatMoney(vendor.deliveryFee)),
+  Line 180: [Min order] -> _stat('Min order', formatMoney(vendor.minOrderAmount)),
+  Line 182: [Prep] -> _stat('Prep', '${vendor.avgPrepMinutes} min'),
+  Line 182: [${vendor.avgPrepMinutes} min] -> _stat('Prep', '${vendor.avgPrepMinutes} min'),
+  Line 186: [Owner & contact] -> _label('Owner & contact'),
+  Line 189: [Owner] -> _row('Owner', owner?.name ?? '—'),
+  Line 190: [Phone] -> _row('Phone', owner?.phone ?? '—', mono: true),
+  Line 191: [Address] -> _row('Address', vendor.addressText ?? '—', last: true),
+  Line 196: [About] -> _label('About'),
+  Line 376: [Reject] -> child: Text(vendor.isPending ? 'Reject' : 'Suspend'),
+  Line 376: [Suspend] -> child: Text(vendor.isPending ? 'Reject' : 'Suspend'),
+  Line 390: [Approve vendor] -> ? 'Approve vendor'
+  Line 391: [Reactivate] -> : 'Reactivate'),
+
+--- lib/features/admin/screens/admin_dashboard_screen.dart ---
+  Line 154: [${stats.ordersToday}] -> _DarkStat(value: '${stats.ordersToday}', label: context.l10n.orders),
+  Line 157: [${stats.vendorsOpen}] -> value: '${stats.vendorsOpen}',
+  Line 162: [${stats.driversOnline}] -> value: '${stats.driversOnline}',
+  Line 323: [$count] -> Text('$count', style: AppType.display(26, color: ink)),
+  Line 406: [${label ?? order.vendorName ?? ] -> '${label ?? order.vendorName ?? 'Store'} → '
+  Line 407: [${order.customerName ?? ] -> '${order.customerName ?? 'Customer'}',
+  Line 431: [Stuck ${DateTime.now().difference(order.createdAt).inMinutes}m] -> 'Stuck ${DateTime.now().difference(order.createdAt).inMinutes}m',
+
+--- lib/features/customer/home/home_screen.dart ---
+  Line 276: [Offer Details] -> title: Text(offer.title ?? 'Offer Details'),
+  Line 277: [Use code ${offer.code} to get this offer. ${offer.subtitle ?? ] -> content: Text('Use code ${offer.code} to get this offer. ${offer.subtitle ?? ''}'),
+  Line 290: [Promo] -> title: Text(offer.title ?? 'Promo'),
+  Line 291: [Check out this special offer!] -> content: Text(offer.subtitle ?? 'Check out this special offer!'),
+  Line 377: [CODE · ${offer.code!}] -> child: Text('CODE · ${offer.code!}',
+  Line 522: [${_emojiFor(category.name)}${category.name}] -> label: '${_emojiFor(category.name)}${category.name}',
+  Line 694: [${vendor.avgPrepMinutes}–${vendor.avgPrepMinutes + 10} min] -> '${vendor.avgPrepMinutes}–${vendor.avgPrepMinutes + 10} min'
+  Line 695: [ · ${formatMoney(vendor.deliveryFee)} delivery] -> ' · ${formatMoney(vendor.deliveryFee)} delivery',
+
+--- lib/features/customer/home/customer_shell.dart ---
+  Line 34: [$cartCount] -> '$cartCount',
+
+--- lib/features/customer/vendor_details/product_sheet.dart ---
+  Line 91: [Your cart has items from ${cart.state.vendor!.name}. ] -> 'Your cart has items from ${cart.state.vendor!.name}. '
+  Line 92: [Adding this item will clear it.] -> 'Adding this item will clear it.'),
+  Line 157: [Optional · up to ${group.maxSelect}] -> Text('Optional · up to ${group.maxSelect}',
+  Line 253: [$name · +${formatMoney(priceDelta)}] -> ? '$name · +${formatMoney(priceDelta)}'
+
+--- lib/features/customer/vendor_details/vendor_details_screen.dart ---
+  Line 93: [Other] -> if (state.uncategorized.isNotEmpty) ('Other', state.uncategorized),
+  Line 217: [${vendor.ratingCount} ratings] -> : '${vendor.ratingCount} ratings',
+  Line 224: [${vendor.avgPrepMinutes}′] -> value: '${vendor.avgPrepMinutes}′', label: 'delivery'),
+  Line 231: [fee · min ${vendor.minOrderAmount.toStringAsFixed(0)}] -> ? 'fee · min ${vendor.minOrderAmount.toStringAsFixed(0)}'
+  Line 232: [delivery fee] -> : 'delivery fee',
+  Line 395: [${cart.itemCount}] -> child: Text('${cart.itemCount}',
+
+--- lib/features/customer/vendor_details/vendor_details_cubit.dart ---
+  Line 29: [Other] -> /// Products whose category was deleted still show under "Other".
+
+--- lib/features/customer/checkout/paymob_checkout_screen.dart ---
+  Line 38: [payment-complete.local] -> if (Uri.parse(request.url).host == 'payment-complete.local') {
+
+--- lib/features/customer/checkout/checkout_screen.dart ---
+  Line 51: [orderId] -> extra: {'url': state.paymobCheckoutUrl!, 'orderId': orderId});
+  Line 270: [Pay the driver in EGP] -> subtitle: 'Pay the driver in EGP',
+  Line 278: [Visa, Mastercard, Meeza] -> subtitle: 'Visa, Mastercard, Meeza',
+  Line 317: [${state.couponCode} applied] -> '${state.couponCode} applied',
+  Line 321: [You saved ${formatMoney(state.couponDiscount!)}] -> 'You saved ${formatMoney(state.couponDiscount!)}',
+  Line 432: [Place order] -> ? 'Place order'
+  Line 433: [Place order & pay] -> : 'Place order & pay'),
+
+--- lib/features/customer/profile/favorites_screen.dart ---
+  Line 54: [Open] -> subtitle: Text(vendor.isOpen ? 'Open' : 'Closed'),
+  Line 54: [Closed] -> subtitle: Text(vendor.isOpen ? 'Open' : 'Closed'),
+
+--- lib/features/customer/profile/profile_screen.dart ---
+  Line 16: [Guest] -> final name = profile?.fullName.isNotEmpty == true ? profile!.fullName : 'Guest';
+  Line 151: [العربية (Arabic)] -> currentIsAr ? 'العربية (Arabic)' : 'English (الإنجليزية)',
+  Line 151: [English (الإنجليزية)] -> currentIsAr ? 'العربية (Arabic)' : 'English (الإنجليزية)',
+
+--- lib/features/customer/addresses/addresses_screen.dart ---
+  Line 102: [Home] -> late final _label = TextEditingController(text: widget.address?.label ?? 'Home');
+  Line 170: [Add address] -> title: Text(widget.address == null ? 'Add address' : 'Edit address')),
+  Line 170: [Edit address] -> title: Text(widget.address == null ? 'Add address' : 'Edit address')),
+  Line 193: [com.example.multi_vendor] -> userAgentPackageName: 'com.example.multi_vendor',
+  Line 210: [my-location] -> heroTag: 'my-location',
+  Line 228: [Required] -> (v == null || v.trim().isEmpty) ? 'Required' : null,
+  Line 235: [Required] -> (v == null || v.trim().isEmpty) ? 'Required' : null,
+
+--- lib/features/customer/cart/cart_screen.dart ---
+  Line 95: [${cart.vendor!.avgPrepMinutes}–${cart.vendor!.avgPrepMinutes + 10} min · Tahrir St] -> '${cart.vendor!.avgPrepMinutes}–${cart.vendor!.avgPrepMinutes + 10} min · Tahrir St',
+  Line 162: ["${item.notes}"] -> '"${item.notes}"',
+  Line 162: [${item.notes}] -> '"${item.notes}"',
+
+--- lib/features/customer/orders/order_details_screen.dart ---
+  Line 76: [Rejected by store] -> ? 'Rejected by store'
+  Line 77: [${order.rejectionReason != null ? ] -> '${order.rejectionReason != null ? ': ${order.rejectionReason}' : ''}'
+  Line 78: [This order was cancelled.] -> : 'This order was cancelled.'),
+  Line 100: [${item.quantity}x] -> leading: Text('${item.quantity}x',
+  Line 112: [-${formatMoney(order.discount)}] -> _Row(label: context.l10n.discount1, value: '-${formatMoney(order.discount)}'),
+  Line 115: [Delivering to ${order.addressSummary}] -> Text('Delivering to ${order.addressSummary}',
+  Line 199: [Confirmed] -> _buildStepLabel('Confirmed', 0, currentStep),
+  Line 200: [Prepared] -> _buildStepLabel('Prepared', 1, currentStep),
+  Line 201: [On the way] -> _buildStepLabel('On the way', 2, currentStep),
+  Line 202: [Delivered] -> _buildStepLabel('Delivered', 3, currentStep),
+  Line 297: [com.example.multi_vendor] -> userAgentPackageName: 'com.example.multi_vendor',
+  Line 368: [Cash on delivery] -> title: Text(order.isCod ? 'Cash on delivery' : 'Card / wallet'),
+  Line 368: [Card / wallet] -> title: Text(order.isCod ? 'Cash on delivery' : 'Card / wallet'),
+  Line 369: [Payment: ${order.paymentStatus}] -> subtitle: Text('Payment: ${order.paymentStatus}'),
+  Line 380: [orderId] -> extra: {'url': url, 'orderId': order.id});
+
+--- lib/features/customer/orders/orders_screen.dart ---
+  Line 74: [No active orders] -> message: _active ? 'No active orders' : 'No past orders',
+  Line 74: [No past orders] -> message: _active ? 'No active orders' : 'No past orders',
+  Line 144: [Order] -> final name = vendorName ?? order.vendorName ?? 'Order';
+  Line 194: [${order.orderNumber} · $itemCount items] -> ? '${order.orderNumber} · $itemCount items'
+  Line 195: [${order.orderNumber} · ] -> : '${order.orderNumber} · '
+  Line 196: [${DateFormat(] -> '${DateFormat('d MMM').format(order.createdAt)}',
+  Line 196: [).format(order.createdAt)}] -> '${DateFormat('d MMM').format(order.createdAt)}',
+
+--- lib/features/customer/orders/order_details_cubit.dart ---
+  Line 120: [order-tracking:$orderId] -> _trackingChannel = supabase.channel('order-tracking:$orderId')
+
+--- lib/features/vendor/vendor_orders_cubit.dart ---
+  Line 123: [new order] -> /// realtime event. Does not fire the "new order" alert.
+
+--- lib/features/vendor/screens/vendor_dashboard_screen.dart ---
+  Line 211: [Open] -> Text(isOpen ? 'Open' : 'Closed',
+  Line 211: [Closed] -> Text(isOpen ? 'Open' : 'Closed',
+  Line 262: [Today] -> _kpi(formatMoney(revenue), 'Today'),
+  Line 264: [$orders] -> _kpi('$orders', 'Orders'),
+  Line 264: [Orders] -> _kpi('$orders', 'Orders'),
+  Line 266: [$avgPrep′] -> _kpi('$avgPrep′', 'Avg prep'),
+  Line 266: [Avg prep] -> _kpi('$avgPrep′', 'Avg prep'),
+  Line 324: [New · $incoming] -> _tab('New · $incoming', _OrderFilter.incoming),
+  Line 326: [Preparing · $preparing] -> _tab('Preparing · $preparing', _OrderFilter.preparing),
+  Line 328: [Ready · $ready] -> _tab('Ready · $ready', _OrderFilter.ready),
+  Line 392: [Card · paid] -> ? 'Card · paid'
+  Line 393: [Card · unpaid] -> : 'Card · unpaid';
+  Line 428: [${order.customerName ?? ] -> '${order.customerName ?? 'Customer'} · '
+  Line 429: [${DateFormat(] -> '${DateFormat('h:mm a').format(order.createdAt)} · '
+  Line 429: [).format(order.createdAt)} · ] -> '${DateFormat('h:mm a').format(order.createdAt)} · '
+  Line 430: [$_payLabel] -> '$_payLabel',
+  Line 490: [Unavailable] -> await cubit.reject(order, reason.isEmpty ? 'Unavailable' : reason);
+
+--- lib/features/vendor/screens/menu_screen.dart ---
+  Line 49: [New section] -> title: Text(category == null ? 'New section' : 'Rename section'),
+  Line 49: [Rename section] -> title: Text(category == null ? 'New section' : 'Rename section'),
+  Line 169: [${c.name} · ${state.productsIn(c.id).length}] -> label: '${c.name} · ${state.productsIn(c.id).length}',
+  Line 270: [${formatMoney(product.price)} · Sold out] -> : '${formatMoney(product.price)} · Sold out',
+
+--- lib/features/vendor/screens/product_editor_screen.dart ---
+  Line 80: [product-images] -> bucket: 'product-images',
+  Line 82: [${widget.args.vendorId}/${DateTime.now().millisecondsSinceEpoch}_${file.name}] -> '${widget.args.vendorId}/${DateTime.now().millisecondsSinceEpoch}_${file.name}',
+  Line 124: [Remove "${product.name}" from the menu?] -> content: Text('Remove "${product.name}" from the menu?'),
+  Line 124: [${product.name}] -> content: Text('Remove "${product.name}" from the menu?'),
+  Line 215: [Add option to ${group.name}] -> title: Text('Add option to ${group.name}'),
+  Line 298: [New product] -> title: Text(product == null ? 'New product' : 'Edit product'),
+  Line 298: [Edit product] -> title: Text(product == null ? 'New product' : 'Edit product'),
+  Line 352: [Tap to change photo] -> ? 'Tap to change photo'
+  Line 353: [Tap to add photo] -> : 'Tap to add photo',
+  Line 368: [Basic info] -> _SectionLabel('Basic info'),
+  Line 378: [Required] -> (v == null || v.trim().isEmpty) ? 'Required' : null,
+  Line 400: [Customers can add this to their cart] -> ? 'Customers can add this to their cart'
+  Line 401: [Hidden from customers] -> : 'Hidden from customers',
+  Line 410: [Pricing & category] -> _SectionLabel('Pricing & category'),
+  Line 422: [Enter a valid price] -> double.tryParse(v ?? '') == null ? 'Enter a valid price' : null,
+  Line 439: [No sections — add one first] -> ? 'No sections — add one first'
+  Line 440: [Select a section] -> : 'Select a section'),
+  Line 454: [Options] -> _SectionLabel('Options'),
+  Line 506: [Create product] -> : Text(product == null ? 'Create product' : 'Save changes'),
+  Line 506: [Save changes] -> : Text(product == null ? 'Create product' : 'Save changes'),
+  Line 560: [Pick ${group.minSelect}–${group.maxSelect}] -> 'Pick ${group.minSelect}–${group.maxSelect}',
+  Line 593: [+${formatMoney(option.priceDelta)}] -> Text('+${formatMoney(option.priceDelta)}',
+
+--- lib/features/vendor/screens/vendor_settings_screen.dart ---
+  Line 109: [Store is open] -> Text(vendor.isOpen ? 'Store is open' : 'Store is closed',
+  Line 109: [Store is closed] -> Text(vendor.isOpen ? 'Store is open' : 'Store is closed',
+  Line 117: [Accepting orders now] -> ? 'Accepting orders now'
+  Line 118: [Customers can’t order] -> : 'Customers can’t order',
+  Line 136: [Store profile] -> _sectionLabel('Store profile'),
+  Line 138: [Store name] -> _navRow('Store name', vendor.name,
+  Line 148: [Description] -> _navRow('Description', vendor.description ?? 'Add a description',
+  Line 148: [Add a description] -> _navRow('Description', vendor.description ?? 'Add a description',
+  Line 158: [Fees & orders] -> _sectionLabel('Fees & orders'),
+  Line 160: [Delivery fee] -> _navRow('Delivery fee', formatMoney(vendor.deliveryFee),
+  Line 170: [Minimum order] -> _navRow('Minimum order', formatMoney(vendor.minOrderAmount),
+  Line 180: [Avg prep time] -> _navRow('Avg prep time', '${vendor.avgPrepMinutes} min',
+  Line 180: [${vendor.avgPrepMinutes} min] -> _navRow('Avg prep time', '${vendor.avgPrepMinutes} min',
+  Line 191: [Preferences] -> _sectionLabel('Preferences'),
+  Line 193: [Auto-accept orders] -> _switchRow('Auto-accept orders', vendor.autoAccept,
+  Line 195: [New-order sound] -> _switchRow('New-order sound', _soundOn,
+  Line 198: [العربية (Arabic)] -> 'العربية (Arabic)',
+
+--- lib/features/vendor/screens/vendor_order_details_screen.dart ---
+  Line 85: [Unavailable] -> reason: reason.isEmpty ? 'Unavailable' : reason);
+  Line 166: [Customer] -> Text(order.customerName ?? 'Customer',
+  Line 237: [Note: ] -> text: 'Note: ',
+  Line 256: [Total · Cash on delivery] -> ? 'Total · Cash on delivery'
+  Line 257: [Total · ${order.isPaid ? ] -> : 'Total · ${order.isPaid ? 'Card (paid)' : 'Card (unpaid)'}',
+  Line 269: [d MMM y, h:mm a] -> DateFormat('d MMM y, h:mm a').format(order.createdAt),
+  Line 296: [${item.quantity}] -> child: Text('${item.quantity}',
+  Line 334: [Accept order] -> OrderStatus.pending => ('Accept order', OrderStatus.accepted),
+  Line 335: [Start preparing] -> OrderStatus.accepted => ('Start preparing', OrderStatus.preparing),
+  Line 337: [Mark as ready for pickup] -> 'Mark as ready for pickup',
+
+Total potentially unlocalized strings found: 332

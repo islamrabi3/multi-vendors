@@ -2,11 +2,34 @@
   "permissions": {
     "allow": [
       "PowerShell(claude mcp *)",
-      "Bash(flutter pub *)",
-      "Bash(dart analyze *)",
-      "Bash(flutter analyze *)",
-      "Bash(git stash *)"
-    ]
+      "Bash(flutter *)",
+      "Bash(dart *)",
+      "Bash(xcrun *)",
+      "Bash(git stash *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(cat *)",
+      "Bash(pkill *)",
+      "Bash(open *)",
+      "Bash(sleep *)",
+      "Bash(/usr/libexec/PlistBuddy *)",
+      "Bash(tee /private/tmp/*)",
+      "Read",
+      "Edit",
+      "Write",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__execute_sql",
+      "Read(//Users/macbook/Desktop/**)",
+      "Read(//Users/macbook/Desktop/food-delivery-mobile-app-code/**)",
+      "Bash(grep -ln \"tokens.dart\\\\|AppColors\\\\|AppType\" lib/features/driver/*.dart lib/features/driver/screens/*.dart lib/features/customer/home/customer_shell.dart lib/features/auth/screens/vendor_onboarding_screen.dart lib/features/customer/addresses/addresses_screen.dart lib/features/customer/profile/favorites_screen.dart lib/features/vendor/screens/product_editor_screen.dart)",
+      "Bash(grep -Ln \"tokens.dart\" lib/features/driver/screens/*.dart lib/features/driver/driver_shell.dart lib/features/customer/home/customer_shell.dart)"
+    ],
+    "defaultMode": "bypassPermissions"
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [

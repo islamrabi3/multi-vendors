@@ -9,6 +9,8 @@ Vendor _vendor({double deliveryFee = 15}) => Vendor(
       name: 'Store',
       isOpen: true,
       isActive: true,
+      approvalStatus: 'active',
+      autoAccept: false,
       deliveryFee: deliveryFee,
       minOrderAmount: 0,
       avgPrepMinutes: 20,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/tokens.dart';
 import '../../../core/models/product.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
@@ -10,6 +11,7 @@ import '../../../core/widgets/common.dart';
 import '../../auth/auth_cubit.dart';
 import '../menu_cubit.dart';
 import 'product_editor_screen.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
@@ -26,8 +28,16 @@ class MenuScreen extends StatelessWidget {
   }
 }
 
-class _MenuView extends StatelessWidget {
+class _MenuView extends StatefulWidget {
   const _MenuView();
+
+  @override
+  State<_MenuView> createState() => _MenuViewState();
+}
+
+class _MenuViewState extends State<_MenuView> {
+  // null = "All" filter.
+  String? _filterCategoryId;
 
   Future<void> _editCategory(BuildContext context,
       {ProductCategory? category}) async {
@@ -35,22 +45,32 @@ class _MenuView extends StatelessWidget {
     final controller = TextEditingController(text: category?.name);
     final name = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(category == null ? 'New section' : 'Rename section'),
+      builder: (ctx) => AlertDialog(
+        title: Text(category == null ? context.l10n.newSection : context.l10n.renameSection),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Section name'),
+          decoration: InputDecoration(labelText: context.l10n.sectionName),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(context.l10n.cancel)),
+          if (category != null)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                cubit.deleteCategory(category.id);
+                if (_filterCategoryId == category.id) {
+                  setState(() => _filterCategoryId = null);
+                }
+              },
+              child: Text(context.l10n.delete,
+                  style: const TextStyle(color: Colors.red)),
+            ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Save'),
-          ),
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: Text(context.l10n.save)),
         ],
       ),
     );
@@ -73,72 +93,143 @@ class _MenuView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Menu'),
-        actions: [
-          IconButton(
-            tooltip: 'Add section',
-            onPressed: () => _editCategory(context),
-            icon: const Icon(Icons.create_new_folder_outlined),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openEditor(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Product'),
-      ),
+      backgroundColor: AppColors.canvas,
       body: BlocBuilder<MenuCubit, MenuState>(
         builder: (context, state) {
-          if (state.loading) return const LoadingView();
-          if (state.error != null) {
-            return ErrorView(
-                message: 'Could not load the menu.',
-                onRetry: context.read<MenuCubit>().load);
-          }
-          if (state.categories.isEmpty && state.products.isEmpty) {
-            return const EmptyView(
-              message: 'Add a section, then your first product',
-              icon: Icons.menu_book_outlined,
-            );
-          }
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 96),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final category in state.categories) ...[
-                ListTile(
-                  title: Text(category.name,
-                      style: Theme.of(context).textTheme.titleMedium),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (action) => action == 'rename'
-                        ? _editCategory(context, category: category)
-                        : context
-                            .read<MenuCubit>()
-                            .deleteCategory(category.id),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'rename', child: Text('Rename')),
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
+              _header(context),
+              if (state.loading)
+                const Expanded(child: LoadingView())
+              else if (state.error != null)
+                Expanded(
+                  child: ErrorView(
+                      message: context.l10n.couldNotLoadTheMenu,
+                      onRetry: context.read<MenuCubit>().load),
+                )
+              else if (state.categories.isEmpty && state.products.isEmpty)
+                Expanded(
+                  child: EmptyView(
+                    message: context.l10n.addASectionThenYourFirstProduct,
+                    icon: Icons.menu_book_outlined,
                   ),
-                ),
-                for (final product in state.productsIn(category.id))
-                  _ProductTile(
-                      product: product,
-                      onEdit: () => _openEditor(context, product: product)),
-              ],
-              if (state.uncategorized.isNotEmpty) ...[
-                ListTile(
-                  title: Text('Other',
-                      style: Theme.of(context).textTheme.titleMedium),
-                ),
-                for (final product in state.uncategorized)
-                  _ProductTile(
-                      product: product,
-                      onEdit: () => _openEditor(context, product: product)),
+                )
+              else ...[
+                _categoryChips(context, state),
+                Expanded(child: _productList(context, state)),
               ],
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _header(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          20, MediaQuery.paddingOf(context).top + 12, 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(context.l10n.menu,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 26,
+                    color: AppColors.ink)),
+          ),
+          IconButton(
+            tooltip: context.l10n.addSection,
+            onPressed: () => _editCategory(context),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.surface,
+              side: const BorderSide(color: AppColors.border),
+            ),
+            icon: const Icon(Icons.create_new_folder_outlined, color: AppColors.ink),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: () => _openEditor(context),
+            style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(context.l10n.addItem, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryChips(BuildContext context, MenuState state) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      child: Row(
+        children: [
+          _chip(context, label: context.l10n.all, categoryId: null),
+          for (final c in state.categories)
+            _chip(context,
+                label: '${c.name} · ${state.productsIn(c.id).length}',
+                categoryId: c.id,
+                onLongPress: () => _editCategory(context, category: c)),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(BuildContext context,
+      {required String label,
+      required String? categoryId,
+      VoidCallback? onLongPress}) {
+    final selected = _filterCategoryId == categoryId;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () => setState(() => _filterCategoryId = categoryId),
+        onLongPress: onLongPress,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.ink : AppColors.surface,
+            border: Border.all(
+                color: selected ? AppColors.ink : AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            boxShadow: selected ? AppShadows.card : null,
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  color: selected ? Colors.white : AppColors.textSecondary,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  fontSize: 13)),
+        ),
+      ),
+    );
+  }
+
+  Widget _productList(BuildContext context, MenuState state) {
+    final products = _filterCategoryId == null
+        ? state.products
+        : state.productsIn(_filterCategoryId!);
+    if (products.isEmpty) {
+      return EmptyView(
+          message: context.l10n.noItemsInThisSectionYet,
+          icon: Icons.lunch_dining_outlined);
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
+      itemCount: products.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, i) => _ProductTile(
+        product: products[i],
+        onEdit: () => _openEditor(context, product: products[i]),
       ),
     );
   }
@@ -152,19 +243,86 @@ class _ProductTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: AppNetworkImage(
-          url: product.imageUrl,
-          height: 44,
-          width: 44,
-          borderRadius: BorderRadius.circular(8)),
-      title: Text(product.name),
-      subtitle: Text(formatMoney(product.price)),
-      onTap: onEdit,
-      trailing: Switch(
-        value: product.isAvailable,
-        onChanged: (_) =>
-            context.read<MenuCubit>().toggleAvailability(product),
+    final available = product.isAvailable;
+    return Opacity(
+      opacity: available ? 1 : 0.7,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          boxShadow: AppShadows.card,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onEdit,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    AppNetworkImage(
+                        url: product.imageUrl,
+                        height: 56,
+                        width: 56,
+                        borderRadius: BorderRadius.circular(AppRadii.lg)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(product.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.5,
+                                  color: AppColors.ink)),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              PriceText(formatMoney(product.price), size: 13.5),
+                              if (!available) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                                  ),
+                                  child: Text(
+                                    context.l10n.soldOut.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Switch(
+                      value: available,
+                      onChanged: (_) =>
+                          context.read<MenuCubit>().toggleAvailability(product),
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: AppColors.success,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: AppColors.border,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

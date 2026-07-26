@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../app/tokens.dart';
 import '../../../core/models/cart_item.dart';
 import '../../../core/models/product.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import '../cart/cart_cubit.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 Future<void> showProductSheet(
     BuildContext context, Vendor vendor, Product product) {
@@ -84,21 +86,21 @@ class _ProductSheetState extends State<_ProductSheet> {
       showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Start a new cart?'),
+          title: Text(context.l10n.startANewCart),
           content: Text(
               'Your cart has items from ${cart.state.vendor!.name}. '
               'Adding this item will clear it.'),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Keep cart')),
+                child: Text(context.l10n.keepCart)),
             FilledButton(
               onPressed: () {
                 cart.startNewCart(widget.vendor, item);
                 Navigator.pop(dialogContext);
                 Navigator.pop(context);
               },
-              child: const Text('Start new cart'),
+              child: Text(context.l10n.startNewCart),
             ),
           ],
         ),
@@ -107,7 +109,7 @@ class _ProductSheetState extends State<_ProductSheet> {
     }
     cart.addItem(widget.vendor, item);
     Navigator.pop(context);
-    showSnack(context, 'Added to cart');
+    showSnack(context, context.l10n.addedToCart);
   }
 
   @override
@@ -130,20 +132,15 @@ class _ProductSheetState extends State<_ProductSheet> {
                       width: double.infinity,
                       borderRadius: BorderRadius.circular(16)),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(product.name,
-                          style: Theme.of(context).textTheme.headlineSmall),
-                    ),
-                    Text(formatMoney(product.price),
-                        style: Theme.of(context).textTheme.titleMedium),
-                  ],
-                ),
+                Text(product.name,
+                    style: Theme.of(context).textTheme.displaySmall),
                 if (product.description?.isNotEmpty ?? false) ...[
-                  const SizedBox(height: 8),
-                  Text(product.description!),
+                  const SizedBox(height: 6),
+                  Text(product.description!,
+                      style: Theme.of(context).textTheme.bodyMedium),
                 ],
+                const SizedBox(height: 12),
+                PriceText(formatMoney(product.price), size: 18),
                 for (final group in product.optionGroups) ...[
                   const SizedBox(height: 16),
                   Row(
@@ -152,55 +149,34 @@ class _ProductSheetState extends State<_ProductSheet> {
                           style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(width: 8),
                       if (group.isRequired)
-                        const Text('Required',
-                            style: TextStyle(color: Colors.red, fontSize: 12))
+                        SoftBadge(
+                            label: context.l10n.required,
+                            fill: AppColors.warmFill,
+                            ink: AppColors.primaryDark)
                       else
-                        Text('Up to ${group.maxSelect}',
+                        Text('Optional · up to ${group.maxSelect}',
                             style: const TextStyle(
-                                color: Colors.grey, fontSize: 12)),
+                                color: AppColors.textFaint, fontSize: 12)),
                     ],
                   ),
-                  if (group.isSingleChoice)
-                    RadioGroup<ProductOption>(
-                      groupValue: (_selections[group.id] ?? {}).firstOrNull,
-                      onChanged: (option) {
-                        if (option != null) _toggleOption(group, option);
-                      },
-                      child: Column(
-                        children: [
-                          for (final option
-                              in group.options.where((o) => o.isAvailable))
-                            RadioListTile<ProductOption>(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(option.name),
-                              secondary: option.priceDelta != 0
-                                  ? Text('+${formatMoney(option.priceDelta)}')
-                                  : null,
-                              value: option,
-                            ),
-                        ],
-                      ),
-                    )
-                  else
-                    for (final option
-                        in group.options.where((o) => o.isAvailable))
-                      CheckboxListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(option.name),
-                        secondary: option.priceDelta != 0
-                            ? Text('+${formatMoney(option.priceDelta)}')
-                            : null,
-                        value: (_selections[group.id] ?? {}).contains(option),
-                        onChanged: (_) => _toggleOption(group, option),
-                      ),
+                  Column(
+                    children: [
+                      for (final option in group.options.where((o) => o.isAvailable))
+                        _OptionTile(
+                          name: option.name,
+                          priceDelta: option.priceDelta,
+                          selected: (_selections[group.id] ?? {}).contains(option),
+                          isRadio: group.isSingleChoice,
+                          onTap: () => _toggleOption(group, option),
+                        ),
+                    ],
+                  ),
                 ],
                 const SizedBox(height: 16),
                 TextField(
                   controller: _notes,
-                  decoration: const InputDecoration(
-                      labelText: 'Notes (e.g. no onions)'),
+                  decoration: InputDecoration(
+                      labelText: context.l10n.notesEgNoOnions),
                 ),
               ],
             ),
@@ -218,8 +194,15 @@ class _ProductSheetState extends State<_ProductSheet> {
                   Expanded(
                     child: FilledButton(
                       onPressed: _selectionValid ? _addToCart : null,
-                      child: Text(
-                          'Add · ${formatMoney(_unitPrice * _quantity)}'),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(context.l10n.addToCart),
+                          const SizedBox(width: 8),
+                          PriceText(formatMoney(_unitPrice * _quantity),
+                              size: 15, color: Colors.white),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -227,6 +210,77 @@ class _ProductSheetState extends State<_ProductSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  final String name;
+  final double priceDelta;
+  final bool selected;
+  final bool isRadio;
+  final VoidCallback onTap;
+
+  const _OptionTile({
+    required this.name,
+    required this.priceDelta,
+    required this.selected,
+    required this.isRadio,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 2.0 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              priceDelta != 0
+                  ? '$name · +${formatMoney(priceDelta)}'
+                  : name,
+              style: TextStyle(
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.ink,
+              ),
+            ),
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: isRadio ? BoxShape.circle : BoxShape.rectangle,
+                borderRadius: isRadio ? null : BorderRadius.circular(7),
+                color: selected ? AppColors.primary : Colors.transparent,
+                border: Border.all(
+                  color: selected ? AppColors.primary : const Color(0xFFDDD4CB),
+                  width: 2,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: selected
+                  ? const Icon(
+                      Icons.check,
+                      size: 13,
+                      color: Colors.white,
+                    )
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }

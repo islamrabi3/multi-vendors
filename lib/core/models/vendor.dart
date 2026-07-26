@@ -24,6 +24,8 @@ class Vendor extends Equatable {
     required this.name,
     required this.isOpen,
     required this.isActive,
+    required this.approvalStatus,
+    required this.autoAccept,
     required this.deliveryFee,
     required this.minOrderAmount,
     required this.avgPrepMinutes,
@@ -52,6 +54,14 @@ class Vendor extends Equatable {
   final double? lng;
   final bool isOpen;
   final bool isActive;
+
+  /// Platform approval lifecycle: 'pending' | 'active' | 'suspended'.
+  final String approvalStatus;
+  final bool autoAccept;
+
+  bool get isPending => approvalStatus == 'pending';
+  bool get isApproved => approvalStatus == 'active';
+  bool get isSuspended => approvalStatus == 'suspended';
   final double deliveryFee;
   final double minOrderAmount;
   final int avgPrepMinutes;
@@ -72,6 +82,8 @@ class Vendor extends Equatable {
         lng: (map['lng'] as num?)?.toDouble(),
         isOpen: (map['is_open'] as bool?) ?? false,
         isActive: (map['is_active'] as bool?) ?? true,
+        approvalStatus: (map['approval_status'] as String?) ?? 'active',
+        autoAccept: (map['auto_accept'] as bool?) ?? false,
         deliveryFee: ((map['delivery_fee'] as num?) ?? 0).toDouble(),
         minOrderAmount: ((map['min_order_amount'] as num?) ?? 0).toDouble(),
         avgPrepMinutes: ((map['avg_prep_minutes'] as num?) ?? 20).toInt(),
@@ -80,6 +92,7 @@ class Vendor extends Equatable {
       );
 
   @override
-  List<Object?> get props => [id, name, isOpen, isActive, deliveryFee,
-        minOrderAmount, avgPrepMinutes, ratingAvg, ratingCount, logoUrl];
+  List<Object?> get props => [id, name, isOpen, isActive, approvalStatus,
+        autoAccept, deliveryFee, minOrderAmount, avgPrepMinutes, ratingAvg,
+        ratingCount, logoUrl];
 }

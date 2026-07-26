@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/tokens.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/favorites_repository.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -15,10 +18,15 @@ class FavoritesScreen extends StatefulWidget {
 class _FavoritesScreenState extends State<FavoritesScreen> {
   final _repository = FavoritesRepository();
   List<Vendor>? _vendors;
+  bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    _loadFavorites();
+  }
+
+  void _loadFavorites() {
     _repository.fetchFavoriteVendors().then((vendors) {
       if (mounted) setState(() => _vendors = vendors);
     }).catchError((_) {
@@ -26,33 +34,240 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     });
   }
 
+  Future<void> _unfavorite(Vendor vendor) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final originalList = List<Vendor>.from(_vendors ?? []);
+    setState(() {
+      _vendors?.removeWhere((v) => v.id == vendor.id);
+    });
+    try {
+      await _repository.setFavorite(vendor.id, false);
+      if (mounted) {
+        showSnack(context, 'Removed ${vendor.name} from favorites');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _vendors = originalList);
+        showSnack(context, 'Failed to update favorite status', error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final vendors = _vendors;
     return Scaffold(
-      appBar: AppBar(title: const Text('Favorites')),
+      backgroundColor: AppColors.canvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.canvas,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          context.l10n.favorites,
+          style: AppType.heading(18, color: AppColors.ink),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.ink, size: 20),
+          onPressed: () => context.pop(),
+        ),
+      ),
       body: vendors == null
           ? const LoadingView()
           : vendors.isEmpty
-              ? const EmptyView(
-                  message: 'No favorites yet', icon: Icons.favorite_outline)
-              : ListView.builder(
-                  padding: const EdgeInsets.all(12),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.favorite_outline_rounded,
+                          size: 64,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        context.l10n.noFavoritesYet,
+                        style: AppType.heading(18, color: AppColors.ink),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Text(
+                          'Explore shops and save your favorite places to find them quickly here!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textMuted,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: FilledButton(
+                          onPressed: () => context.go('/'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 28),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadii.lg),
+                            ),
+                          ),
+                          child: const Text(
+                            'Explore Restaurants',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                   itemCount: vendors.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final vendor = vendors[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        leading: AppNetworkImage(
-                            url: vendor.logoUrl,
-                            height: 44,
-                            width: 44,
-                            borderRadius: BorderRadius.circular(8)),
-                        title: Text(vendor.name),
-                        subtitle: Text(vendor.isOpen ? 'Open' : 'Closed'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.push('/vendors/${vendor.id}'),
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Material(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: () => context.push('/vendors/${vendor.id}'),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.borderSoft),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Stack(
+                                  children: [
+                                    AppNetworkImage(
+                                      url: vendor.coverUrl,
+                                      height: 124,
+                                      width: double.infinity,
+                                    ),
+                                    Positioned(
+                                      top: 12,
+                                      left: 12,
+                                      child: vendor.isOpen
+                                          ? SoftBadge(
+                                              label: context.l10n.openNow,
+                                              fill: AppColors.successFill,
+                                              ink: AppColors.successInk,
+                                            )
+                                          : SoftBadge(
+                                              label: context.l10n.closed1,
+                                              fill: const Color(0xFFF1ECE6),
+                                              ink: AppColors.textMuted,
+                                            ),
+                                    ),
+                                    Positioned(
+                                      top: 12,
+                                      right: 12,
+                                      child: GestureDetector(
+                                        onTap: () => _unfavorite(vendor),
+                                        child: Container(
+                                          width: 34,
+                                          height: 34,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.95),
+                                            shape: BoxShape.circle,
+                                            boxShadow: const [
+                                              BoxShadow(
+                                                color: Colors.black12,
+                                                blurRadius: 8,
+                                                offset: Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Icon(
+                                            Icons.favorite_rounded,
+                                            size: 19,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      AppNetworkImage(
+                                        url: vendor.logoUrl,
+                                        height: 46,
+                                        width: 46,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              vendor.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.ink,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${vendor.avgPrepMinutes}–${vendor.avgPrepMinutes + 10} min'
+                                              ' · ${formatMoney(vendor.deliveryFee)} delivery',
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      RatingChip(
+                                        rating: vendor.ratingAvg,
+                                        count: vendor.ratingCount,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     );
                   },

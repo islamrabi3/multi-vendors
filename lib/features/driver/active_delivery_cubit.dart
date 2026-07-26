@@ -162,6 +162,31 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
     _trackingChannel = null;
   }
 
+  /// Pull-to-refresh: re-fetch the driver's orders once and re-resolve the
+  /// active (out_for_delivery) one, covering a missed realtime event (e.g. an
+  /// admin just assigned this driver).
+  Future<void> refresh() async {
+    try {
+      final orders = await _orders.fetchDriverOrders();
+      final active = orders
+          .where((o) => o.status == OrderStatus.outForDelivery)
+          .firstOrNull;
+      if (active == null) {
+        _stopTracking();
+        emit(state.copyWith(loading: false, clearOrder: true));
+        return;
+      }
+      final changedOrder = state.order?.id != active.id;
+      emit(state.copyWith(loading: false, order: active));
+      if (changedOrder) {
+        _loadVendor(active.vendorId);
+        _startTracking(active.id);
+      }
+    } catch (error) {
+      emit(state.copyWith(loading: false, error: error.toString()));
+    }
+  }
+
   Future<void> markDelivered() async {
     final order = state.order;
     if (order == null) return;

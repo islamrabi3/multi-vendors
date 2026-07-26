@@ -10,7 +10,10 @@ abstract final class AppConfig {
     defaultValue: 'https://dvfbeaafekqdcwxogbqc.supabase.co',
   );
 
-  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'sb_publishable_vDEZfX6SkbQlTmjscrYkvA_aa0Zr3Mo',
+  );
 
   static bool get isConfigured => supabaseAnonKey.isNotEmpty;
 }

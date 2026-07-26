@@ -11,6 +11,8 @@ Vendor vendor(String id, {String name = 'Store'}) => Vendor(
       name: name,
       isOpen: true,
       isActive: true,
+      approvalStatus: 'active',
+      autoAccept: false,
       deliveryFee: 20,
       minOrderAmount: 0,
       avgPrepMinutes: 20,

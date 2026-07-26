@@ -32,6 +32,22 @@ class AuthRepository {
 
   Future<void> signOut() => supabase.auth.signOut();
 
+  /*
+  Future<void> signInWithGoogle() async {
+    await supabase.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'io.supabase.multivendor://login-callback',
+    );
+  }
+
+  Future<void> signInWithApple() async {
+    await supabase.auth.signInWithOAuth(
+      OAuthProvider.apple,
+      redirectTo: 'io.supabase.multivendor://login-callback',
+    );
+  }
+  */
+
   Future<Profile?> fetchMyProfile() async {
     final userId = currentUser?.id;
     if (userId == null) return null;

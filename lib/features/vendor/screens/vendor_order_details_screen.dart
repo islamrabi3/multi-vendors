@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class VendorOrderDetailsScreen extends StatefulWidget {
   const VendorOrderDetailsScreen({super.key, required this.orderId});
@@ -20,6 +24,7 @@ class _VendorOrderDetailsScreenState extends State<VendorOrderDetailsScreen> {
   final _repository = OrderRepository();
   AppOrder? _order;
   String? _error;
+  bool _busy = false;
 
   @override
   void initState() {
@@ -36,80 +41,403 @@ class _VendorOrderDetailsScreenState extends State<VendorOrderDetailsScreen> {
     }
   }
 
+  Future<void> _advance(OrderStatus status, {String? reason}) async {
+    setState(() => _busy = true);
+    try {
+      await _repository.updateStatus(widget.orderId, status, reason: reason);
+      await _load();
+    } catch (error) {
+      if (mounted) showSnack(context, readableError(error), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _callCustomer(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (!await launchUrl(uri) && mounted) {
+      showSnack(context, context.l10n.couldNotStartTheCall1, error: true);
+    }
+  }
+
+  Future<void> _reject() async {
+    final localUnavailable = context.l10n.unavailable;
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.rejectOrder),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(labelText: context.l10n.reason),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(context.l10n.cancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: Text(context.l10n.reject)),
+        ],
+      ),
+    );
+    if (reason != null) {
+      await _advance(OrderStatus.rejected,
+          reason: reason.isEmpty ? localUnavailable : reason);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final order = _order;
     return Scaffold(
-      appBar: AppBar(title: Text(order?.orderNumber ?? 'Order')),
-      body: _error != null
-          ? ErrorView(message: readableError(_error!), onRetry: _load)
-          : order == null
-              ? const LoadingView()
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                            DateFormat('d MMM y, h:mm a')
-                                .format(order.createdAt),
-                            style: Theme.of(context).textTheme.bodyMedium),
-                        OrderStatusChip(status: order.status),
-                      ],
-                    ),
-                    const Divider(height: 32),
-                    Text('Items',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    for (final item in order.items)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        leading: Text('${item.quantity}x',
-                            style: Theme.of(context).textTheme.titleSmall),
-                        title: Text(item.productName),
-                        subtitle: item.optionNames.isEmpty
-                            ? null
-                            : Text(item.optionNames.join(', ')),
-                        trailing: Text(formatMoney(item.lineTotal)),
-                      ),
-                    if (order.customerNotes?.isNotEmpty ?? false) ...[
-                      const SizedBox(height: 8),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text('Note: ${order.customerNotes}'),
-                        ),
-                      ),
+      backgroundColor: AppColors.canvas,
+      body: SafeArea(
+        child: _error != null
+            ? ErrorView(message: readableError(_error!), onRetry: _load)
+            : order == null
+                ? const LoadingView()
+                : Column(
+                    children: [
+                      _topBar(order),
+                      Expanded(child: _body(order)),
+                      _bottomCta(order),
                     ],
-                    const Divider(height: 32),
-                    Text('Customer',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(order.customerName ?? 'Customer'),
-                    if (order.customerPhone != null)
-                      Text(order.customerPhone!),
-                    const SizedBox(height: 4),
+                  ),
+      ),
+    );
+  }
+
+  Widget _topBar(AppOrder order) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => context.pop(),
+            customBorder: const CircleBorder(),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Icon(Icons.chevron_left_rounded, color: AppColors.ink),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              order.orderNumber,
+              style: AppType.mono(18, color: AppColors.ink, weight: FontWeight.w800),
+            ),
+          ),
+          OrderStatusChip(status: order.status),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(AppOrder order) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      children: [
+        // Customer card.
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: _cardDecoration,
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: AppColors.warmFill,
+                child: Text(_initials(order.customerName),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: AppColors.primary)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(order.customerName ?? context.l10n.customer,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14.5,
+                            color: AppColors.ink)),
+                    const SizedBox(height: 3),
                     Text(order.addressSummary,
-                        style: Theme.of(context).textTheme.bodySmall),
-                    const Divider(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Total',
-                            style: Theme.of(context).textTheme.titleLarge),
-                        Text(formatMoney(order.total),
-                            style: Theme.of(context).textTheme.titleLarge),
-                      ],
-                    ),
-                    Text(
-                      order.isCod
-                          ? 'Cash on delivery — collect on handover'
-                          : 'Paid online: ${order.paymentStatus}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textMuted, height: 1.25)),
                   ],
                 ),
+              ),
+              if (order.customerPhone != null) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () => _callCustomer(order.customerPhone!),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.warmFill,
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+                    ),
+                    child: const Icon(Icons.phone_in_talk_rounded,
+                        size: 20, color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        
+        // Items.
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: _cardDecoration,
+          child: Column(
+            children: [
+              for (var i = 0; i < order.items.length; i++)
+                _itemRow(order.items[i],
+                    last: i == order.items.length - 1),
+            ],
+          ),
+        ),
+        
+        if (order.customerNotes?.isNotEmpty ?? false) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.amberFill.withValues(alpha: 0.5),
+              border: Border.all(color: AppColors.amberInk.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded, color: AppColors.amberInk, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                          fontSize: 12.5,
+                          height: 1.4,
+                          color: AppColors.amberInk),
+                      children: [
+                        TextSpan(
+                            text: '${context.l10n.noteLabel} ',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.amberInk)),
+                        TextSpan(text: order.customerNotes),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+        
+        // Order Summary Footer
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: _cardDecoration,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                      order.isCod
+                          ? context.l10n.totalCashOnDelivery
+                          : order.isPaid
+                              ? context.l10n.totalCardPaid
+                              : context.l10n.totalCardUnpaid,
+                      style: const TextStyle(
+                          fontSize: 13.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                  PriceText(formatMoney(order.total), size: 18),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today_rounded, size: 13, color: AppColors.textFaint),
+                  const SizedBox(width: 6),
+                  Text(
+                      DateFormat('d MMM y, h:mm a').format(order.createdAt),
+                      style: const TextStyle(
+                          fontSize: 11.5, color: AppColors.textFaint, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _itemRow(OrderItem item, {required bool last}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        border: last
+            ? null
+            : const Border(
+                bottom: BorderSide(color: AppColors.borderSoft)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.ink,
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+            ),
+            child: Text('${item.quantity}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.productName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.ink)),
+                if (item.optionNames.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(item.optionNames.join(' · '),
+                      style: const TextStyle(
+                          fontSize: 11.5, color: AppColors.textMuted, height: 1.25)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          PriceText(formatMoney(item.lineTotal), size: 13.5),
+        ],
+      ),
+    );
+  }
+
+  Widget _bottomCta(AppOrder order) {
+    final (label, status) = switch (order.status) {
+      OrderStatus.pending => (context.l10n.acceptOrder, OrderStatus.accepted),
+      OrderStatus.accepted => (context.l10n.startPreparing, OrderStatus.preparing),
+      OrderStatus.preparing => (
+          context.l10n.markReadyForPickup,
+          OrderStatus.readyForPickup
+        ),
+      _ => (null, null),
+    };
+
+    if (label == null) {
+      return const SizedBox(height: 8);
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.borderSoft)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (order.status == OrderStatus.pending) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    )),
+                onPressed: _busy ? null : _reject,
+                child: Text(context.l10n.rejectOrder),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: Container(
+              height: 54,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+                boxShadow: [
+                  BoxShadow(
+                    color: (order.status == OrderStatus.pending ? AppColors.success : AppColors.primary)
+                        .withValues(alpha: 0.25),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                    backgroundColor: order.status == OrderStatus.pending
+                        ? AppColors.success
+                        : AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    )),
+                onPressed: _busy ? null : () => _advance(status!),
+                child: _busy
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Text(label,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static final _cardDecoration = BoxDecoration(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(AppRadii.xl),
+    border: Border.all(color: AppColors.border),
+    boxShadow: AppShadows.card,
+  );
+
+  String _initials(String? name) {
+    if (name == null || name.trim().isEmpty) return '🙂';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    final letters =
+        parts.take(2).map((p) => p[0].toUpperCase()).join();
+    return letters;
   }
 }

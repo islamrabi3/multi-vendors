@@ -48,6 +48,21 @@ class OrderRepository {
     return data.map(OrderItem.fromMap).toList();
   }
 
+  /// Assigned driver's name + phone for an order the caller owns.
+  /// Returns null when no driver is assigned yet.
+  Future<DriverContact?> fetchDriverContact(String orderId) async {
+    final rows = await supabase
+        .rpc('order_driver_contact', params: {'p_order_id': orderId}) as List;
+    if (rows.isEmpty) return null;
+    final row = rows.first as Map<String, dynamic>;
+    final phone = row['phone'] as String?;
+    if (phone == null || phone.isEmpty) return null;
+    return DriverContact(
+      name: row['full_name'] as String? ?? 'Driver',
+      phone: phone,
+    );
+  }
+
   /// Realtime stream of a single order row (status + payment changes).
   Stream<AppOrder?> orderStream(String orderId) => supabase
       .from('orders')
@@ -96,6 +111,44 @@ class OrderRepository {
         .map((rows) => rows.map(AppOrder.fromMap).toList());
   }
 
+  /// One-shot fetch of a vendor's orders (pull-to-refresh).
+  Future<List<AppOrder>> fetchVendorOrders(String vendorId) async {
+    final data = await supabase
+        .from('orders')
+        .select(_vendorJoin)
+        .eq('vendor_id', vendorId)
+        .order('created_at');
+    return (data as List)
+        .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// One-shot fetch of the unclaimed ready_for_pickup pool (pull-to-refresh).
+  Future<List<AppOrder>> fetchDriverPool() async {
+    final data = await supabase
+        .from('orders')
+        .select(_vendorJoin)
+        .eq('status', 'ready_for_pickup')
+        .isFilter('driver_id', null)
+        .order('created_at');
+    return (data as List)
+        .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// One-shot fetch of the driver's own orders (pull-to-refresh).
+  Future<List<AppOrder>> fetchDriverOrders() async {
+    final userId = supabase.auth.currentUser!.id;
+    final data = await supabase
+        .from('orders')
+        .select(_vendorJoin)
+        .eq('driver_id', userId)
+        .order('created_at');
+    return (data as List)
+        .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<bool> claimDelivery(String orderId) async {
     final result =
         await supabase.rpc('claim_delivery', params: {'p_order_id': orderId});
@@ -130,4 +183,79 @@ class OrderRepository {
         ),
     };
   }
+
+  /// Paginated fetch of customer's past (terminal) orders.
+  Future<List<AppOrder>> fetchCustomerPastOrders({
+    required int limit,
+    required int offset,
+  }) async {
+    final userId = supabase.auth.currentUser!.id;
+    final data = await supabase
+        .from('orders')
+        .select(_vendorJoin)
+        .eq('customer_id', userId)
+        .inFilter('status', ['delivered', 'cancelled', 'rejected'])
+        .order('created_at', ascending: false)
+        .range(offset, offset + limit - 1);
+    return (data as List)
+        .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Paginated fetch of driver's completed (delivered) orders.
+  Future<List<AppOrder>> fetchDriverHistory({
+    required int limit,
+    required int offset,
+  }) async {
+    final userId = supabase.auth.currentUser!.id;
+    final data = await supabase
+        .from('orders')
+        .select(_vendorJoin)
+        .eq('driver_id', userId)
+        .eq('status', 'delivered')
+        .order('created_at', ascending: false)
+        .range(offset, offset + limit - 1);
+    return (data as List)
+        .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Stream of active (non-terminal) customer orders.
+  Stream<List<AppOrder>> myActiveOrdersStream() {
+    final userId = supabase.auth.currentUser!.id;
+    return supabase
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('customer_id', userId)
+        .order('created_at')
+        .map((rows) => rows
+            .map(AppOrder.fromMap)
+            .where((o) => !o.status.isTerminal)
+            .toList());
+  }
+
+  /// Fetch all orders completed by the driver during the current week.
+  Future<List<AppOrder>> fetchDriverCurrentWeekOrders() async {
+    final userId = supabase.auth.currentUser!.id;
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+    final data = await supabase
+        .from('orders')
+        .select()
+        .eq('driver_id', userId)
+        .eq('status', 'delivered')
+        .gte('created_at', monday.toIso8601String());
+    return (data as List)
+        .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+}
+
+/// Assigned driver's contact details for a customer to reach the rider.
+class DriverContact {
+  const DriverContact({required this.name, required this.phone});
+
+  final String name;
+  final String phone;
 }
