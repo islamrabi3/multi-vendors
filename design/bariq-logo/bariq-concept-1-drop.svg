@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <title>بريق — Concept 1: Fresh Drop</title>
+  <defs>
+    <linearGradient id="c1grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00C2A8"/>
+      <stop offset="55%" stop-color="#3FD07A"/>
+      <stop offset="100%" stop-color="#A8E063"/>
+    </linearGradient>
+    <linearGradient id="c1gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="600" height="600" fill="#ffffff"/>
+
+  <!-- mark -->
+  <g transform="translate(300,215)">
+    <path d="M0 -130 C 40 -66 112 -14 112 46 A 112 112 0 1 1 -112 46 C -112 -14 -40 -66 0 -130 Z"
+          fill="url(#c1grad)"/>
+    <path d="M0 -130 C 40 -66 112 -14 112 46 A 112 112 0 0 1 0 158 C 0 158 -34 -6 0 -130 Z"
+          fill="url(#c1gloss)"/>
+    <!-- sparkle -->
+    <g transform="translate(34,34) scale(1.15)">
+      <path d="M0 -46 C 6 -15 15 -6 46 0 C 15 6 6 15 0 46 C -6 15 -15 6 -46 0 C -15 -6 -6 -15 0 -46 Z"
+            fill="#ffffff"/>
+    </g>
+    <g transform="translate(-40,-14) scale(.5)">
+      <path d="M0 -46 C 6 -15 15 -6 46 0 C 15 6 6 15 0 46 C -6 15 -15 6 -46 0 C -15 -6 -6 -15 0 -46 Z"
+            fill="#ffffff" opacity=".85"/>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <text x="300" y="452" text-anchor="middle" direction="rtl"
+        font-family="'Noto Kufi Arabic','Cairo','Tajawal','Segoe UI','Geeza Pro',sans-serif"
+        font-size="132" font-weight="800" fill="#0E3B3A" letter-spacing="2">بريق</text>
+
+  <text x="300" y="508" text-anchor="middle"
+        font-family="'Helvetica Neue',Arial,sans-serif"
+        font-size="40" font-weight="600" fill="#00A88F" letter-spacing="14">BARIQ</text>
+
+  <text x="300" y="552" text-anchor="middle" direction="rtl"
+        font-family="'Noto Kufi Arabic','Cairo','Tajawal','Segoe UI','Geeza Pro',sans-serif"
+        font-size="24" font-weight="500" fill="#6B8F8C" letter-spacing="1">لمعة تدوم • سائل غسيل المواعين</text>
+</svg>

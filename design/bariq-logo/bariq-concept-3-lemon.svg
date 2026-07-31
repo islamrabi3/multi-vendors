@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <title>بريق — Concept 3: Lemon Badge</title>
+  <defs>
+    <linearGradient id="c3bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE259"/>
+      <stop offset="100%" stop-color="#7FD14B"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="600" height="600" fill="#ffffff"/>
+
+  <!-- badge -->
+  <circle cx="300" cy="300" r="232" fill="url(#c3bg)"/>
+  <circle cx="300" cy="300" r="232" fill="none" stroke="#2E7D32" stroke-width="12"/>
+  <circle cx="300" cy="300" r="206" fill="none" stroke="#ffffff" stroke-width="6" opacity=".8"/>
+
+  <!-- plate with glint -->
+  <g transform="translate(300,208)">
+    <ellipse cx="0" cy="0" rx="118" ry="76" fill="#ffffff"/>
+    <ellipse cx="0" cy="0" rx="78" ry="48" fill="none" stroke="#CFE9D6" stroke-width="7"/>
+    <!-- lemon slice -->
+    <g transform="translate(-88,-40)">
+      <circle r="40" fill="#FFD43B" stroke="#2E7D32" stroke-width="6"/>
+      <g stroke="#ffffff" stroke-width="5" stroke-linecap="round">
+        <line x1="0" y1="0" x2="0" y2="-30"/>
+        <line x1="0" y1="0" x2="26" y2="-15"/>
+        <line x1="0" y1="0" x2="26" y2="15"/>
+        <line x1="0" y1="0" x2="0" y2="30"/>
+        <line x1="0" y1="0" x2="-26" y2="15"/>
+        <line x1="0" y1="0" x2="-26" y2="-15"/>
+      </g>
+    </g>
+    <!-- sparkle -->
+    <g transform="translate(84,-34)">
+      <path d="M0 -40 C 5 -13 13 -5 40 0 C 13 5 5 13 0 40 C -5 13 -13 5 -40 0 C -13 -5 -5 -13 0 -40 Z"
+            fill="#ffffff"/>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <text x="300" y="378" text-anchor="middle" direction="rtl"
+        font-family="'Cairo','Tajawal','Noto Kufi Arabic','Segoe UI','Geeza Pro',sans-serif"
+        font-size="118" font-weight="900" fill="#1B5E20" letter-spacing="2">بريق</text>
+
+  <text x="300" y="428" text-anchor="middle"
+        font-family="'Helvetica Neue',Arial,sans-serif"
+        font-size="34" font-weight="700" fill="#1B5E20" letter-spacing="12">BARIQ</text>
+
+  <text x="300" y="474" text-anchor="middle" direction="rtl"
+        font-family="'Cairo','Tajawal','Segoe UI','Geeza Pro',sans-serif"
+        font-size="24" font-weight="600" fill="#2E7D32">برائحة الليمون المنعش</text>
+</svg>
