@@ -5,7 +5,10 @@ import 'package:intl/intl.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/admin_repository.dart';
+import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// Ordered happy-path stages used to render the intervention timeline.
@@ -18,17 +21,35 @@ const _flow = [
   OrderStatus.delivered,
 ];
 
-class AdminOrderDetailScreen extends StatefulWidget {
+/// Route entry for the phone flow: the detail view on its own page.
+class AdminOrderDetailScreen extends StatelessWidget {
   const AdminOrderDetailScreen({super.key, required this.orderId});
 
   final String orderId;
 
   @override
-  State<AdminOrderDetailScreen> createState() =>
-      _AdminOrderDetailScreenState();
+  Widget build(BuildContext context) =>
+      AdminOrderDetailView(orderId: orderId);
 }
 
-class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
+/// The order intervention view. Embedded (`embedded: true`) it drops the back
+/// button and its own Scaffold so it can live in the detail pane of a wide
+/// master–detail layout.
+class AdminOrderDetailView extends StatefulWidget {
+  const AdminOrderDetailView({
+    super.key,
+    required this.orderId,
+    this.embedded = false,
+  });
+
+  final String orderId;
+  final bool embedded;
+
+  @override
+  State<AdminOrderDetailView> createState() => _AdminOrderDetailViewState();
+}
+
+class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   final _repo = AdminRepository();
   late Future<AppOrder> _future;
   bool _busy = false;
@@ -64,25 +85,26 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
   Future<void> _cancel() async {
     final localCancelledByAdmin = context.l10n.cancelledByAdmin;
     final controller = TextEditingController();
-    final reason = await showDialog<String>(
+    final String? reason = await AppDialogs.showFormDialog<String>(
       context: context,
-      builder: (d) => AlertDialog(
-        title: Text(context.l10n.cancelRefundOrder),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: context.l10n.reason),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(d), child: Text(context.l10n.back)),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryDark),
-            onPressed: () => Navigator.pop(d, controller.text.trim()),
-            child: Text(context.l10n.cancelOrder),
+      title: context.l10n.cancelRefundOrder,
+      subtitle: context.l10n.cancelReasonDesc,
+      icon: Icons.cancel_schedule_send_rounded,
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          labelText: context.l10n.reason,
+          hintText: context.l10n.cancelReasonHint,
+          prefixIcon: const Icon(Icons.edit_note_rounded),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
-        ],
+        ),
       ),
+      primaryText: context.l10n.cancelOrder,
+      onPrimaryPressed: () => Navigator.pop(context, controller.text.trim()),
+      secondaryText: context.l10n.back,
     );
     if (reason == null) return;
     setState(() => _busy = true);
@@ -99,27 +121,52 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: SafeArea(
-        bottom: false,
-        child: FutureBuilder<AppOrder>(
-          future: _future,
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const LoadingView();
-            }
-            if (snap.hasError || !snap.hasData) {
-              return ErrorView(
-                  message: context.l10n.couldNotLoadThisOrder, onRetry: _reload);
-            }
-            return _Body(order: snap.data!, onAssign: _assign);
-          },
-        ),
-      ),
-      bottomNavigationBar: FutureBuilder<AppOrder>(
+  Future<void> _refund(AppOrder order) async {
+    final confirmed = await AppDialogs.showConfirmDialog(
+      context: context,
+      title: context.l10n.refundConfirmTitle,
+      message:
+          '${context.l10n.refundConfirmMessage}\n${formatMoney(order.total)}',
+      confirmText: context.l10n.refundToWallet,
+      cancelText: context.l10n.back,
+      icon: Icons.account_balance_wallet_outlined,
+      isDestructive: false,
+    );
+    if (confirmed != true) return;
+    setState(() => _busy = true);
+    try {
+      final amount = await _repo.refundOrderToWallet(widget.orderId);
+      if (!mounted) return;
+      showSnack(context,
+          '${context.l10n.refundedToWallet} (${formatMoney(amount)})');
+      _reload();
+    } catch (e) {
+      debugPrint('refund failed: $e');
+      if (mounted) showSnack(context, readableError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _content() => FutureBuilder<AppOrder>(
+        future: _future,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const LoadingView();
+          }
+          if (snap.hasError || !snap.hasData) {
+            return ErrorView(
+                message: context.l10n.couldNotLoadThisOrder, onRetry: _reload);
+          }
+          return _Body(
+            order: snap.data!,
+            onAssign: _assign,
+            showBack: !widget.embedded,
+          );
+        },
+      );
+
+  Widget _actionBar() => FutureBuilder<AppOrder>(
         future: _future,
         builder: (context, snap) {
           if (!snap.hasData) return const SizedBox.shrink();
@@ -127,18 +174,50 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
             order: snap.data!,
             busy: _busy,
             onCancel: _cancel,
+            onRefund: () => _refund(snap.data!),
           );
         },
-      ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return Column(
+        children: [
+          Expanded(child: _content()),
+          _actionBar(),
+        ],
+      );
+    }
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: SafeArea(bottom: false, child: _content()),
+      bottomNavigationBar: _actionBar(),
     );
   }
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.order, required this.onAssign});
+  const _Body({
+    required this.order,
+    required this.onAssign,
+    this.showBack = true,
+  });
 
   final AppOrder order;
   final VoidCallback onAssign;
+  final bool showBack;
+
+  /// A cancelled/rejected card order whose money is still held: the customer
+  /// paid but will not get the food, so the amount must go back to their
+  /// wallet.
+  bool get _refundDue =>
+      order.paymentMethod == 'paymob' &&
+      order.paymentStatus == 'paid' &&
+      (order.status == OrderStatus.cancelled ||
+          order.status == OrderStatus.rejected);
+
+  bool get _refunded => order.paymentStatus == 'refunded';
 
   bool get _stuck =>
       !order.status.isTerminal &&
@@ -153,24 +232,26 @@ class _Body extends StatelessWidget {
       children: [
         Row(
           children: [
-            GestureDetector(
-              onTap: () => context.pop(),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(12),
+            if (showBack) ...[
+              GestureDetector(
+                onTap: () => context.pop(),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.chevron_left, color: AppColors.ink),
                 ),
-                child: const Icon(Icons.chevron_left, color: AppColors.ink),
               ),
-            ),
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
+            ],
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(order.orderNumber, style: AppType.mono(20)),
+                SelectableId(order.orderNumber, style: AppType.mono(20)),
                 Text(
                   '${context.l10n.placed} ${DateFormat('h:mm a').format(order.createdAt)} · '
                   '${order.isCod ? context.l10n.cod : context.l10n.card}',
@@ -225,6 +306,54 @@ class _Body extends StatelessWidget {
               ],
             ),
           ),
+        if (_refundDue || _refunded) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: _refunded ? AppColors.successFill : AppColors.amberFill,
+              border: Border.all(
+                  color: _refunded
+                      ? const Color(0xFFCDEBD9)
+                      : const Color(0xFFF6E2C0)),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                    _refunded
+                        ? Icons.check_circle_outline
+                        : Icons.account_balance_wallet_outlined,
+                    size: 19,
+                    color: _refunded
+                        ? AppColors.successInk
+                        : AppColors.amberInk),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          _refunded
+                              ? context.l10n.refundedToWallet
+                              : '${context.l10n.refundRequired} · ${formatMoney(order.total)}',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: _refunded
+                                  ? AppColors.successInk
+                                  : AppColors.amberInk)),
+                      if (!_refunded)
+                        Text(context.l10n.refundDueDesc,
+                            style: const TextStyle(
+                                fontSize: 11.5, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         _Timeline(order: order),
         const SizedBox(height: 13),
@@ -483,15 +612,51 @@ class _ActionBar extends StatelessWidget {
     required this.order,
     required this.busy,
     required this.onCancel,
+    required this.onRefund,
   });
 
   final AppOrder order;
   final bool busy;
   final VoidCallback onCancel;
+  final VoidCallback onRefund;
+
+  bool get _refundDue =>
+      order.paymentMethod == 'paymob' &&
+      order.paymentStatus == 'paid' &&
+      (order.status == OrderStatus.cancelled ||
+          order.status == OrderStatus.rejected);
 
   @override
   Widget build(BuildContext context) {
+    if (busy) {
+      // Keep the bar's shape while the action runs, so the sheet does not
+      // jump — a bare spinner in a 52px bar reads as a broken button.
+      return SafeArea(
+        minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryDark,
+              minimumSize: const Size.fromHeight(52)),
+          onPressed: null,
+          child: const ButtonSpinner(),
+        ),
+      );
+    }
     if (order.status.isTerminal) {
+      if (_refundDue) {
+        return SafeArea(
+          minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+                backgroundColor: AppColors.ink,
+                minimumSize: const Size.fromHeight(52)),
+            onPressed: onRefund,
+            icon: const Icon(Icons.account_balance_wallet_outlined, size: 19),
+            label: Text(
+                '${context.l10n.refundToWallet} · ${formatMoney(order.total)}'),
+          ),
+        );
+      }
       return SafeArea(
         minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
         child: Container(
@@ -510,17 +675,14 @@ class _ActionBar extends StatelessWidget {
     }
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
-      child: busy
-          ? const SizedBox(
-              height: 52, child: Center(child: CircularProgressIndicator()))
-          : FilledButton.icon(
-              style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
-                  minimumSize: const Size.fromHeight(52)),
-              onPressed: onCancel,
-              icon: const Icon(Icons.close_rounded, size: 19),
-              label: Text(context.l10n.cancelRefundOrder),
-            ),
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primaryDark,
+            minimumSize: const Size.fromHeight(52)),
+        onPressed: onCancel,
+        icon: const Icon(Icons.close_rounded, size: 19),
+        label: Text(context.l10n.cancelRefundOrder),
+      ),
     );
   }
 }

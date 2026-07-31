@@ -60,6 +60,7 @@ ThemeData buildTheme() {
 
   return ThemeData(
     colorScheme: scheme,
+    fontFamily: GoogleFonts.cairo().fontFamily,
     useMaterial3: true,
     scaffoldBackgroundColor: AppColors.canvas,
     textTheme: textTheme,
@@ -81,9 +82,8 @@ ThemeData buildTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surface,
-      hintStyle: const TextStyle(color: AppColors.textFaint, fontSize: 14),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      hintStyle: GoogleFonts.cairo(color: AppColors.textFaint, fontSize: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: _inputBorder(AppColors.border),
       enabledBorder: _inputBorder(AppColors.border),
       focusedBorder: _inputBorder(AppColors.primary, width: 1.6),
@@ -94,11 +94,9 @@ ThemeData buildTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        // No infinite min width: buttons must size to their parent. Full-width
-        // CTAs opt in with SizedBox(width: double.infinity).
         minimumSize: const Size(0, 54),
         elevation: 0,
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        textStyle: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
         ),
@@ -110,7 +108,7 @@ ThemeData buildTheme() {
         backgroundColor: AppColors.surface,
         minimumSize: const Size(0, 54),
         side: const BorderSide(color: AppColors.border, width: 1.5),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        textStyle: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
         ),
@@ -119,7 +117,7 @@ ThemeData buildTheme() {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        textStyle: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700),
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -144,12 +142,12 @@ ThemeData buildTheme() {
       backgroundColor: AppColors.surface,
       selectedColor: AppColors.ink,
       side: const BorderSide(color: AppColors.border),
-      labelStyle: const TextStyle(
+      labelStyle: GoogleFonts.cairo(
         fontSize: 13,
         fontWeight: FontWeight.w600,
         color: AppColors.ink,
       ),
-      secondaryLabelStyle: const TextStyle(
+      secondaryLabelStyle: GoogleFonts.cairo(
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: Colors.white,
@@ -159,16 +157,20 @@ ThemeData buildTheme() {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.surface,
       selectedItemColor: AppColors.primary,
-      unselectedItemColor: Color(0xFFB5ABA1),
+      unselectedItemColor: AppColors.navInactive,
       type: BottomNavigationBarType.fixed,
       elevation: 0,
-      selectedLabelStyle:
-          TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
-      unselectedLabelStyle:
-          TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
+      selectedLabelStyle: GoogleFonts.cairo(
+        fontSize: 10.5,
+        fontWeight: FontWeight.w700,
+      ),
+      unselectedLabelStyle: GoogleFonts.cairo(
+        fontSize: 10.5,
+        fontWeight: FontWeight.w600,
+      ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.surface,
@@ -176,21 +178,21 @@ ThemeData buildTheme() {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => TextStyle(
+        (states) => GoogleFonts.cairo(
           fontSize: 10.5,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w700
               : FontWeight.w600,
           color: states.contains(WidgetState.selected)
               ? AppColors.primary
-              : const Color(0xFFB5ABA1),
+              : AppColors.navInactive,
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           color: states.contains(WidgetState.selected)
               ? AppColors.primary
-              : const Color(0xFFB5ABA1),
+              : AppColors.navInactive,
         ),
       ),
     ),
@@ -201,9 +203,21 @@ ThemeData buildTheme() {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
       ),
     ),
+    // Even an un-migrated bare `AlertDialog` should read as native: same
+    // surface, corner and barrier as `showConfirmDialog` & friends.
+    dialogTheme: DialogThemeData(
+      backgroundColor: AppColors.surface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      barrierColor: AppColors.ink.withValues(alpha: 0.45),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.xxl),
+      ),
+      titleTextStyle: AppType.heading(19),
+    ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.ink,
-      contentTextStyle: const TextStyle(color: Colors.white),
+      contentTextStyle: GoogleFonts.cairo(color: Colors.white),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),

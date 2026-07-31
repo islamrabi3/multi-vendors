@@ -3,15 +3,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/payment_repository.dart';
+import '../../../core/repositories/report_repository.dart';
 import '../../../core/repositories/review_repository.dart';
+import '../../../core/utils/dialer.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../checkout/paymob_flow.dart';
+import 'order_chat_sheet.dart';
 import 'order_details_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -33,6 +38,64 @@ class OrderDetailsScreen extends StatelessWidget {
 class _OrderDetailsView extends StatelessWidget {
   const _OrderDetailsView();
 
+  /// Reporting an issue is exactly the flow that must not lose the user's
+  /// typing: they have just described a problem in their own words. `onSubmit`
+  /// runs inside the dialog, so a failed write shows inline and the text stays.
+  Future<void> _showReportDialog(BuildContext context, AppOrder order) async {
+    final subject = TextEditingController();
+    final description = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final submitted = context.l10n.reportSubmitted;
+
+    try {
+      final ok = await showFormDialog<bool>(
+        context: context,
+        title: context.l10n.reportStoreOrOrder,
+        icon: Icons.report_problem_rounded,
+        tone: AppDialogTone.danger,
+        submitLabel: context.l10n.submitReport,
+        cancelLabel: context.l10n.cancel,
+        contentBuilder: (_) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: subject,
+              textCapitalization: TextCapitalization.sentences,
+              decoration:
+                  InputDecoration(labelText: context.l10n.issueSubject),
+            ),
+            const SizedBox(height: AppSpace.md),
+            TextField(
+              controller: description,
+              maxLines: 3,
+              decoration: InputDecoration(
+                  labelText: context.l10n.issueDescription),
+            ),
+          ],
+        ),
+        onSubmit: () async {
+          final subj = subject.text.trim();
+          final desc = description.text.trim();
+          // Returning null keeps the dialog open — nothing to report yet.
+          if (subj.isEmpty || desc.isEmpty) return null;
+          await ReportRepository().submitReport(
+            subject: subj,
+            description: desc,
+            orderId: order.id,
+            vendorId: order.vendorId,
+          );
+          return true;
+        },
+      );
+      if (ok == true) {
+        messenger.showSnackBar(SnackBar(content: Text(submitted)));
+      }
+    } finally {
+      subject.dispose();
+      description.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,13 +106,14 @@ class _OrderDetailsView extends StatelessWidget {
         listener: (context, state) =>
             showSnack(context, readableError(state.error!), error: true),
         builder: (context, state) {
-          if (state.loading) return const LoadingView();
+          if (state.loading) return const _OrderDetailsSkeleton();
           final order = state.order;
           if (order == null) {
             return ErrorView(message: context.l10n.orderNotFound);
           }
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, 16, 16,
+                16 + MediaQuery.paddingOf(context).bottom),
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -88,6 +152,10 @@ class _OrderDetailsView extends StatelessWidget {
                   _CallDriverCard(contact: state.driverContact!),
                 ],
               ],
+              if (order.deliveryProofUrl != null && order.deliveryProofUrl!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _DeliveryProofCard(proofUrl: order.deliveryProofUrl!),
+              ],
               const Divider(height: 32),
               _PaymentCard(order: order, busy: state.busy),
               const SizedBox(height: 8),
@@ -115,6 +183,23 @@ class _OrderDetailsView extends StatelessWidget {
               Text(context.l10n.deliveringTo(order.addressSummary),
                   style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 24),
+              const SizedBox(height: 24),
+              if (order.status == OrderStatus.outForDelivery || order.status == OrderStatus.preparing || order.status == OrderStatus.accepted)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => OrderChatSheet(orderId: order.id),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: Text(context.l10n.liveChatWithDriverSupport),
+                    ),
+                  ),
+                ),
               if (order.status == OrderStatus.pending)
                 SizedBox(
                   width: double.infinity,
@@ -126,15 +211,48 @@ class _OrderDetailsView extends StatelessWidget {
                     child: Text(context.l10n.cancelOrder),
                   ),
                 ),
-              if (order.status == OrderStatus.delivered && !state.hasReview)
+              if (order.status == OrderStatus.delivered) ...[
+                if (!state.hasReview)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _showReviewSheet(context),
+                        icon: const Icon(Icons.star_outline),
+                        label: Text(context.l10n.rateThisOrder),
+                      ),
+                    ),
+                  ),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => _showReviewSheet(context),
-                    icon: const Icon(Icons.star_outline),
-                    label: Text(context.l10n.rateThisOrder),
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await OrderRepository().reorderPastOrder(order);
+                      if (context.mounted) {
+                        context.push('/cart');
+                      }
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(context.l10n.reorderItems),
                   ),
                 ),
+              ],
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () => _showReportDialog(context, order),
+                  icon: const Icon(Icons.report_problem_outlined,
+                      color: AppColors.dangerInk),
+                  label: Text(
+                    context.l10n.reportAnIssue,
+                    style: const TextStyle(
+                        color: AppColors.dangerInk,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
             ],
           );
@@ -142,6 +260,7 @@ class _OrderDetailsView extends StatelessWidget {
       ),
     );
   }
+
 
   void _showReviewSheet(BuildContext context) {
     final cubit = context.read<OrderDetailsCubit>();
@@ -175,7 +294,7 @@ class _StatusStepper extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -211,8 +330,8 @@ class _StatusStepper extends StatelessWidget {
     final done = index < currentStep;
     final active = index == currentStep;
 
-    Color bg = Colors.white;
-    Color border = const Color(0xFFE4DDD4);
+    Color bg = AppColors.surface;
+    Color border = AppColors.borderStrong;
     Widget child = const SizedBox.shrink();
 
     if (done) {
@@ -224,8 +343,8 @@ class _StatusStepper extends StatelessWidget {
       border = AppColors.primary;
       child = Icon(icon ?? Icons.check, size: 12, color: Colors.white);
     } else {
-      bg = Colors.white;
-      border = const Color(0xFFE4DDD4);
+      bg = AppColors.surface;
+      border = AppColors.borderStrong;
     }
 
     return Container(
@@ -246,7 +365,7 @@ class _StatusStepper extends StatelessWidget {
     return Expanded(
       child: Container(
         height: 3,
-        color: active ? AppColors.success : const Color(0xFFE4DDD4),
+        color: active ? AppColors.success : AppColors.borderStrong,
       ),
     );
   }
@@ -302,7 +421,8 @@ class _TrackingMap extends StatelessWidget {
                   point: destination,
                   width: 40,
                   height: 40,
-                  child: const Icon(Icons.home, color: Colors.red, size: 32),
+                  child: const Icon(Icons.home,
+                      color: AppColors.dangerInk, size: 32),
                 ),
               if (driverLocation != null)
                 Marker(
@@ -310,7 +430,7 @@ class _TrackingMap extends StatelessWidget {
                   width: 40,
                   height: 40,
                   child: const Icon(Icons.delivery_dining,
-                      color: Colors.indigo, size: 36),
+                      color: AppColors.primary, size: 36),
                 ),
             ]),
           ],
@@ -325,12 +445,7 @@ class _CallDriverCard extends StatelessWidget {
 
   final DriverContact contact;
 
-  Future<void> _call(BuildContext context) async {
-    final uri = Uri(scheme: 'tel', path: contact.phone);
-    if (!await launchUrl(uri) && context.mounted) {
-      showSnack(context, context.l10n.couldNotStartTheCall, error: true);
-    }
-  }
+  Future<void> _call(BuildContext context) => callPhone(context, contact.phone);
 
   @override
   Widget build(BuildContext context) {
@@ -374,17 +489,28 @@ class _PaymentCard extends StatelessWidget {
                     ? null
                     : () async {
                         final cubit = context.read<OrderDetailsCubit>();
+                        final messenger = ScaffoldMessenger.of(context);
                         final router = GoRouter.of(context);
-                        final url = await cubit.retryPayment();
-                        if (url != null) {
-                          router.push('/paymob-checkout',
-                              extra: {'url': url, 'orderId': order.id});
+                        final checkout = await cubit.retryPayment();
+                        if (checkout == null) return;
+
+                        final result =
+                            await runPaymobCheckout(router, checkout);
+                        if (result != PaymobFlowResult.paid) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                  'Payment not completed. The order stays '
+                                  'unpaid and is not sent to the restaurant.'),
+                              backgroundColor: AppColors.dangerInk,
+                            ),
+                          );
                         }
                       },
                 child: Text(context.l10n.payNow),
               )
             : order.isPaid
-                ? const Icon(Icons.check_circle, color: Colors.green)
+                ? const Icon(Icons.check_circle, color: AppColors.success)
                 : null,
       ),
     );
@@ -458,7 +584,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                   onPressed: () => setState(() => _rating = star),
                   icon: Icon(
                     star <= _rating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
+                    color: AppColors.rating,
                     size: 32,
                   ),
                 ),
@@ -488,9 +614,100 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                         setState(() => _submitting = false);
                       }
                     },
-              child: Text(context.l10n.submitReview),
+              child: _submitting
+                  ? const ButtonSpinner()
+                  : Text(context.l10n.submitReview),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeliveryProofCard extends StatelessWidget {
+  const _DeliveryProofCard({required this.proofUrl});
+
+  final String proofUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        boxShadow: AppShadows.card,
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.verified_rounded, color: AppColors.success, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                context.l10n.proofOfDelivery,
+                style: AppType.heading(15, color: AppColors.ink),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            child: AppNetworkImage(
+              url: proofUrl,
+              height: 180,
+              width: double.infinity,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Order details while the order, its items and the driver's position load.
+/// Mirrors the real page: number + chip, stepper, payment row, item lines,
+/// totals block.
+class _OrderDetailsSkeleton extends StatelessWidget {
+  const _OrderDetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpace.lg),
+        children: [
+          Row(
+            children: const [
+              Expanded(child: Skeleton.line(widthFactor: 0.5, height: 20)),
+              Skeleton(width: 84, height: 26, shape: SkeletonShape.pill),
+            ],
+          ),
+          const SizedBox(height: AppSpace.sm),
+          const Skeleton.line(widthFactor: 0.35, height: 15),
+          const SizedBox(height: AppSpace.lg),
+          const Skeleton.box(height: 96, radius: 18),
+          const SizedBox(height: AppSpace.xxl),
+          const Skeleton.box(height: 72, radius: AppRadii.xl),
+          const SizedBox(height: AppSpace.lg),
+          const Skeleton.line(widthFactor: 0.2, height: 16),
+          const SizedBox(height: AppSpace.md),
+          for (var i = 0; i < 3; i++) ...[
+            Row(
+              children: const [
+                Skeleton(width: 26, height: 14),
+                SizedBox(width: AppSpace.md),
+                Expanded(child: Skeleton.line(widthFactor: 0.6, height: 14)),
+                SizedBox(width: AppSpace.md),
+                Skeleton(width: 56, height: 14),
+              ],
+            ),
+            const SizedBox(height: AppSpace.md + 2),
+          ],
+          const Skeleton.box(height: 104, radius: AppRadii.md),
         ],
       ),
     );

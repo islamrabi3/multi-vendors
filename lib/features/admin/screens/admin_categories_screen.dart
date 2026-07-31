@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../admin_categories_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -35,7 +36,15 @@ class _CategoriesViewState extends State<_CategoriesView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(context.l10n.categoriesTab),
+      ),
       body: SafeArea(
+        top: false,
         bottom: false,
         child: BlocConsumer<AdminCategoriesCubit, AdminCategoriesState>(
           listener: (context, state) {
@@ -53,7 +62,7 @@ class _CategoriesViewState extends State<_CategoriesView> {
                   padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
                   child: Row(
                     children: [
-                      Text('Categories', style: AppType.display(26)),
+                      Text(context.l10n.categoriesTab, style: AppType.display(26)),
                       const Spacer(),
                       IconButton.filled(
                         onPressed: () => _showEditor(context),
@@ -69,9 +78,9 @@ class _CategoriesViewState extends State<_CategoriesView> {
                 if (state.loading && state.categories.isEmpty)
                   const Expanded(child: LoadingView())
                 else if (state.categories.isEmpty)
-                  const Expanded(
+                  Expanded(
                     child: EmptyView(
-                      message: 'No categories created yet.',
+                      message: context.l10n.noCategoriesYet,
                       icon: Icons.grid_view_rounded,
                     ),
                   )
@@ -125,31 +134,20 @@ class _CategoriesViewState extends State<_CategoriesView> {
     );
   }
 
-  void _confirmDelete(BuildContext context, VendorCategory category) {
+  void _confirmDelete(BuildContext context, VendorCategory category) async {
     final cubit = context.read<AdminCategoriesCubit>();
-    showDialog(
+    final confirmed = await AppDialogs.showConfirmDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: Text('Delete "${category.name}"?'),
-        content: const Text(
-          'Are you sure you want to delete this category? This might affect vendors registered under it.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              Navigator.pop(dialogCtx);
-              cubit.deleteCategory(category.id);
-            },
-            child: Text(context.l10n.delete),
-          ),
-        ],
-      ),
+      title: context.l10n.deleteCategoryTitle(category.name),
+      message: context.l10n.deleteCategoryMessage,
+      confirmText: context.l10n.delete,
+      cancelText: context.l10n.cancel,
+      isDestructive: true,
+      icon: Icons.grid_off_rounded,
     );
+    if (confirmed == true) {
+      cubit.deleteCategory(category.id);
+    }
   }
 }
 
@@ -284,7 +282,7 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      showSnack(context, 'Category name is required', error: true);
+      showSnack(context, context.l10n.categoryNameRequired, error: true);
       return;
     }
 
@@ -371,13 +369,16 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
                   else if (widget.category?.imageUrl != null && widget.category!.imageUrl!.isNotEmpty)
                     AppNetworkImage(url: widget.category!.imageUrl!)
                   else
-                    const Center(
+                    Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_photo_alternate_rounded, color: AppColors.textMuted, size: 28),
-                          SizedBox(height: 4),
-                          Text('Select Icon/Banner', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                          const Icon(Icons.add_photo_alternate_rounded,
+                              color: AppColors.textMuted, size: 28),
+                          const SizedBox(height: 4),
+                          Text(context.l10n.selectIconBanner,
+                              style: const TextStyle(
+                                  color: AppColors.textMuted, fontSize: 12)),
                         ],
                       ),
                     ),

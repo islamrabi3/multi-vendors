@@ -6,6 +6,7 @@ import '../../../core/models/cart_item.dart';
 import '../../../core/models/product.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../cart/cart_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -74,7 +75,7 @@ class _ProductSheetState extends State<_ProductSheet> {
     });
   }
 
-  void _addToCart() {
+  Future<void> _addToCart() async {
     final cart = context.read<CartCubit>();
     final item = CartItem(
       product: product,
@@ -83,28 +84,21 @@ class _ProductSheetState extends State<_ProductSheet> {
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
     );
     if (cart.conflictsWithCart(widget.vendor)) {
-      showDialog<void>(
+      // Clearing a cart is destructive, but the user asked for the new item —
+      // `danger` tone, and "Keep cart" is the safe way out.
+      final replace = await showConfirmDialog(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(context.l10n.startANewCart),
-          content: Text(
-              'Your cart has items from ${cart.state.vendor!.name}. '
-              'Adding this item will clear it.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(context.l10n.keepCart)),
-            FilledButton(
-              onPressed: () {
-                cart.startNewCart(widget.vendor, item);
-                Navigator.pop(dialogContext);
-                Navigator.pop(context);
-              },
-              child: Text(context.l10n.startNewCart),
-            ),
-          ],
-        ),
+        title: context.l10n.startANewCart,
+        message: 'Your cart has items from ${cart.state.vendor!.name}. '
+            'Adding this item will clear it.',
+        confirmLabel: context.l10n.startNewCart,
+        cancelLabel: context.l10n.keepCart,
+        tone: AppDialogTone.danger,
+        icon: Icons.remove_shopping_cart_rounded,
       );
+      if (!replace || !mounted) return;
+      cart.startNewCart(widget.vendor, item);
+      Navigator.pop(context);
       return;
     }
     cart.addItem(widget.vendor, item);
@@ -132,11 +126,15 @@ class _ProductSheetState extends State<_ProductSheet> {
                       width: double.infinity,
                       borderRadius: BorderRadius.circular(16)),
                 const SizedBox(height: 12),
-                Text(product.name,
+                Text(
+                    product.displayName(
+                        Localizations.localeOf(context).languageCode),
                     style: Theme.of(context).textTheme.displaySmall),
-                if (product.description?.isNotEmpty ?? false) ...[
+                if (product.displayDescription(
+                        Localizations.localeOf(context).languageCode)
+                    case final description?) ...[
                   const SizedBox(height: 6),
-                  Text(product.description!,
+                  Text(description,
                       style: Theme.of(context).textTheme.bodyMedium),
                 ],
                 const SizedBox(height: 12),
@@ -238,7 +236,7 @@ class _OptionTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 9),
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
             color: selected ? AppColors.primary : AppColors.border,
@@ -266,7 +264,7 @@ class _OptionTile extends StatelessWidget {
                 borderRadius: isRadio ? null : BorderRadius.circular(7),
                 color: selected ? AppColors.primary : Colors.transparent,
                 border: Border.all(
-                  color: selected ? AppColors.primary : const Color(0xFFDDD4CB),
+                  color: selected ? AppColors.primary : AppColors.borderStrong,
                   width: 2,
                 ),
               ),

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/address.dart';
+import '../../../core/models/service_area.dart';
 import '../../../core/repositories/address_repository.dart';
+import '../../../core/repositories/service_area_repository.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/location_picker.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class AddressesScreen extends StatefulWidget {
@@ -18,12 +22,15 @@ class AddressesScreen extends StatefulWidget {
 
 class _AddressesScreenState extends State<AddressesScreen> {
   final _repository = AddressRepository();
+  final _areaRepository = ServiceAreaRepository();
   List<Address>? _addresses;
+  List<ServiceArea> _coverage = const [];
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadCoverage();
   }
 
   Future<void> _load() async {
@@ -35,11 +42,39 @@ class _AddressesScreenState extends State<AddressesScreen> {
     }
   }
 
+  /// Coverage is advisory here — an empty list simply means every pin is
+  /// accepted, which is also how the server behaves.
+  Future<void> _loadCoverage() async {
+    try {
+      final areas = await _areaRepository.fetchActive();
+      if (mounted) setState(() => _coverage = areas);
+    } catch (_) {
+      // Leave coverage empty; the order RPC still enforces the real rule.
+    }
+  }
+
   Future<void> _edit([Address? address]) async {
+    // A new address starts on the map: picking the spot is the part that
+    // actually matters, and it fills the street in for free.
+    PickedLocation? picked;
+    if (address == null) {
+      picked = await showLocationPicker(
+        context,
+        coverage: _coverage,
+        requireInsideCoverage: true,
+      );
+      if (picked == null || !mounted) return;
+    }
+
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-          builder: (_) =>
-              _AddressEditor(repository: _repository, address: address)),
+        builder: (_) => _AddressEditor(
+          repository: _repository,
+          address: address,
+          coverage: _coverage,
+          picked: picked,
+        ),
+      ),
     );
     if (changed == true) _load();
   }
@@ -72,7 +107,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
         ),
         leading: Navigator.of(context).canPop()
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                icon: const Icon(Icons.arrow_back, size: 22),
                 onPressed: () => Navigator.of(context).pop(),
               )
             : null,
@@ -94,7 +129,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
         ),
       ),
       body: addresses == null
-          ? const LoadingView()
+          ? const _AddressesSkeleton()
           : addresses.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
@@ -265,40 +300,25 @@ class _AddressesScreenState extends State<AddressesScreen> {
                                           icon: const Icon(
                                               Icons.delete_outline_rounded,
                                               size: 16),
-                                          color: Colors.redAccent,
+                                          color: AppColors.dangerInk,
                                           onPressed: () async {
-                                            final confirm =
-                                                await showDialog<bool>(
+                                            final deleted =
+                                                await showConfirmDialog(
                                               context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                title: Text(
-                                                    context.l10n.deleteAddress),
-                                                content: Text(
-                                                    context.l10n.areYouSureYouWantToDeleteThisAddress),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                            ctx, false),
-                                                    child: Text(context.l10n.cancel),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                            ctx, true),
-                                                    style: TextButton.styleFrom(
-                                                        foregroundColor:
-                                                            Colors.red),
-                                                    child: Text(context.l10n.delete),
-                                                  ),
-                                                ],
-                                              ),
+                                              title:
+                                                  context.l10n.deleteAddress,
+                                              message: context.l10n
+                                                  .areYouSureYouWantToDeleteThisAddress,
+                                              confirmLabel:
+                                                  context.l10n.delete,
+                                              cancelLabel:
+                                                  context.l10n.cancel,
+                                              tone: AppDialogTone.danger,
+                                              icon: Icons.location_off_rounded,
+                                              onConfirm: () => _repository
+                                                  .deleteAddress(address.id),
                                             );
-                                            if (confirm == true) {
-                                              await _repository
-                                                  .deleteAddress(address.id);
-                                              _load();
-                                            }
+                                            if (deleted) _load();
                                           },
                                         ),
                                       ),
@@ -376,10 +396,19 @@ class _AddressesScreenState extends State<AddressesScreen> {
 }
 
 class _AddressEditor extends StatefulWidget {
-  const _AddressEditor({required this.repository, this.address});
+  const _AddressEditor({
+    required this.repository,
+    this.address,
+    this.coverage = const [],
+    this.picked,
+  });
 
   final AddressRepository repository;
   final Address? address;
+  final List<ServiceArea> coverage;
+
+  /// Set when the location was picked before this screen opened (new address).
+  final PickedLocation? picked;
 
   @override
   State<_AddressEditor> createState() => _AddressEditorState();
@@ -389,18 +418,23 @@ class _AddressEditorState extends State<_AddressEditor> {
   final _formKey = GlobalKey<FormState>();
   late final _label =
       TextEditingController(text: widget.address?.label ?? 'Home');
-  late final _street = TextEditingController(text: widget.address?.street);
+  late final _street = TextEditingController(
+      text: widget.address?.street ?? widget.picked?.address);
   late final _building = TextEditingController(text: widget.address?.building);
   late final _floor = TextEditingController(text: widget.address?.floor);
   late final _apartment =
       TextEditingController(text: widget.address?.apartment);
   late final _notes = TextEditingController(text: widget.address?.notes);
   late bool _isDefault = widget.address?.isDefault ?? false;
-  late LatLng _pin = widget.address?.lat != null
-      ? LatLng(widget.address!.lat!, widget.address!.lng!)
-      : const LatLng(30.0444, 31.2357); // Cairo default
-  final _mapController = MapController();
+  late LatLng _pin = widget.picked?.point ??
+      (widget.address?.lat != null
+          ? LatLng(widget.address!.lat!, widget.address!.lng!)
+          : const LatLng(30.0444, 31.2357)); // Cairo default
   bool _saving = false;
+
+  bool get _isCovered =>
+      widget.coverage.isEmpty ||
+      widget.coverage.any((a) => a.contains(_pin.latitude, _pin.longitude));
 
   @override
   void dispose() {
@@ -410,23 +444,22 @@ class _AddressEditorState extends State<_AddressEditor> {
     super.dispose();
   }
 
-  Future<void> _useMyLocation() async {
-    try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+  Future<void> _changeLocation() async {
+    final picked = await showLocationPicker(
+      context,
+      initial: _pin,
+      coverage: widget.coverage,
+      requireInsideCoverage: true,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _pin = picked.point;
+      // Only fill an empty street: a customer who typed their own wording
+      // should not have it overwritten by the geocoder.
+      if (_street.text.trim().isEmpty && picked.address != null) {
+        _street.text = picked.address!;
       }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        if (mounted) showSnack(context, context.l10n.locationPermissionDenied);
-        return;
-      }
-      final position = await Geolocator.getCurrentPosition();
-      setState(() => _pin = LatLng(position.latitude, position.longitude));
-      _mapController.move(_pin, 16);
-    } catch (_) {
-      if (mounted) showSnack(context, context.l10n.couldNotGetYourLocation);
-    }
+    });
   }
 
   Future<void> _save() async {
@@ -463,111 +496,25 @@ class _AddressEditorState extends State<_AddressEditor> {
           style: AppType.heading(20, color: AppColors.ink),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: const Icon(Icons.arrow_back, size: 22),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          // Save sits at the end of the list, so the list clears Android's
+          // gesture bar itself.
+          padding: EdgeInsets.fromLTRB(
+              16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
           children: [
-            // Map viewport container
-            Container(
-              height: 220,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadii.xl),
-                border: Border.all(color: AppColors.border),
-                boxShadow: AppShadows.card,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadii.xl - 1),
-                child: Stack(
-                  children: [
-                    FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: _pin,
-                        initialZoom: 14,
-                        onTap: (_, point) => setState(() => _pin = point),
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.multi_vendor',
-                        ),
-                        MarkerLayer(markers: [
-                          Marker(
-                            point: _pin,
-                            width: 50,
-                            height: 50,
-                            child: Center(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    )
-                                  ],
-                                ),
-                                padding: const EdgeInsets.all(6),
-                                child: const Icon(
-                                  Icons.location_on_rounded,
-                                  color: AppColors.primary,
-                                  size: 26,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ],
-                    ),
-                    Positioned(
-                      right: 12,
-                      bottom: 12,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            )
-                          ],
-                        ),
-                        child: FloatingActionButton.small(
-                          heroTag: 'my-location',
-                          onPressed: _useMyLocation,
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
-                          shape: const CircleBorder(),
-                          child: const Icon(Icons.my_location),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 14, color: AppColors.textMuted),
-                const SizedBox(width: 6),
-                Text(
-                  context.l10n.tapTheMapToDropYourPin,
-                  style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500),
-                ),
-              ],
+            // The pin is chosen on a dedicated full-screen map; here it is a
+            // read-only preview with one way back to it. A small inline map
+            // fights the scrolling form for gestures and is hard to aim at.
+            _LocationCard(
+              pin: _pin,
+              covered: _isCovered,
+              onChange: _changeLocation,
             ),
             const SizedBox(height: 24),
 
@@ -682,11 +629,7 @@ class _AddressEditorState extends State<_AddressEditor> {
               child: FilledButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                    ? const ButtonSpinner()
                     : Text(context.l10n.saveAddress),
               ),
             ),
@@ -696,14 +639,159 @@ class _AddressEditorState extends State<_AddressEditor> {
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Text(
+  Widget _sectionHeader(String title) => _sectionHeaderText(title);
+}
+
+/// A read-only map preview of the saved pin, with the single action that
+/// matters: go back to the picker.
+class _LocationCard extends StatelessWidget {
+  const _LocationCard({
+    required this.pin,
+    required this.covered,
+    required this.onChange,
+  });
+
+  final LatLng pin;
+  final bool covered;
+  final VoidCallback onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        border: Border.all(
+            color: covered ? AppColors.border : AppColors.dangerInk),
+        boxShadow: AppShadows.card,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          SizedBox(
+            height: 150,
+            child: IgnorePointer(
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: pin,
+                  initialZoom: 15,
+                  interactionOptions:
+                      const InteractionOptions(flags: InteractiveFlag.none),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.multiVendors.app',
+                  ),
+                  MarkerLayer(markers: [
+                    Marker(
+                      point: pin,
+                      width: 44,
+                      height: 44,
+                      child: Icon(Icons.location_on_rounded,
+                          size: 36,
+                          color: covered
+                              ? AppColors.primary
+                              : AppColors.dangerInk),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+          if (!covered)
+            Container(
+              width: double.infinity,
+              color: AppColors.dangerFill,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.md, vertical: AppSpace.sm),
+              child: Row(
+                children: [
+                  const Icon(Icons.block_rounded,
+                      size: 16, color: AppColors.dangerInk),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(context.l10n.outsideServiceArea,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.dangerInk)),
+                  ),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpace.sm + 2),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onChange,
+                icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                label: Text(context.l10n.changeLocation),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _sectionHeaderText(String title) => Text(
       title.toUpperCase(),
       style: const TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.2,
         color: AppColors.textMuted,
+      ),
+    );
+
+/// Saved addresses while they load. Same 16/12 padding and 12px bottom margin
+/// as the real cards, and the same 44px icon well.
+class _AddressesSkeleton extends StatelessWidget {
+  const _AddressesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: SkeletonList(
+        itemCount: 4,
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.lg, vertical: AppSpace.md),
+        separator: const SizedBox(height: AppSpace.md),
+        itemBuilder: (_) => DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(AppSpace.lg),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton.circle(size: 44),
+                SizedBox(width: AppSpace.md + 2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Skeleton.line(widthFactor: 0.35, height: 16),
+                      SizedBox(height: AppSpace.sm),
+                      Skeleton.line(widthFactor: 0.85, height: 13),
+                      SizedBox(height: 6),
+                      Skeleton.line(widthFactor: 0.5, height: 13),
+                    ],
+                  ),
+                ),
+                SizedBox(width: AppSpace.sm),
+                Skeleton.circle(size: 32),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

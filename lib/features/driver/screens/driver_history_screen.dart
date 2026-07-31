@@ -5,6 +5,7 @@ import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class DriverHistoryScreen extends StatefulWidget {
@@ -104,7 +105,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loadingWeek && _trips.isEmpty) {
-      return const LoadingView();
+      return const _EarningsSkeleton();
     }
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -145,13 +146,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   _TripTile(order: order, label: _labels[order.vendorId]),
                   const SizedBox(height: 10),
                 ],
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    ),
-                  ),
+                // A page in flight is a footer, not a full-size spinner.
+                PagingFooter(loading: _loading, hasMore: _loading),
               ],
             ],
           ),
@@ -248,7 +244,7 @@ class _WeekHero extends StatelessWidget {
                                     ? FontWeight.w700
                                     : FontWeight.w400,
                                 color: i == todayIndex
-                                    ? const Color(0xFF5FE39B)
+                                    ? AppColors.onDarkSuccess
                                     : Colors.white
                                         .withValues(alpha: 0.5))),
                       ],
@@ -329,6 +325,72 @@ class _TripTile extends StatelessWidget {
                   fontSize: 15,
                   color: AppColors.success)),
         ],
+      ),
+    );
+  }
+}
+
+/// Mirrors the earnings page while the week loads: hero block, section row,
+/// then trip rows, at the same sizes so nothing shifts when data lands.
+class _EarningsSkeleton extends StatelessWidget {
+  const _EarningsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: SafeArea(
+        bottom: false,
+        child: SkeletonTheme(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpace.xl, AppSpace.sm, AppSpace.xl, AppSpace.xxl),
+            children: [
+              const Skeleton(width: 150, height: 30, radius: AppRadii.sm),
+              const SizedBox(height: AppSpace.md),
+              const Skeleton.box(height: 176, radius: AppRadii.xl),
+              const SizedBox(height: 18),
+              Row(
+                children: const [
+                  Expanded(child: Skeleton(width: 120, height: 20)),
+                  Skeleton(width: 70, height: 14),
+                ],
+              ),
+              const SizedBox(height: AppSpace.sm),
+              for (var i = 0; i < 4; i++) ...[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(AppSpace.md),
+                    child: Row(
+                      children: [
+                        Skeleton(width: 38, height: 38, radius: AppRadii.sm),
+                        SizedBox(width: AppSpace.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Skeleton.line(widthFactor: 0.55),
+                              SizedBox(height: 6),
+                              Skeleton.line(widthFactor: 0.35, height: 10),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: AppSpace.md),
+                        Skeleton(width: 56, height: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.sm),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

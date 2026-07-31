@@ -6,6 +6,7 @@ import '../../../core/models/vendor.dart';
 import '../../../core/repositories/favorites_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -70,12 +71,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           style: AppType.heading(18, color: AppColors.ink),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.ink, size: 20),
+          // arrow_back mirrors itself in RTL; the chevron variants do not.
+          icon: const Icon(Icons.arrow_back, color: AppColors.ink, size: 22),
           onPressed: () => context.pop(),
         ),
       ),
       body: vendors == null
-          ? const LoadingView()
+          ? const _FavoritesSkeleton()
           : vendors.isEmpty
               ? Center(
                   child: Column(
@@ -175,9 +177,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                       height: 124,
                                       width: double.infinity,
                                     ),
-                                    Positioned(
+                                    PositionedDirectional(
                                       top: 12,
-                                      left: 12,
+                                      start: 12,
                                       child: vendor.isOpen
                                           ? SoftBadge(
                                               label: context.l10n.openNow,
@@ -186,13 +188,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                             )
                                           : SoftBadge(
                                               label: context.l10n.closed1,
-                                              fill: const Color(0xFFF1ECE6),
+                                              fill: AppColors.neutralFill,
                                               ink: AppColors.textMuted,
                                             ),
                                     ),
-                                    Positioned(
+                                    PositionedDirectional(
                                       top: 12,
-                                      right: 12,
+                                      end: 12,
                                       child: GestureDetector(
                                         onTap: () => _unfavorite(vendor),
                                         child: Container(
@@ -212,7 +214,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                           child: const Icon(
                                             Icons.favorite_rounded,
                                             size: 19,
-                                            color: Colors.redAccent,
+                                            color: AppColors.dangerInk,
                                           ),
                                         ),
                                       ),
@@ -272,6 +274,59 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     );
                   },
                 ),
+    );
+  }
+}
+
+/// Favourites while they load. Same 20px gutters and 16px separation as the
+/// real list, and the same 124px cover, so nothing jumps when data lands.
+class _FavoritesSkeleton extends StatelessWidget {
+  const _FavoritesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: SkeletonList(
+        itemCount: 4,
+        padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl, AppSpace.md, AppSpace.xl, 32),
+        separator: const SizedBox(height: AppSpace.lg),
+        itemBuilder: (_) => DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(color: AppColors.borderSoft),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Skeleton.box(height: 124, radius: AppRadii.xl),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.md + 2, vertical: AppSpace.md),
+                child: Row(
+                  children: const [
+                    Skeleton(width: 46, height: 46, radius: AppRadii.md),
+                    SizedBox(width: AppSpace.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Skeleton.line(widthFactor: 0.55, height: 15),
+                          SizedBox(height: 6),
+                          Skeleton.line(widthFactor: 0.8, height: 11),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: AppSpace.sm),
+                    Skeleton(width: 52, height: 26, shape: SkeletonShape.pill),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

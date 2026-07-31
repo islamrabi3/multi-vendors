@@ -50,9 +50,11 @@ class AdminOffersCubit extends Cubit<AdminOffersState> {
 
   Future<bool> create({
     required String imageUrl,
+    required BannerType type,
     String? title,
     String? subtitle,
     String? code,
+    String? vendorId,
   }) async {
     try {
       final nextSort = state.offers.isEmpty
@@ -61,9 +63,11 @@ class AdminOffersCubit extends Cubit<AdminOffersState> {
               1;
       await _repository.create(
         imageUrl: imageUrl,
+        type: type,
         title: title,
         subtitle: subtitle,
         code: code,
+        vendorId: vendorId,
         sortOrder: nextSort,
       );
       await load();

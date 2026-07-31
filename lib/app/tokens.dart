@@ -32,11 +32,73 @@ class AppColors {
   static const amberInk = Color(0xFFB26A00); // rating chip text
   static const successFill = Color(0xFFE4F6EC); // "open now" bg
   static const successInk = Color(0xFF0E7C3F); // "open now" text
+
+  // Destructive / neutral fills (cancelled chips, danger dialogs, muted tiles)
+  static const dangerFill = Color(0xFFFBE7E4);
+  static const dangerInk = Color(0xFFC0392B);
+  static const neutralFill = Color(0xFFF1ECE6);
+
+  /// Heavier hairline than [border] — stepper rails, carousel dots.
+  static const borderStrong = Color(0xFFE4DDD4);
+
+  /// Border of a card that wants the eye (applied coupon, needs-action row).
+  static const attentionBorder = Color(0xFFFAD9CC);
+
+  // Dark-surface palette (driver header, week hero).
+  /// A tile sitting on top of an [ink] surface.
+  static const inkElevated = Color(0xFF243029);
+  static const onDarkSuccess = Color(0xFF5FE39B);
+  static const onDarkTrack = Color(0xFF3A342E);
+
+  /// Unselected bottom-nav / rail item.
+  static const navInactive = Color(0xFFB5ABA1);
+}
+
+/// The spacing scale. Every gap and pad in the kit is one of these; `gutter` is
+/// the horizontal page margin the phone layouts share.
+class AppSpace {
+  AppSpace._();
+
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 12.0;
+  static const lg = 16.0;
+  static const xl = 20.0;
+  static const xxl = 24.0;
+
+  /// Horizontal page margin (home, orders, driver pool).
+  static const gutter = 22.0;
+}
+
+/// Layout breakpoints shared by the adaptive shell and every desktop-aware
+/// screen, so navigation and content switch on the same numbers.
+///
+/// Screens measure their own box with a `LayoutBuilder` rather than the window:
+/// `AdaptiveShell` caps content at `maxContentWidth`, so the window width and
+/// the width a screen actually gets are not the same thing.
+class AppBreakpoints {
+  AppBreakpoints._();
+
+  /// Bottom navigation below, `NavigationRail` at and above.
+  static const rail = 900.0;
+
+  /// Single phone column below, master–detail / multi-column grids above.
+  static const split = 1100.0;
+
+  /// The rail shows labels next to its icons.
+  static const extended = 1280.0;
+
+  /// Desktop/tablet pointer layout (hover states, selectable ids).
+  static bool isWide(double width) => width >= rail;
+
+  /// There is room for a list and a detail pane side by side.
+  static bool isSplit(double width) => width >= split;
 }
 
 class AppRadii {
   AppRadii._();
 
+  static const xs = 8.0; // skeleton bars, tiny chips
   static const sm = 11.0;
   static const md = 14.0; // inputs, secondary buttons
   static const lg = 16.0; // primary buttons
@@ -54,6 +116,33 @@ class AppShadows {
       color: Color(0x12281406), // rgba(40,20,10,.07)
       blurRadius: 3,
       offset: Offset(0, 1),
+    ),
+  ];
+
+  /// One step above [card] — a card that needs attention, a hovered row.
+  static const raised = [
+    BoxShadow(
+      color: Color(0x14281406),
+      blurRadius: 10,
+      offset: Offset(0, 3),
+    ),
+  ];
+
+  /// Bottom sheets and anything anchored to the bottom edge: the shadow rises.
+  static const overlay = [
+    BoxShadow(
+      color: Color(0x1A281406),
+      blurRadius: 30,
+      offset: Offset(0, -8),
+    ),
+  ];
+
+  /// Modal dialogs, which float free of any edge.
+  static const dialog = [
+    BoxShadow(
+      color: Color(0x24281406),
+      blurRadius: 40,
+      offset: Offset(0, 16),
     ),
   ];
 

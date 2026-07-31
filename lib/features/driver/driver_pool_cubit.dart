@@ -17,6 +17,7 @@ class DriverPoolState extends Equatable {
     this.todayTrips = 0,
     this.error,
     this.claimedOrderId,
+    this.claimingOrderId,
   });
 
   final bool loading;
@@ -32,6 +33,13 @@ class DriverPoolState extends Equatable {
   /// Set when a claim succeeds so the UI can navigate to the active tab.
   final String? claimedOrderId;
 
+  /// The order whose Claim button is mid-request.
+  ///
+  /// Per-card rather than global: `loading` replaces the whole pool, so using it
+  /// for a claim made the list vanish under the driver's thumb and read as a
+  /// crash. Only the tapped button should change.
+  final String? claimingOrderId;
+
   DriverPoolState copyWith({
     bool? loading,
     bool? isOnline,
@@ -41,7 +49,9 @@ class DriverPoolState extends Equatable {
     int? todayTrips,
     String? error,
     String? claimedOrderId,
+    String? claimingOrderId,
     bool clearTransient = false,
+    bool clearClaiming = false,
   }) =>
       DriverPoolState(
         loading: loading ?? this.loading,
@@ -52,6 +62,8 @@ class DriverPoolState extends Equatable {
         todayTrips: todayTrips ?? this.todayTrips,
         error: clearTransient ? null : error,
         claimedOrderId: clearTransient ? null : claimedOrderId,
+        claimingOrderId:
+            clearClaiming ? null : (claimingOrderId ?? this.claimingOrderId),
       );
 
   @override
@@ -64,6 +76,7 @@ class DriverPoolState extends Equatable {
         todayTrips,
         error,
         claimedOrderId,
+        claimingOrderId,
       ];
 }
 
@@ -197,18 +210,26 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
     }
   }
 
+  /// Races other drivers for [order]. Only this card's button shows progress,
+  /// so losing the race leaves the rest of the pool tappable.
   Future<void> claim(AppOrder order) async {
+    // Two taps on the same card would fire two claims.
+    if (state.claimingOrderId != null) return;
+    emit(state.copyWith(claimingOrderId: order.id, clearTransient: true));
     try {
       final won = await _orders.claimDelivery(order.id);
       if (won) {
-        emit(state.copyWith(claimedOrderId: order.id));
+        emit(state.copyWith(
+            claimedOrderId: order.id, clearClaiming: true));
       } else {
         emit(state.copyWith(
             error: 'Another driver took this order.',
-            orders: state.orders.where((o) => o.id != order.id).toList()));
+            orders: state.orders.where((o) => o.id != order.id).toList(),
+            clearClaiming: true));
       }
     } catch (error) {
-      emit(state.copyWith(error: error.toString()));
+      emit(state.copyWith(
+          error: error.toString(), clearClaiming: true));
     }
   }
 

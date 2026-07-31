@@ -1,5 +1,7 @@
 import '../models/order.dart';
 import '../supabase_client.dart';
+import 'loyalty_repository.dart';
+import 'wallet_repository.dart';
 
 class OrderRepository {
   static const _vendorJoin = '*, vendors(name, logo_url)';
@@ -17,7 +19,20 @@ class OrderRepository {
           (couponCode?.trim().isEmpty ?? true) ? null : couponCode!.trim(),
       'p_notes': notes,
     });
-    return result as String;
+    final orderId = result as String;
+
+    if (paymentMethod == 'wallet') {
+      // Debited through the RPC so the balance check and the ledger entry are
+      // one transaction — wallets are not client-writable.
+      try {
+        await WalletRepository().payOrder(orderId);
+      } catch (error) {
+        await discardUnpaidOrder(orderId);
+        rethrow;
+      }
+    }
+
+    return orderId;
   }
 
   Future<double> validateCoupon({
@@ -81,13 +96,34 @@ class OrderRepository {
         .map((rows) => rows.map(AppOrder.fromMap).toList());
   }
 
+  /// Deletes an unpaid card order after a failed or abandoned payment, so it
+  /// never reaches the restaurant. No-op once the order has been paid.
+  Future<bool> discardUnpaidOrder(String orderId) async {
+    try {
+      final result = await supabase.rpc(
+        'discard_unpaid_order',
+        params: {'p_order_id': orderId},
+      );
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Realtime stream of all orders for a vendor (dashboard).
   Stream<List<AppOrder>> vendorOrdersStream(String vendorId) => supabase
       .from('orders')
       .stream(primaryKey: ['id'])
       .eq('vendor_id', vendorId)
       .order('created_at')
-      .map((rows) => rows.map(AppOrder.fromMap).toList());
+      .map((rows) => rows
+          .map(AppOrder.fromMap)
+          .where((o) =>
+              o.paymentMethod == 'cod' ||
+              o.paymentMethod == 'wallet' ||
+              o.isPaid ||
+              o.paymentStatus == 'paid')
+          .toList());
 
   /// Realtime stream of unclaimed ready_for_pickup orders (driver pool).
   Stream<List<AppOrder>> driverPoolStream() => supabase
@@ -159,12 +195,33 @@ class OrderRepository {
     String orderId,
     OrderStatus newStatus, {
     String? reason,
-  }) =>
-      supabase.rpc('update_order_status', params: {
-        'p_order_id': orderId,
-        'p_new_status': newStatus.wireName,
-        'p_reason': reason,
-      });
+    String? proofUrl,
+  }) async {
+    await supabase.rpc('update_order_status', params: {
+      'p_order_id': orderId,
+      'p_new_status': newStatus.wireName,
+      'p_reason': reason,
+    });
+
+    if (proofUrl != null && proofUrl.isNotEmpty) {
+      try {
+        await supabase.from('orders').update({
+          'proof_image_url': proofUrl,
+          'delivery_proof_url': proofUrl,
+        }).eq('id', orderId);
+      } catch (_) {}
+    }
+
+    // The customer's "order update" push comes from the notify_order_event
+    // database trigger, so it fires for every status change no matter which
+    // app made it.
+    if (newStatus == OrderStatus.delivered) {
+      try {
+        await LoyaltyRepository()
+            .earnPoints(10, 'Order #${orderId.substring(0, 8)} reward');
+      } catch (_) {}
+    }
+  }
 
   /// Vendor name/logo for orders coming from realtime streams (which can't
   /// embed joins).
@@ -227,7 +284,6 @@ class OrderRepository {
         .from('orders')
         .stream(primaryKey: ['id'])
         .eq('customer_id', userId)
-        .order('created_at')
         .map((rows) => rows
             .map(AppOrder.fromMap)
             .where((o) => !o.status.isTerminal)
@@ -250,7 +306,82 @@ class OrderRepository {
         .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
         .toList();
   }
+
+  Future<void> addDriverTip(String orderId, String driverId, double amount) async {
+    await supabase.from('driver_tips').insert({
+      'order_id': orderId,
+      'driver_id': driverId,
+      'amount': amount,
+    });
+    await supabase.from('orders').update({
+      'driver_tip': amount,
+    }).eq('id', orderId);
+  }
+
+  Future<void> updateDeliveryProof(String orderId, {String? proofUrl, String? otp}) async {
+    final Map<String, dynamic> updates = {};
+    if (proofUrl != null) updates['delivery_proof_url'] = proofUrl;
+    if (otp != null) updates['delivery_otp'] = otp;
+
+    if (updates.isNotEmpty) {
+      await supabase.from('orders').update(updates).eq('id', orderId);
+    }
+  }
+
+  /// Re-order all items from a previous past order into the active cart
+  Future<void> reorderPastOrder(AppOrder order) async {
+    final userId = supabase.auth.currentUser!.id;
+    // Clear current cart or create cart for this vendor
+    await supabase.from('carts').upsert({
+      'user_id': userId,
+      'vendor_id': order.vendorId,
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+
+    // Fetch items and insert into cart
+    final cartRes = await supabase
+        .from('carts')
+        .select('id')
+        
+        .eq('user_id', userId)
+        .single();
+    final cartId = cartRes['id'] as String;
+
+    await supabase.from('cart_items').delete().eq('cart_id', cartId);
+
+    for (final item in order.items) {
+      // Find product matching name or product_id
+      final products = await supabase
+          .from('products')
+          .select('id')
+          .eq('vendor_id', order.vendorId)
+          .eq('name', item.productName)
+          .limit(1);
+
+      if ((products as List).isNotEmpty) {
+        final productId = products.first['id'] as String;
+        await supabase.from('cart_items').insert({
+          'cart_id': cartId,
+          'product_id': productId,
+          'quantity': item.quantity,
+        });
+      }
+    }
+  }
+
+  Future<String?> uploadDeliveryProofImage(
+      String orderId, List<int> bytes, String fileName) async {
+    try {
+      final path =
+          'proofs/$orderId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      await supabase.storage.from('vendor-assets').uploadBinary(path, bytes as dynamic);
+      return supabase.storage.from('vendor-assets').getPublicUrl(path);
+    } catch (_) {
+      return null;
+    }
+  }
 }
+
 
 /// Assigned driver's contact details for a customer to reach the rider.
 class DriverContact {

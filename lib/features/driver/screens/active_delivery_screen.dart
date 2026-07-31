@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,8 +10,11 @@ import '../../../core/models/order.dart';
 import '../../../core/repositories/driver_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/supabase_client.dart';
+import '../../../core/utils/dialer.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../../customer/orders/order_chat_sheet.dart';
 import '../active_delivery_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -209,7 +213,7 @@ class _ActiveDeliveryView extends StatelessWidget {
                           child: Text(
                             distanceLabel,
                             style: const TextStyle(
-                              color: Color(0xFF5FE39B),
+                              color: AppColors.onDarkSuccess,
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
                             ),
@@ -233,11 +237,109 @@ class _ActiveDeliveryView extends StatelessWidget {
                 destination: destination,
                 myLocation: state.myLocation,
                 busy: state.busy,
-                onDelivered: () =>
-                    context.read<ActiveDeliveryCubit>().markDelivered(),
+                onDelivered: () => _showDeliveryProofDialog(context),
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showDeliveryProofDialog(BuildContext context) {
+    final cubit = context.read<ActiveDeliveryCubit>();
+    final order = cubit.state.order;
+    if (order == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+      ),
+      builder: (sheetCtx) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: const BoxDecoration(
+                  color: AppColors.successFill,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.camera_alt_rounded,
+                    color: AppColors.success, size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                context.l10n.deliveryProofPhotoOptional,
+                style: AppType.heading(18, color: AppColors.ink),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'You can optionally attach a photo as proof of delivery or skip directly.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              // Option 1: Take Photo (Optional)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(sheetCtx);
+                    final picker = ImagePicker();
+                    final file = await picker.pickImage(
+                        source: ImageSource.camera, maxWidth: 1024);
+                    if (file != null) {
+                      final bytes = await file.readAsBytes();
+                      final url = await OrderRepository()
+                          .uploadDeliveryProofImage(order.id, bytes, file.name);
+                      cubit.markDelivered(proofUrl: url);
+                    } else {
+                      cubit.markDelivered();
+                    }
+                  },
+                  icon: const Icon(Icons.photo_camera_rounded,
+                      color: AppColors.primary),
+                  label: Text(
+                    context.l10n.addPhotoProof,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Option 2: Skip & Mark Delivered
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetCtx);
+                    cubit.markDelivered();
+                  },
+                  icon: const Icon(Icons.done_all_rounded, size: 20),
+                  label: Text(
+                    context.l10n.skipAndDeliver,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -341,11 +443,8 @@ class _Sheet extends StatelessWidget {
   final bool busy;
   final VoidCallback onDelivered;
 
-  Future<void> _call() async {
-    final phone = order.customerPhone;
-    if (phone == null) return;
-    await launchUrl(Uri(scheme: 'tel', path: phone));
-  }
+  Future<void> _call(BuildContext context) =>
+      callPhone(context, order.customerPhone);
 
   @override
   Widget build(BuildContext context) {
@@ -509,21 +608,60 @@ class _Sheet extends StatelessWidget {
               children: [
                 if (order.customerPhone != null) ...[
                   Container(
-                    width: 56,
-                    height: 56,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(AppRadii.lg),
                       border: Border.all(color: AppColors.border),
                     ),
                     child: IconButton(
-                      onPressed: _call,
-                      icon: const Icon(Icons.phone_in_talk_rounded, color: AppColors.primary, size: 24),
-                      tooltip: 'Call customer',
+                      onPressed: () => _call(context),
+                      icon: const Icon(Icons.phone_in_talk_rounded, color: AppColors.primary, size: 20),
+                      tooltip: context.l10n.callCustomer,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                 ],
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: IconButton(
+                    onPressed: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => OrderChatSheet(orderId: order.id),
+                    ),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.orange, size: 20),
+                    tooltip: context.l10n.liveChat,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: IconButton(
+                    onPressed: () async {
+                      if (destination != null) {
+                        final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=${destination!.latitude},${destination!.longitude}');
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.navigation_rounded, color: Colors.blue, size: 20),
+                    tooltip: 'Open in Maps',
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Container(
                     height: 56,
@@ -550,14 +688,7 @@ class _Sheet extends StatelessWidget {
                           ? const SizedBox.shrink()
                           : const Icon(Icons.done_all_rounded, size: 20),
                       label: busy
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
+                          ? const ButtonSpinner()
                           : Text(context.l10n.markDelivered),
                     ),
                   ),

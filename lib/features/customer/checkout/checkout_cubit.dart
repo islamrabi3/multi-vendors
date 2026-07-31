@@ -6,6 +6,8 @@ import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/payment_repository.dart';
 
+import '../../../core/repositories/wallet_repository.dart';
+
 enum CheckoutStep { editing, placing, placed }
 
 class CheckoutState extends Equatable {
@@ -21,19 +23,21 @@ class CheckoutState extends Equatable {
     this.error,
     this.placedOrderId,
     this.paymobCheckoutUrl,
+    this.walletBalance = 0.0,
   });
 
   final bool loading;
   final CheckoutStep step;
   final List<Address> addresses;
   final String? selectedAddressId;
-  final String paymentMethod; // 'cod' | 'paymob'
+  final String paymentMethod; // 'cod' | 'paymob' | 'wallet'
   final String couponCode;
   final double? couponDiscount;
   final String? couponError;
   final String? error;
   final String? placedOrderId;
   final String? paymobCheckoutUrl;
+  final double walletBalance;
 
   Address? get selectedAddress => addresses
       .where((address) => address.id == selectedAddressId)
@@ -51,8 +55,10 @@ class CheckoutState extends Equatable {
     String? error,
     String? placedOrderId,
     String? paymobCheckoutUrl,
+    double? walletBalance,
     bool clearCoupon = false,
     bool clearError = false,
+    bool clearPlacedOrder = false,
   }) =>
       CheckoutState(
         loading: loading ?? this.loading,
@@ -65,35 +71,45 @@ class CheckoutState extends Equatable {
             clearCoupon ? null : (couponDiscount ?? this.couponDiscount),
         couponError: clearCoupon ? null : couponError,
         error: clearError ? null : error,
-        placedOrderId: placedOrderId ?? this.placedOrderId,
-        paymobCheckoutUrl: paymobCheckoutUrl ?? this.paymobCheckoutUrl,
+        placedOrderId:
+            clearPlacedOrder ? null : (placedOrderId ?? this.placedOrderId),
+        paymobCheckoutUrl: clearPlacedOrder
+            ? null
+            : (paymobCheckoutUrl ?? this.paymobCheckoutUrl),
+        walletBalance: walletBalance ?? this.walletBalance,
       );
 
   @override
   List<Object?> get props => [
         loading, step, addresses, selectedAddressId, paymentMethod,
         couponCode, couponDiscount, couponError, error, placedOrderId,
-        paymobCheckoutUrl,
+        paymobCheckoutUrl, walletBalance,
       ];
 }
 
 class CheckoutCubit extends Cubit<CheckoutState> {
-  CheckoutCubit(this._addresses, this._orders, this._payments)
-      : super(const CheckoutState()) {
+  // The Paymob session is created by the view once the order row exists, so
+  // the cubit takes the repository only to keep the call sites unchanged.
+  CheckoutCubit(this._addresses, this._orders, PaymentRepository payments,
+      [WalletRepository? wallet])
+      : _wallet = wallet ?? WalletRepository(),
+        super(const CheckoutState()) {
     loadAddresses();
   }
 
   final AddressRepository _addresses;
   final OrderRepository _orders;
-  final PaymentRepository _payments;
+  final WalletRepository _wallet;
 
   Future<void> loadAddresses() async {
     emit(state.copyWith(loading: true, clearError: true));
     try {
       final addresses = await _addresses.fetchAddresses();
+      final walletBalance = await _wallet.getBalance();
       emit(state.copyWith(
         loading: false,
         addresses: addresses,
+        walletBalance: walletBalance,
         selectedAddressId: state.selectedAddressId ??
             (addresses.isEmpty ? null : addresses.first.id),
       ));
@@ -141,22 +157,23 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         notes: notes,
       );
 
-      String? checkoutUrl;
-      if (state.paymentMethod == 'paymob') {
-        // The order already exists; if the gateway call fails the user can
-        // retry payment from the order details screen.
-        try {
-          checkoutUrl = await _payments.createPaymobCheckout(orderId);
-        } catch (_) {}
-      }
+      // For 'paymob' the order is created unpaid and stays hidden from the
+      // restaurant until the webhook confirms payment. The view drives the
+      // gateway from here.
       emit(state.copyWith(
         step: CheckoutStep.placed,
         placedOrderId: orderId,
-        paymobCheckoutUrl: checkoutUrl,
       ));
     } catch (error) {
       emit(state.copyWith(
           step: CheckoutStep.editing, error: error.toString()));
     }
   }
+
+  /// The card payment did not go through and the draft order was discarded —
+  /// put the form back so the customer can retry or switch payment method.
+  void resetAfterFailedPayment() => emit(state.copyWith(
+        step: CheckoutStep.editing,
+        clearPlacedOrder: true,
+      ));
 }

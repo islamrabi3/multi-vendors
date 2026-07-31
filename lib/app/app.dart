@@ -8,6 +8,7 @@ import 'locale_cubit.dart';
 import '../core/repositories/auth_repository.dart';
 import '../core/repositories/cart_repository.dart';
 import '../core/repositories/catalog_repository.dart';
+import '../core/services/notification_service.dart';
 import '../features/auth/auth_cubit.dart';
 import '../features/customer/cart/cart_cubit.dart';
 import 'router.dart';
@@ -35,6 +36,15 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
     _cartCubit = CartCubit(repository: CartRepository(catalog: _catalog));
     _localeCubit = LocaleCubit();
     _router = buildRouter(_authCubit);
+
+    // A tapped notification names a destination; the router is the only thing
+    // that can open it. A tap from a cold start arrives before this point, so
+    // the parked route is drained once the first frame is up.
+    NotificationService.instance.onOpenRoute = _router.push;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pending = NotificationService.instance.consumePendingRoute();
+      if (pending != null) _router.push(pending);
+    });
   }
 
   @override

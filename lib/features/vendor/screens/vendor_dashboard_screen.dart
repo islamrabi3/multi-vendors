@@ -12,9 +12,12 @@ import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import '../../auth/auth_cubit.dart';
 import '../vendor_orders_cubit.dart';
+import 'vendor_analytics_screen.dart';
+import 'vendor_order_details_screen.dart';
+import 'vendor_schedule_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
-enum _OrderFilter { incoming, preparing, ready }
+enum _OrderFilter { incoming, preparing, ready, past }
 
 class VendorDashboardScreen extends StatelessWidget {
   const VendorDashboardScreen({super.key});
@@ -43,6 +46,10 @@ class _DashboardViewState extends State<_DashboardView> {
   _OrderFilter _filter = _OrderFilter.incoming;
   bool _togglingOpen = false;
 
+  /// Order shown in the detail pane. Split widths only; below that a tap still
+  /// pushes the detail route.
+  String? _selectedId;
+
   Future<void> _toggleOpen(bool open) async {
     final auth = context.read<AuthCubit>();
     final vendor = auth.state.vendor;
@@ -68,58 +75,141 @@ class _DashboardViewState extends State<_DashboardView> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: BlocConsumer<VendorOrdersCubit, VendorOrdersState>(
-        listenWhen: (p, c) => c.newOrderArrived || c.error != null,
-        listener: (context, state) {
-          if (state.newOrderArrived) {
-            showSnack(context, context.l10n.newOrderReceived);
-          } else if (state.error != null) {
-            showSnack(context, readableError(state.error!), error: true);
-          }
-        },
-        builder: (context, state) {
-          return Column(
-            children: [
-              _Header(
-                vendor: vendor,
-                togglingOpen: _togglingOpen,
-                onToggleOpen: _toggleOpen,
-              ),
-              if (state.loading)
-                const Expanded(child: LoadingView())
-              else ...[
-                _KpiStrip(
-                  revenue: state.todayRevenue,
-                  orders: state.todayOrderCount,
-                  avgPrep: vendor.avgPrepMinutes,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final split = AppBreakpoints.isSplit(constraints.maxWidth);
+          return BlocConsumer<VendorOrdersCubit, VendorOrdersState>(
+            listenWhen: (p, c) => c.newOrderArrived || c.error != null,
+            listener: (context, state) {
+              if (state.newOrderArrived) {
+                showSnack(context, context.l10n.newOrderReceived);
+              } else if (state.error != null) {
+                showSnack(context, readableError(state.error!), error: true);
+              }
+            },
+            builder: (context, state) {
+              final cubit = context.read<VendorOrdersCubit>();
+              final tabs = _FilterTabs(
+                filter: _filter,
+                incoming: state.pending.length,
+                preparing: state.preparing.length,
+                ready: state.ready.length,
+                onChanged: _selectFilter,
+              );
+              final list = RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: cubit.refresh,
+                child: _OrderList(
+                  orders: _visibleOrders(state),
+                  // Only the history tab pages; the live tabs are streamed.
+                  paged: _filter == _OrderFilter.past,
+                  loadingMore: state.loadingHistory,
+                  hasMore: state.hasMoreHistory,
+                  onLoadMore: cubit.loadMoreHistory,
+                  selectedId: split ? _selectedId : null,
+                  onSelect:
+                      split ? (o) => setState(() => _selectedId = o.id) : null,
                 ),
-                _FilterTabs(
-                  filter: _filter,
-                  incoming: state.pending.length,
-                  preparing: state.preparing.length,
-                  ready: state.ready.length,
-                  onChanged: (f) => setState(() => _filter = f),
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    color: AppColors.primary,
-                    onRefresh: context.read<VendorOrdersCubit>().refresh,
-                    child: _OrderList(orders: _visibleOrders(state)),
+              );
+              return Column(
+                children: [
+                  _Header(
+                    vendor: vendor,
+                    togglingOpen: _togglingOpen,
+                    onToggleOpen: _toggleOpen,
                   ),
-                ),
-              ],
-            ],
+                  if (state.loading)
+                    const Expanded(child: LoadingView())
+                  else ...[
+                    _KpiStrip(
+                      revenue: state.todayRevenue,
+                      orders: state.todayOrderCount,
+                      avgPrep: vendor.avgPrepMinutes,
+                    ),
+                    if (!split) ...[
+                      tabs,
+                      Expanded(child: list),
+                    ] else
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 16, bottom: 16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: Column(
+                                  children: [tabs, Expanded(child: list)],
+                                ),
+                              ),
+                              Expanded(
+                                flex: 5,
+                                child: _DetailPane(orderId: _selectedId),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ],
+              );
+            },
           );
         },
       ),
     );
   }
 
+  void _selectFilter(_OrderFilter filter) {
+    setState(() => _filter = filter);
+    if (filter == _OrderFilter.past) {
+      // First visit to the history tab: pull its first page.
+      final state = context.read<VendorOrdersCubit>().state;
+      if (state.history.isEmpty) {
+        context.read<VendorOrdersCubit>().loadMoreHistory();
+      }
+    }
+  }
+
   List<AppOrder> _visibleOrders(VendorOrdersState state) => switch (_filter) {
         _OrderFilter.incoming => state.pending,
         _OrderFilter.preparing => state.preparing,
         _OrderFilter.ready => state.ready,
+        _OrderFilter.past => state.history,
       };
+}
+
+/// Right-hand pane of the wide layout: the selected order, or a hint to pick
+/// one.
+class _DetailPane extends StatelessWidget {
+  const _DetailPane({required this.orderId});
+
+  final String? orderId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: orderId == null
+          ? Center(
+              child: EmptyView(
+                message: context.l10n.orderDetails,
+                icon: Icons.receipt_long_outlined,
+              ),
+            )
+          : VendorOrderDetailsView(
+              // Rebuild the view's state when the selection changes.
+              key: ValueKey(orderId),
+              orderId: orderId!,
+              embedded: true,
+            ),
+    );
+  }
 }
 
 class _Header extends StatelessWidget {
@@ -179,6 +269,37 @@ class _Header extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(
+              vendor.isBusy ? Icons.hourglass_top : Icons.hourglass_empty,
+              color: vendor.isBusy ? Colors.amber : Colors.white,
+            ),
+            tooltip: 'Busy Mode (+15m)',
+            onPressed: () async {
+              final admin = VendorAdminRepository();
+              final updated = await admin.toggleBusyMode(vendor.id, !vendor.isBusy);
+              if (context.mounted) {
+                context.read<AuthCubit>().vendorUpdated(updated);
+                showSnack(context, updated.isBusy ? 'Busy mode ON (+15 mins)' : 'Busy mode OFF');
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.analytics_outlined, color: Colors.white),
+            tooltip: 'Analytics',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => VendorAnalyticsScreen(vendorId: vendor.id)),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.schedule, color: Colors.white),
+            tooltip: 'Operating Schedule',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => VendorScheduleScreen(vendorId: vendor.id)),
+            ),
+          ),
           _OpenToggle(
               isOpen: vendor.isOpen,
               busy: togglingOpen,
@@ -188,6 +309,7 @@ class _Header extends StatelessWidget {
     );
   }
 }
+
 
 class _OpenToggle extends StatelessWidget {
   const _OpenToggle({
@@ -378,57 +500,68 @@ class _FilterTabs extends StatelessWidget {
           _tab(context.l10n.preparing, preparing, _OrderFilter.preparing, context),
           const SizedBox(width: 10),
           _tab(context.l10n.ready, ready, _OrderFilter.ready, context),
+          const SizedBox(width: 10),
+          // History is paged, so it carries no count badge.
+          _tab(context.l10n.past, null, _OrderFilter.past, context),
         ],
       ),
     );
   }
 
-  Widget _tab(String label, int count, _OrderFilter value, BuildContext context) {
+  Widget _tab(
+      String label, int? count, _OrderFilter value, BuildContext context) {
     final selected = filter == value;
-    return GestureDetector(
-      onTap: () => onChanged(value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.ink : AppColors.surface,
-          border: Border.all(
-            color: selected ? AppColors.ink : AppColors.border,
-            width: 1.2,
-          ),
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-          boxShadow: selected ? AppShadows.card : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : AppColors.textSecondary,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                fontSize: 13,
-              ),
+    return HoverBuilder(
+      builder: (context, hovered) => GestureDetector(
+        onTap: () => onChanged(value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.ink : AppColors.surface,
+            border: Border.all(
+              color: selected
+                  ? AppColors.ink
+                  : hovered
+                      ? AppColors.primary
+                      : AppColors.border,
+              width: 1.2,
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.primary
-                    : AppColors.warmFill,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            boxShadow: selected || hovered ? AppShadows.card : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
                 style: TextStyle(
-                  color: selected ? Colors.white : AppColors.primary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
+                  color: selected ? Colors.white : AppColors.textSecondary,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
-            ),
-          ],
+              if (count != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.primary : AppColors.warmFill,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: selected ? Colors.white : AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -436,9 +569,25 @@ class _FilterTabs extends StatelessWidget {
 }
 
 class _OrderList extends StatelessWidget {
-  const _OrderList({required this.orders});
+  const _OrderList({
+    required this.orders,
+    required this.paged,
+    required this.loadingMore,
+    required this.hasMore,
+    required this.onLoadMore,
+    this.selectedId,
+    this.onSelect,
+  });
 
   final List<AppOrder> orders;
+
+  /// True on the history tab, which loads a page at a time.
+  final bool paged;
+  final bool loadingMore;
+  final bool hasMore;
+  final VoidCallback onLoadMore;
+  final String? selectedId;
+  final ValueChanged<AppOrder>? onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -447,26 +596,49 @@ class _OrderList extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: 120),
-          EmptyView(
-              message: context.l10n.nothingHereRightNow,
-              icon: Icons.receipt_long_outlined),
+          if (paged && loadingMore)
+            const LoadingView()
+          else
+            EmptyView(
+                message: context.l10n.nothingHereRightNow,
+                icon: Icons.receipt_long_outlined),
         ],
       );
     }
-    return ListView.separated(
+    final list = ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      itemCount: orders.length,
+      itemCount: orders.length + (paged ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, i) => _OrderCard(order: orders[i]),
+      itemBuilder: (context, i) {
+        if (i == orders.length) {
+          return PagingFooter(loading: loadingMore, hasMore: hasMore);
+        }
+        return _OrderCard(
+          order: orders[i],
+          selected: orders[i].id == selectedId,
+          onSelect: onSelect,
+        );
+      },
     );
+    if (!paged) return list;
+    return InfiniteScroll(onLoadMore: onLoadMore, child: list);
   }
 }
 
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order});
+  const _OrderCard({
+    required this.order,
+    this.selected = false,
+    this.onSelect,
+  });
 
   final AppOrder order;
+  final bool selected;
+
+  /// Set on split widths: pick the row into the detail pane instead of
+  /// navigating away.
+  final ValueChanged<AppOrder>? onSelect;
 
   String _payLabel(BuildContext context) => order.isCod
       ? context.l10n.cod
@@ -475,15 +647,25 @@ class _OrderCard extends StatelessWidget {
           : context.l10n.cardUnpaid;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => HoverBuilder(
+        builder: (context, hovered) => _card(context, hovered),
+      );
+
+  Widget _card(BuildContext context, bool hovered) {
     final cubit = context.read<VendorOrdersCubit>();
     final isNew = order.status == OrderStatus.pending;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(
-          color: isNew ? AppColors.primary.withValues(alpha: 0.3) : AppColors.border,
-          width: isNew ? 1.6 : 1.0,
+          color: selected
+              ? AppColors.primary
+              : hovered
+                  ? AppColors.primaryLight
+                  : isNew
+                      ? AppColors.primary.withValues(alpha: 0.3)
+                      : AppColors.border,
+          width: isNew || selected ? 1.6 : 1.0,
         ),
         borderRadius: BorderRadius.circular(AppRadii.xl),
         boxShadow: AppShadows.card,
@@ -493,7 +675,9 @@ class _OrderCard extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => context.push('/vendor-app/orders/${order.id}'),
+            onTap: () => onSelect != null
+                ? onSelect!(order)
+                : context.push('/vendor-app/orders/${order.id}'),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -506,9 +690,12 @@ class _OrderCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            SelectableId(
                               order.orderNumber,
-                              style: AppType.mono(14.5, color: AppColors.ink, weight: FontWeight.w700),
+                              style: AppType.mono(14.5,
+                                  color: AppColors.ink,
+                                  weight: FontWeight.w700),
+                              selectable: onSelect != null,
                             ),
                             const SizedBox(height: 4),
                             Text(

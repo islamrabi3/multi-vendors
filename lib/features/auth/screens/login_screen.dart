@@ -249,7 +249,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 26),
 
                     // Social Logins
-                    /*
                     BlocBuilder<AuthCubit, AppAuthState>(
                       builder: (context, state) {
                         return Row(
@@ -276,10 +275,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: state.busy
                                     ? null
                                     : () => context.read<AuthCubit>().signInWithGoogle(),
-                                icon: Image.network(
-                                  'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png',
-                                  height: 18,
-                                ),
+                                icon: Text('G',
+                                    style: AppType.display(18,
+                                        color: AppColors.primaryDark)),
                                 label: Text(context.l10n.google),
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -294,7 +292,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       },
                     ),
-                    */
 
                     const SizedBox(height: 40),
 

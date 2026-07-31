@@ -56,8 +56,9 @@ class MenuCubit extends Cubit<MenuState> {
     }
   }
 
-  Future<void> saveCategory(String name, {String? id}) async {
-    await _admin.saveCategory(vendorId: vendorId, name: name, id: id);
+  Future<void> saveCategory(String name, {String? nameAr, String? id}) async {
+    await _admin.saveCategory(
+        vendorId: vendorId, name: name, nameAr: nameAr, id: id);
     await load();
   }
 

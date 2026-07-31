@@ -8,6 +8,8 @@ import '../../../core/models/order.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/ui_kit.dart';
 import 'orders_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -62,9 +64,8 @@ class _OrdersViewState extends State<_OrdersView> {
         bottom: false,
         child: BlocBuilder<OrdersCubit, OrdersState>(
           builder: (context, state) {
-            final activeLoading = state.loadingActive && state.activeOrders.isEmpty;
-            if (activeLoading) return const LoadingView();
-
+            final activeLoading =
+                state.loadingActive && state.activeOrders.isEmpty;
             final orders = _active ? state.activeOrders : state.pastOrders;
 
             return Column(
@@ -78,12 +79,12 @@ class _OrdersViewState extends State<_OrdersView> {
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
                   child: Row(
                     children: [
-                      _Tab(
+                      AppFilterChip(
                           label: context.l10n.active2,
                           selected: _active,
                           onTap: () => setState(() => _active = true)),
-                      const SizedBox(width: 8),
-                      _Tab(
+                      const SizedBox(width: AppSpace.sm),
+                      AppFilterChip(
                           label: context.l10n.past,
                           selected: !_active,
                           onTap: () {
@@ -96,7 +97,9 @@ class _OrdersViewState extends State<_OrdersView> {
                   ),
                 ),
                 Expanded(
-                  child: RefreshIndicator(
+                  child: activeLoading
+                      ? const _OrdersSkeleton()
+                      : RefreshIndicator(
                     color: AppColors.primary,
                     onRefresh: () async {
                       if (_active) {
@@ -111,7 +114,9 @@ class _OrdersViewState extends State<_OrdersView> {
                             children: [
                               const SizedBox(height: 120),
                               EmptyView(
-                                  message: _active ? 'No active orders' : 'No past orders',
+                                  message: _active
+                                      ? context.l10n.noActiveOrders
+                                      : context.l10n.noPastOrders,
                                   icon: Icons.receipt_long_outlined),
                             ],
                           )
@@ -123,12 +128,10 @@ class _OrdersViewState extends State<_OrdersView> {
                             separatorBuilder: (context, index) => const SizedBox(height: 12),
                             itemBuilder: (context, i) {
                               if (i == orders.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Center(
-                                    child: CircularProgressIndicator(color: AppColors.primary),
-                                  ),
-                                );
+                                // A page in flight is a footer, not a full-size
+                                // spinner squatting in a 48px row.
+                                return const PagingFooter(
+                                    loading: true, hasMore: true);
                               }
                               final order = orders[i];
                               final label = state.vendorLabels[order.vendorId];
@@ -141,36 +144,6 @@ class _OrdersViewState extends State<_OrdersView> {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _Tab extends StatelessWidget {
-  const _Tab(
-      {required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.ink : AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: selected ? null : Border.all(color: AppColors.border),
-        ),
-        child: Text(label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              color: selected ? Colors.white : AppColors.textMuted,
-            )),
       ),
     );
   }
@@ -227,8 +200,8 @@ class _OrderCard extends StatelessWidget {
                               color: AppColors.warmFill,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Text(context.l10n.emptyString,
-                                style: TextStyle(fontSize: 20)),
+                            child: const Icon(Icons.receipt_long_rounded,
+                                size: 20, color: AppColors.primary),
                           ),
                           const SizedBox(width: 11),
                           Expanded(
@@ -283,7 +256,7 @@ class _OrderCard extends StatelessWidget {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.primary)),
-                                Icon(Icons.arrow_forward,
+                                DirectionalIcon(Icons.arrow_forward,
                                     size: 14, color: AppColors.primary),
                               ],
                             ),
@@ -307,8 +280,12 @@ class _OrderCard extends StatelessWidget {
                                 _MiniButton(
                                     label: context.l10n.reorder,
                                     filled: true,
-                                    onTap: () =>
-                                        context.push('/vendors/${order.vendorId}')),
+                                    onTap: () async {
+                                      await OrderRepository().reorderPastOrder(order);
+                                      if (context.mounted) {
+                                        context.push('/cart');
+                                      }
+                                    }),
                               ],
                             ),
                           ],
@@ -350,6 +327,71 @@ class _MiniButton extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 color: filled ? Colors.white : AppColors.ink)),
+      ),
+    );
+  }
+}
+
+/// The orders list while the active stream delivers its first snapshot. Same
+/// padding and 12px separation as the real `ListView.separated`, so rows land
+/// exactly where their placeholders were.
+class _OrdersSkeleton extends StatelessWidget {
+  const _OrdersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: SkeletonList(
+        itemCount: 4,
+        padding: const EdgeInsets.fromLTRB(
+            AppSpace.gutter, AppSpace.xs, AppSpace.gutter, AppSpace.xxl),
+        separator: const SizedBox(height: AppSpace.md),
+        itemBuilder: (_) => const _OrderCardSkeleton(),
+      ),
+    );
+  }
+}
+
+/// Mirrors `_OrderCard`: 42px avatar tile, two text lines, status chip, and the
+/// progress bar an active order shows.
+class _OrderCardSkeleton extends StatelessWidget {
+  const _OrderCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Row(
+              children: [
+                Skeleton(width: 42, height: 42, radius: AppRadii.md),
+                SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Skeleton.line(widthFactor: 0.5, height: 14),
+                      SizedBox(height: 6),
+                      Skeleton.line(widthFactor: 0.7, height: 11),
+                    ],
+                  ),
+                ),
+                SizedBox(width: AppSpace.sm),
+                Skeleton(width: 76, height: 26, shape: SkeletonShape.pill),
+              ],
+            ),
+            SizedBox(height: 13),
+            Skeleton(height: 6, radius: AppSpace.xs),
+          ],
+        ),
       ),
     );
   }

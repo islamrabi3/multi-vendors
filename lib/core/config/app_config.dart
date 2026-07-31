@@ -16,6 +16,20 @@ abstract final class AppConfig {
   );
 
   static bool get isConfigured => supabaseAnonKey.isNotEmpty;
+
+  /// Google Places / Geocoding, used by the address picker and the admin
+  /// service-area editor so a place can be found by name instead of hunted for
+  /// on the map. Map tiles come from OpenStreetMap and need no key.
+  ///
+  /// Needs "Places API" and "Geocoding API" enabled, and the key restricted to
+  /// this app's bundle id / package name. When empty the search box hides
+  /// itself and picking on the map still works.
+  static const googleMapsApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+    defaultValue: 'AIzaSyBQjMj30LvXkmSO9zcQhc688L6pXxB2zGk',
+  );
+
+  static bool get hasPlacesSearch => googleMapsApiKey.isNotEmpty;
 }
 
 

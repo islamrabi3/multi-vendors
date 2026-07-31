@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/models/order.dart';
 import '../../core/repositories/order_repository.dart';
+import '../../core/repositories/vendor_admin_repository.dart';
+import '../../core/utils/paging.dart';
 
 class VendorOrdersState extends Equatable {
   const VendorOrdersState({
@@ -12,6 +14,9 @@ class VendorOrdersState extends Equatable {
     this.orders = const [],
     this.error,
     this.newOrderArrived = false,
+    this.history = const [],
+    this.loadingHistory = false,
+    this.hasMoreHistory = true,
   });
 
   final bool loading;
@@ -20,6 +25,12 @@ class VendorOrdersState extends Equatable {
 
   /// Pulses true when a new pending order lands, so the UI can alert.
   final bool newOrderArrived;
+
+  /// Finished orders, loaded a page at a time (the live tabs come from the
+  /// realtime stream in [orders]).
+  final List<AppOrder> history;
+  final bool loadingHistory;
+  final bool hasMoreHistory;
 
   List<AppOrder> get pending =>
       orders.where((o) => o.status == OrderStatus.pending).toList();
@@ -74,22 +85,54 @@ class VendorOrdersState extends Equatable {
   bool _isVoided(OrderStatus s) =>
       s == OrderStatus.cancelled || s == OrderStatus.rejected;
 
+  VendorOrdersState copyWith({
+    bool? loading,
+    List<AppOrder>? orders,
+    String? error,
+    bool clearError = false,
+    bool? newOrderArrived,
+    List<AppOrder>? history,
+    bool? loadingHistory,
+    bool? hasMoreHistory,
+  }) =>
+      VendorOrdersState(
+        loading: loading ?? this.loading,
+        orders: orders ?? this.orders,
+        error: clearError ? null : (error ?? this.error),
+        newOrderArrived: newOrderArrived ?? this.newOrderArrived,
+        history: history ?? this.history,
+        loadingHistory: loadingHistory ?? this.loadingHistory,
+        hasMoreHistory: hasMoreHistory ?? this.hasMoreHistory,
+      );
+
   @override
-  List<Object?> get props => [loading, orders, error, newOrderArrived];
+  List<Object?> get props => [
+        loading,
+        orders,
+        error,
+        newOrderArrived,
+        history,
+        loadingHistory,
+        hasMoreHistory,
+      ];
 }
 
-/// Realtime feed of the vendor's orders, partitioned for the dashboard.
+/// Realtime feed of the vendor's orders, partitioned for the dashboard, with
+/// the finished ones paged in behind them.
 class VendorOrdersCubit extends Cubit<VendorOrdersState> {
   VendorOrdersCubit(this._repository, this.vendorId, {bool autoAccept = false})
       : _autoAccept = autoAccept,
         super(const VendorOrdersState()) {
     _subscription =
         _repository.vendorOrdersStream(vendorId).listen(_onOrders,
-            onError: (Object error) => emit(VendorOrdersState(
-                loading: false, error: error.toString())));
+            onError: (Object error) => emit(state.copyWith(
+                loading: false,
+                error: error.toString(),
+                newOrderArrived: false)));
   }
 
   final OrderRepository _repository;
+  final _admin = VendorAdminRepository();
   final String vendorId;
   StreamSubscription<List<AppOrder>>? _subscription;
   Set<String> _knownPendingIds = {};
@@ -108,8 +151,11 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState> {
     final freshPending = pendingIds.difference(_knownPendingIds);
     final hasNew = !state.loading && freshPending.isNotEmpty;
     _knownPendingIds = pendingIds;
-    emit(VendorOrdersState(
-        loading: false, orders: sorted, newOrderArrived: hasNew));
+    emit(state.copyWith(
+        loading: false,
+        orders: sorted,
+        newOrderArrived: hasNew,
+        clearError: true));
 
     if (_autoAccept && freshPending.isNotEmpty) {
       for (final order
@@ -130,10 +176,44 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState> {
           .where((o) => o.status == OrderStatus.pending)
           .map((o) => o.id)
           .toSet();
-      emit(VendorOrdersState(loading: false, orders: sorted));
+      emit(state.copyWith(
+          loading: false,
+          orders: sorted,
+          newOrderArrived: false,
+          clearError: true));
     } catch (error) {
-      emit(VendorOrdersState(
-          loading: false, orders: state.orders, error: error.toString()));
+      emit(state.copyWith(
+          loading: false, error: error.toString(), newOrderArrived: false));
+    }
+  }
+
+  /// Appends the next page of finished orders. Rows already held are skipped:
+  /// an order finishing shifts every offset, so pages can overlap.
+  Future<void> loadMoreHistory() async {
+    if (state.loadingHistory || !state.hasMoreHistory) return;
+    emit(state.copyWith(loadingHistory: true));
+    try {
+      final page = await _admin.fetchVendorOrdersPage(
+        vendorId: vendorId,
+        limit: kPageSize,
+        offset: state.history.length,
+      );
+      if (isClosed) return;
+      final known = state.history.map((o) => o.id).toSet();
+      emit(state.copyWith(
+        loadingHistory: false,
+        hasMoreHistory: page.length == kPageSize,
+        history: [
+          ...state.history,
+          ...page.where((o) => !known.contains(o.id)),
+        ],
+      ));
+    } catch (error) {
+      if (isClosed) return;
+      emit(state.copyWith(
+          loadingHistory: false,
+          error: error.toString(),
+          newOrderArrived: false));
     }
   }
 
@@ -154,8 +234,8 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState> {
     try {
       await _repository.updateStatus(order.id, status, reason: reason);
     } catch (error) {
-      emit(VendorOrdersState(
-          loading: false, orders: state.orders, error: error.toString()));
+      emit(state.copyWith(
+          loading: false, error: error.toString(), newOrderArrived: false));
     }
   }
 

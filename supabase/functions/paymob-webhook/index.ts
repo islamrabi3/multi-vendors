@@ -2,6 +2,10 @@
 // authenticity is established by the HMAC-SHA512 signature Paymob sends as a
 // query parameter, computed over a fixed, lexicographically-ordered field list.
 //
+// This is the only place a card payment is allowed to settle: it hands the
+// transaction to settle_payment_intent(), which credits a wallet or marks an
+// order paid, exactly once per reference.
+//
 // Secrets required: PAYMOB_HMAC_SECRET
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -77,46 +81,64 @@ Deno.serve(async (req) => {
       return new Response("Invalid signature", { status: 401 });
     }
 
-    // special_reference was "<order_uuid>:<timestamp>".
-    const merchantOrderId: string = tx.order?.merchant_order_id ?? "";
-    const orderId = merchantOrderId.split(":")[0];
-    if (!orderId) {
+    // special_reference comes back as merchant_order_id.
+    const reference: string = tx.order?.merchant_order_id ?? "";
+    if (!reference) {
       console.error("No merchant_order_id on transaction", tx.id);
       return new Response("ok", { status: 200 });
     }
 
-    const paid = tx.success === true && tx.pending !== true;
-    const status = paid ? "paid" : "failed";
+    // A pending transaction is not an outcome — wait for the final callback.
+    if (tx.pending === true) {
+      return new Response("ok", { status: 200 });
+    }
 
+    const success = tx.success === true;
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    await admin.from("payments").insert({
-      order_id: orderId,
-      provider: "paymob",
-      amount: Number(tx.amount_cents ?? 0) / 100,
-      status,
-      provider_transaction_id: `${tx.id}`,
-      provider_order_id: `${tx.order?.id ?? ""}`,
-      raw_payload: tx,
-    });
+    const { data: outcome, error: settleError } = await admin.rpc(
+      "settle_payment_intent",
+      {
+        p_reference: reference,
+        p_success: success,
+        p_transaction_id: `${tx.id}`,
+        p_failure_reason: success
+          ? null
+          : `${tx.data?.message ?? tx.error_occured ?? "declined"}`,
+      },
+    );
 
-    // Never downgrade an order that is already paid (e.g. duplicate callback).
-    const { data: order } = await admin
-      .from("orders")
-      .select("payment_status")
-      .eq("id", orderId)
-      .single();
-
-    if (order && order.payment_status !== "paid") {
-      await admin
-        .from("orders")
-        .update({ payment_status: status })
-        .eq("id", orderId);
+    if (settleError) {
+      // 500 makes Paymob retry rather than silently dropping the payment.
+      console.error("settle_payment_intent failed", reference, settleError);
+      return new Response("Settlement error", { status: 500 });
     }
 
+    // Audit trail. Only order payments belong in `payments` (it FKs orders).
+    if (reference.startsWith("order-")) {
+      const { data: intent } = await admin
+        .from("payment_intents")
+        .select("order_id")
+        .eq("reference", reference)
+        .maybeSingle();
+
+      if (intent?.order_id) {
+        await admin.from("payments").insert({
+          order_id: intent.order_id,
+          provider: "paymob",
+          amount: Number(tx.amount_cents ?? 0) / 100,
+          status: success ? "paid" : "failed",
+          provider_transaction_id: `${tx.id}`,
+          provider_order_id: `${tx.order?.id ?? ""}`,
+          raw_payload: tx,
+        });
+      }
+    }
+
+    console.log("settled", reference, outcome);
     return new Response("ok", { status: 200 });
   } catch (error) {
     console.error(error);

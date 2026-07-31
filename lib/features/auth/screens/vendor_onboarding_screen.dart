@@ -77,7 +77,10 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         listener: (context, state) =>
             showSnack(context, readableError(state.error!), error: true),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          // "Open my store" is the last thing in this form, so the scroll view
+          // has to clear Android's gesture bar itself.
+          padding: EdgeInsets.fromLTRB(
+              24, 24, 24, 24 + MediaQuery.paddingOf(context).bottom),
           child: Form(
             key: _formKey,
             child: Column(

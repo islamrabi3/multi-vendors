@@ -2,18 +2,88 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'wallet_screen.dart';
+import 'loyalty_screen.dart';
 import '../../../app/tokens.dart';
+import '../../../core/repositories/auth_repository.dart';
+import '../../../core/widgets/app_dialogs.dart';
+import '../../../core/widgets/common.dart';
+import '../../../core/widgets/ui_kit.dart';
 import '../../auth/auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import 'package:multi_vendor/app/locale_cubit.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _repo = AuthRepository();
+  late Future<({int orders, int favorites, int points})> _stats =
+      _repo.fetchMyStats();
+
+  void _reloadStats() => setState(() => _stats = _repo.fetchMyStats());
+
+  Future<void> _editProfile() async {
+    final profile = context.read<AuthCubit>().state.profile;
+    final nameController = TextEditingController(text: profile?.fullName ?? '');
+    final phoneController = TextEditingController(text: profile?.phone ?? '');
+    final l10n = context.l10n;
+
+    final saved = await AppDialogs.showFormDialog<bool>(
+      context: context,
+      title: l10n.editProfile,
+      icon: Icons.person_outline,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: nameController,
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(labelText: l10n.fullName),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(labelText: l10n.phoneNumber),
+          ),
+        ],
+      ),
+      primaryText: l10n.save,
+      onPrimaryPressed: () {
+        if (nameController.text.trim().isEmpty) {
+          showSnack(context, l10n.nameRequired, error: true);
+          return;
+        }
+        Navigator.of(context).pop(true);
+      },
+      secondaryText: l10n.cancel,
+      onSecondaryPressed: () => Navigator.of(context).pop(false),
+    );
+
+    if (saved != true || !mounted) return;
+    final ok = await context.read<AuthCubit>().updateProfile(
+          fullName: nameController.text,
+          phone: phoneController.text,
+        );
+    if (!mounted) return;
+    showSnack(
+      context,
+      ok ? l10n.profileUpdated : readableError(context.read<AuthCubit>().state.error ?? ''),
+      error: !ok,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final profile = context.select((AuthCubit cubit) => cubit.state.profile);
-    final name = profile?.fullName.isNotEmpty == true ? profile!.fullName : 'Guest';
+    final name = profile?.fullName.isNotEmpty == true
+        ? profile!.fullName
+        : context.l10n.guest;
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return Scaffold(
@@ -54,21 +124,38 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                _SquareIcon(icon: Icons.edit_outlined, onTap: () {}),
+                _SquareIcon(icon: Icons.edit_outlined, onTap: _editProfile),
               ],
             ),
             const SizedBox(height: 18),
             // ===== mini stats =====
-            Row(
-              children: [
-                Expanded(child: _StatBox(value: '38', label: context.l10n.orders)),
-                SizedBox(width: 10),
-                Expanded(child: _StatBox(value: '12', label: context.l10n.favorites)),
-                SizedBox(width: 10),
-                Expanded(
-                    child: _StatBox(
-                        value: '320', label: context.l10n.points, accent: true)),
-              ],
+            // Real counts. These used to be hardcoded ('38', '12', '320'),
+            // which read as a broken account to anyone who checked them.
+            FutureBuilder<({int orders, int favorites, int points})>(
+              future: _stats,
+              builder: (context, snap) {
+                final data = snap.data;
+                String value(int? n) => data == null ? '—' : '$n';
+                return Row(
+                  children: [
+                    Expanded(
+                        child: _StatBox(
+                            value: value(data?.orders),
+                            label: context.l10n.orders)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: _StatBox(
+                            value: value(data?.favorites),
+                            label: context.l10n.favorites)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: _StatBox(
+                            value: value(data?.points),
+                            label: context.l10n.points,
+                            accent: true)),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 18),
             // ===== menu list =====
@@ -82,6 +169,28 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 children: [
                   _MenuRow(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: context.l10n.wallet,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WalletScreen()),
+                      )),
+                  const _MenuDivider(),
+                  _MenuRow(
+                      icon: Icons.stars_outlined,
+                      label: context.l10n.loyaltyRewards,
+                      // Points can be spent in there, so the header counter is
+                      // re-read on the way back.
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const LoyaltyScreen()),
+                        );
+                        _reloadStats();
+                      }),
+                  const _MenuDivider(),
+                  _MenuRow(
                       icon: Icons.location_on_outlined,
                       label: context.l10n.addresses,
                       onTap: () => context.push('/addresses')),
@@ -89,12 +198,10 @@ class ProfileScreen extends StatelessWidget {
                   _MenuRow(
                       icon: Icons.favorite_border,
                       label: context.l10n.favorites,
-                      onTap: () => context.push('/favorites')),
-                  const _MenuDivider(),
-                  _MenuRow(
-                      icon: Icons.credit_card,
-                      label: context.l10n.paymentMethods,
-                      onTap: () {}),
+                      onTap: () async {
+                        await context.push('/favorites');
+                        _reloadStats();
+                      }),
                   const _MenuDivider(),
                   _MenuRow(
                       icon: Icons.settings_outlined,
@@ -102,10 +209,6 @@ class ProfileScreen extends StatelessWidget {
                       onTap: () {
                         showModalBottomSheet(
                           context: context,
-                          backgroundColor: AppColors.canvas,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                          ),
                           builder: (ctx) {
                             return BlocProvider.value(
                               value: context.read<LocaleCubit>(),
@@ -273,8 +376,8 @@ class _MenuRow extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: AppColors.ink)),
             ),
-            const Icon(Icons.chevron_right,
-                size: 20, color: Color(0xFFC9BCB0)),
+            const DirectionalIcon(Icons.chevron_right,
+                size: 20, color: AppColors.navInactive),
           ],
         ),
       ),

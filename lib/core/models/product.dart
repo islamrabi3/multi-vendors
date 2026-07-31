@@ -1,27 +1,41 @@
 import 'package:equatable/equatable.dart';
 
+/// Picks the Arabic text when the UI is Arabic and a translation exists,
+/// otherwise the canonical text. Vendors type items in one language only, so
+/// falling back is the normal case rather than an error.
+String localizedText(String canonical, String? arabic, String languageCode) =>
+    languageCode == 'ar' && (arabic?.trim().isNotEmpty ?? false)
+        ? arabic!.trim()
+        : canonical;
+
 class ProductCategory extends Equatable {
   const ProductCategory({
     required this.id,
     required this.vendorId,
     required this.name,
+    this.nameAr,
     this.sortOrder = 0,
   });
 
   final String id;
   final String vendorId;
   final String name;
+  final String? nameAr;
   final int sortOrder;
+
+  String displayName(String languageCode) =>
+      localizedText(name, nameAr, languageCode);
 
   factory ProductCategory.fromMap(Map<String, dynamic> map) => ProductCategory(
         id: map['id'] as String,
         vendorId: map['vendor_id'] as String,
         name: map['name'] as String,
+        nameAr: map['name_ar'] as String?,
         sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
       );
 
   @override
-  List<Object?> get props => [id, vendorId, name, sortOrder];
+  List<Object?> get props => [id, vendorId, name, nameAr, sortOrder];
 }
 
 class ProductOption extends Equatable {
@@ -94,8 +108,10 @@ class Product extends Equatable {
     required this.name,
     required this.price,
     required this.isAvailable,
+    this.nameAr,
     this.categoryId,
     this.description,
+    this.descriptionAr,
     this.imageUrl,
     this.sortOrder = 0,
     this.optionGroups = const [],
@@ -105,19 +121,35 @@ class Product extends Equatable {
   final String vendorId;
   final String? categoryId;
   final String name;
+  final String? nameAr;
   final String? description;
+  final String? descriptionAr;
   final String? imageUrl;
   final double price;
   final bool isAvailable;
   final int sortOrder;
   final List<ProductOptionGroup> optionGroups;
 
+  String displayName(String languageCode) =>
+      localizedText(name, nameAr, languageCode);
+
+  String? displayDescription(String languageCode) {
+    final canonical = description;
+    if (canonical == null || canonical.trim().isEmpty) {
+      final arabic = descriptionAr?.trim();
+      return (arabic?.isNotEmpty ?? false) ? arabic : null;
+    }
+    return localizedText(canonical, descriptionAr, languageCode);
+  }
+
   factory Product.fromMap(Map<String, dynamic> map) => Product(
         id: map['id'] as String,
         vendorId: map['vendor_id'] as String,
         categoryId: map['category_id'] as String?,
         name: map['name'] as String,
+        nameAr: map['name_ar'] as String?,
         description: map['description'] as String?,
+        descriptionAr: map['description_ar'] as String?,
         imageUrl: map['image_url'] as String?,
         price: ((map['price'] as num?) ?? 0).toDouble(),
         isAvailable: (map['is_available'] as bool?) ?? true,
@@ -129,5 +161,5 @@ class Product extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, vendorId, categoryId, name, price, isAvailable, optionGroups];
+      [id, vendorId, categoryId, name, nameAr, price, isAvailable, optionGroups];
 }

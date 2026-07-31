@@ -96,6 +96,12 @@ class AppOrder extends Equatable {
     this.vendorName,
     this.vendorLogoUrl,
     this.items = const [],
+    this.orderType = 'delivery',
+    this.scheduledAt,
+    this.driverTip = 0.0,
+    this.walletAmountUsed = 0.0,
+    this.deliveryProofUrl,
+    this.deliveryOtp,
   });
 
   final String id;
@@ -119,9 +125,17 @@ class AppOrder extends Equatable {
   final String? vendorName;
   final String? vendorLogoUrl;
   final List<OrderItem> items;
+  final String orderType;
+  final DateTime? scheduledAt;
+  final double driverTip;
+  final double walletAmountUsed;
+  final String? deliveryProofUrl;
+  final String? deliveryOtp;
 
   bool get isPaid => paymentStatus == 'paid';
   bool get isCod => paymentMethod == 'cod';
+  bool get isPickup => orderType == 'pickup';
+  bool get isScheduled => orderType == 'scheduled';
 
   String get addressSummary {
     final a = deliveryAddress;
@@ -163,10 +177,32 @@ class AppOrder extends Equatable {
       items: ((map['order_items'] as List?) ?? [])
           .map((i) => OrderItem.fromMap(i as Map<String, dynamic>))
           .toList(),
+      orderType: (map['order_type'] as String?) ?? 'delivery',
+      scheduledAt: map['scheduled_at'] != null
+          ? DateTime.parse(map['scheduled_at'] as String).toLocal()
+          : null,
+      driverTip: ((map['driver_tip'] as num?) ?? 0).toDouble(),
+      walletAmountUsed: ((map['wallet_amount_used'] as num?) ?? 0).toDouble(),
+      deliveryProofUrl: map['delivery_proof_url'] as String?,
+      deliveryOtp: map['delivery_otp'] as String?,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [id, status, paymentStatus, driverId, total, items, vendorName];
+  List<Object?> get props => [
+        id,
+        status,
+        paymentStatus,
+        driverId,
+        total,
+        items,
+        vendorName,
+        orderType,
+        scheduledAt,
+        driverTip,
+        walletAmountUsed,
+        deliveryProofUrl,
+        deliveryOtp,
+      ];
 }
+

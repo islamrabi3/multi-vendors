@@ -9,6 +9,7 @@ import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/favorites_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../cart/cart_cubit.dart';
 import 'product_sheet.dart';
 import 'vendor_details_cubit.dart';
@@ -29,15 +30,42 @@ class VendorDetailsScreen extends StatelessWidget {
   }
 }
 
-class _VendorDetailsView extends StatelessWidget {
+class _VendorDetailsView extends StatefulWidget {
   const _VendorDetailsView();
+
+  @override
+  State<_VendorDetailsView> createState() => _VendorDetailsViewState();
+}
+
+class _VendorDetailsViewState extends State<_VendorDetailsView> {
+  /// One key per rendered section, so tapping a chip can scroll to it.
+  final _sectionKeys = <String, GlobalKey>{};
+  final _chipsController = ScrollController();
+
+  @override
+  void dispose() {
+    _chipsController.dispose();
+    super.dispose();
+  }
+
+  void _jumpToSection(String id) {
+    final target = _sectionKeys[id]?.currentContext;
+    if (target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+      // Leaves the pinned app bar clear of the heading.
+      alignment: 0.08,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: BlocBuilder<VendorDetailsCubit, VendorDetailsState>(
         builder: (context, state) {
-          if (state.loading) return const LoadingView();
+          if (state.loading) return const _VendorDetailsSkeleton();
           final vendor = state.vendor;
           if (vendor == null) {
             return ErrorView(
@@ -55,7 +83,9 @@ class _VendorDetailsView extends StatelessWidget {
                 automaticallyImplyLeading: false,
                 leadingWidth: 60,
                 leading: _CircleButton(
-                  icon: Icons.chevron_left,
+                  // arrow_back carries matchTextDirection, so it points the
+                  // right way in Arabic without a manual flip.
+                  icon: Icons.arrow_back,
                   onPressed: () => context.pop(),
                 ),
                 flexibleSpace: FlexibleSpaceBar(
@@ -67,7 +97,8 @@ class _VendorDetailsView extends StatelessWidget {
                     icon: state.isFavorite
                         ? Icons.favorite
                         : Icons.favorite_border,
-                    iconColor: state.isFavorite ? Colors.red : AppColors.ink,
+                    iconColor:
+                        state.isFavorite ? AppColors.dangerInk : AppColors.ink,
                     onPressed:
                         context.read<VendorDetailsCubit>().toggleFavorite,
                   ),
@@ -87,36 +118,159 @@ class _VendorDetailsView extends StatelessWidget {
 
   List<Widget> _menuSlivers(
       BuildContext context, VendorDetailsState state, Vendor vendor) {
-    final sections = <(String, List<Product>)>[
+    final language = Localizations.localeOf(context).languageCode;
+    final sections = <_MenuSection>[
       for (final category in state.menuCategories)
-        (category.name, state.productsIn(category.id)),
-      if (state.uncategorized.isNotEmpty) ('Other', state.uncategorized),
+        if (state.productsIn(category.id).isNotEmpty)
+          _MenuSection(
+            id: category.id,
+            title: category.displayName(language),
+            products: state.productsIn(category.id),
+          ),
+      if (state.uncategorized.isNotEmpty)
+        _MenuSection(
+          id: '__uncategorized__',
+          title: context.l10n.other,
+          products: state.uncategorized,
+        ),
     ];
-    return [
-      for (final (title, products) in sections)
-        if (products.isNotEmpty)
-          SliverMainAxisGroup(slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Text(title,
-                    style: Theme.of(context).textTheme.titleLarge),
-              ),
-            ),
-            SliverList.builder(
-              itemCount: products.length,
-              itemBuilder: (context, index) =>
-                  _ProductTile(vendor: vendor, product: products[index]),
-            ),
-          ]),
-      if (sections.every((s) => s.$2.isEmpty))
+
+    if (sections.isEmpty) {
+      return [
         SliverFillRemaining(
           hasScrollBody: false,
           child: EmptyView(
-              message: context.l10n.menuComingSoon, icon: Icons.menu_book_outlined),
+              message: context.l10n.menuComingSoon,
+              icon: Icons.menu_book_outlined),
         ),
+      ];
+    }
+
+    // Keys are rebuilt from the current sections so a menu refresh cannot
+    // leave a chip pointing at a heading that no longer exists.
+    _sectionKeys
+      ..removeWhere((id, _) => !sections.any((s) => s.id == id))
+      ..addEntries(sections
+          .where((s) => !_sectionKeys.containsKey(s.id))
+          .map((s) => MapEntry(s.id, GlobalKey())));
+
+    return [
+      // A pinned rail so a long menu is always one tap from any section.
+      if (sections.length > 1)
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _SectionChipsHeader(
+            height: 56,
+            child: _SectionChips(
+              sections: sections,
+              controller: _chipsController,
+              onTap: _jumpToSection,
+            ),
+          ),
+        ),
+      for (final section in sections)
+        SliverMainAxisGroup(slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              key: _sectionKeys[section.id],
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(section.title,
+                  style: Theme.of(context).textTheme.titleLarge),
+            ),
+          ),
+          SliverList.builder(
+            itemCount: section.products.length,
+            itemBuilder: (context, index) => _ProductTile(
+                vendor: vendor, product: section.products[index]),
+          ),
+        ]),
     ];
   }
+}
+
+/// One rendered menu section: its id doubles as the scroll-target key.
+class _MenuSection {
+  const _MenuSection({
+    required this.id,
+    required this.title,
+    required this.products,
+  });
+
+  final String id;
+  final String title;
+  final List<Product> products;
+}
+
+class _SectionChips extends StatelessWidget {
+  const _SectionChips({
+    required this.sections,
+    required this.controller,
+    required this.onTap,
+  });
+
+  final List<_MenuSection> sections;
+  final ScrollController controller;
+  final ValueChanged<String> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.canvas,
+      alignment: Alignment.center,
+      child: ListView.separated(
+        controller: controller,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: sections.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm),
+        itemBuilder: (context, i) {
+          final section = sections[i];
+          return Center(
+            child: GestureDetector(
+              onTap: () => onTap(section.id),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  '${section.title}  ${section.products.length}',
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SectionChipsHeader extends SliverPersistentHeaderDelegate {
+  const _SectionChipsHeader({required this.height, required this.child});
+
+  final double height;
+  final Widget child;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
+      SizedBox(height: height, child: child);
+
+  @override
+  bool shouldRebuild(_SectionChipsHeader oldDelegate) =>
+      oldDelegate.child != child || oldDelegate.height != height;
 }
 
 class _CircleButton extends StatelessWidget {
@@ -221,7 +375,7 @@ class _VendorHeader extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: _StatTile(
-                    value: '${vendor.avgPrepMinutes}′', label: 'delivery'),
+                    value: '${vendor.totalPrepMinutes}′', label: 'delivery'),
               ),
               const SizedBox(width: 9),
               Expanded(
@@ -234,6 +388,33 @@ class _VendorHeader extends StatelessWidget {
               ),
             ],
           ),
+          if (vendor.isBusy) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.amberFill,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: AppColors.amberInk.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.amberInk, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      context.l10n.busyStoreNotice,
+                      style: const TextStyle(
+                        color: AppColors.amberInk,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -292,7 +473,8 @@ class _ProductTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasDesc = product.description?.isNotEmpty ?? false;
+    final language = Localizations.localeOf(context).languageCode;
+    final description = product.displayDescription(language);
     return InkWell(
       onTap: vendor.isOpen
           ? () => showProductSheet(context, vendor, product)
@@ -306,14 +488,14 @@ class _ProductTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.name,
+                  Text(product.displayName(language),
                       style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                           color: AppColors.ink)),
-                  if (hasDesc) ...[
+                  if (description != null) ...[
                     const SizedBox(height: 3),
-                    Text(product.description!,
+                    Text(description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall),
@@ -333,9 +515,9 @@ class _ProductTile extends StatelessWidget {
                     width: 84,
                     borderRadius: BorderRadius.circular(15)),
                 if (vendor.isOpen)
-                  Positioned(
+                  PositionedDirectional(
                     bottom: -9,
-                    right: -6,
+                    end: -6,
                     child: Container(
                       width: 32,
                       height: 32,
@@ -373,7 +555,7 @@ class _CartBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadii.lg),
               child: Container(
                 height: 54,
-                padding: const EdgeInsets.only(left: 18, right: 12),
+                padding: const EdgeInsetsDirectional.only(start: 18, end: 12),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -415,6 +597,106 @@ class _CartBar extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The store page while its header and menu load: cover, logo + name block,
+/// three stat tiles, then menu rows with their thumbnails.
+class _VendorDetailsSkeleton extends StatelessWidget {
+  const _VendorDetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const Skeleton(height: 180, radius: 0),
+          Transform.translate(
+            offset: const Offset(0, -22),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppColors.canvas,
+                borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(AppRadii.xxl)),
+              ),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpace.lg, 28, AppSpace.lg, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Skeleton(width: 58, height: 58, radius: AppRadii.lg),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Skeleton.line(widthFactor: 0.55, height: 22),
+                            SizedBox(height: 6),
+                            Skeleton.line(widthFactor: 0.75, height: 12),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpace.sm),
+                  Row(
+                    children: const [
+                      Expanded(
+                          child: Skeleton(height: 56, radius: AppRadii.md)),
+                      SizedBox(width: 9),
+                      Expanded(
+                          child: Skeleton(height: 56, radius: AppRadii.md)),
+                      SizedBox(width: 9),
+                      Expanded(
+                          child: Skeleton(height: 56, radius: AppRadii.md)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpace.xxl),
+                  const Skeleton.line(widthFactor: 0.35, height: 19),
+                  const SizedBox(height: AppSpace.md),
+                  for (var i = 0; i < 4; i++)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: AppSpace.xxl),
+                      child: _ProductRowSkeleton(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mirrors `_ProductTile`: copy on the leading side, 84px thumbnail trailing.
+class _ProductRowSkeleton extends StatelessWidget {
+  const _ProductRowSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Skeleton.line(widthFactor: 0.6, height: 15),
+              SizedBox(height: 7),
+              Skeleton.line(widthFactor: 0.9, height: 12),
+              SizedBox(height: AppSpace.md),
+              Skeleton(width: 72, height: 14),
+            ],
+          ),
+        ),
+        SizedBox(width: 13),
+        Skeleton(width: 84, height: 84, radius: 15),
+      ],
     );
   }
 }

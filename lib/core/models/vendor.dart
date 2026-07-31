@@ -39,6 +39,10 @@ class Vendor extends Equatable {
     this.addressText,
     this.lat,
     this.lng,
+    this.isBusy = false,
+    this.extraPrepMinutes = 0,
+    this.commissionRate = 10.0,
+    this.deliveryRadiusKm = 10.0,
   });
 
   final String id;
@@ -54,6 +58,10 @@ class Vendor extends Equatable {
   final double? lng;
   final bool isOpen;
   final bool isActive;
+  final bool isBusy;
+  final int extraPrepMinutes;
+  final double commissionRate;
+  final double deliveryRadiusKm;
 
   /// Platform approval lifecycle: 'pending' | 'active' | 'suspended'.
   final String approvalStatus;
@@ -67,6 +75,8 @@ class Vendor extends Equatable {
   final int avgPrepMinutes;
   final double ratingAvg;
   final int ratingCount;
+
+  int get totalPrepMinutes => avgPrepMinutes + (isBusy ? extraPrepMinutes : 0);
 
   factory Vendor.fromMap(Map<String, dynamic> map) => Vendor(
         id: map['id'] as String,
@@ -89,10 +99,30 @@ class Vendor extends Equatable {
         avgPrepMinutes: ((map['avg_prep_minutes'] as num?) ?? 20).toInt(),
         ratingAvg: ((map['rating_avg'] as num?) ?? 0).toDouble(),
         ratingCount: ((map['rating_count'] as num?) ?? 0).toInt(),
+        isBusy: (map['is_busy'] as bool?) ?? false,
+        extraPrepMinutes: ((map['extra_prep_minutes'] as num?) ?? 0).toInt(),
+        commissionRate: ((map['commission_rate'] as num?) ?? 10.0).toDouble(),
+        deliveryRadiusKm: ((map['delivery_radius_km'] as num?) ?? 10.0).toDouble(),
       );
 
   @override
-  List<Object?> get props => [id, name, isOpen, isActive, approvalStatus,
-        autoAccept, deliveryFee, minOrderAmount, avgPrepMinutes, ratingAvg,
-        ratingCount, logoUrl];
+  List<Object?> get props => [
+        id,
+        name,
+        isOpen,
+        isActive,
+        approvalStatus,
+        autoAccept,
+        deliveryFee,
+        minOrderAmount,
+        avgPrepMinutes,
+        ratingAvg,
+        ratingCount,
+        logoUrl,
+        isBusy,
+        extraPrepMinutes,
+        commissionRate,
+        deliveryRadiusKm,
+      ];
 }
+

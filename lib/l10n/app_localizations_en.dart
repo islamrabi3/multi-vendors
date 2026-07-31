@@ -440,7 +440,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menu => 'Menu';
 
   @override
-  String get addItem => 'Add item';
+  String get addItem => 'Add Item';
 
   @override
   String get sectionName => 'Section name';
@@ -725,7 +725,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rate => 'Rate';
 
   @override
-  String get reorder => 'Reorder';
+  String get reorder => 'Re-order';
 
   @override
   String get nothingHereRightNow => 'Nothing here right now';
@@ -1252,4 +1252,608 @@ class AppLocalizationsEn extends AppLocalizations {
   String deliveringTo(Object address) {
     return 'Delivering to $address';
   }
+
+  @override
+  String get wallet => 'Wallet';
+
+  @override
+  String get walletBalance => 'Wallet Balance';
+
+  @override
+  String get useWalletBalance => 'Use wallet balance';
+
+  @override
+  String get loyaltyRewards => 'Loyalty Rewards';
+
+  @override
+  String get driverTip => 'Driver Tip';
+
+  @override
+  String get pickup => 'Pick-up';
+
+  @override
+  String get delivery => 'Delivery';
+
+  @override
+  String get scheduledDelivery => 'Scheduled Delivery';
+
+  @override
+  String get liveChat => 'Live Chat';
+
+  @override
+  String get proofOfDelivery => 'Proof of Delivery';
+
+  @override
+  String get busyMode => 'Busy Mode (+15m)';
+
+  @override
+  String get openInMaps => 'Open in Maps';
+
+  @override
+  String get enterOtp => 'Enter Customer Code';
+
+  @override
+  String get vendorAnalytics => 'Store Analytics';
+
+  @override
+  String get operatingSchedule => 'Operating Hours';
+
+  @override
+  String get addCategorySectionDesc =>
+      'Add a category section to organize your menu items.';
+
+  @override
+  String get modifyCategoryNameDesc =>
+      'Modify category name or delete section.';
+
+  @override
+  String get sectionHint => 'e.g. Burgers, Beverages, Desserts';
+
+  @override
+  String get rejectReasonDesc =>
+      'Please state a reason for rejecting this incoming order.';
+
+  @override
+  String get rejectReasonHint => 'e.g. Item out of stock, kitchen busy';
+
+  @override
+  String get cancelReasonDesc =>
+      'Specify a reason for admin cancellation and refund.';
+
+  @override
+  String get cancelReasonHint => 'e.g. Customer requested cancellation';
+
+  @override
+  String deleteCategoryTitle(Object name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get deleteCategoryMessage =>
+      'Are you sure you want to delete this category? This might affect vendors registered under it.';
+
+  @override
+  String get noMessagesYet =>
+      'No messages yet. Send a message to contact driver/support.';
+
+  @override
+  String get typeYourMessage => 'Type your message...';
+
+  @override
+  String get topUp => 'Top Up';
+
+  @override
+  String get transactionHistory => 'Transaction History';
+
+  @override
+  String get noTransactions => 'No transactions yet.';
+
+  @override
+  String get pointsHistory => 'Points History';
+
+  @override
+  String get totalRevenue => 'Total Revenue';
+
+  @override
+  String get deliveredOrders => 'Delivered Orders';
+
+  @override
+  String get performanceOverview => 'Performance Overview';
+
+  @override
+  String get driverEarnings => 'Driver Earnings & Wallet';
+
+  @override
+  String get deliveryProofPhotoOptional => 'Delivery Proof Photo (Optional)';
+
+  @override
+  String get addPhotoProof => 'Add Photo Proof';
+
+  @override
+  String get skipAndDeliver => 'Skip & Mark Delivered';
+
+  @override
+  String get proofPhotoAdded => 'Photo Attached!';
+
+  @override
+  String get liveChatWithDriverSupport => 'Live Chat with Driver / Support';
+
+  @override
+  String get reorderItems => 'Re-order items';
+
+  @override
+  String get callCustomer => 'Call Customer';
+
+  @override
+  String get storeAnalyticsAndReports => 'Store Analytics & Reports';
+
+  @override
+  String get operatingHoursSchedule => 'Operating Hours Schedule';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get noNotificationsYet => 'No notifications yet';
+
+  @override
+  String get averageStoreRating => 'Average Store Rating';
+
+  @override
+  String get avgPreparationTime => 'Avg Preparation Time';
+
+  @override
+  String get twentyMins => '20 mins';
+
+  @override
+  String get daySunday => 'Sunday';
+
+  @override
+  String get dayMonday => 'Monday';
+
+  @override
+  String get dayTuesday => 'Tuesday';
+
+  @override
+  String get dayWednesday => 'Wednesday';
+
+  @override
+  String get dayThursday => 'Thursday';
+
+  @override
+  String get dayFriday => 'Friday';
+
+  @override
+  String get daySaturday => 'Saturday';
+
+  @override
+  String get closedStatus => 'Closed';
+
+  @override
+  String get openStatus => 'Open';
+
+  @override
+  String get busyStore => 'Busy (+15m)';
+
+  @override
+  String get busyStoreNotice =>
+      '🔥 High Demand: Store is currently busy (+15 mins extra prep time)';
+
+  @override
+  String get myWallet => 'My Wallet';
+
+  @override
+  String get currentBalance => 'Current Balance';
+
+  @override
+  String get topUpWallet => 'Top Up Wallet';
+
+  @override
+  String get payWithPaymob => 'Pay via Paymob';
+
+  @override
+  String get selectTopUpAmount => 'Select or enter top-up amount:';
+
+  @override
+  String get payWithWallet => 'Pay with Wallet';
+
+  @override
+  String get insufficientWalletBalance => 'Insufficient Balance';
+
+  @override
+  String get walletPayment => 'Wallet Payment';
+
+  @override
+  String get earnPointsOnOrders => 'Earn points on every completed order!';
+
+  @override
+  String get noLoyaltyPointsYet => 'No loyalty points earned yet.';
+
+  @override
+  String get reportAnIssue => 'Report an Issue';
+
+  @override
+  String get reportStoreOrOrder => 'Report Store / Order Issue';
+
+  @override
+  String get issueSubject => 'Issue Subject';
+
+  @override
+  String get issueDescription => 'Describe the problem...';
+
+  @override
+  String get submitReport => 'Submit Report';
+
+  @override
+  String get reportSubmitted =>
+      'Report submitted successfully. Admin will review soon!';
+
+  @override
+  String get customerReports => 'Customer Reports & Complaints';
+
+  @override
+  String get resolveAndNotify => 'Resolve & Reply';
+
+  @override
+  String get replyMessage => 'Reply to Customer';
+
+  @override
+  String get statusPending => 'Pending';
+
+  @override
+  String get statusInProgress => 'In Progress';
+
+  @override
+  String get statusResolved => 'Resolved';
+
+  @override
+  String get refundRequired => 'Refund required';
+
+  @override
+  String get refundDueDesc =>
+      'The customer paid by card. Refund the amount to their wallet.';
+
+  @override
+  String get refundToWallet => 'Refund to wallet';
+
+  @override
+  String get refundedToWallet => 'Refunded to the customer\'s wallet';
+
+  @override
+  String get refundConfirmTitle => 'Refund to wallet?';
+
+  @override
+  String get refundConfirmMessage =>
+      'This credits the paid amount back to the customer\'s wallet. It cannot be undone.';
+
+  @override
+  String get noActiveOrders => 'No active orders';
+
+  @override
+  String get noPastOrders => 'No past orders';
+
+  @override
+  String get noCategoriesYet => 'No categories created yet.';
+
+  @override
+  String get noReportsFound => 'No complaints or reports found.';
+
+  @override
+  String get bannerType => 'Banner type';
+
+  @override
+  String get bannerTypeCoupon => 'Coupon';
+
+  @override
+  String get bannerTypeVendor => 'Vendor';
+
+  @override
+  String get bannerTypeEvent => 'Event';
+
+  @override
+  String get selectVendor => 'Select vendor';
+
+  @override
+  String get selectCoupon => 'Select coupon';
+
+  @override
+  String get chooseVendorForBanner => 'Choose a vendor for this banner.';
+
+  @override
+  String get chooseCouponForBanner => 'Choose a coupon code for this banner.';
+
+  @override
+  String get copyCode => 'Copy code';
+
+  @override
+  String get codeCopied => 'Code copied!';
+
+  @override
+  String get offerDetails => 'Offer details';
+
+  @override
+  String get skip => 'Skip';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get onboardingTitle1 => 'All your favorite stores';
+
+  @override
+  String get onboardingBody1 =>
+      'Restaurants, groceries and more — browse local vendors and order in a few taps.';
+
+  @override
+  String get onboardingTitle2 => 'Fast delivery, live tracking';
+
+  @override
+  String get onboardingBody2 =>
+      'Follow your order from the kitchen to your door, with live driver updates.';
+
+  @override
+  String get onboardingTitle3 => 'Pay your way';
+
+  @override
+  String get onboardingBody3 =>
+      'Cash on delivery, card, or your in-app wallet — with coupons and offers every day.';
+
+  @override
+  String get categoriesTab => 'Categories';
+
+  @override
+  String get importMenuFromPhotos => 'Import menu from photos';
+
+  @override
+  String get importMenuHint =>
+      'Upload photos of your menu. We read every section and item automatically — you review, edit, then import all at once.';
+
+  @override
+  String get addPhotos => 'Add photos';
+
+  @override
+  String get extractMenuAction => 'Extract menu';
+
+  @override
+  String get extractingMenu => 'Reading your menu…';
+
+  @override
+  String get reviewExtractedMenu => 'Review & edit before importing';
+
+  @override
+  String get importAll => 'Import all';
+
+  @override
+  String get menuImported => 'Menu imported successfully!';
+
+  @override
+  String get extractionFailed => 'Could not read the menu. Try clearer photos.';
+
+  @override
+  String get noItemsExtracted => 'No items were found in these photos.';
+
+  @override
+  String get itemName => 'Item name';
+
+  @override
+  String get priceLabel => 'Price';
+
+  @override
+  String get descriptionOptional => 'Description (optional)';
+
+  @override
+  String get other => 'Other';
+
+  @override
+  String get filters => 'Filters';
+
+  @override
+  String get sortBy => 'Sort by';
+
+  @override
+  String get sortRecommended => 'Recommended';
+
+  @override
+  String get sortRating => 'Top rated';
+
+  @override
+  String get sortDeliveryFee => 'Lowest delivery fee';
+
+  @override
+  String get sortPrepTime => 'Fastest';
+
+  @override
+  String get showOnly => 'Show only';
+
+  @override
+  String get openStoresOnly => 'Open now';
+
+  @override
+  String get freeDeliveryOnly => 'Free delivery';
+
+  @override
+  String get favoritesOnly => 'My favorites';
+
+  @override
+  String get maxDeliveryFee => 'Max delivery fee';
+
+  @override
+  String get minimumRating => 'Minimum rating';
+
+  @override
+  String get any => 'Any';
+
+  @override
+  String get clearAll => 'Clear all';
+
+  @override
+  String get showResults => 'Show results';
+
+  @override
+  String get noStoresMatchFilters => 'No stores match these filters';
+
+  @override
+  String storesCount(int count) {
+    return '$count stores';
+  }
+
+  @override
+  String get selectIconBanner => 'Select icon / banner';
+
+  @override
+  String get categoryNameRequired => 'Category name is required';
+
+  @override
+  String get issueLabel => 'Issue';
+
+  @override
+  String get report => 'Report';
+
+  @override
+  String get chat => 'Chat';
+
+  @override
+  String get pendingApproval => 'Pending approval';
+
+  @override
+  String get driverPendingApprovalDesc =>
+      'An admin is reviewing your account. You can go online once it is approved.';
+
+  @override
+  String get driverSuspendedDesc =>
+      'Your account is suspended. Contact support for details.';
+
+  @override
+  String get approveDriver => 'Approve driver';
+
+  @override
+  String get suspendDriver => 'Suspend driver';
+
+  @override
+  String get driverApproved => 'Driver approved';
+
+  @override
+  String get driverSuspended => 'Driver suspended';
+
+  @override
+  String get noDriversHere => 'No drivers here';
+
+  @override
+  String get chooseYourRole => 'How will you use the app?';
+
+  @override
+  String get chooseYourRoleSubtitle =>
+      'Pick the account type that fits you. This is the only time we ask.';
+
+  @override
+  String get roleCustomerDesc =>
+      'Browse stores, order food and track delivery.';
+
+  @override
+  String get roleVendorDesc => 'Run your store, manage your menu and orders.';
+
+  @override
+  String get roleDriverDesc => 'Pick up orders and deliver them to customers.';
+
+  @override
+  String get roleChoiceIsPermanent =>
+      'Your account type cannot be changed once you start using the app.';
+
+  @override
+  String get editProfile => 'Edit profile';
+
+  @override
+  String get profileUpdated => 'Profile updated';
+
+  @override
+  String get nameRequired => 'Please enter your name';
+
+  @override
+  String get guest => 'Guest';
+
+  @override
+  String get pickLocationOnMap => 'Pick location on map';
+
+  @override
+  String get searchForAPlace => 'Search for a place';
+
+  @override
+  String get outsideServiceArea => 'We don\'t deliver to this spot yet';
+
+  @override
+  String get locatingAddress => 'Finding address…';
+
+  @override
+  String get dragTheMapToPlaceThePin => 'Drag the map to place the pin';
+
+  @override
+  String get confirmLocation => 'Confirm location';
+
+  @override
+  String get changeLocation => 'Change location';
+
+  @override
+  String get deliveryLocation => 'Delivery location';
+
+  @override
+  String get serviceAreas => 'Service areas';
+
+  @override
+  String get addServiceArea => 'Add service area';
+
+  @override
+  String get editServiceArea => 'Edit service area';
+
+  @override
+  String get deliveryRadius => 'Delivery radius';
+
+  @override
+  String get areaName => 'Area name';
+
+  @override
+  String get areaNameArabic => 'Area name (Arabic)';
+
+  @override
+  String get noServiceAreasYet => 'No service areas yet';
+
+  @override
+  String get coverageEverywhereNote =>
+      'With no areas set, orders are accepted everywhere. Add one to limit delivery.';
+
+  @override
+  String get serviceAreaSaved => 'Service area saved';
+
+  @override
+  String get serviceAreaDeleted => 'Service area deleted';
+
+  @override
+  String get deleteServiceAreaConfirm =>
+      'Delete this service area? Customers outside the remaining areas will no longer be able to order.';
+
+  @override
+  String get kmUnit => 'km';
+
+  @override
+  String get areaActive => 'Area is active';
+
+  @override
+  String get areaActiveDesc => 'Inactive areas do not count towards coverage.';
+
+  @override
+  String get operations => 'Operations';
+
+  @override
+  String get catalog => 'Catalog';
+
+  @override
+  String get growth => 'Growth';
+
+  @override
+  String get people => 'People';
+
+  @override
+  String get manage => 'Manage';
+
+  @override
+  String get edit => 'Edit';
 }

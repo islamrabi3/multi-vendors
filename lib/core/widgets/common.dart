@@ -44,12 +44,20 @@ class AppNetworkImage extends StatelessWidget {
   }
 }
 
+/// Page-level loader. Brand-coloured, because an uncoloured
+/// CircularProgressIndicator renders in the Material default and the app then
+/// shows two different spinner colours depending on the screen.
+///
+/// Prefer a shape-matched skeleton (`lib/core/widgets/skeleton.dart`) where the
+/// layout is known ahead of the data; this is for screens whose shape is not
+/// predictable, such as the driver's live map.
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      const Center(child: CircularProgressIndicator());
+  Widget build(BuildContext context) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
 }
 
 class ErrorView extends StatelessWidget {
@@ -66,7 +74,8 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+            const Icon(Icons.error_outline,
+                size: 48, color: AppColors.textFaint),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             if (onRetry != null) ...[
@@ -96,11 +105,128 @@ class EmptyView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 56, color: Colors.grey),
+          Icon(icon, size: 56, color: AppColors.textFaint),
           const SizedBox(height: 12),
           Text(message, style: Theme.of(context).textTheme.bodyLarge),
         ],
       ),
+    );
+  }
+}
+
+/// Rebuilds its child with a hover flag and a pointer cursor — the desktop
+/// affordance for rows and cards. Inert on touch: `MouseRegion` never fires.
+class HoverBuilder extends StatefulWidget {
+  const HoverBuilder({
+    super.key,
+    required this.builder,
+    this.cursor = SystemMouseCursors.click,
+  });
+
+  final Widget Function(BuildContext context, bool hovered) builder;
+  final MouseCursor cursor;
+
+  @override
+  State<HoverBuilder> createState() => _HoverBuilderState();
+}
+
+class _HoverBuilderState extends State<HoverBuilder> {
+  bool _hovered = false;
+
+  void _set(bool value) {
+    if (_hovered != value) setState(() => _hovered = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: widget.cursor,
+      onEnter: (_) => _set(true),
+      onExit: (_) => _set(false),
+      child: widget.builder(context, _hovered),
+    );
+  }
+}
+
+/// An id / order number / phone number an operator needs to copy.
+///
+/// Selection is opt-out because inside a tappable row a `SelectableText` eats
+/// the tap that opens the record — list rows keep plain text on touch layouts
+/// and only turn selectable on pointer widths.
+class SelectableId extends StatelessWidget {
+  const SelectableId(
+    this.text, {
+    super.key,
+    this.style,
+    this.selectable = true,
+  });
+
+  final String text;
+  final TextStyle? style;
+  final bool selectable;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!selectable) {
+      return Text(text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
+    return SelectableText(text, style: style, maxLines: 1);
+  }
+}
+
+/// Footer of an infinite list: a spinner while a page is in flight, and
+/// nothing at all once the list is exhausted.
+class PagingFooter extends StatelessWidget {
+  const PagingFooter({super.key, required this.loading, required this.hasMore});
+
+  final bool loading;
+  final bool hasMore;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 18),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppColors.primary),
+          ),
+        ),
+      );
+    }
+    return const SizedBox(height: 8);
+  }
+}
+
+/// Calls [onLoadMore] as the wrapped scroll view nears its end. The callee is
+/// expected to ignore the call while a page is in flight or the list is done.
+class InfiniteScroll extends StatelessWidget {
+  const InfiniteScroll({
+    super.key,
+    required this.onLoadMore,
+    required this.child,
+    this.threshold = 320,
+  });
+
+  final VoidCallback onLoadMore;
+  final Widget child;
+  final double threshold;
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        final m = notification.metrics;
+        if (m.axis == Axis.vertical &&
+            m.maxScrollExtent - m.pixels <= threshold) {
+          onLoadMore();
+        }
+        return false;
+      },
+      child: child,
     );
   }
 }
@@ -294,8 +420,31 @@ String readableError(Object error) {
     'CART_EMPTY': 'Your cart is empty.',
     'VENDOR_CLOSED': 'This store is currently closed.',
     'ADDRESS_NOT_FOUND': 'Please choose a delivery address.',
+    'OUTSIDE_SERVICE_AREA':
+        "We don't deliver to this address yet. Pick another address inside "
+        'our delivery area.',
+    'ROLE_ALREADY_SET': 'Your account type has already been set.',
+    'ROLE_CHANGE_NOT_ALLOWED': 'Account type cannot be changed here.',
     'COUPON_INVALID': 'This coupon code is not valid.',
-    'NOT_AN_ONLINE_DRIVER': 'Go online to claim orders.',
+    'NOT_AN_ONLINE_DRIVER':
+        'Go online to claim orders. A new driver account needs admin '
+        'approval first.',
+    'INSUFFICIENT_WALLET_BALANCE':
+        'Your wallet balance is not enough for this order.',
+    'PAYMOB_NOT_CONFIGURED':
+        'Card payments are unavailable right now. Please try another method.',
+    'PAYMOB_INTENTION_FAILED':
+        'The payment page could not be opened. Please try again.',
+    'PAYMENT_GATEWAY_UNAVAILABLE':
+        'The payment page could not be opened. Please try again.',
+    'ALREADY_PAID': 'This order has already been paid.',
+    'ALREADY_REFUNDED': 'This order has already been refunded.',
+    'DRIVER_NOT_APPROVED':
+        'Your driver account is awaiting admin approval. You can go online '
+        'once it is approved.',
+    'ORDER_NOT_PAID': 'This order was never paid, nothing to refund.',
+    'ORDER_NOT_CANCELLED': 'Only cancelled or rejected orders can be refunded.',
+    'NOT_A_CARD_ORDER': 'Only card-paid orders can be refunded to the wallet.',
   };
   for (final entry in known.entries) {
     if (text.contains(entry.key)) return entry.value;

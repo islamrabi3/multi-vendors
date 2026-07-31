@@ -678,7 +678,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noFavoritesYet => 'لا توجد مفضلات بعد';
 
   @override
-  String get points => 'النقاط';
+  String get points => 'نقاط';
 
   @override
   String get addresses => 'العناوين';
@@ -723,7 +723,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get rate => 'تقييم';
 
   @override
-  String get reorder => 'إعادة طلب';
+  String get reorder => 'إعادة الطلب';
 
   @override
   String get nothingHereRightNow => 'لا يوجد شيء هنا حالياً';
@@ -1253,4 +1253,603 @@ class AppLocalizationsAr extends AppLocalizations {
   String deliveringTo(Object address) {
     return 'جاري التوصيل إلى $address';
   }
+
+  @override
+  String get wallet => 'المحفظة';
+
+  @override
+  String get walletBalance => 'رصيد المحفظة';
+
+  @override
+  String get useWalletBalance => 'استخدام رصيد المحفظة';
+
+  @override
+  String get loyaltyRewards => 'نقاط الولاء والمكافآت';
+
+  @override
+  String get driverTip => 'إكرامية السائق';
+
+  @override
+  String get pickup => 'الاستلام من الفرع';
+
+  @override
+  String get delivery => 'التوصيل';
+
+  @override
+  String get scheduledDelivery => 'طلب مجدول';
+
+  @override
+  String get liveChat => 'المحادثة المباشرة';
+
+  @override
+  String get proofOfDelivery => 'إثبات التوصيل';
+
+  @override
+  String get busyMode => 'وضع الازدحام (+15 دقيقة)';
+
+  @override
+  String get openInMaps => 'فتح في الخريطة';
+
+  @override
+  String get enterOtp => 'أدخل رمز التوصيل';
+
+  @override
+  String get vendorAnalytics => 'تحليلات المتجر';
+
+  @override
+  String get operatingSchedule => 'مواعيد العمل';
+
+  @override
+  String get addCategorySectionDesc => 'أضف قسماً لتنظيم منتجات قائمة الطعام.';
+
+  @override
+  String get modifyCategoryNameDesc => 'تعديل اسم القسم أو حذفه.';
+
+  @override
+  String get sectionHint => 'مثال: البرجر، المشروبات، الحلويات';
+
+  @override
+  String get rejectReasonDesc => 'يرجى توضيح سبب رفض هذا الطلب الوارد.';
+
+  @override
+  String get rejectReasonHint => 'مثال: المنتج غير متوفر، المطبخ مزدحم';
+
+  @override
+  String get cancelReasonDesc =>
+      'تحديد سبب إلغاء الطلب واسترجاع المبلغ من الإدارة.';
+
+  @override
+  String get cancelReasonHint => 'مثال: طلب العميل إلغاء الطلب';
+
+  @override
+  String deleteCategoryTitle(Object name) {
+    return 'حذف \"$name\"؟';
+  }
+
+  @override
+  String get deleteCategoryMessage =>
+      'هل أنت متأكد من حذف هذا القسم؟ قد يؤثر ذلك على المنتجات التابعة له.';
+
+  @override
+  String get noMessagesYet =>
+      'لا توجد رسائل بعد. أرسل رسالة للتواصل مع السائق أو الدعم الفني.';
+
+  @override
+  String get typeYourMessage => 'اكتب رسالتك هنا...';
+
+  @override
+  String get topUp => 'شحن الرصيد';
+
+  @override
+  String get transactionHistory => 'سجل المعاملات';
+
+  @override
+  String get noTransactions => 'لا توجد معاملات مالية بعد.';
+
+  @override
+  String get pointsHistory => 'سجل النقاط';
+
+  @override
+  String get totalRevenue => 'إجمالي الإيرادات';
+
+  @override
+  String get deliveredOrders => 'الطلبات المكتملة';
+
+  @override
+  String get performanceOverview => 'نظرة عامة على الأداء';
+
+  @override
+  String get driverEarnings => 'أرباح ومحفظة السائق';
+
+  @override
+  String get deliveryProofPhotoOptional => 'صورة إثبات التوصيل (اختياري)';
+
+  @override
+  String get addPhotoProof => 'إضافة صورة إثبات';
+
+  @override
+  String get skipAndDeliver => 'تخطي وتأكيد التوصيل';
+
+  @override
+  String get proofPhotoAdded => 'تم إرفاق الصورة!';
+
+  @override
+  String get liveChatWithDriverSupport => 'المحادثة المباشرة مع السائق / الدعم';
+
+  @override
+  String get reorderItems => 'إعادة طلب العناصر';
+
+  @override
+  String get callCustomer => 'الاتصال بالعميل';
+
+  @override
+  String get storeAnalyticsAndReports => 'تحليلات وتقارير المتجر';
+
+  @override
+  String get operatingHoursSchedule => 'مواعيد وساعات العمل';
+
+  @override
+  String get notifications => 'الإشعارات';
+
+  @override
+  String get noNotificationsYet => 'لا توجد إشعارات حالياً';
+
+  @override
+  String get averageStoreRating => 'متوسط تقييم المتجر';
+
+  @override
+  String get avgPreparationTime => 'متوسط وقت التحضير';
+
+  @override
+  String get twentyMins => '20 دقيقة';
+
+  @override
+  String get daySunday => 'الأحد';
+
+  @override
+  String get dayMonday => 'الإثنين';
+
+  @override
+  String get dayTuesday => 'الثلاثاء';
+
+  @override
+  String get dayWednesday => 'الأربعاء';
+
+  @override
+  String get dayThursday => 'الخميس';
+
+  @override
+  String get dayFriday => 'الجمعة';
+
+  @override
+  String get daySaturday => 'السبت';
+
+  @override
+  String get closedStatus => 'مغلق';
+
+  @override
+  String get openStatus => 'مفتوح';
+
+  @override
+  String get busyStore => 'مشغول (+15 دقيقة)';
+
+  @override
+  String get busyStoreNotice =>
+      '🔥 ضغط طلبات: المتجر مشغول حالياً (+15 دقيقة وقت تحضير إضافي)';
+
+  @override
+  String get myWallet => 'محفظتي';
+
+  @override
+  String get currentBalance => 'الرصيد الحالي';
+
+  @override
+  String get topUpWallet => 'شحن المحفظة';
+
+  @override
+  String get payWithPaymob => 'الدفع بواسطة بايموب';
+
+  @override
+  String get selectTopUpAmount => 'اختر أو أدخل مبلغ الشحن:';
+
+  @override
+  String get payWithWallet => 'الدفع من المحفظة';
+
+  @override
+  String get insufficientWalletBalance => 'الرصيد غير كافٍ';
+
+  @override
+  String get walletPayment => 'دفع بواسطة المحفظة';
+
+  @override
+  String get earnPointsOnOrders => 'اكسب نقاطاً مع كل طلب مكتمل!';
+
+  @override
+  String get noLoyaltyPointsYet => 'لم تكسب أي نقاط ولاء بعد.';
+
+  @override
+  String get reportAnIssue => 'تقديم بلاغ أو شكوى';
+
+  @override
+  String get reportStoreOrOrder => 'الإبلاغ عن مشكلة في المتجر أو الطلب';
+
+  @override
+  String get issueSubject => 'عنوان الشكوى';
+
+  @override
+  String get issueDescription => 'اكتب تفاصيل المشكلة...';
+
+  @override
+  String get submitReport => 'إرسال البلاغ';
+
+  @override
+  String get reportSubmitted => 'تم إرسال البلاغ بنجاح. سيرد الدعم قريباً!';
+
+  @override
+  String get customerReports => 'بلاغات وشكاوى العملاء';
+
+  @override
+  String get resolveAndNotify => 'حل المشكلة والرد';
+
+  @override
+  String get replyMessage => 'رسالة الرد للعميل';
+
+  @override
+  String get statusPending => 'قيد الانتظار';
+
+  @override
+  String get statusInProgress => 'قيد المعالجة';
+
+  @override
+  String get statusResolved => 'تم الحل';
+
+  @override
+  String get refundRequired => 'مطلوب استرداد المبلغ';
+
+  @override
+  String get refundDueDesc =>
+      'دفع العميل بالبطاقة. يجب استرداد المبلغ إلى محفظته.';
+
+  @override
+  String get refundToWallet => 'استرداد إلى المحفظة';
+
+  @override
+  String get refundedToWallet => 'تم استرداد المبلغ إلى محفظة العميل';
+
+  @override
+  String get refundConfirmTitle => 'استرداد المبلغ إلى المحفظة؟';
+
+  @override
+  String get refundConfirmMessage =>
+      'سيتم إضافة المبلغ المدفوع إلى محفظة العميل. لا يمكن التراجع عن هذا الإجراء.';
+
+  @override
+  String get noActiveOrders => 'لا توجد طلبات نشطة';
+
+  @override
+  String get noPastOrders => 'لا توجد طلبات سابقة';
+
+  @override
+  String get noCategoriesYet => 'لم يتم إنشاء أي تصنيفات بعد.';
+
+  @override
+  String get noReportsFound => 'لا توجد شكاوى أو بلاغات.';
+
+  @override
+  String get bannerType => 'نوع البانر';
+
+  @override
+  String get bannerTypeCoupon => 'كوبون';
+
+  @override
+  String get bannerTypeVendor => 'متجر';
+
+  @override
+  String get bannerTypeEvent => 'حدث';
+
+  @override
+  String get selectVendor => 'اختر المتجر';
+
+  @override
+  String get selectCoupon => 'اختر الكوبون';
+
+  @override
+  String get chooseVendorForBanner => 'اختر متجراً لهذا البانر.';
+
+  @override
+  String get chooseCouponForBanner => 'اختر كود كوبون لهذا البانر.';
+
+  @override
+  String get copyCode => 'نسخ الكود';
+
+  @override
+  String get codeCopied => 'تم نسخ الكود!';
+
+  @override
+  String get offerDetails => 'تفاصيل العرض';
+
+  @override
+  String get skip => 'تخطي';
+
+  @override
+  String get next => 'التالي';
+
+  @override
+  String get onboardingTitle1 => 'كل متاجرك المفضلة';
+
+  @override
+  String get onboardingBody1 =>
+      'مطاعم وبقالة وأكثر — تصفح المتاجر القريبة واطلب بضغطات قليلة.';
+
+  @override
+  String get onboardingTitle2 => 'توصيل سريع وتتبع مباشر';
+
+  @override
+  String get onboardingBody2 =>
+      'تابع طلبك من المطبخ حتى باب بيتك مع تحديثات مباشرة من السائق.';
+
+  @override
+  String get onboardingTitle3 => 'ادفع بطريقتك';
+
+  @override
+  String get onboardingBody3 =>
+      'كاش عند الاستلام، بطاقة، أو محفظتك داخل التطبيق — مع كوبونات وعروض يومية.';
+
+  @override
+  String get categoriesTab => 'التصنيفات';
+
+  @override
+  String get importMenuFromPhotos => 'استيراد المنيو من الصور';
+
+  @override
+  String get importMenuHint =>
+      'ارفع صور المنيو وسنقرأ كل الأقسام والأصناف تلقائياً — راجع وعدّل ثم استورد الكل مرة واحدة.';
+
+  @override
+  String get addPhotos => 'إضافة صور';
+
+  @override
+  String get extractMenuAction => 'استخراج المنيو';
+
+  @override
+  String get extractingMenu => 'جاري قراءة المنيو…';
+
+  @override
+  String get reviewExtractedMenu => 'راجع وعدّل قبل الاستيراد';
+
+  @override
+  String get importAll => 'استيراد الكل';
+
+  @override
+  String get menuImported => 'تم استيراد المنيو بنجاح!';
+
+  @override
+  String get extractionFailed => 'تعذرت قراءة المنيو. جرب صوراً أوضح.';
+
+  @override
+  String get noItemsExtracted => 'لم يتم العثور على أصناف في هذه الصور.';
+
+  @override
+  String get itemName => 'اسم الصنف';
+
+  @override
+  String get priceLabel => 'السعر';
+
+  @override
+  String get descriptionOptional => 'الوصف (اختياري)';
+
+  @override
+  String get other => 'أخرى';
+
+  @override
+  String get filters => 'الفلاتر';
+
+  @override
+  String get sortBy => 'الترتيب حسب';
+
+  @override
+  String get sortRecommended => 'المقترح';
+
+  @override
+  String get sortRating => 'الأعلى تقييماً';
+
+  @override
+  String get sortDeliveryFee => 'الأقل رسوم توصيل';
+
+  @override
+  String get sortPrepTime => 'الأسرع';
+
+  @override
+  String get showOnly => 'اعرض فقط';
+
+  @override
+  String get openStoresOnly => 'المفتوح الآن';
+
+  @override
+  String get freeDeliveryOnly => 'توصيل مجاني';
+
+  @override
+  String get favoritesOnly => 'مفضلتي';
+
+  @override
+  String get maxDeliveryFee => 'أقصى رسوم توصيل';
+
+  @override
+  String get minimumRating => 'أقل تقييم';
+
+  @override
+  String get any => 'الكل';
+
+  @override
+  String get clearAll => 'مسح الكل';
+
+  @override
+  String get showResults => 'عرض النتائج';
+
+  @override
+  String get noStoresMatchFilters => 'لا توجد متاجر مطابقة لهذه الفلاتر';
+
+  @override
+  String storesCount(int count) {
+    return '$count متجر';
+  }
+
+  @override
+  String get selectIconBanner => 'اختر أيقونة / بانر';
+
+  @override
+  String get categoryNameRequired => 'اسم التصنيف مطلوب';
+
+  @override
+  String get issueLabel => 'المشكلة';
+
+  @override
+  String get report => 'بلاغ';
+
+  @override
+  String get chat => 'المحادثة';
+
+  @override
+  String get pendingApproval => 'بانتظار الموافقة';
+
+  @override
+  String get driverPendingApprovalDesc =>
+      'حسابك قيد المراجعة من الإدارة. ستتمكن من الاتصال بمجرد الموافقة عليه.';
+
+  @override
+  String get driverSuspendedDesc =>
+      'تم إيقاف حسابك. تواصل مع الدعم لمعرفة التفاصيل.';
+
+  @override
+  String get approveDriver => 'اعتماد السائق';
+
+  @override
+  String get suspendDriver => 'إيقاف السائق';
+
+  @override
+  String get driverApproved => 'تم اعتماد السائق';
+
+  @override
+  String get driverSuspended => 'تم إيقاف السائق';
+
+  @override
+  String get noDriversHere => 'لا يوجد سائقون هنا';
+
+  @override
+  String get chooseYourRole => 'كيف ستستخدم التطبيق؟';
+
+  @override
+  String get chooseYourRoleSubtitle =>
+      'اختر نوع الحساب المناسب لك. لن نسألك مرة أخرى.';
+
+  @override
+  String get roleCustomerDesc => 'تصفح المتاجر واطلب الطعام وتتبع التوصيل.';
+
+  @override
+  String get roleVendorDesc => 'أدر متجرك وقائمة الطعام والطلبات.';
+
+  @override
+  String get roleDriverDesc => 'استلم الطلبات ووصّلها إلى العملاء.';
+
+  @override
+  String get roleChoiceIsPermanent =>
+      'لا يمكن تغيير نوع الحساب بعد بدء استخدام التطبيق.';
+
+  @override
+  String get editProfile => 'تعديل الملف الشخصي';
+
+  @override
+  String get profileUpdated => 'تم تحديث الملف الشخصي';
+
+  @override
+  String get nameRequired => 'من فضلك أدخل اسمك';
+
+  @override
+  String get guest => 'زائر';
+
+  @override
+  String get pickLocationOnMap => 'اختر الموقع على الخريطة';
+
+  @override
+  String get searchForAPlace => 'ابحث عن مكان';
+
+  @override
+  String get outsideServiceArea => 'لا نوصل إلى هذا المكان حالياً';
+
+  @override
+  String get locatingAddress => 'جارٍ تحديد العنوان…';
+
+  @override
+  String get dragTheMapToPlaceThePin => 'حرّك الخريطة لتحديد الموقع';
+
+  @override
+  String get confirmLocation => 'تأكيد الموقع';
+
+  @override
+  String get changeLocation => 'تغيير الموقع';
+
+  @override
+  String get deliveryLocation => 'موقع التوصيل';
+
+  @override
+  String get serviceAreas => 'مناطق الخدمة';
+
+  @override
+  String get addServiceArea => 'إضافة منطقة خدمة';
+
+  @override
+  String get editServiceArea => 'تعديل منطقة الخدمة';
+
+  @override
+  String get deliveryRadius => 'نطاق التوصيل';
+
+  @override
+  String get areaName => 'اسم المنطقة';
+
+  @override
+  String get areaNameArabic => 'اسم المنطقة (بالعربية)';
+
+  @override
+  String get noServiceAreasYet => 'لا توجد مناطق خدمة';
+
+  @override
+  String get coverageEverywhereNote =>
+      'بدون مناطق محددة، يتم قبول الطلبات من كل مكان. أضف منطقة لتحديد نطاق التوصيل.';
+
+  @override
+  String get serviceAreaSaved => 'تم حفظ منطقة الخدمة';
+
+  @override
+  String get serviceAreaDeleted => 'تم حذف منطقة الخدمة';
+
+  @override
+  String get deleteServiceAreaConfirm =>
+      'حذف منطقة الخدمة؟ لن يتمكن العملاء خارج المناطق المتبقية من الطلب.';
+
+  @override
+  String get kmUnit => 'كم';
+
+  @override
+  String get areaActive => 'المنطقة مفعّلة';
+
+  @override
+  String get areaActiveDesc => 'المناطق غير المفعّلة لا تُحتسب ضمن التغطية.';
+
+  @override
+  String get operations => 'العمليات';
+
+  @override
+  String get catalog => 'الكتالوج';
+
+  @override
+  String get growth => 'النمو';
+
+  @override
+  String get people => 'الأشخاص';
+
+  @override
+  String get manage => 'الإدارة';
+
+  @override
+  String get edit => 'تعديل';
 }

@@ -1,12 +1,23 @@
-// Creates a Paymob payment intention for an order and returns the unified
-// checkout URL. Caller must be the order's customer (JWT verified by the
-// platform). Amounts come from the order row — never from the client.
+// Creates a Paymob payment intention and returns the unified checkout URL.
+//
+// Two kinds of payment:
+//   { order_id: "<uuid>" }            -> pay for an order; amount read from the
+//                                        order row, never from the client
+//   { kind: "topup", amount: 100 }    -> wallet top-up
+//
+// Caller must be signed in (JWT verified by the platform, re-checked here).
+// The returned `reference` is Paymob's special_reference; the app watches the
+// matching payment_intents row to learn whether the payment settled.
 //
 // Secrets required:
 //   PAYMOB_SECRET_KEY, PAYMOB_PUBLIC_KEY, PAYMOB_INTEGRATION_ID
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const PAYMOB_BASE = "https://accept.paymob.com";
+const REDIRECT_URL = "https://payment-complete.local/";
+
+const TOPUP_MIN = 10;
+const TOPUP_MAX = 20000;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,8 +48,7 @@ Deno.serve(async (req) => {
       return json({ error: "PAYMOB_NOT_CONFIGURED" }, 503);
     }
 
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const jwt = authHeader.replace("Bearer ", "");
+    const jwt = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
     const admin = createClient(supabaseUrl, serviceKey);
 
     const { data: userData, error: userError } = await admin.auth.getUser(jwt);
@@ -47,25 +57,48 @@ Deno.serve(async (req) => {
     }
     const user = userData.user;
 
-    const { order_id } = await req.json();
-    if (!order_id || typeof order_id !== "string") {
-      return json({ error: "ORDER_ID_REQUIRED" }, 400);
+    const body = await req.json().catch(() => ({}));
+    const kind = body.kind === "topup" ? "topup" : "order";
+
+    // amountEgp drives the intent row; amountCents is what Paymob is told.
+    let amountEgp = 0;
+    let orderId: string | null = null;
+    let reference = "";
+
+    if (kind === "topup") {
+      amountEgp = Number(body.amount);
+      if (!Number.isFinite(amountEgp) || amountEgp < TOPUP_MIN || amountEgp > TOPUP_MAX) {
+        return json({ error: "INVALID_TOPUP_AMOUNT" }, 400);
+      }
+      amountEgp = Math.round(amountEgp * 100) / 100;
+      reference = `topup-${crypto.randomUUID()}`;
+    } else {
+      const requestedOrderId = body.order_id;
+      if (!requestedOrderId || typeof requestedOrderId !== "string") {
+        return json({ error: "ORDER_ID_REQUIRED" }, 400);
+      }
+
+      const { data: order, error: orderError } = await admin
+        .from("orders")
+        .select("id, customer_id, total, payment_method, payment_status, status")
+        .eq("id", requestedOrderId)
+        .single();
+
+      if (orderError || !order) return json({ error: "ORDER_NOT_FOUND" }, 404);
+      if (order.customer_id !== user.id) return json({ error: "FORBIDDEN" }, 403);
+      if (order.payment_method !== "paymob") {
+        return json({ error: "ORDER_NOT_PAYMOB" }, 400);
+      }
+      if (order.payment_status === "paid") {
+        return json({ error: "ALREADY_PAID" }, 400);
+      }
+
+      amountEgp = Number(order.total);
+      orderId = order.id;
+      reference = `order-${order.id}-${crypto.randomUUID().slice(0, 8)}`;
     }
 
-    const { data: order, error: orderError } = await admin
-      .from("orders")
-      .select("id, customer_id, total, payment_method, payment_status")
-      .eq("id", order_id)
-      .single();
-
-    if (orderError || !order) return json({ error: "ORDER_NOT_FOUND" }, 404);
-    if (order.customer_id !== user.id) return json({ error: "FORBIDDEN" }, 403);
-    if (order.payment_method !== "paymob") {
-      return json({ error: "ORDER_NOT_PAYMOB" }, 400);
-    }
-    if (order.payment_status === "paid") {
-      return json({ error: "ALREADY_PAID" }, 400);
-    }
+    const amountCents = Math.round(amountEgp * 100);
 
     const { data: profile } = await admin
       .from("profiles")
@@ -77,10 +110,6 @@ Deno.serve(async (req) => {
     const [firstName, ...rest] = fullName.split(/\s+/);
     const lastName = rest.join(" ") || firstName;
 
-    // special_reference must be unique per intention; suffix allows retries
-    // for the same order. The webhook parses the order id back out.
-    const specialReference = `${order.id}:${Date.now()}`;
-
     const intentionRes = await fetch(`${PAYMOB_BASE}/v1/intention/`, {
       method: "POST",
       headers: {
@@ -88,12 +117,12 @@ Deno.serve(async (req) => {
         Authorization: `Token ${secretKey}`,
       },
       body: JSON.stringify({
-        amount: Math.round(Number(order.total) * 100),
+        amount: amountCents,
         currency: "EGP",
         payment_methods: [Number(integrationId)],
-        special_reference: specialReference,
+        special_reference: reference,
         notification_url: `${supabaseUrl}/functions/v1/paymob-webhook`,
-        redirection_url: "https://payment-complete.local/",
+        redirection_url: REDIRECT_URL,
         billing_data: {
           first_name: firstName || "NA",
           last_name: lastName || "NA",
@@ -107,14 +136,14 @@ Deno.serve(async (req) => {
           state: "NA",
           country: "EG",
         },
-        extras: { order_id: order.id },
+        extras: { kind, order_id: orderId, user_id: user.id },
       }),
     });
 
     if (!intentionRes.ok) {
       const detail = await intentionRes.text();
       console.error("Paymob intention failed", intentionRes.status, detail);
-      return json({ error: "PAYMOB_INTENTION_FAILED" }, 502);
+      return json({ error: "PAYMOB_INTENTION_FAILED", detail }, 502);
     }
 
     const intention = await intentionRes.json();
@@ -123,16 +152,27 @@ Deno.serve(async (req) => {
       return json({ error: "PAYMOB_NO_CLIENT_SECRET" }, 502);
     }
 
-    await admin
-      .from("orders")
-      .update({ payment_status: "pending" })
-      .eq("id", order.id);
+    // Recorded only after Paymob accepted the intention, so a pending intent
+    // row always corresponds to a checkout the customer can actually reach.
+    const { error: intentError } = await admin.rpc("open_payment_intent", {
+      p_user_id: user.id,
+      p_kind: kind,
+      p_reference: reference,
+      p_amount: amountEgp,
+      p_order_id: orderId,
+    });
+
+    if (intentError) {
+      console.error("open_payment_intent failed", intentError);
+      return json({ error: "INTENT_RECORD_FAILED" }, 500);
+    }
 
     return json({
       checkout_url:
         `${PAYMOB_BASE}/unifiedcheckout/?publicKey=${publicKey}` +
         `&clientSecret=${clientSecret}`,
-      client_secret: clientSecret,
+      reference,
+      amount: amountEgp,
     });
   } catch (error) {
     console.error(error);

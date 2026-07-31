@@ -16,16 +16,20 @@ class OffersRepository {
 
   Future<void> create({
     required String imageUrl,
+    required BannerType type,
     String? title,
     String? subtitle,
     String? code,
+    String? vendorId,
     int sortOrder = 0,
   }) async {
     await supabase.from('banners').insert({
       'image_url': imageUrl,
+      'banner_type': type.name,
       if (title != null && title.isNotEmpty) 'title': title,
       if (subtitle != null && subtitle.isNotEmpty) 'subtitle': subtitle,
       if (code != null && code.isNotEmpty) 'code': code,
+      if (vendorId != null && vendorId.isNotEmpty) 'vendor_id': vendorId,
       'sort_order': sortOrder,
       'is_active': true,
     });

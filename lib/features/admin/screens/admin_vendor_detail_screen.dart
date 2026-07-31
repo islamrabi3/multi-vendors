@@ -6,19 +6,40 @@ import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
-class AdminVendorDetailScreen extends StatefulWidget {
+/// Route entry for the phone flow: the vendor review view on its own page.
+class AdminVendorDetailScreen extends StatelessWidget {
   const AdminVendorDetailScreen({super.key, required this.vendorId});
 
   final String vendorId;
 
   @override
-  State<AdminVendorDetailScreen> createState() =>
-      _AdminVendorDetailScreenState();
+  Widget build(BuildContext context) =>
+      AdminVendorDetailView(vendorId: vendorId);
 }
 
-class _AdminVendorDetailScreenState extends State<AdminVendorDetailScreen> {
+/// The store review view. Embedded (`embedded: true`) it drops the back button
+/// and its own Scaffold, and reports approvals through [onStatusChanged]
+/// instead of popping, so it can live in a wide master–detail pane.
+class AdminVendorDetailView extends StatefulWidget {
+  const AdminVendorDetailView({
+    super.key,
+    required this.vendorId,
+    this.embedded = false,
+    this.onStatusChanged,
+  });
+
+  final String vendorId;
+  final bool embedded;
+  final VoidCallback? onStatusChanged;
+
+  @override
+  State<AdminVendorDetailView> createState() => _AdminVendorDetailViewState();
+}
+
+class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
   final _repo = AdminRepository();
   late Future<(Vendor, VendorOwner?)> _future;
   bool _busy = false;
@@ -41,7 +62,15 @@ class _AdminVendorDetailScreenState extends State<AdminVendorDetailScreen> {
       await _repo.setVendorStatus(widget.vendorId, status);
       if (!mounted) return;
       showSnack(context, done);
-      context.pop();
+      widget.onStatusChanged?.call();
+      if (widget.embedded) {
+        setState(() {
+          _busy = false;
+          _future = _load();
+        });
+      } else {
+        context.pop();
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
@@ -50,11 +79,7 @@ class _AdminVendorDetailScreenState extends State<AdminVendorDetailScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: FutureBuilder<(Vendor, VendorOwner?)>(
+  Widget _content() => FutureBuilder<(Vendor, VendorOwner?)>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -67,10 +92,15 @@ class _AdminVendorDetailScreenState extends State<AdminVendorDetailScreen> {
             );
           }
           final (vendor, owner) = snap.data!;
-          return _Body(vendor: vendor, owner: owner);
+          return _Body(
+            vendor: vendor,
+            owner: owner,
+            showBack: !widget.embedded,
+          );
         },
-      ),
-      bottomNavigationBar: FutureBuilder<(Vendor, VendorOwner?)>(
+      );
+
+  Widget _actionBar() => FutureBuilder<(Vendor, VendorOwner?)>(
         future: _future,
         builder: (context, snap) {
           if (!snap.hasData) return const SizedBox.shrink();
@@ -78,19 +108,40 @@ class _AdminVendorDetailScreenState extends State<AdminVendorDetailScreen> {
             vendor: snap.data!.$1,
             busy: _busy,
             onApprove: () => _setStatus('active', context.l10n.vendorApproved),
-            onSuspend: () => _setStatus('suspended', context.l10n.vendorSuspended),
+            onSuspend: () =>
+                _setStatus('suspended', context.l10n.vendorSuspended),
           );
         },
-      ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return Column(
+        children: [
+          Expanded(child: _content()),
+          _actionBar(),
+        ],
+      );
+    }
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: _content(),
+      bottomNavigationBar: _actionBar(),
     );
   }
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.vendor, required this.owner});
+  const _Body({
+    required this.vendor,
+    required this.owner,
+    this.showBack = true,
+  });
 
   final Vendor vendor;
   final VendorOwner? owner;
+  final bool showBack;
 
   @override
   Widget build(BuildContext context) {
@@ -107,14 +158,15 @@ class _Body extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   AppNetworkImage(url: vendor.coverUrl, fit: BoxFit.cover),
-                  Positioned(
-                    left: 16,
-                    top: MediaQuery.of(context).padding.top + 8,
-                    child: _CircleButton(
-                      icon: Icons.chevron_left,
-                      onTap: () => context.pop(),
+                  if (showBack)
+                    Positioned(
+                      left: 16,
+                      top: MediaQuery.of(context).padding.top + 8,
+                      child: _CircleButton(
+                        icon: Icons.chevron_left,
+                        onTap: () => context.pop(),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -263,13 +315,15 @@ class _Body extends StatelessWidget {
                 child: Text(label,
                     style: const TextStyle(
                         fontSize: 13, color: AppColors.textMuted))),
-            Text(value,
-                style: mono
-                    ? AppType.mono(13.5)
-                    : const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink)),
+            // Phone / id rows are mono and must be copyable by an operator.
+            if (mono)
+              SelectableId(value, style: AppType.mono(13.5))
+            else
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink)),
           ],
         ),
       );
@@ -358,10 +412,16 @@ class _ActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
+      // Keep the bar's shape while an approval runs, so the layout does not
+      // jump — a bare spinner in a 52px bar reads as a broken button.
       child: busy
-          ? const SizedBox(
-              height: 52,
-              child: Center(child: CircularProgressIndicator()))
+          ? FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryDark,
+                  minimumSize: const Size.fromHeight(52)),
+              onPressed: null,
+              child: const ButtonSpinner(),
+            )
           : Row(
               children: [
                 if (!vendor.isSuspended)

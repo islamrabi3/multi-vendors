@@ -48,7 +48,7 @@ class AdminDashboardState extends Equatable {
 /// orders, refreshed together.
 class AdminDashboardCubit extends Cubit<AdminDashboardState> {
   AdminDashboardCubit(this._repository) : super(const AdminDashboardState()) {
-    _subscription = _repository.allOrdersStream().listen(_onOrders,
+    _subscription = _repository.liveOrdersStream().listen(_onOrders,
         onError: (Object e) =>
             emit(state.copyWith(loading: false, error: e.toString())));
     refreshStats();

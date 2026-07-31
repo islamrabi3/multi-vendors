@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
@@ -76,10 +77,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 ),
               ),
             ),
-            Text(
-              title,
-              style: AppType.heading(19, color: AppColors.ink),
-            ),
+            Text(title, style: AppType.heading(19, color: AppColors.ink)),
             const SizedBox(height: 20),
             TextField(
               controller: controller,
@@ -127,7 +125,8 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                           borderRadius: BorderRadius.circular(AppRadii.lg),
                         ),
                       ),
-                      onPressed: () => Navigator.pop(sheetContext, controller.text.trim()),
+                      onPressed: () =>
+                          Navigator.pop(sheetContext, controller.text.trim()),
                       child: Text(context.l10n.save),
                     ),
                   ),
@@ -146,16 +145,19 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
     final vendor = auth.state.vendor;
     if (vendor == null) return;
 
-    final file = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, maxWidth: 1200);
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+    );
     if (file == null) return;
 
     setState(() => _busy = true);
     try {
       final bytes = await file.readAsBytes();
       final folder = isLogo ? 'logo' : 'cover';
-      final path = '$folder/${vendor.id}/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      
+      final path =
+          '$folder/${vendor.id}/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+
       final url = await _admin.uploadImage(
         bucket: 'vendor-assets',
         path: path,
@@ -185,13 +187,16 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(context.l10n.settings,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 26,
-                      color: AppColors.ink)),
+              child: Text(
+                context.l10n.settings,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 26,
+                  color: AppColors.ink,
+                ),
+              ),
             ),
-            
+
             // Open / closed hero.
             Container(
               padding: const EdgeInsets.all(16),
@@ -206,7 +211,11 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 borderRadius: BorderRadius.circular(AppRadii.xl),
                 boxShadow: [
                   BoxShadow(
-                    color: (vendor.isOpen ? const Color(0xFF18A957) : const Color(0xFF8C8178)).withValues(alpha: 0.25),
+                    color:
+                        (vendor.isOpen
+                                ? const Color(0xFF18A957)
+                                : const Color(0xFF8C8178))
+                            .withValues(alpha: 0.25),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -218,11 +227,17 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: vendor.isOpen ? const Color(0xFF5FE39B) : const Color(0xFFE39B5F),
+                      color: vendor.isOpen
+                          ? const Color(0xFF5FE39B)
+                          : const Color(0xFFE39B5F),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: (vendor.isOpen ? const Color(0xFF5FE39B) : const Color(0xFFE39B5F)).withValues(alpha: 0.5),
+                          color:
+                              (vendor.isOpen
+                                      ? const Color(0xFF5FE39B)
+                                      : const Color(0xFFE39B5F))
+                                  .withValues(alpha: 0.5),
                           blurRadius: 6,
                           spreadRadius: 2,
                         ),
@@ -234,30 +249,95 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(vendor.isOpen ? context.l10n.storeIsOpen : context.l10n.storeIsClosed,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16)),
+                        Text(
+                          vendor.isOpen
+                              ? context.l10n.storeIsOpen
+                              : context.l10n.storeIsClosed,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
-                            vendor.isOpen
-                                ? context.l10n.acceptingOrdersNow
-                                : context.l10n.customersCantOrder,
-                            style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 12)),
+                          vendor.isOpen
+                              ? context.l10n.acceptingOrdersNow
+                              : context.l10n.customersCantOrder,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Switch(
                     value: vendor.isOpen,
-                    onChanged:
-                        _busy ? null : (v) => _patch({'is_open': v}),
+                    onChanged: _busy ? null : (v) => _patch({'is_open': v}),
                     activeThumbColor: Colors.white,
                     activeTrackColor: Colors.white.withValues(alpha: 0.45),
                     inactiveThumbColor: Colors.white,
                     inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Busy Mode Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: vendor.isBusy ? AppColors.amberFill : Colors.white,
+                borderRadius: BorderRadius.circular(AppRadii.xl),
+                border: Border.all(
+                  color: vendor.isBusy ? AppColors.amberInk.withValues(alpha: 0.4) : AppColors.border,
+                ),
+                boxShadow: AppShadows.card,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.local_fire_department_rounded,
+                    color: vendor.isBusy ? AppColors.amberInk : AppColors.textMuted,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Busy Mode (+15 mins prep)',
+                          style: TextStyle(
+                            color: vendor.isBusy ? AppColors.amberInk : AppColors.ink,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          vendor.isBusy
+                              ? 'Customers see store as busy with +15 min extra prep'
+                              : 'Toggle when orders overflow to add prep time buffer',
+                          style: TextStyle(
+                            color: vendor.isBusy ? AppColors.amberInk.withValues(alpha: 0.8) : AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: vendor.isBusy,
+                    onChanged: _busy
+                        ? null
+                        : (v) => _patch({
+                              'is_busy': v,
+                              'extra_prep_minutes': v ? 15 : 0,
+                            }),
+                    activeTrackColor: AppColors.amberInk,
                   ),
                 ],
               ),
@@ -287,18 +367,26 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                             height: 180,
                             width: double.infinity,
                           ),
-                          Container(
-                            color: Colors.black38,
-                          ),
+                          Container(color: Colors.black38),
                           Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.add_photo_alternate_rounded, color: Colors.white70, size: 28),
+                                const Icon(
+                                  Icons.add_photo_alternate_rounded,
+                                  color: Colors.white70,
+                                  size: 28,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  vendor.coverUrl != null ? 'Change Cover Photo' : 'Upload Cover Photo',
-                                  style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                                  vendor.coverUrl != null
+                                      ? 'Change Cover Photo'
+                                      : 'Upload Cover Photo',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -345,7 +433,11 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                               shape: BoxShape.circle,
                               color: Colors.black26,
                             ),
-                            child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ],
                       ),
@@ -364,84 +456,116 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             _sectionLabel(context.l10n.storeProfile),
             _card([
-              _navRow(Icons.storefront_rounded, context.l10n.storeName, vendor.name,
-                  onTap: () => _editField(
-                        title: context.l10n.storeName,
-                        label: context.l10n.name,
-                        initial: vendor.name,
-                        keyboard: TextInputType.text,
-                        icon: Icons.storefront_rounded,
-                        onSave: (v) {
-                          if (v.isNotEmpty) _patch({'name': v});
-                        },
-                      )),
-              _navRow(Icons.description_outlined, context.l10n.description, vendor.description ?? context.l10n.addADescription,
-                  onTap: () => _editField(
-                        title: context.l10n.description,
-                        label: context.l10n.description,
-                        initial: vendor.description ?? '',
-                        keyboard: TextInputType.text,
-                        icon: Icons.description_outlined,
-                        onSave: (v) => _patch({'description': v}),
-                      )),
+              _navRow(
+                Icons.storefront_rounded,
+                context.l10n.storeName,
+                vendor.name,
+                onTap: () => _editField(
+                  title: context.l10n.storeName,
+                  label: context.l10n.name,
+                  initial: vendor.name,
+                  keyboard: TextInputType.text,
+                  icon: Icons.storefront_rounded,
+                  onSave: (v) {
+                    if (v.isNotEmpty) _patch({'name': v});
+                  },
+                ),
+              ),
+              _navRow(
+                Icons.description_outlined,
+                context.l10n.description,
+                vendor.description ?? context.l10n.addADescription,
+                onTap: () => _editField(
+                  title: context.l10n.description,
+                  label: context.l10n.description,
+                  initial: vendor.description ?? '',
+                  keyboard: TextInputType.text,
+                  icon: Icons.description_outlined,
+                  onSave: (v) => _patch({'description': v}),
+                ),
+              ),
             ]),
             const SizedBox(height: 20),
-            
+
             _sectionLabel(context.l10n.feesAndOrders),
             _card([
-              _navRow(Icons.delivery_dining_rounded, context.l10n.deliveryFee, formatMoney(vendor.deliveryFee),
-                  onTap: () => _editField(
-                        title: context.l10n.deliveryFee3,
-                        label: context.l10n.deliveryFee2,
-                        initial: vendor.deliveryFee.toStringAsFixed(2),
-                        keyboard: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        icon: Icons.delivery_dining_rounded,
-                        onSave: (v) => _patch(
-                            {'delivery_fee': double.tryParse(v) ?? 0}),
-                      )),
-              _navRow(Icons.shopping_bag_outlined, context.l10n.minimumOrder, formatMoney(vendor.minOrderAmount),
-                  onTap: () => _editField(
-                        title: context.l10n.minimumOrder1,
-                        label: context.l10n.minimumOrder,
-                        initial: vendor.minOrderAmount.toStringAsFixed(2),
-                        keyboard: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        icon: Icons.shopping_bag_outlined,
-                        onSave: (v) => _patch(
-                            {'min_order_amount': double.tryParse(v) ?? 0}),
-                      )),
-              _navRow(Icons.timer_outlined, context.l10n.avgPrepTime, '${vendor.avgPrepMinutes} ${context.l10n.minShort}',
-                  onTap: () => _editField(
-                        title: context.l10n.avgPrepTime,
-                        label: context.l10n.minutes,
-                        initial: vendor.avgPrepMinutes.toString(),
-                        keyboard: TextInputType.number,
-                        icon: Icons.timer_outlined,
-                        onSave: (v) => _patch(
-                            {'avg_prep_minutes': int.tryParse(v) ?? 20}),
-                      )),
+              _navRow(
+                Icons.delivery_dining_rounded,
+                context.l10n.deliveryFee,
+                formatMoney(vendor.deliveryFee),
+                onTap: () => _editField(
+                  title: context.l10n.deliveryFee3,
+                  label: context.l10n.deliveryFee2,
+                  initial: vendor.deliveryFee.toStringAsFixed(2),
+                  keyboard: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  icon: Icons.delivery_dining_rounded,
+                  onSave: (v) =>
+                      _patch({'delivery_fee': double.tryParse(v) ?? 0}),
+                ),
+              ),
+              _navRow(
+                Icons.shopping_bag_outlined,
+                context.l10n.minimumOrder,
+                formatMoney(vendor.minOrderAmount),
+                onTap: () => _editField(
+                  title: context.l10n.minimumOrder1,
+                  label: context.l10n.minimumOrder,
+                  initial: vendor.minOrderAmount.toStringAsFixed(2),
+                  keyboard: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  icon: Icons.shopping_bag_outlined,
+                  onSave: (v) =>
+                      _patch({'min_order_amount': double.tryParse(v) ?? 0}),
+                ),
+              ),
+              _navRow(
+                Icons.timer_outlined,
+                context.l10n.avgPrepTime,
+                '${vendor.avgPrepMinutes} ${context.l10n.minShort}',
+                onTap: () => _editField(
+                  title: context.l10n.avgPrepTime,
+                  label: context.l10n.minutes,
+                  initial: vendor.avgPrepMinutes.toString(),
+                  keyboard: TextInputType.number,
+                  icon: Icons.timer_outlined,
+                  onSave: (v) =>
+                      _patch({'avg_prep_minutes': int.tryParse(v) ?? 20}),
+                ),
+              ),
             ]),
             const SizedBox(height: 20),
-            
+
             _sectionLabel(context.l10n.preferences),
             _card([
-              _switchRow(Icons.autorenew_rounded, context.l10n.autoAcceptOrders, vendor.autoAccept,
-                  (v) => _patch({'auto_accept': v})),
-              _switchRow(Icons.volume_up_rounded, context.l10n.newOrderSound, _soundOn,
-                  (v) => setState(() => _soundOn = v)),
               _switchRow(
-                  Icons.language_rounded,
-                  context.l10n.arabic,
-                  context.watch<LocaleCubit>().state.languageCode == 'ar',
-                  (v) => context.read<LocaleCubit>().setLocale(
-                      v ? const Locale('ar') : const Locale('en'))),
+                Icons.autorenew_rounded,
+                context.l10n.autoAcceptOrders,
+                vendor.autoAccept,
+                (v) => _patch({'auto_accept': v}),
+              ),
+              _switchRow(
+                Icons.volume_up_rounded,
+                context.l10n.newOrderSound,
+                _soundOn,
+                (v) => setState(() => _soundOn = v),
+              ),
+              _switchRow(
+                Icons.language_rounded,
+                context.l10n.arabic,
+                context.watch<LocaleCubit>().state.languageCode == 'ar',
+                (v) => context.read<LocaleCubit>().setLocale(
+                  v ? const Locale('ar') : const Locale('en'),
+                ),
+              ),
             ]),
             const SizedBox(height: 32),
-            
+
             OutlinedButton.icon(
               onPressed: () => context.read<AuthCubit>().signOut(),
               style: OutlinedButton.styleFrom(
@@ -455,7 +579,11 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
               icon: const Icon(Icons.logout_rounded, size: 20),
               label: Text(
                 context.l10n.signOut,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: Colors.redAccent,
+                ),
               ),
             ),
           ],
@@ -465,14 +593,17 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
   }
 
   Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        child: Text(text.toUpperCase(),
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-                color: AppColors.textMuted)),
-      );
+    padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
+        color: AppColors.textMuted,
+      ),
+    ),
+  );
 
   Widget _card(List<Widget> rows) {
     final children = <Widget>[];
@@ -494,7 +625,12 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
     );
   }
 
-  Widget _navRow(IconData icon, String label, String value, {required VoidCallback onTap}) {
+  Widget _navRow(
+    IconData icon,
+    String label,
+    String value, {
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: _busy ? null : onTap,
       child: Padding(
@@ -503,30 +639,45 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
           children: [
             Icon(icon, size: 20, color: AppColors.primary),
             const SizedBox(width: 12),
-            Text(label,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.5,
-                    color: AppColors.ink)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14.5,
+                color: AppColors.ink,
+              ),
+            ),
             const Spacer(),
             Flexible(
-              child: Text(value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                      fontSize: 14, color: AppColors.textMuted)),
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textMuted,
+                ),
+              ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right,
-                size: 20, color: AppColors.textFaint),
+            const Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: AppColors.textFaint,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _switchRow(IconData icon, String label, bool value, ValueChanged<bool> onChanged) {
+  Widget _switchRow(
+    IconData icon,
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
@@ -534,11 +685,14 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
           Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.5,
-                    color: AppColors.ink)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14.5,
+                color: AppColors.ink,
+              ),
+            ),
           ),
           Switch(
             value: value,

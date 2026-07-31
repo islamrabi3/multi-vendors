@@ -19,7 +19,7 @@ class CartScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.ink, size: 20),
+          icon: const Icon(Icons.arrow_back, color: AppColors.ink, size: 22),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -139,7 +139,9 @@ class CartScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.product.name,
+                                  item.product.displayName(
+                                      Localizations.localeOf(context)
+                                          .languageCode),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14.5,

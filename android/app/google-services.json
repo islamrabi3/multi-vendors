@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "696253376957",
+    "project_id": "multi-rest-app",
+    "storage_bucket": "multi-rest-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:696253376957:android:bc98b2619307ebca49cad4",
+        "android_client_info": {
+          "package_name": "com.example.multi_vendor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPrUxsX_t3lSA4XPbJUjiFdgmWaeibu8E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

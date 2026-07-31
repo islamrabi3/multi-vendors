@@ -157,13 +157,13 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     }
   }
 
-  /// Retry payment for an unpaid Paymob order. Returns the checkout URL.
-  Future<String?> retryPayment() async {
+  /// Opens a fresh unified-checkout session for an unpaid Paymob order.
+  Future<PaymobCheckout?> retryPayment() async {
     emit(state.copyWith(busy: true, clearError: true));
     try {
-      final url = await _payments.createPaymobCheckout(orderId);
+      final checkout = await _payments.createOrderCheckout(orderId);
       emit(state.copyWith(busy: false));
-      return url;
+      return checkout;
     } catch (error) {
       emit(state.copyWith(busy: false, error: error.toString()));
       return null;

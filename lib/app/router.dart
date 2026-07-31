@@ -5,14 +5,22 @@ import 'package:go_router/go_router.dart';
 
 import '../core/models/profile.dart';
 import '../features/auth/auth_cubit.dart';
+import '../features/auth/screens/app_onboarding_screen.dart';
 import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/role_choice_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/admin/admin_shell.dart';
+import '../features/admin/screens/admin_complaints_screen.dart';
 import '../features/admin/screens/admin_dashboard_screen.dart';
+import '../features/admin/screens/admin_drivers_screen.dart';
+import '../features/admin/screens/admin_manage_screen.dart';
+import '../features/admin/screens/admin_menu_import_screen.dart';
 import '../features/admin/screens/admin_order_detail_screen.dart';
 import '../features/admin/screens/admin_orders_screen.dart';
 import '../features/admin/screens/admin_promos_screen.dart';
+import '../features/admin/screens/admin_reports_screen.dart';
+import '../features/admin/screens/admin_service_areas_screen.dart';
 import '../features/admin/screens/admin_vendor_detail_screen.dart';
 import '../features/admin/screens/admin_vendors_screen.dart';
 import '../features/admin/screens/admin_categories_screen.dart';
@@ -23,10 +31,12 @@ import '../features/customer/checkout/checkout_screen.dart';
 import '../features/customer/checkout/paymob_checkout_screen.dart';
 import '../features/customer/home/customer_shell.dart';
 import '../features/customer/home/home_screen.dart';
+import '../features/customer/orders/order_chat_sheet.dart';
 import '../features/customer/orders/order_details_screen.dart';
 import '../features/customer/orders/orders_screen.dart';
 import '../features/customer/profile/favorites_screen.dart';
 import '../features/customer/profile/profile_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/customer/vendor_details/vendor_details_screen.dart';
 import '../features/driver/driver_shell.dart';
 import '../features/driver/screens/active_delivery_screen.dart';
@@ -84,15 +94,28 @@ GoRouter buildRouter(AuthCubit authCubit) {
         return location == '/splash' ? null : '/splash';
       }
       if (auth.status == AuthStatus.unauthenticated) {
-        return (_authPaths.contains(location) || location == '/splash') ? null : '/splash';
+        // First launch only: the intro carousel. Once it has been seen — or
+        // once anyone has ever signed in on this device — signing out lands
+        // straight on the login screen instead of replaying "get started".
+        if (!AppOnboarding.seen) {
+          return location == '/onboarding' ? null : '/onboarding';
+        }
+        return _authPaths.contains(location) ? null : '/login';
       }
 
       // Authenticated.
+      // A social sign-up carries no role, so it is asked once before it can
+      // reach any part of the app.
+      if (auth.needsRoleChoice) {
+        return location == '/choose-role' ? null : '/choose-role';
+      }
       if (auth.needsVendorOnboarding) {
         return location == '/vendor-onboarding' ? null : '/vendor-onboarding';
       }
       final role = auth.profile!.role;
       if (location == '/splash' ||
+          location == '/choose-role' ||
+          location == '/onboarding' ||
           location == '/vendor-onboarding' ||
           _authPaths.contains(location) ||
           !_allowedForRole(role, location)) {
@@ -102,8 +125,14 @@ GoRouter buildRouter(AuthCubit authCubit) {
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(
+          path: '/onboarding', builder: (_, _) => const AppOnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
+      GoRoute(
+        path: '/choose-role',
+        builder: (_, _) => const RoleChoiceScreen(),
+      ),
       GoRoute(
         path: '/vendor-onboarding',
         builder: (_, _) => const VendorOnboardingScreen(),
@@ -133,21 +162,25 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
       GoRoute(
         path: '/paymob-checkout',
-        builder: (_, state) {
-          final args = state.extra! as Map<String, String>;
-          return PaymobCheckoutScreen(
-            checkoutUrl: args['url']!,
-            orderId: args['orderId']!,
-          );
-        },
+        builder: (_, state) =>
+            PaymobCheckoutScreen(checkoutUrl: state.extra! as String),
       ),
       GoRoute(
         path: '/order/:id',
         builder: (_, state) =>
             OrderDetailsScreen(orderId: state.pathParameters['id']!),
       ),
+      // A tapped chat notification lands here, so the thread has to be
+      // reachable as a route rather than only as a sheet pushed from a screen
+      // the user may never have opened.
+      GoRoute(
+        path: '/order/:id/chat',
+        builder: (_, state) =>
+            OrderChatScreen(orderId: state.pathParameters['id']!),
+      ),
       GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
       GoRoute(path: '/favorites', builder: (_, _) => const FavoritesScreen()),
+      GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
 
       // Vendor area.
       StatefulShellRoute.indexedStack(
@@ -197,29 +230,50 @@ GoRouter buildRouter(AuthCubit authCubit) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/admin-app/vendors',
-              builder: (_, _) => const AdminVendorsScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
               path: '/admin-app/orders',
               builder: (_, _) => const AdminOrdersScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/admin-app/promos',
-              builder: (_, _) => const AdminPromosScreen(),
+              path: '/admin-app/vendors',
+              builder: (_, _) => const AdminVendorsScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/admin-app/categories',
-              builder: (_, _) => const AdminCategoriesScreen(),
+              path: '/admin-app/manage',
+              builder: (_, _) => const AdminManageScreen(),
             ),
           ]),
         ],
+      ),
+
+      // Reached from the Manage hub rather than the tab bar, so they push over
+      // the shell instead of owning a branch.
+      GoRoute(
+        path: '/admin-app/promos',
+        builder: (_, _) => const AdminPromosScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/categories',
+        builder: (_, _) => const AdminCategoriesScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/complaints',
+        builder: (_, _) => const AdminComplaintsScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/sales-reports',
+        builder: (_, _) => const AdminReportsScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/reports',
+        builder: (_, _) => const AdminReportsScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/service-areas',
+        builder: (_, _) => const AdminServiceAreasScreen(),
       ),
       GoRoute(
         path: '/admin-app/vendors/:id',
@@ -230,6 +284,16 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/admin-app/orders/:id',
         builder: (_, state) =>
             AdminOrderDetailScreen(orderId: state.pathParameters['id']!),
+      ),
+      // AI menu extraction is an operator tool, not a vendor one: each run
+      // costs money and writes a whole catalogue.
+      GoRoute(
+        path: '/admin-app/drivers',
+        builder: (_, _) => const AdminDriversScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/menu-import',
+        builder: (_, _) => const AdminMenuImportScreen(),
       ),
 
       // Driver area.

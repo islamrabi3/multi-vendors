@@ -6,6 +6,7 @@ import '../../../core/models/product.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -36,8 +37,11 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final _name = TextEditingController(text: widget.args.product?.name);
+  late final _nameAr = TextEditingController(text: widget.args.product?.nameAr);
   late final _description =
       TextEditingController(text: widget.args.product?.description);
+  late final _descriptionAr =
+      TextEditingController(text: widget.args.product?.descriptionAr);
   late final _price = TextEditingController(
       text: widget.args.product?.price.toStringAsFixed(2));
   late String? _categoryId = widget.args.product?.categoryId;
@@ -56,7 +60,9 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
   @override
   void dispose() {
     _name.dispose();
+    _nameAr.dispose();
     _description.dispose();
+    _descriptionAr.dispose();
     _price.dispose();
     super.dispose();
   }
@@ -95,11 +101,17 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
+      // Blank translations are stored as null so the display fallback can
+      // tell "not translated" from "translated to an empty string".
       final saved = await _admin.saveProduct({
         'vendor_id': widget.args.vendorId,
         'category_id': _categoryId,
         'name': _name.text.trim(),
+        'name_ar': _nameAr.text.trim().isEmpty ? null : _nameAr.text.trim(),
         'description': _description.text.trim(),
+        'description_ar': _descriptionAr.text.trim().isEmpty
+            ? null
+            : _descriptionAr.text.trim(),
         'price': double.parse(_price.text),
         'image_url': _imageUrl,
         'is_available': _isAvailable,
@@ -118,23 +130,14 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
   Future<void> _confirmDelete() async {
     final product = _product;
     if (product == null) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialogs.showConfirmDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.deleteProduct),
-        content: Text('${context.l10n.remove} "${product.name}" ${context.l10n.fromTheMenu}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(context.l10n.cancel)),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.l10n.delete),
-          ),
-        ],
-      ),
+      title: context.l10n.deleteProduct,
+      message: '${context.l10n.remove} "${product.name}" ${context.l10n.fromTheMenu}',
+      confirmText: context.l10n.delete,
+      cancelText: context.l10n.cancel,
+      isDestructive: true,
+      icon: Icons.delete_outline_rounded,
     );
     if (confirmed == true) {
       await _admin.deleteProduct(product.id);
@@ -518,24 +521,55 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
+              textDirection: TextDirection.ltr,
               decoration: InputDecoration(
-                labelText: context.l10n.productName,
+                labelText:
+                    '${context.l10n.productName} · ${context.l10n.english}',
                 prefixIcon: const Icon(Icons.fastfood_outlined),
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? context.l10n.required : null,
             ),
             const SizedBox(height: 12),
+            // Optional: customers reading the other language fall back to the
+            // canonical name, so a store can list items in one language only.
+            TextFormField(
+              controller: _nameAr,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                labelText:
+                    '${context.l10n.productName} · ${context.l10n.arabic}',
+                prefixIcon: const Icon(Icons.translate_rounded),
+              ),
+            ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _description,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
+              textDirection: TextDirection.ltr,
               decoration: InputDecoration(
-                labelText: context.l10n.description,
+                labelText:
+                    '${context.l10n.description} · ${context.l10n.english}',
                 alignLabelWithHint: true,
                 prefixIcon: const Padding(
-                  padding: EdgeInsets.only(bottom: 40),
+                  padding: EdgeInsetsDirectional.only(bottom: 40),
                   child: Icon(Icons.notes_outlined),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descriptionAr,
+              maxLines: 3,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                labelText:
+                    '${context.l10n.description} · ${context.l10n.arabic}',
+                alignLabelWithHint: true,
+                prefixIcon: const Padding(
+                  padding: EdgeInsetsDirectional.only(bottom: 40),
+                  child: Icon(Icons.translate_rounded),
                 ),
               ),
             ),

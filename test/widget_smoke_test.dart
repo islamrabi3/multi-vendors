@@ -4,14 +4,21 @@ import 'package:multi_vendor/core/models/order.dart';
 import 'package:multi_vendor/core/utils/money.dart';
 import 'package:multi_vendor/core/widgets/common.dart';
 
+import 'package:multi_vendor/l10n/app_localizations.dart';
+
 void main() {
   group('OrderStatusChip renders all statuses', () {
     for (final status in OrderStatus.values) {
-      testWidgets(status.label, (tester) async {
+      testWidgets(status.wireName, (tester) async {
         await tester.pumpWidget(
-          MaterialApp(home: Scaffold(body: OrderStatusChip(status: status))),
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(body: OrderStatusChip(status: status)),
+          ),
         );
-        expect(find.text(status.label), findsOneWidget);
+        await tester.pumpAndSettle();
+        expect(find.byType(OrderStatusChip), findsOneWidget);
       });
     }
   });

@@ -9,6 +9,8 @@ import '../../../core/repositories/driver_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/ui_kit.dart';
 import '../../auth/auth_cubit.dart';
 import '../driver_pool_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -50,7 +52,7 @@ class _PoolView extends StatelessWidget {
             children: [
               _Header(state: state, onToggle: cubit.setOnline),
               if (state.loading)
-                const Expanded(child: LoadingView())
+                const Expanded(child: _PoolSkeleton())
               else if (!state.isOnline)
                 Expanded(
                   child: RefreshIndicator(
@@ -59,10 +61,26 @@ class _PoolView extends StatelessWidget {
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
-                        SizedBox(height: 140),
+                        const SizedBox(height: 140),
                         EmptyView(
                             message: context.l10n.goOnlineToSeeAvailableOrders,
                             icon: Icons.power_settings_new),
+                        const SizedBox(height: AppSpace.xxl),
+                        // The state told the driver to go online but gave them
+                        // no way to; the only toggle was a switch buried in the
+                        // header, well off the reading path.
+                        Center(
+                          child: FilledButton.icon(
+                            onPressed: () => cubit.setOnline(true),
+                            icon: const Icon(Icons.power_settings_new, size: 20),
+                            label: Text(context.l10n.available),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.success,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 28, vertical: AppSpace.md),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -92,7 +110,7 @@ class _PoolView extends StatelessWidget {
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: [
-                              SizedBox(height: 120),
+                              const SizedBox(height: 120),
                               EmptyView(
                                   message: context.l10n.noOrdersWaitingForPickup,
                                   icon: Icons.hourglass_empty),
@@ -109,6 +127,11 @@ class _PoolView extends StatelessWidget {
                               return _PoolCard(
                                 order: order,
                                 label: state.vendorLabels[order.vendorId],
+                                claiming:
+                                    state.claimingOrderId == order.id,
+                                // Any claim in flight locks the rest of the
+                                // pool: two claims at once can only lose one.
+                                enabled: state.claimingOrderId == null,
                                 onClaim: () => cubit.claim(order),
                               );
                             },
@@ -171,8 +194,8 @@ class _Header extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: state.isOnline
-                                ? const Color(0xFF5FE39B)
-                                : const Color(0xFFE39B5F),
+                                ? AppColors.onDarkSuccess
+                                : AppColors.primaryLight,
                           ),
                         ),
                         const SizedBox(width: 7),
@@ -195,9 +218,9 @@ class _Header extends StatelessWidget {
                 activeThumbColor: Colors.white,
                 activeTrackColor: AppColors.success,
                 inactiveThumbColor: Colors.white,
-                inactiveTrackColor: const Color(0xFF3A342E),
+                inactiveTrackColor: AppColors.onDarkTrack,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.sm),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -218,7 +241,7 @@ class _Header extends StatelessWidget {
                     activeThumbColor: Colors.white,
                     activeTrackColor: AppColors.success,
                     inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: const Color(0xFF3A342E),
+                    inactiveTrackColor: AppColors.onDarkTrack,
                   ),
                 ],
               ),
@@ -233,47 +256,28 @@ class _Header extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              _stat(formatMoney(state.todayEarnings), context.l10n.earnedToday),
+              Expanded(
+                child: DarkStatTile(
+                    value: formatMoney(state.todayEarnings),
+                    label: context.l10n.earnedToday),
+              ),
               const SizedBox(width: 9),
-              _stat('${state.todayTrips}', context.l10n.trips),
+              Expanded(
+                child: DarkStatTile(
+                    value: '${state.todayTrips}', label: context.l10n.trips),
+              ),
               const SizedBox(width: 9),
-              _stat(state.isOnline ? '${state.orders.length}' : '—',
-                  context.l10n.inThePool),
+              Expanded(
+                child: DarkStatTile(
+                    value: state.isOnline ? '${state.orders.length}' : '—',
+                    label: context.l10n.inThePool),
+              ),
             ],
           ),
         ],
       ),
     );
   }
-
-  Widget _stat(String value, String label) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 13),
-          decoration: BoxDecoration(
-            color: const Color(0xFF243029),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(value,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 19,
-                        color: Colors.white)),
-              ),
-              const SizedBox(height: 1),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 10.5,
-                      color: Colors.white.withValues(alpha: 0.55))),
-            ],
-          ),
-        ),
-      );
 }
 
 class _PoolCard extends StatelessWidget {
@@ -281,11 +285,19 @@ class _PoolCard extends StatelessWidget {
     required this.order,
     required this.label,
     required this.onClaim,
+    required this.claiming,
+    required this.enabled,
   });
 
   final AppOrder order;
   final ({String name, String? logoUrl})? label;
   final VoidCallback onClaim;
+
+  /// This card's claim is in flight.
+  final bool claiming;
+
+  /// No claim anywhere in the pool is in flight.
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -379,12 +391,69 @@ class _PoolCard extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(13)),
             ),
-            onPressed: onClaim,
-            child: Text(order.isCod
-                ? '${context.l10n.claimCollect} ${formatMoney(order.total)} ${context.l10n.cash}'
-                : context.l10n.claimDelivery),
+            onPressed: enabled ? onClaim : null,
+            child: claiming
+                ? const ButtonSpinner()
+                : Text(order.isCod
+                    ? '${context.l10n.claimCollect} ${formatMoney(order.total)} ${context.l10n.cash}'
+                    : context.l10n.claimDelivery),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The pool while presence and the first realtime snapshot resolve. The dark
+/// header above stays live, so this covers only the list area.
+class _PoolSkeleton extends StatelessWidget {
+  const _PoolSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: SkeletonList(
+        itemCount: 4,
+        padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl, AppSpace.lg, AppSpace.xl, AppSpace.xxl),
+        separator: const SizedBox(height: AppSpace.md),
+        itemBuilder: (_) => DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Skeleton(width: 38, height: 38, radius: AppRadii.sm),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Skeleton.line(widthFactor: 0.55, height: 14),
+                          SizedBox(height: 5),
+                          Skeleton.line(widthFactor: 0.4, height: 11),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: AppSpace.sm),
+                    Skeleton(width: 56, height: 30),
+                  ],
+                ),
+                SizedBox(height: 13),
+                Skeleton.line(widthFactor: 0.7, height: 12),
+                SizedBox(height: AppSpace.md),
+                Skeleton(height: 48, radius: 13),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

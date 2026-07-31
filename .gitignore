@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Apple Sign-In private keys — never commit
+AuthKey_*.p8
+
+# Firebase service-account keys — never commit
+multi-rest-app-firebase-adminsdk-*.json

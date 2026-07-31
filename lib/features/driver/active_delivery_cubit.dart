@@ -187,12 +187,12 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
     }
   }
 
-  Future<void> markDelivered() async {
+  Future<void> markDelivered({String? proofUrl}) async {
     final order = state.order;
     if (order == null) return;
     emit(state.copyWith(busy: true, clearError: true));
     try {
-      await _orders.updateStatus(order.id, OrderStatus.delivered);
+      await _orders.updateStatus(order.id, OrderStatus.delivered, proofUrl: proofUrl);
       emit(state.copyWith(busy: false));
     } catch (error) {
       emit(state.copyWith(busy: false, error: error.toString()));

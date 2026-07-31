@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/models/address.dart';
 import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/payment_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/ui_kit.dart';
 import '../cart/cart_cubit.dart';
 import 'checkout_cubit.dart';
+import 'paymob_flow.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class CheckoutScreen extends StatelessWidget {
@@ -43,14 +50,63 @@ class _CheckoutViewState extends State<_CheckoutView> {
     super.dispose();
   }
 
-  void _onPlaced(BuildContext context, CheckoutState state) {
+  /// Card orders are held as unpaid until Paymob's webhook confirms payment;
+  /// RLS keeps an unpaid card order invisible to the restaurant, and anything
+  /// that does not settle is deleted outright.
+  Future<void> _onPlaced(CheckoutState state) async {
     final orderId = state.placedOrderId!;
-    context.read<CartCubit>().clear();
-    if (state.paymobCheckoutUrl != null) {
-      context.pushReplacement('/paymob-checkout',
-          extra: {'url': state.paymobCheckoutUrl!, 'orderId': orderId});
-    } else {
-      context.pushReplacement('/order/$orderId');
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    final cartCubit = context.read<CartCubit>();
+    final checkoutCubit = context.read<CheckoutCubit>();
+
+    if (state.paymentMethod != 'paymob') {
+      cartCubit.clear();
+      router.pushReplacement('/order/$orderId');
+      return;
+    }
+
+    Future<void> discard(String message) async {
+      await OrderRepository().discardUnpaidOrder(orderId);
+      if (!mounted) return;
+      checkoutCubit.resetAfterFailedPayment();
+      showSnack(context, message, error: true);
+    }
+
+    PaymobCheckout checkout;
+    try {
+      checkout = await PaymentRepository().createOrderCheckout(orderId);
+    } catch (error) {
+      await discard(readableError(error.toString()));
+      return;
+    }
+    if (!mounted) return;
+
+    final result = await runPaymobCheckout(router, checkout);
+    if (!mounted) return;
+
+    switch (result) {
+      case PaymobFlowResult.paid:
+        cartCubit.clear();
+        router.pushReplacement('/order/$orderId');
+      case PaymobFlowResult.cancelled:
+        await discard(
+            'Payment cancelled. The order was not sent to the restaurant.');
+      case PaymobFlowResult.failed:
+        await discard(
+            'Payment failed. The order was not sent to the restaurant.');
+      case PaymobFlowResult.unresolved:
+        // Keep the order: it is still unpaid and invisible to the restaurant,
+        // and the customer can retry or watch it settle from order details.
+        cartCubit.clear();
+        router.pushReplacement('/order/$orderId');
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Still confirming your payment with the bank. The restaurant '
+                'is notified only once it is confirmed.'),
+          ),
+        );
     }
   }
 
@@ -64,13 +120,13 @@ class _CheckoutViewState extends State<_CheckoutView> {
             previous.step != current.step || previous.error != current.error,
         listener: (context, state) {
           if (state.step == CheckoutStep.placed) {
-            _onPlaced(context, state);
+            _onPlaced(state);
           } else if (state.error != null) {
             showSnack(context, readableError(state.error!), error: true);
           }
         },
         builder: (context, state) {
-          if (state.loading) return const LoadingView();
+          if (state.loading) return const _CheckoutSkeleton();
           if (cart.isEmpty) {
             return EmptyView(
                 message: context.l10n.yourCartIsEmpty,
@@ -81,7 +137,11 @@ class _CheckoutViewState extends State<_CheckoutView> {
           final total =
               cart.subtotal - discount + cart.vendor!.deliveryFee;
           return ListView(
-            padding: const EdgeInsets.all(16),
+            // The place-order button is the last item, so the list has to
+            // clear Android's gesture bar itself — this screen has no
+            // bottomNavigationBar for Scaffold to inset.
+            padding: EdgeInsets.fromLTRB(
+                16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
             children: [
               // Address section with mini map
               if (state.addresses.isEmpty)
@@ -95,167 +155,17 @@ class _CheckoutViewState extends State<_CheckoutView> {
                     },
                   ),
                 )
-              else ...[
-                Builder(
-                  builder: (context) {
-                    final selectedAddress = state.selectedAddress ?? state.addresses.first;
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        children: [
-                          // Abstract mini map
-                          Container(
-                            height: 84,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Color(0xFFEDEAE4), Color(0xFFE4DFD7)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: CustomPaint(
-                                    painter: _MiniMapPainter(),
-                                  ),
-                                ),
-                                // Location Pin
-                                Positioned(
-                                  left: 52,
-                                  top: 34,
-                                  child: Transform.rotate(
-                                    angle: -0.785, // -45 degrees
-                                    child: Container(
-                                      width: 20,
-                                      height: 20,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: Radius.circular(10),
-                                          topRight: Radius.circular(10),
-                                          bottomRight: Radius.circular(10),
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Color(0x66FF5A2C),
-                                            blurRadius: 8,
-                                            offset: Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Address Details Row
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.location_on, color: AppColors.primary, size: 18),
-                                const SizedBox(width: 11),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        selectedAddress.label,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: AppColors.ink,
-                                        ),
-                                      ),
-                                      Text(
-                                        selectedAddress.summary,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () async {
-                                    await context.push('/addresses');
-                                    cubit.loadAddresses();
-                                  },
-                                  child: Text(
-                                    context.l10n.change,
-                                    style: TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+              else
+                _AddressCard(
+                  address: state.selectedAddress ?? state.addresses.first,
+                  onChange: () async {
+                    await context.push('/addresses');
+                    cubit.loadAddresses();
+                  },
                 ),
-              ],
 
-              // Delivery Time Card
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.access_time_filled, color: AppColors.ink, size: 19),
-                    const SizedBox(width: 11),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.l10n.standard2535Min,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                          Text(
-                            context.l10n.arrivesBy935Pm,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primary,
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.check, size: 12, color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: AppSpace.md),
+              _EtaCard(prepMinutes: cart.vendor!.totalPrepMinutes),
 
               // Payment Section
               const SizedBox(height: 18),
@@ -264,6 +174,19 @@ class _CheckoutViewState extends State<_CheckoutView> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 11),
+              _PaymentSelectorCard(
+                emoji: '👛',
+                title: context.l10n.payWithWallet,
+                subtitle: state.walletBalance >= total
+                    ? '${formatMoney(state.walletBalance)} ${context.l10n.currentBalance}'
+                    : '${formatMoney(state.walletBalance)} (${context.l10n.insufficientWalletBalance})',
+                selected: state.paymentMethod == 'wallet',
+                disabled: state.walletBalance < total,
+                onTap: state.walletBalance >= total
+                    ? () => cubit.selectPaymentMethod('wallet')
+                    : null,
+              ),
+              const SizedBox(height: 9),
               _PaymentSelectorCard(
                 emoji: '💵',
                 title: context.l10n.cashOnDelivery,
@@ -289,13 +212,11 @@ class _CheckoutViewState extends State<_CheckoutView> {
               const SizedBox(height: 11),
               if (state.couponDiscount != null)
                 // Applied Coupon Card
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFFFC2AC), width: 1.5),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                AppCard(
+                  attention: true,
+                  radius: AppRadii.md,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 15, vertical: 13),
                   child: Row(
                     children: [
                       Container(
@@ -306,7 +227,10 @@ class _CheckoutViewState extends State<_CheckoutView> {
                           borderRadius: BorderRadius.circular(9),
                         ),
                         alignment: Alignment.center,
-                        child: Text(context.l10n.emptyString, style: TextStyle(fontSize: 16)),
+                        // Was `l10n.emptyString` — a literal "••••••••" glyph
+                        // standing in for an icon that was never drawn.
+                        child: const Icon(Icons.local_offer_rounded,
+                            size: 16, color: AppColors.primaryDark),
                       ),
                       const SizedBox(width: 11),
                       Expanded(
@@ -347,7 +271,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
                         textCapitalization: TextCapitalization.characters,
                         decoration: InputDecoration(
                           hintText: context.l10n.couponCode,
-                          fillColor: Colors.white,
+                          fillColor: AppColors.surface,
                           errorText: state.couponError != null
                               ? readableError(state.couponError!)
                               : null,
@@ -375,7 +299,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
                 controller: _notes,
                 decoration: InputDecoration(
                   labelText: context.l10n.orderNotesOptional,
-                  fillColor: Colors.white,
+                  fillColor: AppColors.surface,
                 ),
               ),
               const SizedBox(height: 24),
@@ -420,14 +344,11 @@ class _CheckoutViewState extends State<_CheckoutView> {
                           state.selectedAddressId == null
                       ? null
                       : () => context.read<CheckoutCubit>().placeOrder(
-                          notes: _notes.text.trim().isEmpty
-                              ? null
-                              : _notes.text.trim()),
+                            notes: _notes.text.trim().isEmpty
+                                ? null
+                                : _notes.text.trim()),
                   child: state.step == CheckoutStep.placing
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const ButtonSpinner()
                       : Text(state.paymentMethod == 'cod'
                           ? context.l10n.placeOrder
                           : context.l10n.placeOrderAndPay),
@@ -469,23 +390,202 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-class _MiniMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFD6CFC4)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
+/// Where the order is going.
+///
+/// The map header is the user's REAL pin on real tiles, and only appears when
+/// the address actually carries coordinates. The previous version painted three
+/// grey lines and a pin at fixed pixel offsets — identical for every address in
+/// the country, which made "check your address" impossible to actually do.
+class _AddressCard extends StatelessWidget {
+  const _AddressCard({required this.address, required this.onChange});
 
-    // Draw horizontal road
-    canvas.drawLine(Offset(0, size.height * 0.5), Offset(size.width, size.height * 0.5), paint);
-    // Draw vertical roads
-    canvas.drawLine(Offset(size.width * 0.25, 0), Offset(size.width * 0.25, size.height), paint);
-    canvas.drawLine(Offset(size.width * 0.75, 0), Offset(size.width * 0.75, size.height), paint);
+  final Address address;
+  final VoidCallback onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final lat = address.lat;
+    final lng = address.lng;
+    final point = lat != null && lng != null ? LatLng(lat, lng) : null;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        boxShadow: AppShadows.card,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          if (point != null)
+            SizedBox(
+              height: 84,
+              // Non-interactive: this is a confirmation glance, not a picker —
+              // moving the pin lives behind "Change".
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: point,
+                  initialZoom: 15,
+                  interactionOptions:
+                      const InteractionOptions(flags: InteractiveFlag.none),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.multi_vendor',
+                  ),
+                  MarkerLayer(markers: [
+                    Marker(
+                      point: point,
+                      width: 34,
+                      height: 34,
+                      child: const Icon(Icons.location_on_rounded,
+                          color: AppColors.primary, size: 30),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on,
+                    color: AppColors.primary, size: 18),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        address.label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      Text(
+                        address.summary,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: onChange,
+                  child: Text(
+                    context.l10n.change,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+/// The delivery window, computed from this store's prep time and the clock.
+///
+/// Was a hardcoded "Standard · 25–35 min / Arrives by 9:35 PM" beside a radio
+/// that was always checked and could not be unchecked — a fake estimate next to
+/// a fake choice. There is no scheduled-delivery feature to choose between, so
+/// the radio is gone and the numbers are now real.
+class _EtaCard extends StatelessWidget {
+  const _EtaCard({required this.prepMinutes});
+
+  final int prepMinutes;
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    // Prep, plus a delivery leg. The spread is the honest part of an estimate.
+    final earliest = prepMinutes;
+    final latest = prepMinutes + 10;
+    final arrival = DateTime.now().add(Duration(minutes: latest));
+
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.access_time_filled, color: AppColors.ink, size: 19),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$earliest–$latest ${context.l10n.minShort}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.ink,
+                  ),
+                ),
+                Text(
+                  DateFormat.jm().format(arrival),
+                  style: AppType.mono(12,
+                      color: AppColors.textMuted, weight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Checkout while addresses and the wallet balance load. Shaped like the real
+/// page: address block, ETA row, three payment rows, totals, CTA.
+class _CheckoutSkeleton extends StatelessWidget {
+  const _CheckoutSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpace.lg),
+        children: const [
+          Skeleton.box(height: 140, radius: AppRadii.lg),
+          SizedBox(height: AppSpace.md),
+          Skeleton.box(height: 62, radius: AppRadii.md),
+          SizedBox(height: AppSpace.lg + 2),
+          Skeleton.line(widthFactor: 0.3, height: 16),
+          SizedBox(height: 11),
+          Skeleton.box(height: 68, radius: AppRadii.md),
+          SizedBox(height: 9),
+          Skeleton.box(height: 68, radius: AppRadii.md),
+          SizedBox(height: 9),
+          Skeleton.box(height: 68, radius: AppRadii.md),
+          SizedBox(height: AppSpace.lg + 2),
+          Skeleton.line(widthFactor: 0.25, height: 16),
+          SizedBox(height: 11),
+          Skeleton.box(height: 54, radius: AppRadii.md),
+          SizedBox(height: AppSpace.xxl),
+          Skeleton.box(height: 128, radius: AppRadii.xl),
+          SizedBox(height: AppSpace.lg),
+          Skeleton.box(height: 54, radius: AppRadii.lg),
+        ],
+      ),
+    );
+  }
 }
 
 class _PaymentSelectorCard extends StatelessWidget {
@@ -493,38 +593,42 @@ class _PaymentSelectorCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool selected;
-  final VoidCallback onTap;
+  final bool disabled;
+  final VoidCallback? onTap;
 
   const _PaymentSelectorCard({
     required this.emoji,
     required this.title,
     required this.subtitle,
     required this.selected,
+    this.disabled = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
-            width: selected ? 2.0 : 1.0,
+    return Opacity(
+      opacity: disabled ? 0.5 : 1.0,
+      child: GestureDetector(
+        onTap: disabled ? null : onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: disabled ? AppColors.neutralFill : AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+              width: selected ? 2.0 : 1.0,
+            ),
           ),
-        ),
         child: Row(
           children: [
             Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: selected ? AppColors.warmFill : const Color(0xFFF3EEE8),
+                color: selected ? AppColors.warmFill : AppColors.neutralFill,
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
@@ -562,7 +666,7 @@ class _PaymentSelectorCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: selected ? AppColors.primary : Colors.transparent,
                 border: Border.all(
-                  color: selected ? AppColors.primary : const Color(0xFFDDD4CB),
+                  color: selected ? AppColors.primary : AppColors.borderStrong,
                   width: 2,
                 ),
               ),
@@ -578,6 +682,7 @@ class _PaymentSelectorCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

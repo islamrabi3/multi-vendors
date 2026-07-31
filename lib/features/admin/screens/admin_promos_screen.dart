@@ -9,6 +9,7 @@ import '../../../core/models/coupon.dart';
 import '../../../core/repositories/coupons_repository.dart';
 import '../../../core/repositories/offers_repository.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../admin_coupons_cubit.dart';
 import '../admin_offers_cubit.dart';
@@ -36,7 +37,15 @@ class _PromosView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(context.l10n.promos),
+      ),
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,25 +299,19 @@ class _BannerCard extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context) {
-    showDialog<void>(
+  void _confirmDelete(BuildContext context) async {
+    final confirmed = await AppDialogs.showConfirmDialog(
       context: context,
-      builder: (d) => AlertDialog(
-        title: Text(context.l10n.deleteBanner),
-        content: Text('"${offer.title ?? offer.imageUrl}" ${context.l10n.willBeRemoved}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(d), child: Text(context.l10n.cancel)),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(d);
-              cubit.delete(offer);
-            },
-            child: Text(context.l10n.delete),
-          ),
-        ],
-      ),
+      title: context.l10n.deleteBanner,
+      message: '"${offer.title ?? offer.imageUrl}" ${context.l10n.willBeRemoved}',
+      confirmText: context.l10n.delete,
+      cancelText: context.l10n.cancel,
+      isDestructive: true,
+      icon: Icons.image_not_supported_rounded,
     );
+    if (confirmed == true) {
+      cubit.delete(offer);
+    }
   }
 }
 
@@ -425,25 +428,19 @@ class _CouponRow extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context) {
-    showDialog<void>(
+  void _confirmDelete(BuildContext context) async {
+    final confirmed = await AppDialogs.showConfirmDialog(
       context: context,
-      builder: (d) => AlertDialog(
-        title: Text(context.l10n.deleteCoupon),
-        content: Text('"${coupon.code}" ${context.l10n.willBeRemoved}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(d), child: Text(context.l10n.cancel)),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(d);
-              cubit.delete(coupon);
-            },
-            child: Text(context.l10n.delete),
-          ),
-        ],
-      ),
+      title: context.l10n.deleteCoupon,
+      message: '"${coupon.code}" ${context.l10n.willBeRemoved}',
+      confirmText: context.l10n.delete,
+      cancelText: context.l10n.cancel,
+      isDestructive: true,
+      icon: Icons.confirmation_number_outlined,
     );
+    if (confirmed == true) {
+      cubit.delete(coupon);
+    }
   }
 }
 
@@ -484,16 +481,52 @@ class _BannerFormState extends State<_BannerForm> {
   final _image = TextEditingController();
   final _title = TextEditingController();
   final _subtitle = TextEditingController();
-  final _code = TextEditingController();
   bool _saving = false;
   bool _uploading = false;
+
+  BannerType _type = BannerType.event;
+  String? _vendorId;
+  String? _couponCode;
+  List<({String id, String name})> _vendors = const [];
+  List<String> _couponCodes = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPickerData();
+  }
+
+  Future<void> _loadPickerData() async {
+    try {
+      final client = Supabase.instance.client;
+      final vendors = await client
+          .from('vendors')
+          .select('id, name')
+          .eq('approval_status', 'active')
+          .order('name');
+      final coupons = await client
+          .from('coupons')
+          .select('code')
+          .eq('is_active', true)
+          .order('code');
+      if (!mounted) return;
+      setState(() {
+        _vendors = (vendors as List)
+            .map((v) => (id: v['id'] as String, name: v['name'] as String))
+            .toList();
+        _couponCodes =
+            (coupons as List).map((c) => c['code'] as String).toList();
+      });
+    } catch (_) {
+      // Pickers stay empty; validation will catch a missing selection.
+    }
+  }
 
   @override
   void dispose() {
     _image.dispose();
     _title.dispose();
     _subtitle.dispose();
-    _code.dispose();
     super.dispose();
   }
 
@@ -590,6 +623,58 @@ class _BannerFormState extends State<_BannerForm> {
             ),
           ),
           const SizedBox(height: 14),
+          SegmentedButton<BannerType>(
+            segments: [
+              ButtonSegment(
+                  value: BannerType.coupon,
+                  label: Text(context.l10n.bannerTypeCoupon),
+                  icon: const Icon(Icons.confirmation_number_outlined,
+                      size: 16)),
+              ButtonSegment(
+                  value: BannerType.vendor,
+                  label: Text(context.l10n.bannerTypeVendor),
+                  icon: const Icon(Icons.storefront_outlined, size: 16)),
+              ButtonSegment(
+                  value: BannerType.event,
+                  label: Text(context.l10n.bannerTypeEvent),
+                  icon: const Icon(Icons.campaign_outlined, size: 16)),
+            ],
+            selected: {_type},
+            onSelectionChanged: (s) => setState(() => _type = s.first),
+          ),
+          const SizedBox(height: 12),
+          if (_type == BannerType.vendor) ...[
+            DropdownButtonFormField<String>(
+              initialValue: _vendorId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                hintText: context.l10n.selectVendor,
+                prefixIcon: const Icon(Icons.storefront_outlined),
+              ),
+              items: _vendors
+                  .map((v) => DropdownMenuItem(
+                      value: v.id,
+                      child: Text(v.name, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (v) => setState(() => _vendorId = v),
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (_type == BannerType.coupon) ...[
+            DropdownButtonFormField<String>(
+              initialValue: _couponCode,
+              isExpanded: true,
+              decoration: InputDecoration(
+                hintText: context.l10n.selectCoupon,
+                prefixIcon: const Icon(Icons.confirmation_number_outlined),
+              ),
+              items: _couponCodes
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
+              onChanged: (v) => setState(() => _couponCode = v),
+            ),
+            const SizedBox(height: 10),
+          ],
           TextField(
             controller: _title,
             textCapitalization: TextCapitalization.sentences,
@@ -601,12 +686,6 @@ class _BannerFormState extends State<_BannerForm> {
             controller: _subtitle,
             decoration:
                 InputDecoration(hintText: context.l10n.subtitleOptional),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _code,
-            textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(hintText: context.l10n.promoCodeOptional),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -640,14 +719,25 @@ class _BannerFormState extends State<_BannerForm> {
       showSnack(context, context.l10n.addATitleOrImageFirst, error: true);
       return;
     }
+    if (_type == BannerType.vendor && (_vendorId == null || _vendorId!.isEmpty)) {
+      showSnack(context, context.l10n.chooseVendorForBanner, error: true);
+      return;
+    }
+    if (_type == BannerType.coupon &&
+        (_couponCode == null || _couponCode!.isEmpty)) {
+      showSnack(context, context.l10n.chooseCouponForBanner, error: true);
+      return;
+    }
     setState(() => _saving = true);
     final ok = await context.read<AdminOffersCubit>().create(
           imageUrl: image.isEmpty
               ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
               : image,
+          type: _type,
           title: title,
           subtitle: _subtitle.text.trim(),
-          code: _code.text.trim(),
+          code: _type == BannerType.coupon ? _couponCode : null,
+          vendorId: _type == BannerType.vendor ? _vendorId : null,
         );
     if (!mounted) return;
     if (ok) {

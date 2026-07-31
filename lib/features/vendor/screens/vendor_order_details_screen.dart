@@ -1,26 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/order_repository.dart';
+import '../../../core/utils/dialer.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
-class VendorOrderDetailsScreen extends StatefulWidget {
+/// Route entry for the phone flow: the order view on its own page.
+class VendorOrderDetailsScreen extends StatelessWidget {
   const VendorOrderDetailsScreen({super.key, required this.orderId});
 
   final String orderId;
 
   @override
-  State<VendorOrderDetailsScreen> createState() =>
-      _VendorOrderDetailsScreenState();
+  Widget build(BuildContext context) =>
+      VendorOrderDetailsView(orderId: orderId);
 }
 
-class _VendorOrderDetailsScreenState extends State<VendorOrderDetailsScreen> {
+/// The order view. Embedded (`embedded: true`) it drops the back button and its
+/// own Scaffold so it can live in the detail pane of the wide dashboard.
+class VendorOrderDetailsView extends StatefulWidget {
+  const VendorOrderDetailsView({
+    super.key,
+    required this.orderId,
+    this.embedded = false,
+  });
+
+  final String orderId;
+  final bool embedded;
+
+  @override
+  State<VendorOrderDetailsView> createState() =>
+      _VendorOrderDetailsViewState();
+}
+
+class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
   final _repository = OrderRepository();
   AppOrder? _order;
   String? _error;
@@ -53,33 +72,31 @@ class _VendorOrderDetailsScreenState extends State<VendorOrderDetailsScreen> {
     }
   }
 
-  Future<void> _callCustomer(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (!await launchUrl(uri) && mounted) {
-      showSnack(context, context.l10n.couldNotStartTheCall1, error: true);
-    }
-  }
+  Future<void> _callCustomer(String phone) => callPhone(context, phone);
 
   Future<void> _reject() async {
     final localUnavailable = context.l10n.unavailable;
     final controller = TextEditingController();
-    final reason = await showDialog<String>(
+    final String? reason = await AppDialogs.showFormDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.rejectOrder),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: context.l10n.reason),
+      title: context.l10n.rejectOrder,
+      subtitle: context.l10n.rejectReasonDesc,
+      icon: Icons.cancel_outlined,
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          labelText: context.l10n.reason,
+          hintText: context.l10n.rejectReasonHint,
+          prefixIcon: const Icon(Icons.edit_note_rounded),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(context.l10n.cancel)),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: Text(context.l10n.reject)),
-        ],
       ),
+      primaryText: context.l10n.reject,
+      onPrimaryPressed: () => Navigator.pop(context, controller.text.trim()),
+      secondaryText: context.l10n.cancel,
     );
     if (reason != null) {
       await _advance(OrderStatus.rejected,
@@ -90,21 +107,21 @@ class _VendorOrderDetailsScreenState extends State<VendorOrderDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final order = _order;
+    final content = _error != null
+        ? ErrorView(message: readableError(_error!), onRetry: _load)
+        : order == null
+            ? const LoadingView()
+            : Column(
+                children: [
+                  _topBar(order),
+                  Expanded(child: _body(order)),
+                  _bottomCta(order),
+                ],
+              );
+    if (widget.embedded) return content;
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: SafeArea(
-        child: _error != null
-            ? ErrorView(message: readableError(_error!), onRetry: _load)
-            : order == null
-                ? const LoadingView()
-                : Column(
-                    children: [
-                      _topBar(order),
-                      Expanded(child: _body(order)),
-                      _bottomCta(order),
-                    ],
-                  ),
-      ),
+      body: SafeArea(child: content),
     );
   }
 
@@ -113,25 +130,29 @@ class _VendorOrderDetailsScreenState extends State<VendorOrderDetailsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         children: [
-          InkWell(
-            onTap: () => context.pop(),
-            customBorder: const CircleBorder(),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border),
+          if (!widget.embedded) ...[
+            InkWell(
+              onTap: () => context.pop(),
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child:
+                    const Icon(Icons.chevron_left_rounded, color: AppColors.ink),
               ),
-              child: const Icon(Icons.chevron_left_rounded, color: AppColors.ink),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           Expanded(
-            child: Text(
+            child: SelectableId(
               order.orderNumber,
-              style: AppType.mono(18, color: AppColors.ink, weight: FontWeight.w800),
+              style: AppType.mono(18,
+                  color: AppColors.ink, weight: FontWeight.w800),
             ),
           ),
           OrderStatusChip(status: order.status),
