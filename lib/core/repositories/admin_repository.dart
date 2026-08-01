@@ -190,6 +190,41 @@ class AdminRepository {
         'p_status': status,
       });
 
+  /// Every account, newest first. Admin-only by RLS.
+  Future<List<AdminUser>> fetchUsers() async {
+    final data = await supabase
+        .from('profiles')
+        .select('id, full_name, phone, role, is_blocked, blocked_reason, '
+            'deleted_at, created_at')
+        .order('created_at', ascending: false);
+    return (data as List)
+        .map((e) => AdminUser.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Blocking is reversible and keeps the account; the server refuses to block
+  /// an admin or the caller themselves.
+  Future<void> setUserBlocked(String userId, bool blocked, {String? reason}) =>
+      supabase.rpc('admin_set_user_blocked', params: {
+        'p_user_id': userId,
+        'p_blocked': blocked,
+        'p_reason': reason,
+      });
+
+  /// Closes an account: scrubs the identity but keeps the row, because orders
+  /// reference it and a hard delete fails on the foreign key.
+  Future<void> deleteUser(String userId) =>
+      supabase.rpc('admin_delete_user', params: {'p_user_id': userId});
+
+  /// Promotes or demotes a store on the customer home's recommended rail.
+  Future<void> setVendorRecommended(String vendorId, bool recommended,
+          {int rank = 0}) =>
+      supabase.rpc('admin_set_vendor_recommended', params: {
+        'p_vendor_id': vendorId,
+        'p_recommended': recommended,
+        'p_rank': rank,
+      });
+
   /// Statuses an order can sit in while it is still in flight.
   static const _liveStatuses = [
     'pending',
@@ -352,7 +387,7 @@ class AdminRepository {
     final data = await supabase
         .from('vendor_categories')
         .select()
-        .order('name');
+        .order('name', ascending: true);
     return (data as List).map((row) => VendorCategory.fromMap(row)).toList();
   }
 
@@ -406,6 +441,21 @@ class AdminRepository {
     return (data as List)
         .map((e) => VendorReportItem.fromMap((e as Map).cast<String, dynamic>()))
         .toList();
+  }
+
+  /// Platform-level settlement figures for the period: what came in, what is
+  /// owed out, and how much of it drivers are still holding as cash.
+  Future<PlatformReport> fetchPlatformReport({
+    DateTime? startDate,
+    DateTime? endDate,
+    double driverSharePercent = 90,
+  }) async {
+    final data = await supabase.rpc('admin_platform_report', params: {
+      'p_start': startDate?.toUtc().toIso8601String(),
+      'p_end': endDate?.toUtc().toIso8601String(),
+      'p_driver_share': driverSharePercent,
+    });
+    return PlatformReport.fromMap((data as Map).cast<String, dynamic>());
   }
 
   /// What each driver is owed for the same period.
@@ -469,6 +519,98 @@ class AdminRepository {
 }
 
 const _driverDocsBucket = 'driver-documents';
+
+/// One account row in the admin's user list.
+class AdminUser {
+  const AdminUser({
+    required this.id,
+    required this.name,
+    required this.role,
+    required this.isBlocked,
+    required this.isDeleted,
+    this.phone,
+    this.blockedReason,
+  });
+
+  final String id;
+  final String name;
+  final String role;
+  final bool isBlocked;
+
+  /// Closed accounts keep their row so past orders still resolve a customer.
+  final bool isDeleted;
+  final String? phone;
+  final String? blockedReason;
+
+  /// Admins are exempt from both levers, matching the server-side guards.
+  bool get isAdmin => role == 'admin';
+
+  factory AdminUser.fromMap(Map<String, dynamic> map) => AdminUser(
+        id: map['id'] as String,
+        name: (map['full_name'] as String?)?.trim().isNotEmpty == true
+            ? map['full_name'] as String
+            : 'User',
+        role: (map['role'] as String?) ?? 'customer',
+        isBlocked: (map['is_blocked'] as bool?) ?? false,
+        isDeleted: map['deleted_at'] != null,
+        phone: map['phone'] as String?,
+        blockedReason: map['blocked_reason'] as String?,
+      );
+}
+
+/// Headline settlement figures for the whole platform over a period.
+class PlatformReport {
+  const PlatformReport({
+    this.deliveredOrders = 0,
+    this.cancelledOrders = 0,
+    this.grossRevenue = 0,
+    this.itemSales = 0,
+    this.deliveryFees = 0,
+    this.discounts = 0,
+    this.commission = 0,
+    this.driverCost = 0,
+    this.cashCollected = 0,
+    this.cardCollected = 0,
+    this.averageOrder = 0,
+  });
+
+  final int deliveredOrders;
+  final int cancelledOrders;
+
+  /// Everything customers paid on delivered orders.
+  final double grossRevenue;
+  final double itemSales;
+  final double deliveryFees;
+  final double discounts;
+
+  /// The platform's cut, summed per store at that store's own rate.
+  final double commission;
+
+  /// Delivery-fee share plus tips owed to drivers.
+  final double driverCost;
+
+  /// Cash the drivers physically hold and still owe the platform.
+  final double cashCollected;
+  final double cardCollected;
+  final double averageOrder;
+
+  /// What the platform actually keeps once both parties are paid.
+  double get netMargin => commission - driverCost + deliveryFees;
+
+  factory PlatformReport.fromMap(Map<String, dynamic> map) => PlatformReport(
+        deliveredOrders: _money(map['delivered_orders']).toInt(),
+        cancelledOrders: _money(map['cancelled_orders']).toInt(),
+        grossRevenue: _money(map['gross_revenue']),
+        itemSales: _money(map['item_sales']),
+        deliveryFees: _money(map['delivery_fees']),
+        discounts: _money(map['discounts']),
+        commission: _money(map['commission']),
+        driverCost: _money(map['driver_cost']),
+        cashCollected: _money(map['cash_collected']),
+        cardCollected: _money(map['card_collected']),
+        averageOrder: _money(map['average_order']),
+      );
+}
 
 class VendorReportItem {
   const VendorReportItem({

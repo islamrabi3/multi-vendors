@@ -168,7 +168,7 @@ class _WalletScreenState extends State<WalletScreen> {
       );
       if (chosen != null) await _startTopUp(chosen);
     } finally {
-      amount.dispose();
+      Future.delayed(const Duration(milliseconds: 500), () => amount.dispose());
     }
   }
 

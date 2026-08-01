@@ -5,6 +5,24 @@ import '../models/profile.dart';
 import '../models/vendor.dart';
 import '../supabase_client.dart';
 
+/// What currently stands between the user and closing their account.
+class AccountDeletionBlockers {
+  const AccountDeletionBlockers({
+    required this.activeOrders,
+    required this.walletBalance,
+  });
+
+  /// Orders still in flight — as customer, driver, or through a store they own.
+  final int activeOrders;
+
+  /// Money that would be forfeited. Not a blocker on its own; the user is
+  /// asked to confirm it.
+  final double walletBalance;
+
+  bool get hasActiveOrders => activeOrders > 0;
+  bool get hasBalance => walletBalance > 0;
+}
+
 class AuthRepository {
   Stream<AuthState> get onAuthStateChange => supabase.auth.onAuthStateChange;
 
@@ -32,6 +50,28 @@ class AuthRepository {
   }
 
   Future<void> signOut() => supabase.auth.signOut();
+
+  /// What currently stands between the user and closing their account, so the
+  /// app can explain rather than just refuse.
+  Future<AccountDeletionBlockers> accountDeletionBlockers() async {
+    final data = await supabase.rpc('account_deletion_blockers');
+    final map = (data as Map).cast<String, dynamic>();
+    return AccountDeletionBlockers(
+      activeOrders: ((map['active_orders'] as num?) ?? 0).toInt(),
+      walletBalance: double.tryParse('${map['wallet_balance'] ?? 0}') ?? 0,
+    );
+  }
+
+  /// Closes the caller's own account, then ends the session.
+  ///
+  /// [forfeitBalance] is the user's answer to the wallet warning; the server
+  /// refuses without it while a balance remains, so the money is never taken
+  /// silently.
+  Future<void> deleteOwnAccount({bool forfeitBalance = false}) async {
+    await supabase.rpc('delete_own_account',
+        params: {'p_forfeit_balance': forfeitBalance});
+    await supabase.auth.signOut();
+  }
 
   /// Browser-based OAuth. The provider must be enabled in the Supabase
   /// dashboard (Auth > Providers) and the redirect scheme registered in
@@ -120,6 +160,23 @@ class AuthRepository {
         .eq('id', userId)
         .maybeSingle();
     return data == null ? null : Profile.fromMap(data);
+  }
+
+  /// The caller's own profile row, live.
+  ///
+  /// Blocking is enforced by RLS on every write, but the app used to read the
+  /// profile once at sign-in — so an account blocked mid-session kept every
+  /// screen it was on and met raw policy refusals instead of being told
+  /// anything. Watching the row is what turns a block into something the user
+  /// actually sees.
+  Stream<Profile?> watchMyProfile() {
+    final userId = currentUser?.id;
+    if (userId == null) return Stream.value(null);
+    return supabase
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .eq('id', userId)
+        .map((rows) => rows.isEmpty ? null : Profile.fromMap(rows.first));
   }
 
   Future<Vendor?> fetchMyVendor() async {

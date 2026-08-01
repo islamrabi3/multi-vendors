@@ -4,14 +4,17 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/models/profile.dart';
+import '../core/utils/l10n_extension.dart';
 import '../features/auth/auth_cubit.dart';
 import '../features/auth/screens/app_onboarding_screen.dart';
+import '../features/auth/screens/blocked_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/role_choice_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/admin/admin_shell.dart';
 import '../features/admin/screens/admin_complaints_screen.dart';
+import '../features/admin/screens/admin_content_screen.dart';
 import '../features/admin/screens/admin_dashboard_screen.dart';
 import '../features/admin/screens/admin_drivers_screen.dart';
 import '../features/admin/screens/admin_manage_screen.dart';
@@ -22,7 +25,9 @@ import '../features/admin/screens/admin_promos_screen.dart';
 import '../features/admin/screens/admin_reports_screen.dart';
 import '../features/admin/screens/admin_service_areas_screen.dart';
 import '../features/admin/screens/admin_vendor_detail_screen.dart';
+import '../features/admin/screens/admin_users_screen.dart';
 import '../features/admin/screens/admin_vendors_screen.dart';
+import '../features/support/my_support_screen.dart';
 import '../features/admin/screens/admin_categories_screen.dart';
 import '../features/auth/screens/vendor_onboarding_screen.dart';
 import '../features/customer/addresses/addresses_screen.dart';
@@ -34,6 +39,7 @@ import '../features/customer/home/home_screen.dart';
 import '../features/customer/orders/order_chat_sheet.dart';
 import '../features/customer/orders/order_details_screen.dart';
 import '../features/customer/orders/orders_screen.dart';
+import '../features/customer/profile/content_page_screen.dart';
 import '../features/customer/profile/favorites_screen.dart';
 import '../features/customer/profile/profile_screen.dart';
 import '../features/notifications/notifications_screen.dart';
@@ -46,6 +52,7 @@ import '../features/vendor/screens/menu_screen.dart';
 import '../features/vendor/screens/product_editor_screen.dart';
 import '../features/vendor/screens/vendor_dashboard_screen.dart';
 import '../features/vendor/screens/vendor_order_details_screen.dart';
+import '../features/vendor/screens/vendor_reviews_screen.dart';
 import '../features/vendor/screens/vendor_settings_screen.dart';
 import '../features/vendor/vendor_shell.dart';
 
@@ -73,14 +80,22 @@ String _roleHome(UserRole role) => switch (role) {
       _ => '/home',
     };
 
-bool _allowedForRole(UserRole role, String location) => switch (role) {
-      UserRole.vendor => location.startsWith('/vendor-app'),
-      UserRole.driver => location.startsWith('/driver-app'),
-      UserRole.admin => location.startsWith('/admin-app'),
-      _ => !location.startsWith('/vendor-app') &&
-          !location.startsWith('/driver-app') &&
-          !location.startsWith('/admin-app'),
-    };
+/// Pages every role can open. Legal text and the about page belong to the
+/// platform, not to the customer app, so a vendor or driver reading them must
+/// not be bounced back to their own home.
+const _sharedPaths = {'/about', '/terms', '/privacy', '/support'};
+
+bool _allowedForRole(UserRole role, String location) {
+  if (_sharedPaths.contains(location)) return true;
+  return switch (role) {
+    UserRole.vendor => location.startsWith('/vendor-app'),
+    UserRole.driver => location.startsWith('/driver-app'),
+    UserRole.admin => location.startsWith('/admin-app'),
+    _ => !location.startsWith('/vendor-app') &&
+        !location.startsWith('/driver-app') &&
+        !location.startsWith('/admin-app'),
+  };
+}
 
 GoRouter buildRouter(AuthCubit authCubit) {
   return GoRouter(
@@ -104,6 +119,15 @@ GoRouter buildRouter(AuthCubit authCubit) {
       }
 
       // Authenticated.
+      // A suspended or closed account is stopped ahead of everything else:
+      // the server already refuses its writes, and without this the user just
+      // meets unexplained failures screen by screen. Support stays reachable
+      // so a block can be appealed.
+      if (auth.profile?.isLockedOut ?? false) {
+        return location == '/blocked' || location == '/support'
+            ? null
+            : '/blocked';
+      }
       // A social sign-up carries no role, so it is asked once before it can
       // reach any part of the app.
       if (auth.needsRoleChoice) {
@@ -133,6 +157,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/choose-role',
         builder: (_, _) => const RoleChoiceScreen(),
       ),
+      GoRoute(path: '/blocked', builder: (_, _) => const BlockedScreen()),
       GoRoute(
         path: '/vendor-onboarding',
         builder: (_, _) => const VendorOnboardingScreen(),
@@ -178,6 +203,34 @@ GoRouter buildRouter(AuthCubit authCubit) {
         builder: (_, state) =>
             OrderChatScreen(orderId: state.pathParameters['id']!),
       ),
+      // Support belongs to every role: a vendor or driver needs the platform
+      // just as much as a customer does.
+      GoRoute(path: '/support', builder: (_, _) => const MySupportScreen()),
+
+      // Operator-managed pages. The body is fetched, so a wording change ships
+      // from the admin app rather than through a store review.
+      GoRoute(
+        path: '/about',
+        builder: (context, _) => ContentPageScreen(
+          contentKey: 'about',
+          fallbackTitle: context.l10n.aboutUs,
+          showLinks: true,
+        ),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, _) => ContentPageScreen(
+          contentKey: 'terms',
+          fallbackTitle: context.l10n.termsAndConditions,
+        ),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, _) => ContentPageScreen(
+          contentKey: 'privacy',
+          fallbackTitle: context.l10n.privacyPolicy,
+        ),
+      ),
       GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
       GoRoute(path: '/favorites', builder: (_, _) => const FavoritesScreen()),
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
@@ -210,6 +263,10 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/vendor-app/orders/:id',
         builder: (_, state) =>
             VendorOrderDetailsScreen(orderId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/vendor-app/reviews',
+        builder: (_, _) => const VendorReviewsScreen(),
       ),
       GoRoute(
         path: '/vendor-app/product-editor',
@@ -258,6 +315,18 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/admin-app/categories',
         builder: (_, _) => const AdminCategoriesScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/content',
+        builder: (_, _) => const AdminContentScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/users',
+        builder: (_, _) => const AdminUsersScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/support',
+        builder: (_, _) => const AdminSupportScreen(),
       ),
       GoRoute(
         path: '/admin-app/complaints',

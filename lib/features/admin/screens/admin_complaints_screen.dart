@@ -100,7 +100,7 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
       showSnack(context, 'Complaint resolved and customer notified! 💬');
       await _load();
     } catch (e) {
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     }
   }
 

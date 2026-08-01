@@ -78,6 +78,30 @@ class OrderRepository {
     );
   }
 
+  /// The driver's last stored position, for an order that is on the road.
+  ///
+  /// Tracking is broadcast from the driver's phone, so a customer who opens
+  /// the page between two broadcasts has nothing to draw. This is the starting
+  /// point they see immediately; the broadcasts take over from there. Null
+  /// when the order is not out for delivery, or the driver never reported one.
+  Future<({double lat, double lng, DateTime? at})?> fetchDriverPosition(
+      String orderId) async {
+    final rows = await supabase
+        .rpc('order_driver_position', params: {'p_order_id': orderId}) as List;
+    if (rows.isEmpty) return null;
+    final row = rows.first as Map<String, dynamic>;
+    final lat = (row['lat'] as num?)?.toDouble();
+    final lng = (row['lng'] as num?)?.toDouble();
+    if (lat == null || lng == null) return null;
+    return (
+      lat: lat,
+      lng: lng,
+      at: row['updated_at'] == null
+          ? null
+          : DateTime.parse(row['updated_at'] as String).toLocal(),
+    );
+  }
+
   /// Realtime stream of a single order row (status + payment changes).
   Stream<AppOrder?> orderStream(String orderId) => supabase
       .from('orders')

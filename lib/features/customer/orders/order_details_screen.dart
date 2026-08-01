@@ -14,6 +14,7 @@ import '../../../core/utils/dialer.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/reviews.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../checkout/paymob_flow.dart';
 import 'order_chat_sheet.dart';
@@ -104,7 +105,7 @@ class _OrderDetailsView extends StatelessWidget {
         listenWhen: (previous, current) =>
             previous.error != current.error && current.error != null,
         listener: (context, state) =>
-            showSnack(context, readableError(state.error!), error: true),
+            showFailure(context, state.error!),
         builder: (context, state) {
           if (state.loading) return const _OrderDetailsSkeleton();
           final order = state.order;
@@ -146,6 +147,11 @@ class _OrderDetailsView extends StatelessWidget {
                 _StatusStepper(order: order),
               if (order.status == OrderStatus.outForDelivery) ...[
                 const SizedBox(height: 16),
+                _EtaBanner(
+                  order: order,
+                  driverLocation: state.driverLocation,
+                ),
+                const SizedBox(height: 12),
                 _TrackingMap(order: order, driverLocation: state.driverLocation),
                 if (state.driverContact != null) ...[
                   const SizedBox(height: 12),
@@ -321,10 +327,35 @@ class _StatusStepper extends StatelessWidget {
               _buildStepLabel(context.l10n.statusDelivered, 3, currentStep),
             ],
           ),
+          // When each stage actually happened. The columns were always
+          // written; nothing read them, so the tracker could say an order was
+          // "prepared" without saying whether that was two minutes or two
+          // hours ago.
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStepTime(context, order.acceptedAt),
+              _buildStepTime(context, order.readyAt),
+              _buildStepTime(context, order.pickedUpAt),
+              _buildStepTime(context, order.deliveredAt),
+            ],
+          ),
         ],
       ),
     );
   }
+
+  Widget _buildStepTime(BuildContext context, DateTime? at) => SizedBox(
+        width: 62,
+        child: Text(
+          at == null
+              ? ''
+              : TimeOfDay.fromDateTime(at).format(context),
+          textAlign: TextAlign.center,
+          style: AppType.mono(9.5, color: AppColors.textFaint),
+        ),
+      );
 
   Widget _buildStepNode(int index, int currentStep, {required bool isIcon, IconData? icon, String text = ''}) {
     final done = index < currentStep;
@@ -379,6 +410,76 @@ class _StatusStepper extends StatelessWidget {
         fontSize: 10.5,
         fontWeight: FontWeight.w700,
         color: color,
+      ),
+    );
+  }
+}
+
+/// "Arriving in about N minutes", while the order is on the road.
+///
+/// Deliberately a straight-line estimate rather than a routed one: this app
+/// has no routing service, and a number derived from one would be no more
+/// honest than this — so the wording says "about", and the padding factor
+/// accounts for streets not being straight.
+class _EtaBanner extends StatelessWidget {
+  const _EtaBanner({required this.order, required this.driverLocation});
+
+  final AppOrder order;
+  final LatLng? driverLocation;
+
+  /// City average once stops, lights and parking are folded in.
+  static const _averageKmPerHour = 18.0;
+
+  /// Streets are longer than the line between two points.
+  static const _detourFactor = 1.35;
+
+  int? get _minutes {
+    final driver = driverLocation;
+    final lat = order.deliveryLat;
+    final lng = order.deliveryLng;
+    if (driver == null || lat == null || lng == null) return null;
+    final km = const Distance().as(
+          LengthUnit.Kilometer,
+          driver,
+          LatLng(lat, lng),
+        ) *
+        _detourFactor;
+    return (km / _averageKmPerHour * 60).ceil();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final minutes = _minutes;
+    final label = minutes == null
+        ? l10n.etaUnavailable
+        : minutes <= 2
+            ? l10n.arrivingSoon
+            : l10n.estimatedArrival(minutes);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.lg, vertical: AppSpace.md),
+      decoration: BoxDecoration(
+        color: AppColors.successFill,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.delivery_dining_rounded,
+              size: 20, color: AppColors.successInk),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.successInk,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -550,17 +651,45 @@ class _ReviewSheet extends StatefulWidget {
 
 class _ReviewSheetState extends State<_ReviewSheet> {
   int _rating = 5;
+
+  /// Zero until tapped. The delivery is rated separately from the food, and a
+  /// customer who only wants to talk about one of them should not have to
+  /// invent a score for the other — a null driver rating is left out of the
+  /// driver's average entirely.
+  int _driverRating = 0;
   final _comment = TextEditingController();
+  final _driverComment = TextEditingController();
   bool _submitting = false;
 
   @override
   void dispose() {
     _comment.dispose();
+    _driverComment.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _submitting = true);
+    final ok = await widget.cubit.submitReview(
+      rating: _rating,
+      comment: _comment.text,
+      driverRating: _driverRating == 0 ? null : _driverRating,
+      driverComment: _driverComment.text,
+    );
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+      showSnack(context, context.l10n.thanksForYourReview);
+    } else {
+      setState(() => _submitting = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    // Only offered when somebody actually delivered it.
+    final driverId = widget.cubit.state.order?.driverId;
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -568,58 +697,61 @@ class _ReviewSheetState extends State<_ReviewSheet> {
         top: 8,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(context.l10n.howWasYourOrder,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var star = 1; star <= 5; star++)
-                IconButton(
-                  onPressed: () => setState(() => _rating = star),
-                  icon: Icon(
-                    star <= _rating ? Icons.star : Icons.star_border,
-                    color: AppColors.rating,
-                    size: 32,
-                  ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.howWasYourOrder,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            Text(l10n.rateTheStore,
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            RatingInput(
+              value: _rating,
+              size: 32,
+              onChanged: (star) => setState(() => _rating = star),
+            ),
+            TextField(
+              controller: _comment,
+              maxLines: 3,
+              decoration: InputDecoration(labelText: l10n.commentOptional),
+            ),
+            if (driverId != null) ...[
+              const SizedBox(height: 20),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Text(l10n.howWasTheDriver,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textMuted)),
+              RatingInput(
+                value: _driverRating,
+                size: 30,
+                onChanged: (star) => setState(() => _driverRating = star),
+              ),
+              if (_driverRating > 0)
+                TextField(
+                  controller: _driverComment,
+                  maxLines: 2,
+                  decoration: InputDecoration(labelText: l10n.commentOptional),
                 ),
             ],
-          ),
-          TextField(
-            controller: _comment,
-            maxLines: 3,
-            decoration:
-                InputDecoration(labelText: context.l10n.commentOptional),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _submitting
-                  ? null
-                  : () async {
-                      setState(() => _submitting = true);
-                      final ok = await widget.cubit
-                          .submitReview(_rating, _comment.text);
-                      if (!context.mounted) return;
-                      if (ok) {
-                        Navigator.pop(context);
-                        showSnack(context, context.l10n.thanksForYourReview);
-                      } else {
-                        setState(() => _submitting = false);
-                      }
-                    },
-              child: _submitting
-                  ? const ButtonSpinner()
-                  : Text(context.l10n.submitReview),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const ButtonSpinner()
+                    : Text(l10n.submitReview),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

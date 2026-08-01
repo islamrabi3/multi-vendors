@@ -71,8 +71,7 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
                   return const LoadingView();
                 }
                 if (snap.hasError) {
-                  return ErrorView(
-                      message: readableError(snap.error!), onRetry: _reload);
+                  return FailureView(error: snap.error!, onRetry: _reload);
                 }
                 final vendors = (snap.data ?? const <Vendor>[])
                     .where((v) =>

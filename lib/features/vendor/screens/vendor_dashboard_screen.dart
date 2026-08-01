@@ -10,6 +10,7 @@ import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart' show ButtonSpinner;
 import '../../auth/auth_cubit.dart';
 import '../vendor_orders_cubit.dart';
 import 'vendor_analytics_screen.dart';
@@ -19,6 +20,15 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 enum _OrderFilter { incoming, preparing, ready, past }
 
+/// The vendor's working screen.
+///
+/// Laid out around the one question a busy kitchen asks every few minutes —
+/// "what needs me right now?" — so the answer is readable without scrolling:
+/// a live count in the header, an escalating age chip per order, and a banner
+/// whenever the store is in a state that stops or slows new orders.
+///
+/// Everything occasional (busy mode, analytics, opening hours) lives behind one
+/// labelled sheet rather than a row of unlabeled icons in the header.
 class VendorDashboardScreen extends StatelessWidget {
   const VendorDashboardScreen({super.key});
 
@@ -45,6 +55,7 @@ class _DashboardViewState extends State<_DashboardView> {
   final _admin = VendorAdminRepository();
   _OrderFilter _filter = _OrderFilter.incoming;
   bool _togglingOpen = false;
+  bool _togglingBusy = false;
 
   /// Order shown in the detail pane. Split widths only; below that a tap still
   /// pushes the detail route.
@@ -59,10 +70,61 @@ class _DashboardViewState extends State<_DashboardView> {
       final updated = await _admin.updateVendor(vendor.id, {'is_open': open});
       auth.vendorUpdated(updated);
     } catch (error) {
-      if (mounted) showSnack(context, readableError(error), error: true);
+      if (mounted) showFailure(context, error);
     } finally {
       if (mounted) setState(() => _togglingOpen = false);
     }
+  }
+
+  /// Busy mode used to fire bare, with no spinner and no catch — a failed
+  /// write left the switch showing the old value and said nothing.
+  Future<void> _toggleBusy(bool busy) async {
+    final auth = context.read<AuthCubit>();
+    final vendor = auth.state.vendor;
+    if (vendor == null) return;
+    setState(() => _togglingBusy = true);
+    try {
+      final updated = await _admin.toggleBusyMode(vendor.id, busy);
+      auth.vendorUpdated(updated);
+    } catch (error) {
+      if (mounted) showFailure(context, error);
+    } finally {
+      if (mounted) setState(() => _togglingBusy = false);
+    }
+  }
+
+  void _openStoreControls(Vendor vendor) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+      ),
+      builder: (sheetContext) => _StoreControlsSheet(
+        onToggleBusy: (value) {
+          Navigator.pop(sheetContext);
+          _toggleBusy(value);
+        },
+        onAnalytics: () {
+          Navigator.pop(sheetContext);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => VendorAnalyticsScreen(vendorId: vendor.id)),
+          );
+        },
+        onSchedule: () {
+          Navigator.pop(sheetContext);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => VendorScheduleScreen(vendorId: vendor.id)),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -84,7 +146,7 @@ class _DashboardViewState extends State<_DashboardView> {
               if (state.newOrderArrived) {
                 showSnack(context, context.l10n.newOrderReceived);
               } else if (state.error != null) {
-                showSnack(context, readableError(state.error!), error: true);
+                showFailure(context, state.error!);
               }
             },
             builder: (context, state) {
@@ -115,16 +177,24 @@ class _DashboardViewState extends State<_DashboardView> {
                 children: [
                   _Header(
                     vendor: vendor,
+                    actionable: state.pending.length + state.preparing.length,
                     togglingOpen: _togglingOpen,
                     onToggleOpen: _toggleOpen,
+                    onOpenControls: () => _openStoreControls(vendor),
+                  ),
+                  _StatusBanner(
+                    vendor: vendor,
+                    busyPending: _togglingBusy,
+                    onClearBusy: () => _toggleBusy(false),
+                    onOpenStore: () => _toggleOpen(true),
                   ),
                   if (state.loading)
                     const Expanded(child: LoadingView())
                   else ...[
-                    _KpiStrip(
+                    _KpiBar(
                       revenue: state.todayRevenue,
                       orders: state.todayOrderCount,
-                      avgPrep: vendor.avgPrepMinutes,
+                      avgPrep: vendor.totalPrepMinutes,
                     ),
                     if (!split) ...[
                       tabs,
@@ -212,105 +282,106 @@ class _DetailPane extends StatelessWidget {
   }
 }
 
+/// Identity, workload, and the one switch that matters.
+///
+/// The three unlabeled icons that used to live here (busy / analytics /
+/// schedule) squeezed the store name to nothing on a phone and were guesswork
+/// on a touch device, where tooltips never appear. They moved into a labelled
+/// sheet behind a single button.
 class _Header extends StatelessWidget {
   const _Header({
     required this.vendor,
+    required this.actionable,
     required this.togglingOpen,
     required this.onToggleOpen,
+    required this.onOpenControls,
   });
 
   final Vendor vendor;
+
+  /// Orders that are still the vendor's move — the workload line.
+  final int actionable;
   final bool togglingOpen;
   final ValueChanged<bool> onToggleOpen;
+  final VoidCallback onOpenControls;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       color: AppColors.ink,
       padding: EdgeInsets.fromLTRB(
-          20, MediaQuery.of(context).padding.top + 12, 16, 16),
-      child: Row(
+          AppSpace.xl, MediaQuery.paddingOf(context).top + AppSpace.md,
+          AppSpace.md, AppSpace.lg),
+      child: Column(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.warmFill,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: vendor.logoUrl != null
-                ? AppNetworkImage(url: vendor.logoUrl, width: 44, height: 44)
-                : const Icon(Icons.storefront_rounded, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  vendor.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppType.heading(18, color: Colors.white),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.warmFill,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
-                if (vendor.addressText != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    vendor.addressText!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12),
-                  ),
-                ],
-              ],
-            ),
+                clipBehavior: Clip.antiAlias,
+                child: vendor.logoUrl != null
+                    ? AppNetworkImage(url: vendor.logoUrl, width: 44, height: 44)
+                    : const Icon(Icons.storefront_rounded,
+                        color: AppColors.primary),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vendor.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.heading(18, color: Colors.white),
+                    ),
+                    const SizedBox(height: 3),
+                    // Replaces the address, which the vendor already knows, with
+                    // the number they actually need off this screen.
+                    Text(
+                      actionable == 0
+                          ? l10n.allCaughtUp
+                          : '$actionable ${l10n.needsYourAttention}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: actionable == 0
+                            ? Colors.white.withValues(alpha: 0.55)
+                            : AppColors.onDarkSuccess,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              IconButton(
+                onPressed: onOpenControls,
+                tooltip: l10n.storeControls,
+                icon: const Icon(Icons.tune_rounded, color: Colors.white),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(
-              vendor.isBusy ? Icons.hourglass_top : Icons.hourglass_empty,
-              color: vendor.isBusy ? Colors.amber : Colors.white,
-            ),
-            tooltip: 'Busy Mode (+15m)',
-            onPressed: () async {
-              final admin = VendorAdminRepository();
-              final updated = await admin.toggleBusyMode(vendor.id, !vendor.isBusy);
-              if (context.mounted) {
-                context.read<AuthCubit>().vendorUpdated(updated);
-                showSnack(context, updated.isBusy ? 'Busy mode ON (+15 mins)' : 'Busy mode OFF');
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined, color: Colors.white),
-            tooltip: 'Analytics',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => VendorAnalyticsScreen(vendorId: vendor.id)),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.schedule, color: Colors.white),
-            tooltip: 'Operating Schedule',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => VendorScheduleScreen(vendorId: vendor.id)),
-            ),
-          ),
+          const SizedBox(height: AppSpace.md),
           _OpenToggle(
-              isOpen: vendor.isOpen,
-              busy: togglingOpen,
-              onChanged: onToggleOpen),
+            isOpen: vendor.isOpen,
+            busy: togglingOpen,
+            onChanged: onToggleOpen,
+          ),
         ],
       ),
     );
   }
 }
 
-
+/// Full-width so the store's own state is never a detail in the corner.
 class _OpenToggle extends StatelessWidget {
   const _OpenToggle({
     required this.isOpen,
@@ -324,49 +395,53 @@ class _OpenToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final accent = isOpen ? AppColors.onDarkSuccess : AppColors.navInactive;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 5, 5, 5),
+      padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpace.lg, AppSpace.sm, AppSpace.sm, AppSpace.sm),
       decoration: BoxDecoration(
-        color: isOpen
-            ? AppColors.success.withValues(alpha: 0.15)
-            : AppColors.textMuted.withValues(alpha: 0.15),
+        color: AppColors.inkElevated,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(
-          color: isOpen
-              ? AppColors.success.withValues(alpha: 0.3)
-              : AppColors.textMuted.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            isOpen ? context.l10n.open.toUpperCase() : context.l10n.closed.toUpperCase(),
-            style: TextStyle(
-                color: isOpen ? AppColors.success : AppColors.textMuted,
-                fontWeight: FontWeight.w800,
-                fontSize: 10.5,
-                letterSpacing: 0.5),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(
+              isOpen ? l10n.open : l10n.closed,
+              style: TextStyle(
+                color: accent,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ),
           SizedBox(
-            width: 38,
-            height: 22,
+            width: 44,
+            height: 26,
             child: busy
                 ? const Padding(
-                    padding: EdgeInsets.all(3),
+                    padding: EdgeInsets.all(5),
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white))
                 : Transform.scale(
-                    scale: 0.8,
+                    scale: 0.85,
                     child: Switch(
                       value: isOpen,
                       onChanged: onChanged,
                       activeThumbColor: Colors.white,
                       activeTrackColor: AppColors.success,
                       inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: AppColors.border,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      inactiveTrackColor: AppColors.onDarkTrack,
+                      materialTapTargetSize:
+                          MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
           ),
@@ -376,8 +451,106 @@ class _OpenToggle extends StatelessWidget {
   }
 }
 
-class _KpiStrip extends StatelessWidget {
-  const _KpiStrip({
+/// Says out loud when the store is in a state that stops or slows orders.
+///
+/// Closed and busy were previously only visible as a switch position and an
+/// icon tint, so a store could sit closed all morning without anyone noticing
+/// why nothing was coming in.
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({
+    required this.vendor,
+    required this.busyPending,
+    required this.onClearBusy,
+    required this.onOpenStore,
+  });
+
+  final Vendor vendor;
+  final bool busyPending;
+  final VoidCallback onClearBusy;
+  final VoidCallback onOpenStore;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    // Closed outranks busy: it is the one that stops orders outright.
+    if (!vendor.isOpen) {
+      return _banner(
+        icon: Icons.do_not_disturb_on_outlined,
+        fill: AppColors.dangerFill,
+        ink: AppColors.dangerInk,
+        message: l10n.storeClosedNotice,
+        actionLabel: l10n.open,
+        onAction: onOpenStore,
+        pending: false,
+      );
+    }
+    if (vendor.isBusy) {
+      return _banner(
+        icon: Icons.local_fire_department_outlined,
+        fill: AppColors.amberFill,
+        ink: AppColors.amberInk,
+        message: l10n.busyStoreNotice,
+        actionLabel: l10n.off,
+        onAction: onClearBusy,
+        pending: busyPending,
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _banner({
+    required IconData icon,
+    required Color fill,
+    required Color ink,
+    required String message,
+    required String actionLabel,
+    required VoidCallback onAction,
+    required bool pending,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg, AppSpace.md, AppSpace.sm, AppSpace.md),
+      color: fill,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: ink),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                  color: ink),
+            ),
+          ),
+          if (pending)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpace.md),
+              child: ButtonSpinner(size: 16),
+            )
+          else
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(foregroundColor: ink),
+              child: Text(actionLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Today's numbers as one flat rail.
+///
+/// This was three elevated cards costing ~110pt of height on a phone. The
+/// numbers are reference, not the job, so they now read as a single line and
+/// hand the reclaimed space to the order list.
+class _KpiBar extends StatelessWidget {
+  const _KpiBar({
     required this.revenue,
     required this.orders,
     required this.avgPrep,
@@ -389,85 +562,123 @@ class _KpiStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+    final l10n = context.l10n;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+          AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.xs),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
       child: Row(
         children: [
-          _kpiCard(
-            value: formatMoney(revenue),
-            label: context.l10n.today,
-            icon: Icons.payments_rounded,
-            bgColor: AppColors.warmFill,
-            iconColor: AppColors.primary,
-          ),
-          const SizedBox(width: 10),
-          _kpiCard(
-            value: '$orders',
-            label: context.l10n.orders,
-            icon: Icons.shopping_bag_rounded,
-            bgColor: AppColors.successFill,
-            iconColor: AppColors.successInk,
-          ),
-          const SizedBox(width: 10),
-          _kpiCard(
-            value: '$avgPrep′',
-            label: context.l10n.avgPrep,
-            icon: Icons.timer_rounded,
-            bgColor: AppColors.amberFill,
-            iconColor: AppColors.amberInk,
-          ),
+          _stat(formatMoney(revenue), l10n.today),
+          _divider(),
+          _stat('$orders', l10n.orders),
+          _divider(),
+          _stat('$avgPrep ${l10n.min}', l10n.avgPrep),
         ],
       ),
     );
   }
 
-  Widget _kpiCard({
-    required String value,
-    required String label,
-    required IconData icon,
-    required Color bgColor,
-    required Color iconColor,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          boxShadow: AppShadows.card,
-        ),
+  Widget _divider() => Container(
+        width: 1,
+        height: 26,
+        color: AppColors.borderSoft,
+      );
+
+  Widget _stat(String value, String label) => Expanded(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: bgColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: iconColor, size: 16),
-            ),
-            const SizedBox(height: 10),
             FittedBox(
               fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
               child: Text(
                 value,
-                style: AppType.mono(18, color: AppColors.ink, weight: FontWeight.w800),
+                style: AppType.mono(15,
+                    color: AppColors.ink, weight: FontWeight.w800),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textMuted,
               ),
             ),
           ],
         ),
+      );
+}
+
+/// Busy mode, analytics and opening hours — labelled, with the consequence of
+/// each spelled out.
+class _StoreControlsSheet extends StatelessWidget {
+  const _StoreControlsSheet({
+    required this.onToggleBusy,
+    required this.onAnalytics,
+    required this.onSchedule,
+  });
+
+  final ValueChanged<bool> onToggleBusy;
+  final VoidCallback onAnalytics;
+  final VoidCallback onSchedule;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final vendor = context.select((AuthCubit c) => c.state.vendor);
+    if (vendor == null) return const SizedBox.shrink();
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpace.xl, 0, AppSpace.xl, AppSpace.md),
+            child: Text(l10n.storeControls, style: AppType.heading(17)),
+          ),
+          SwitchListTile(
+            value: vendor.isBusy,
+            onChanged: onToggleBusy,
+            secondary: Icon(Icons.local_fire_department_outlined,
+                color: vendor.isBusy ? AppColors.amberInk : AppColors.textMuted),
+            title: Text(l10n.busyStore,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(l10n.busyMode,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textMuted)),
+          ),
+          const Divider(height: 1, color: AppColors.borderSoft),
+          ListTile(
+            onTap: onAnalytics,
+            leading: const Icon(Icons.insights_rounded,
+                color: AppColors.textSecondary),
+            title: Text(l10n.vendorAnalytics,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            trailing: const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textFaint),
+          ),
+          const Divider(height: 1, color: AppColors.borderSoft),
+          ListTile(
+            onTap: onSchedule,
+            leading: const Icon(Icons.schedule_rounded,
+                color: AppColors.textSecondary),
+            title: Text(l10n.operatingSchedule,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            trailing: const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textFaint),
+          ),
+          const SizedBox(height: AppSpace.sm),
+        ],
       ),
     );
   }
@@ -497,7 +708,8 @@ class _FilterTabs extends StatelessWidget {
         children: [
           _tab(context.l10n.newText, incoming, _OrderFilter.incoming, context),
           const SizedBox(width: 10),
-          _tab(context.l10n.preparing, preparing, _OrderFilter.preparing, context),
+          _tab(context.l10n.preparing, preparing, _OrderFilter.preparing,
+              context),
           const SizedBox(width: 10),
           _tab(context.l10n.ready, ready, _OrderFilter.ready, context),
           const SizedBox(width: 10),
@@ -511,6 +723,8 @@ class _FilterTabs extends StatelessWidget {
   Widget _tab(
       String label, int? count, _OrderFilter value, BuildContext context) {
     final selected = filter == value;
+    // A zero count is noise on a filter chip — the tab is still reachable.
+    final showCount = count != null && count > 0;
     return HoverBuilder(
       builder: (context, hovered) => GestureDetector(
         onTap: () => onChanged(value),
@@ -541,7 +755,7 @@ class _FilterTabs extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
-              if (count != null) ...[
+              if (showCount) ...[
                 const SizedBox(width: 8),
                 Container(
                   padding:
@@ -609,7 +823,7 @@ class _OrderList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       itemCount: orders.length + (paged ? 1 : 0),
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         if (i == orders.length) {
           return PagingFooter(loading: loadingMore, hasMore: hasMore);
@@ -623,6 +837,60 @@ class _OrderList extends StatelessWidget {
     );
     if (!paged) return list;
     return InfiniteScroll(onLoadMore: onLoadMore, child: list);
+  }
+}
+
+/// How long the order has been sitting, escalating as it ages.
+///
+/// The card previously showed only the time it was placed, leaving the vendor
+/// to do the arithmetic on the busiest screen in the app. Colour carries the
+/// urgency so a late order is findable by scanning, not reading.
+class _OrderAgeChip extends StatelessWidget {
+  const _OrderAgeChip({required this.placedAt});
+
+  final DateTime placedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = DateTime.now().difference(placedAt).inMinutes;
+
+    // Past an hour the elapsed figure stops being actionable, so the card falls
+    // back to the wall-clock time it was placed.
+    if (minutes >= 60) {
+      return Text(
+        DateFormat('h:mm a').format(placedAt),
+        style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textMuted),
+      );
+    }
+
+    final (fill, ink) = switch (minutes) {
+      < 5 => (AppColors.successFill, AppColors.successInk),
+      < 10 => (AppColors.amberFill, AppColors.amberInk),
+      _ => (AppColors.dangerFill, AppColors.dangerInk),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AppRadii.xs),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule_rounded, size: 12, color: ink),
+          const SizedBox(width: 4),
+          Text(
+            '$minutes${context.l10n.minutesAgo}',
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w800, color: ink),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -663,12 +931,12 @@ class _OrderCard extends StatelessWidget {
               : hovered
                   ? AppColors.primaryLight
                   : isNew
-                      ? AppColors.primary.withValues(alpha: 0.3)
+                      ? AppColors.attentionBorder
                       : AppColors.border,
           width: isNew || selected ? 1.6 : 1.0,
         ),
         borderRadius: BorderRadius.circular(AppRadii.xl),
-        boxShadow: AppShadows.card,
+        boxShadow: isNew ? AppShadows.raised : AppShadows.card,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -679,78 +947,68 @@ class _OrderCard extends StatelessWidget {
                 ? onSelect!(order)
                 : context.push('/vendor-app/orders/${order.id}'),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpace.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Line 1: which order, and how long it has been waiting.
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SelectableId(
-                              order.orderNumber,
-                              style: AppType.mono(14.5,
-                                  color: AppColors.ink,
-                                  weight: FontWeight.w700),
-                              selectable: onSelect != null,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${order.customerName ?? context.l10n.customer} · '
-                              '${DateFormat('h:mm a').format(order.createdAt)}',
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                      SelectableId(
+                        order.orderNumber,
+                        style: AppType.mono(14.5,
+                            color: AppColors.ink, weight: FontWeight.w700),
+                        selectable: onSelect != null,
                       ),
+                      const SizedBox(width: AppSpace.sm),
+                      _OrderAgeChip(placedAt: order.createdAt),
+                      const Spacer(),
                       OrderStatusChip(status: order.status),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.sm),
+                  // Line 2: who it is for, what it is worth, how it is paid.
+                  // Three facts on one row replaces the old divider plus
+                  // "TOTAL AMOUNT" caps label, which cost height and said
+                  // nothing the number did not.
                   Row(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'TOTAL AMOUNT',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textFaint,
-                              letterSpacing: 0.8,
-                            ),
+                      Expanded(
+                        child: Text(
+                          order.customerName ?? context.l10n.customer,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: 3),
-                          PriceText(formatMoney(order.total), size: 16),
-                        ],
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: AppSpace.sm),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: order.isCod ? AppColors.amberFill : AppColors.successFill,
-                          borderRadius: BorderRadius.circular(AppRadii.sm),
+                          color: order.isCod
+                              ? AppColors.amberFill
+                              : AppColors.successFill,
+                          borderRadius: BorderRadius.circular(AppRadii.xs),
                         ),
                         child: Text(
                           _payLabel(context).toUpperCase(),
                           style: TextStyle(
-                            color: order.isCod ? AppColors.amberInk : AppColors.successInk,
+                            color: order.isCod
+                                ? AppColors.amberInk
+                                : AppColors.successInk,
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.5,
                           ),
                         ),
                       ),
+                      const SizedBox(width: AppSpace.sm),
+                      PriceText(formatMoney(order.total), size: 15),
                     ],
                   ),
                   _ActionRow(order: order, cubit: cubit),
@@ -806,7 +1064,7 @@ class _ActionRow extends StatelessWidget {
             Expanded(
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
+                    minimumSize: const Size.fromHeight(46),
                     side: const BorderSide(color: AppColors.border),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -821,7 +1079,7 @@ class _ActionRow extends StatelessWidget {
               child: FilledButton(
                 style: FilledButton.styleFrom(
                     backgroundColor: AppColors.success,
-                    minimumSize: const Size.fromHeight(48),
+                    minimumSize: const Size.fromHeight(46),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadii.lg),
                     )),
@@ -833,7 +1091,7 @@ class _ActionRow extends StatelessWidget {
         ),
       OrderStatus.accepted => FilledButton(
           style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+              minimumSize: const Size.fromHeight(46),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadii.lg),
               )),
@@ -842,7 +1100,7 @@ class _ActionRow extends StatelessWidget {
         ),
       OrderStatus.preparing => FilledButton(
           style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+              minimumSize: const Size.fromHeight(46),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadii.lg),
               )),
@@ -850,15 +1108,18 @@ class _ActionRow extends StatelessWidget {
           child: Text(context.l10n.markReadyForPickup),
         ),
       OrderStatus.readyForPickup => Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: AppSpace.sm),
           child: Row(
             children: [
-              const Icon(Icons.hourglass_empty_rounded, color: AppColors.success, size: 16),
+              const Icon(Icons.hourglass_empty_rounded,
+                  color: AppColors.success, size: 16),
               const SizedBox(width: 6),
               Text(
                 context.l10n.waitingForADriver,
                 style: const TextStyle(
-                    color: AppColors.success, fontWeight: FontWeight.w700, fontSize: 13),
+                    color: AppColors.success,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13),
               ),
             ],
           ),
@@ -866,6 +1127,7 @@ class _ActionRow extends StatelessWidget {
       _ => const SizedBox.shrink(),
     };
     if (child is SizedBox) return child;
-    return Padding(padding: const EdgeInsets.only(top: 14), child: child);
+    return Padding(
+        padding: const EdgeInsets.only(top: AppSpace.md), child: child);
   }
 }

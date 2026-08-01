@@ -2,21 +2,70 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/models/cart_item.dart';
+import '../../../core/models/product.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/cart_repository.dart';
 
 class CartState extends Equatable {
-  const CartState({this.vendor, this.items = const []});
+  const CartState({
+    this.vendor,
+    this.items = const [],
+    this.unavailable = const [],
+    this.repriced = const [],
+    this.checking = false,
+  });
 
   final Vendor? vendor;
   final List<CartItem> items;
 
+  /// Items the store has since removed or marked sold out. They stay in the
+  /// list — silently deleting somebody's cart is worse than telling them — but
+  /// they are excluded from the total and block checkout.
+  final List<String> unavailable;
+
+  /// Items whose price changed since they were added. The cart shows the new
+  /// price; this is what lets it say so rather than quietly charging more.
+  final List<String> repriced;
+
+  /// A freshness check is in flight.
+  final bool checking;
+
   bool get isEmpty => items.isEmpty;
   int get itemCount => items.fold(0, (sum, i) => sum + i.quantity);
-  double get subtotal => items.fold(0, (sum, i) => sum + i.lineTotal);
+
+  /// Excludes anything unavailable: the number under the button has to be the
+  /// number that will be charged.
+  double get subtotal => items
+      .where((i) => !unavailable.contains(i.product.id))
+      .fold(0, (sum, i) => sum + i.lineTotal);
+
+  bool isUnavailable(CartItem item) => unavailable.contains(item.product.id);
+  bool isRepriced(CartItem item) => repriced.contains(item.product.id);
+
+  bool get hasProblems => unavailable.isNotEmpty || repriced.isNotEmpty;
+
+  /// Nothing orderable left once every line is unavailable.
+  bool get canCheckout =>
+      items.isNotEmpty && unavailable.isEmpty && subtotal > 0;
+
+  CartState copyWith({
+    Vendor? vendor,
+    List<CartItem>? items,
+    List<String>? unavailable,
+    List<String>? repriced,
+    bool? checking,
+  }) =>
+      CartState(
+        vendor: vendor ?? this.vendor,
+        items: items ?? this.items,
+        unavailable: unavailable ?? this.unavailable,
+        repriced: repriced ?? this.repriced,
+        checking: checking ?? this.checking,
+      );
 
   @override
-  List<Object?> get props => [vendor, items];
+  List<Object?> get props =>
+      [vendor, items, unavailable, repriced, checking];
 }
 
 /// Local-first cart. Mutations apply instantly; persistence to the server is
@@ -95,6 +144,68 @@ class CartCubit extends Cubit<CartState> {
     } catch (_) {
       // Stale carts are not worth surfacing an error for.
     }
+  }
+
+  /// Re-reads the cart's items from the catalogue and flags what changed.
+  ///
+  /// A cart is built from a snapshot of the menu and then sat on — sometimes
+  /// for hours. Without this the first the customer heard of a sold-out item
+  /// was `PRODUCT_UNAVAILABLE` at checkout, after they had entered an address
+  /// and picked a payment method; a price rise was never mentioned at all,
+  /// because the server recomputes totals from current prices.
+  Future<void> revalidate(
+      Future<List<Product>> Function(List<String> ids) fetchProducts) async {
+    if (state.items.isEmpty) return;
+    emit(state.copyWith(checking: true));
+    try {
+      final ids = state.items.map((i) => i.product.id).toSet().toList();
+      final fresh = await fetchProducts(ids);
+      final byId = {for (final product in fresh) product.id: product};
+
+      final unavailable = <String>[];
+      final repriced = <String>[];
+      final items = <CartItem>[];
+      for (final item in state.items) {
+        final current = byId[item.product.id];
+        if (current == null || !current.isAvailable) {
+          // A product deleted outright is as unorderable as a sold-out one,
+          // and the customer needs the same sentence for both.
+          unavailable.add(item.product.id);
+          items.add(item);
+          continue;
+        }
+        if (current.price != item.product.price) {
+          repriced.add(item.product.id);
+        }
+        // Carry the current product through, so the line shows what the
+        // customer will actually be charged.
+        items.add(item.copyWith(product: current));
+      }
+
+      if (isClosed) return;
+      emit(state.copyWith(
+        items: items,
+        unavailable: unavailable,
+        repriced: repriced,
+        checking: false,
+      ));
+    } catch (_) {
+      // Offline or a failed read: leave the cart exactly as it was. Checkout
+      // still refuses anything genuinely unavailable, so this is a courtesy
+      // rather than the guarantee.
+      if (!isClosed) emit(state.copyWith(checking: false));
+    }
+  }
+
+  /// Drops every line the store can no longer sell, in one tap.
+  void removeUnavailable() {
+    final keep = state.items
+        .where((item) => !state.unavailable.contains(item.product.id))
+        .toList();
+    emit(keep.isEmpty
+        ? const CartState()
+        : CartState(vendor: state.vendor, items: keep, repriced: state.repriced));
+    _persist();
   }
 
   void _persist() {

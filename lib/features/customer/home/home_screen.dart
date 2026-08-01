@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/banner_item.dart';
+import '../../../core/models/product.dart' show ProductHit;
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/catalog_repository.dart';
@@ -61,6 +62,22 @@ class _HomeView extends StatelessWidget {
                       onSubmit: cubit.setSearch, filters: state.filters),
                   _Offers(offers: state.banners),
                   _CategoryChips(state: state),
+                  _VendorRail(
+                    title: context.l10n.recommended,
+                    icon: Icons.auto_awesome,
+                    vendors: cubit.state.recommendedVendors,
+                  ),
+                  _VendorRail(
+                    title: context.l10n.nearbyRestaurants,
+                    icon: Icons.near_me_outlined,
+                    vendors: cubit.state.nearbyVendors,
+                    showDistance: true,
+                  ),
+                  // Dishes first while searching: somebody typing "kofta"
+                  // is looking for the food, and the shops that sell it are
+                  // the answer underneath.
+                  if (state.productHits.isNotEmpty)
+                    _DishResults(hits: state.productHits),
                   _StoresHeader(count: vendors.length),
                   if (vendors.isEmpty)
                     Padding(
@@ -92,7 +109,12 @@ class _HomeView extends StatelessWidget {
                     for (final vendor in vendors)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
-                        child: _VendorCard(vendor: vendor),
+                        child: _VendorCard(
+                          vendor: vendor,
+                          // Explains a store whose own name has nothing to do
+                          // with what was typed.
+                          menuMatches: state.menuMatches[vendor.id],
+                        ),
                       ),
                 ],
               ),
@@ -221,6 +243,10 @@ class _SearchBar extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: TextField(
+                // Live, not just on submit: the cubit debounces, and a search
+                // that only ran on the keyboard's search key meant most
+                // customers never saw a result at all.
+                onChanged: onSubmit,
                 onSubmitted: onSubmit,
                 textInputAction: TextInputAction.search,
                 style: const TextStyle(fontSize: 15, color: AppColors.ink, fontWeight: FontWeight.w500),
@@ -260,7 +286,11 @@ class _FilterButton extends StatelessWidget {
       onTap: enabled
           ? () async {
               final cubit = context.read<HomeCubit>();
-              final result = await showVendorFiltersSheet(context, filters!);
+              final result = await showVendorFiltersSheet(
+                context,
+                filters!,
+                canSortByDistance: cubit.state.canSortByDistance,
+              );
               if (result != null) cubit.applyFilters(result);
             }
           : null,
@@ -714,10 +744,89 @@ class _StoresHeader extends StatelessWidget {
 }
 
 // ===== Vendor card =====
+/// A horizontal shortcut rail above the full store list.
+///
+/// Used for both the admin's promoted picks and the nearest open stores. A rail
+/// rather than pinned rows in the main list: neither promotion nor proximity
+/// should quietly reorder a list the customer believes is ranked on merit.
+/// Renders nothing when its section is empty, so an ungeofenced platform or one
+/// with no promoted stores simply shows the plain list.
+class _VendorRail extends StatelessWidget {
+  const _VendorRail({
+    required this.title,
+    required this.icon,
+    required this.vendors,
+    this.showDistance = false,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Vendor> vendors;
+
+  /// The nearby rail leads with distance; the recommended one has no reason to.
+  final bool showDistance;
+
+  @override
+  Widget build(BuildContext context) {
+    if (vendors.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 10),
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: AppColors.primary),
+              const SizedBox(width: 7),
+              Text(title, style: AppType.heading(17)),
+              const Spacer(),
+              if (showDistance)
+                Builder(builder: (context) {
+                  final km = context
+                      .read<HomeCubit>()
+                      .state
+                      .distanceToVendor(vendors.first);
+                  if (km == null) return const SizedBox.shrink();
+                  return Text(
+                    '${km < 10 ? km.toStringAsFixed(1) : km.round()} '
+                    '${context.l10n.kmUnit}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMuted,
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 196,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            itemCount: vendors.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, i) => SizedBox(
+              width: 260,
+              child: _VendorCard(vendor: vendors[i]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _VendorCard extends StatelessWidget {
-  const _VendorCard({required this.vendor});
+  const _VendorCard({required this.vendor, this.menuMatches});
 
   final Vendor vendor;
+
+  /// Item names that put this store in a search result. Null outside a
+  /// search, and null for a store matched by its own name — where the reason
+  /// it is here needs no explaining.
+  final List<String>? menuMatches;
 
   @override
   Widget build(BuildContext context) {
@@ -790,12 +899,28 @@ class _VendorCard extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.ink)),
                           const SizedBox(height: 2),
-                          Text(
-                            '${vendor.totalPrepMinutes}–${vendor.totalPrepMinutes + 10} min'
-                            ' · ${formatMoney(vendor.deliveryFee)} delivery',
-                            style: const TextStyle(
-                                fontSize: 12.5, color: AppColors.textMuted),
-                          ),
+                          Builder(builder: (context) {
+                            // Distance only appears once it is real: the
+                            // customer has a pinned address and the store has
+                            // coordinates. Otherwise the line reads as before.
+                            final km = context
+                                .read<HomeCubit>()
+                                .state
+                                .distanceToVendor(vendor);
+                            return Text(
+                              [
+                                if (km != null)
+                                  '${km < 10 ? km.toStringAsFixed(1) : km.round()} '
+                                      '${context.l10n.kmUnit}',
+                                '${vendor.totalPrepMinutes}–${vendor.totalPrepMinutes + 10} min',
+                                '${formatMoney(vendor.deliveryFee)} delivery',
+                              ].join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12.5, color: AppColors.textMuted),
+                            );
+                          }),
                         ],
                       ),
                     ),
@@ -804,6 +929,20 @@ class _VendorCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (menuMatches != null && menuMatches!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                  child: Text(
+                    context.l10n.matchesOnMenu(menuMatches!.join(' · ')),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1080,4 +1219,109 @@ String _emojiFor(String name) {
   if (n.contains('chicken')) return '🍗 ';
   if (n.contains('drink') || n.contains('juice')) return '🥤 ';
   return '🍽️ ';
+}
+
+/// The dishes half of a search result.
+///
+/// A horizontal strip rather than a second vertical list: the stores below are
+/// the main answer, and dishes are how a customer picks between them.
+class _DishResults extends StatelessWidget {
+  const _DishResults({required this.hits});
+
+  final List<ProductHit> hits;
+
+  @override
+  Widget build(BuildContext context) {
+    final language = Localizations.localeOf(context).languageCode;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 8, 22, 10),
+          child: Row(
+            children: [
+              const Icon(Icons.restaurant_menu_rounded,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(context.l10n.dishes, style: AppType.heading(16)),
+              const SizedBox(width: 6),
+              Text('${hits.length}',
+                  style: AppType.mono(12, color: AppColors.textFaint)),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 178,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            itemCount: hits.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, i) {
+              final hit = hits[i];
+              return SizedBox(
+                width: 148,
+                child: Material(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadii.xl),
+                  child: InkWell(
+                    // Straight to the store: the dish is the reason to go
+                    // there, and adding it to a cart needs its options, which
+                    // a search result does not carry.
+                    onTap: () => context.push('/vendors/${hit.vendorId}'),
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
+                    child: Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadii.xl),
+                        border: Border.all(color: AppColors.borderSoft),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppNetworkImage(
+                              url: hit.imageUrl,
+                              height: 92,
+                              width: double.infinity),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  hit.displayName(language),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.ink),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  hit.vendorName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted),
+                                ),
+                                const SizedBox(height: 4),
+                                PriceText(formatMoney(hit.price), size: 13),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
 }

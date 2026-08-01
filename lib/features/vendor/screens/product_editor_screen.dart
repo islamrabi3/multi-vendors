@@ -91,7 +91,7 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
       );
       setState(() => _imageUrl = url);
     } catch (error) {
-      if (mounted) showSnack(context, readableError(error), error: true);
+      if (mounted) showFailure(context, error);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -121,7 +121,7 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
       await _reloadProduct();
       if (mounted) showSnack(context, context.l10n.productSaved);
     } catch (error) {
-      if (mounted) showSnack(context, readableError(error), error: true);
+      if (mounted) showFailure(context, error);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

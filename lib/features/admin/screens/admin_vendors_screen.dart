@@ -47,7 +47,7 @@ class _VendorsViewState extends State<_VendorsView> {
             return BlocConsumer<AdminVendorsCubit, AdminVendorsState>(
               listenWhen: (p, c) => p.error != c.error && c.error != null,
               listener: (context, state) =>
-                  showSnack(context, readableError(state.error!), error: true),
+                  showFailure(context, state.error!),
               builder: (context, state) {
                 final cubit = context.read<AdminVendorsCubit>();
                 final list = Column(

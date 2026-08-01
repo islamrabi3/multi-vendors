@@ -1287,6 +1287,284 @@ class AppLocalizationsEn extends AppLocalizations {
   String get busyMode => 'Busy Mode (+15m)';
 
   @override
+  String get addMoreToReachMinimum => 'Add';
+
+  @override
+  String get tips => 'Tips';
+
+  @override
+  String get financialReports => 'Financial & sales';
+
+  @override
+  String get platformTab => 'Platform';
+
+  @override
+  String get vendorSalesTab => 'Vendor sales';
+
+  @override
+  String get driverPayoutsTab => 'Driver payouts';
+
+  @override
+  String get period => 'Period';
+
+  @override
+  String get periodToday => 'Today';
+
+  @override
+  String get periodWeek => '7 days';
+
+  @override
+  String get periodMonth => 'Month';
+
+  @override
+  String get periodAll => 'All time';
+
+  @override
+  String get grossRevenue => 'Gross revenue';
+
+  @override
+  String get itemSales => 'Item sales';
+
+  @override
+  String get platformCommission => 'Platform commission';
+
+  @override
+  String get driverCost => 'Driver payouts';
+
+  @override
+  String get netMargin => 'Net to platform';
+
+  @override
+  String get cashCollected => 'Cash with drivers';
+
+  @override
+  String get cardCollected => 'Paid by card';
+
+  @override
+  String get averageOrder => 'Average order';
+
+  @override
+  String get deliveredOrders => 'Delivered Orders';
+
+  @override
+  String get cancelledOrders => 'Cancelled';
+
+  @override
+  String get deliveryFeesTotal => 'Delivery fees';
+
+  @override
+  String get discountsGiven => 'Discounts given';
+
+  @override
+  String get vendorPayouts => 'Vendor payouts';
+
+  @override
+  String get noReportData => 'No delivered orders in this period.';
+
+  @override
+  String get settlement => 'Settlement';
+
+  @override
+  String get volume => 'Volume';
+
+  @override
+  String get accountBlockedTitle => 'Account suspended';
+
+  @override
+  String get accountBlockedBody =>
+      'An administrator has suspended this account, so it cannot place orders, deliver, or trade. Contact support if you believe this is a mistake.';
+
+  @override
+  String get accountClosedTitle => 'Account closed';
+
+  @override
+  String get accountClosedBody =>
+      'This account has been closed and can no longer be used. Past orders remain on record.';
+
+  @override
+  String get supportChat => 'Support';
+
+  @override
+  String get supportResolvedNotice =>
+      'This conversation is resolved. Messages are removed 24 hours after it closes — send a reply to reopen it.';
+
+  @override
+  String get supportChatEmpty =>
+      'Send us a message and we\'ll get back to you.';
+
+  @override
+  String get typeAMessage => 'Type a message';
+
+  @override
+  String get markResolved => 'Resolve';
+
+  @override
+  String get reopen => 'Reopen';
+
+  @override
+  String get resolved => 'Resolved';
+
+  @override
+  String get noSupportThreads => 'No support conversations yet.';
+
+  @override
+  String get openOnly => 'Open only';
+
+  @override
+  String get users => 'Users';
+
+  @override
+  String get blockUser => 'Block user';
+
+  @override
+  String get unblockUser => 'Unblock user';
+
+  @override
+  String get blocked => 'Blocked';
+
+  @override
+  String get blockReasonHint =>
+      'Reason (shown to nobody, kept for your records)';
+
+  @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountWarning =>
+      'This closes your account for good. Past orders stay on record, but you will not be able to sign in again.';
+
+  @override
+  String get deleteAccountActiveOrders =>
+      'You still have an order in progress. You can delete your account once it is finished.';
+
+  @override
+  String deleteAccountWalletWarning(String amount) {
+    return 'You still have $amount in your wallet. Deleting your account forfeits it.';
+  }
+
+  @override
+  String get deleteAccountConfirm => 'Yes, delete my account';
+
+  @override
+  String get accountDeleted => 'Your account has been closed.';
+
+  @override
+  String get userBlocked => 'User blocked.';
+
+  @override
+  String get userUnblocked => 'User unblocked.';
+
+  @override
+  String get userDeleted => 'User account closed.';
+
+  @override
+  String get searchUsers => 'Search by name or phone';
+
+  @override
+  String get bySigningUpYouAgree => 'By continuing you agree to our';
+
+  @override
+  String get and => 'and';
+
+  @override
+  String get nearbyRestaurants => 'Nearby';
+
+  @override
+  String get aboutUs => 'About us';
+
+  @override
+  String get termsAndConditions => 'Terms & Conditions';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get followUs => 'Follow us';
+
+  @override
+  String get lastUpdated => 'Last updated';
+
+  @override
+  String get contentNotAvailableYet => 'This page has not been published yet.';
+
+  @override
+  String get couldNotOpenLink => 'Could not open that link.';
+
+  @override
+  String get recommended => 'Recommended';
+
+  @override
+  String get content => 'Content & pages';
+
+  @override
+  String get socialLinks => 'Social links';
+
+  @override
+  String get addLink => 'Add link';
+
+  @override
+  String get platform => 'Platform';
+
+  @override
+  String get linkUrl => 'Link URL';
+
+  @override
+  String get published => 'Published';
+
+  @override
+  String get draft => 'Draft — hidden from customers';
+
+  @override
+  String get sortOrder => 'Sort order';
+
+  @override
+  String get englishBody => 'Body · English';
+
+  @override
+  String get arabicBody => 'Body · Arabic';
+
+  @override
+  String get englishTitle => 'Title · English';
+
+  @override
+  String get arabicTitle => 'Title · Arabic';
+
+  @override
+  String get manageRecommended => 'Recommended stores';
+
+  @override
+  String get storeLocationOnMap => 'Store location on map';
+
+  @override
+  String get pickOnMap => 'Pick on map';
+
+  @override
+  String get pickStoreLocationFirst =>
+      'Pick your store location on the map first.';
+
+  @override
+  String get sortNearest => 'Nearest';
+
+  @override
+  String get awayFromYou => 'away';
+
+  @override
+  String get storeControls => 'Store controls';
+
+  @override
+  String get storeClosedNotice =>
+      'Your store is closed — customers cannot place orders.';
+
+  @override
+  String get needsYourAttention => 'need your attention';
+
+  @override
+  String get allCaughtUp => 'All caught up';
+
+  @override
+  String get totalAmount => 'Total amount';
+
+  @override
   String get openInMaps => 'Open in Maps';
 
   @override
@@ -1353,9 +1631,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get totalRevenue => 'Total Revenue';
-
-  @override
-  String get deliveredOrders => 'Delivered Orders';
 
   @override
   String get performanceOverview => 'Performance Overview';
@@ -1856,4 +2131,379 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get edit => 'Edit';
+
+  @override
+  String get attachment => 'Attachment';
+
+  @override
+  String get attachmentUnavailable => 'Attachment unavailable';
+
+  @override
+  String get attachmentOpenFailed => 'Could not open this file.';
+
+  @override
+  String get attachPhoto => 'Photo';
+
+  @override
+  String get attachCamera => 'Camera';
+
+  @override
+  String get attachFile => 'File';
+
+  @override
+  String get attachSomething => 'Attach';
+
+  @override
+  String get attachmentUploadFailed => 'Could not upload that attachment.';
+
+  @override
+  String get howCanWeHelp => 'How can we help?';
+
+  @override
+  String get pickTopicOrWrite =>
+      'Pick a topic for an instant answer, or write to us directly.';
+
+  @override
+  String get supportOtherTopic => 'Something else';
+
+  @override
+  String get automaticReply => 'Automatic reply';
+
+  @override
+  String get errNetwork => 'No connection. Check your internet and try again.';
+
+  @override
+  String get errSessionExpired => 'Your session has ended. Sign in again.';
+
+  @override
+  String get errNoPermission =>
+      'You do not have permission to do that. If your account or store was suspended, contact support.';
+
+  @override
+  String get errNotFound => 'That is no longer available.';
+
+  @override
+  String get errServer => 'The server had a problem. Try again in a moment.';
+
+  @override
+  String get errUnknown => 'Something went wrong. Please try again.';
+
+  @override
+  String get errCartEmpty => 'Your cart is empty.';
+
+  @override
+  String get errVendorClosed => 'This store is currently closed.';
+
+  @override
+  String get errVendorNotApproved => 'This store is not approved yet.';
+
+  @override
+  String get errAddressNotFound => 'Please choose a delivery address.';
+
+  @override
+  String get errOutsideServiceArea =>
+      'We don\'t deliver to this address yet. Pick another address inside our delivery area.';
+
+  @override
+  String get errRoleAlreadySet => 'Your account type has already been set.';
+
+  @override
+  String get errRoleChangeNotAllowed => 'Account type cannot be changed here.';
+
+  @override
+  String get errCouponInvalid => 'This coupon code is not valid.';
+
+  @override
+  String get errCouponMinOrder => 'Order total is below the coupon minimum.';
+
+  @override
+  String get errMinOrderNotMet => 'Order total is below the store minimum.';
+
+  @override
+  String get errNotAnOnlineDriver =>
+      'Go online to claim orders. A new driver account needs admin approval first.';
+
+  @override
+  String get errDriverNotApproved =>
+      'Your driver account is awaiting admin approval. You can go online once it is approved.';
+
+  @override
+  String get errInsufficientWallet =>
+      'Your wallet balance is not enough for this order.';
+
+  @override
+  String get errCardPaymentsUnavailable =>
+      'Card payments are unavailable right now. Please try another method.';
+
+  @override
+  String get errPaymentPageFailed =>
+      'The payment page could not be opened. Please try again.';
+
+  @override
+  String get errAlreadyPaid => 'This order has already been paid.';
+
+  @override
+  String get errAlreadyRefunded => 'This order has already been refunded.';
+
+  @override
+  String get errOrderNotPaid => 'This order was never paid, nothing to refund.';
+
+  @override
+  String get errOrderNotCancelled =>
+      'Only cancelled or rejected orders can be refunded.';
+
+  @override
+  String get errNotACardOrder =>
+      'Only card-paid orders can be refunded to the wallet.';
+
+  @override
+  String get errProductUnavailable =>
+      'An item in your cart is no longer available.';
+
+  @override
+  String get errTransitionNotAllowed =>
+      'This order was already updated. Refreshing…';
+
+  @override
+  String get errAccountBlocked =>
+      'This account has been suspended. Contact support if you think that is a mistake.';
+
+  @override
+  String get errHasActiveOrders =>
+      'You still have an order in progress. You can delete your account once it is finished.';
+
+  @override
+  String get errWalletHasBalance =>
+      'Your wallet still has a balance. Confirm you accept losing it to continue.';
+
+  @override
+  String get errCannotBlockSelf => 'You cannot block your own account.';
+
+  @override
+  String get errCannotDeleteSelf =>
+      'You cannot delete your own account from here.';
+
+  @override
+  String get errCannotBlockAdmin => 'Admin accounts cannot be blocked.';
+
+  @override
+  String get errCannotDeleteAdmin => 'Admin accounts cannot be deleted.';
+
+  @override
+  String get errInvalidLogin => 'Incorrect email or password.';
+
+  @override
+  String get errEmailNotConfirmed =>
+      'Confirm your email address first, then sign in.';
+
+  @override
+  String get errUserAlreadyExists =>
+      'An account with this email already exists.';
+
+  @override
+  String get errWeakPassword => 'Password is too short.';
+
+  @override
+  String get errDuplicate => 'That already exists.';
+
+  @override
+  String get errStillReferenced =>
+      'This is still in use elsewhere and cannot be removed.';
+
+  @override
+  String get paymentCancelledNotice =>
+      'Payment cancelled. The order was not sent to the restaurant.';
+
+  @override
+  String get paymentFailedNotice =>
+      'Payment failed. The order was not sent to the restaurant.';
+
+  @override
+  String get paymentPendingNotice =>
+      'Still confirming your payment with the bank. The restaurant is notified only once it is confirmed.';
+
+  @override
+  String get errLocationPermission =>
+      'Location permission is needed to share your position.';
+
+  @override
+  String get errOrderTaken => 'Another driver took this order.';
+
+  @override
+  String get uncategorized => 'Uncategorized';
+
+  @override
+  String get manageSections => 'Manage sections';
+
+  @override
+  String get reorderSections => 'Drag to reorder sections';
+
+  @override
+  String get searchMenuHint => 'Search items';
+
+  @override
+  String get sections => 'Sections';
+
+  @override
+  String get duplicateItem => 'Duplicate';
+
+  @override
+  String get moveToSection => 'Move to section';
+
+  @override
+  String get deleteItem => 'Delete item';
+
+  @override
+  String get deleteItemConfirm =>
+      'Delete this item? It disappears from the menu straight away. Past orders keep it.';
+
+  @override
+  String get deleteSectionConfirm =>
+      'Delete this section? Its items stay on the menu and move to Uncategorized.';
+
+  @override
+  String get itemDuplicated =>
+      'Copy created and left sold out until you edit it.';
+
+  @override
+  String get itemDeleted => 'Item deleted';
+
+  @override
+  String get sectionDeleted => 'Section deleted';
+
+  @override
+  String get markSectionSoldOut => 'Mark section sold out';
+
+  @override
+  String get markSectionAvailable => 'Mark section available';
+
+  @override
+  String get markAllSoldOut => 'Mark everything sold out';
+
+  @override
+  String get markAllAvailable => 'Mark everything available';
+
+  @override
+  String itemsUpdatedCount(int count) {
+    return '$count items updated';
+  }
+
+  @override
+  String get sortManual => 'My order';
+
+  @override
+  String get sortNameAsc => 'Name A–Z';
+
+  @override
+  String get sortPriceAsc => 'Price, low to high';
+
+  @override
+  String get sortPriceDesc => 'Price, high to low';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String get noMatchingItems => 'No items match your search.';
+
+  @override
+  String optionGroupsCount(int count) {
+    return '$count option groups';
+  }
+
+  @override
+  String get dragToReorderItems => 'Hold and drag an item to reorder the menu.';
+
+  @override
+  String get reorderUnavailableWhileFiltered =>
+      'Reordering works in “My order” with no search or filter.';
+
+  @override
+  String menuStats(int items, int sections, int soldOut) {
+    return '$items items · $sections sections · $soldOut sold out';
+  }
+
+  @override
+  String get sectionHasNoItems => 'This section has no items yet.';
+
+  @override
+  String get saved => 'Saved';
+
+  @override
+  String get reviews => 'Reviews';
+
+  @override
+  String get ratingsAndReviews => 'Ratings & reviews';
+
+  @override
+  String get noReviewsYet => 'No reviews yet. Be the first to leave one.';
+
+  @override
+  String get seeAllReviews => 'See all reviews';
+
+  @override
+  String basedOnReviews(int count) {
+    return '$count reviews';
+  }
+
+  @override
+  String get rateTheStore => 'How was the food?';
+
+  @override
+  String get howWasTheDriver => 'How was the delivery?';
+
+  @override
+  String get anonymous => 'A customer';
+
+  @override
+  String get reviewsInbox => 'Customer feedback';
+
+  @override
+  String get averageRating => 'Average rating';
+
+  @override
+  String get skipDriverRating => 'Skip';
+
+  @override
+  String estimatedArrival(int minutes) {
+    return 'Arriving in about $minutes min';
+  }
+
+  @override
+  String get arrivingSoon => 'Arriving any minute';
+
+  @override
+  String deliveredAtTime(String time) {
+    return 'Delivered at $time';
+  }
+
+  @override
+  String get etaUnavailable => 'On the way';
+
+  @override
+  String get dishes => 'Dishes';
+
+  @override
+  String matchesOnMenu(String items) {
+    return 'On the menu: $items';
+  }
+
+  @override
+  String get storesLabel => 'Stores';
+
+  @override
+  String get cartItemsUnavailable => 'Some items are no longer available';
+
+  @override
+  String get removeUnavailable => 'Remove them';
+
+  @override
+  String get cartPricesChanged =>
+      'Prices changed since you added these. The new prices are shown.';
+
+  @override
+  String get unavailableNow => 'Unavailable';
+
+  @override
+  String get newPrice => 'New price';
 }

@@ -77,7 +77,7 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _step = _Step.review);
-      showSnack(context, readableError(e), error: true);
+      showFailure(context, e);
     }
   }
 

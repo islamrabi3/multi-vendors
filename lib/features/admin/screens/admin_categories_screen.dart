@@ -49,7 +49,7 @@ class _CategoriesViewState extends State<_CategoriesView> {
         child: BlocConsumer<AdminCategoriesCubit, AdminCategoriesState>(
           listener: (context, state) {
             if (state.error != null) {
-              showSnack(context, readableError(state.error!), error: true);
+              showFailure(context, state.error!);
             } else if (state.successMessage != null) {
               showSnack(context, state.successMessage!);
             }

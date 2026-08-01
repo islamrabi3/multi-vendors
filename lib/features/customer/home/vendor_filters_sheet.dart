@@ -8,22 +8,33 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 /// Store filters, edited on a local copy so the list behind the sheet does not
 /// churn on every tap. Returns null when the customer backs out, so the caller
 /// can tell "cancelled" from "cleared everything".
+/// [canSortByDistance] is false while the customer has no pinned address or no
+/// store has coordinates; the "nearest" option is then hidden rather than
+/// offered as a sort that would silently do nothing.
 Future<VendorFilters?> showVendorFiltersSheet(
   BuildContext context,
-  VendorFilters current,
-) {
+  VendorFilters current, {
+  bool canSortByDistance = false,
+}) {
   return showModalBottomSheet<VendorFilters>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => _VendorFiltersSheet(initial: current),
+    builder: (_) => _VendorFiltersSheet(
+      initial: current,
+      canSortByDistance: canSortByDistance,
+    ),
   );
 }
 
 class _VendorFiltersSheet extends StatefulWidget {
-  const _VendorFiltersSheet({required this.initial});
+  const _VendorFiltersSheet({
+    required this.initial,
+    required this.canSortByDistance,
+  });
 
   final VendorFilters initial;
+  final bool canSortByDistance;
 
   @override
   State<_VendorFiltersSheet> createState() => _VendorFiltersSheetState();
@@ -40,6 +51,7 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
 
   String _sortLabel(BuildContext context, VendorSort sort) => switch (sort) {
         VendorSort.recommended => context.l10n.sortRecommended,
+        VendorSort.nearest => context.l10n.sortNearest,
         VendorSort.rating => context.l10n.sortRating,
         VendorSort.deliveryFee => context.l10n.sortDeliveryFee,
         VendorSort.prepTime => context.l10n.sortPrepTime,
@@ -80,7 +92,8 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
                 spacing: AppSpace.sm,
                 runSpacing: AppSpace.sm,
                 children: [
-                  for (final sort in VendorSort.values)
+                  for (final sort in VendorSort.values.where((s) =>
+                      s != VendorSort.nearest || widget.canSortByDistance))
                     _Chip(
                       label: _sortLabel(context, sort),
                       selected: _draft.sort == sort,

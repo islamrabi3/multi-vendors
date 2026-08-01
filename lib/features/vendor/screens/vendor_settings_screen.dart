@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/location_picker.dart';
 import '../../auth/auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import 'package:multi_vendor/app/locale_cubit.dart';
@@ -33,7 +36,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
       final updated = await _admin.updateVendor(vendor.id, values);
       auth.vendorUpdated(updated);
     } catch (error) {
-      if (mounted) showSnack(context, readableError(error), error: true);
+      if (mounted) showFailure(context, error);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -168,7 +171,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
       await _patch({field: url});
       if (mounted) showSnack(context, 'Photo updated successfully!');
     } catch (error) {
-      if (mounted) showSnack(context, readableError(error), error: true);
+      if (mounted) showFailure(context, error);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -486,6 +489,47 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                   icon: Icons.description_outlined,
                   onSave: (v) => _patch({'description': v}),
                 ),
+              ),
+              // Stores created before the map picker existed have no
+              // coordinates, so they are invisible to "nearby" until the owner
+              // drops a pin here.
+              _navRow(
+                vendor.lat == null
+                    ? Icons.add_location_alt_outlined
+                    : Icons.location_on_outlined,
+                context.l10n.storeLocationOnMap,
+                vendor.lat == null || vendor.lng == null
+                    ? context.l10n.pickOnMap
+                    : '${vendor.lat!.toStringAsFixed(5)}, '
+                        '${vendor.lng!.toStringAsFixed(5)}',
+                onTap: () async {
+                  final picked = await showLocationPicker(
+                    context,
+                    initial: vendor.lat == null || vendor.lng == null
+                        ? null
+                        : LatLng(vendor.lat!, vendor.lng!),
+                    title: context.l10n.storeLocationOnMap,
+                  );
+                  if (picked == null) return;
+                  await _patch({
+                    'lat': picked.point.latitude,
+                    'lng': picked.point.longitude,
+                  });
+                },
+              ),
+            ]),
+            const SizedBox(height: 20),
+
+            _sectionLabel(context.l10n.reviews),
+            _card([
+              _navRow(
+                Icons.reviews_outlined,
+                context.l10n.reviewsInbox,
+                vendor.ratingCount == 0
+                    ? '—'
+                    : '${vendor.ratingAvg.toStringAsFixed(1)} · '
+                        '${vendor.ratingCount}',
+                onTap: () => context.push('/vendor-app/reviews'),
               ),
             ]),
             const SizedBox(height: 20),

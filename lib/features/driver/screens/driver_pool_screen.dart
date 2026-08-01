@@ -41,7 +41,7 @@ class _PoolView extends StatelessWidget {
           showSnack(context, context.l10n.orderClaimedHeadToTheStore);
           context.go('/driver-app/active');
         } else if (state.error != null) {
-          showSnack(context, readableError(state.error!), error: true);
+          showFailure(context, state.error!);
         }
       },
       builder: (context, state) {
@@ -147,6 +147,74 @@ class _PoolView extends StatelessWidget {
   }
 }
 
+/// Language, support and sign out — everything that is not "am I working".
+///
+/// These lived in the header as bare controls: a language switch identical to
+/// the online switch, and a one-tap sign out with no confirmation. Support was
+/// unreachable from the driver app entirely.
+void _showDriverControls(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+    ),
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      final isArabic =
+          sheetContext.watch<LocaleCubit>().state.languageCode == 'ar';
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SwitchListTile(
+              value: isArabic,
+              onChanged: (v) => sheetContext
+                  .read<LocaleCubit>()
+                  .setLocale(Locale(v ? 'ar' : 'en')),
+              secondary: const Icon(Icons.language_outlined,
+                  color: AppColors.textSecondary),
+              title: Text(l10n.appLanguage,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(isArabic ? 'العربية' : 'English',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textMuted)),
+            ),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            ListTile(
+              leading: const Icon(Icons.support_agent_outlined,
+                  color: AppColors.textSecondary),
+              title: Text(l10n.supportChat,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              trailing: const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textFaint),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/support');
+              },
+            ),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            ListTile(
+              leading:
+                  const Icon(Icons.logout, color: AppColors.dangerInk),
+              title: Text(l10n.signOut,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.dangerInk)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.read<AuthCubit>().signOut();
+              },
+            ),
+            const SizedBox(height: AppSpace.sm),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _Header extends StatelessWidget {
   const _Header({required this.state, required this.onToggle});
 
@@ -212,6 +280,9 @@ class _Header extends StatelessWidget {
                   ],
                 ),
               ),
+              // The one control that decides whether the driver is working.
+              // It used to sit beside an identically styled language switch,
+              // so knocking yourself offline was one wrong tap away.
               Switch(
                 value: state.isOnline,
                 onChanged: state.loading ? null : onToggle,
@@ -220,36 +291,11 @@ class _Header extends StatelessWidget {
                 inactiveThumbColor: Colors.white,
                 inactiveTrackColor: AppColors.onDarkTrack,
               ),
-              const SizedBox(width: AppSpace.sm),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    context.watch<LocaleCubit>().state.languageCode == 'ar' ? 'AR' : 'EN',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: Colors.white70),
-                  ),
-                  const SizedBox(width: 2),
-                  Switch(
-                    value: context.watch<LocaleCubit>().state.languageCode == 'ar',
-                    onChanged: (v) {
-                      context.read<LocaleCubit>().setLocale(
-                          v ? const Locale('ar') : const Locale('en'));
-                    },
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: AppColors.success,
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: AppColors.onDarkTrack,
-                  ),
-                ],
-              ),
               IconButton(
-                tooltip: context.l10n.signOut,
-                onPressed: () => context.read<AuthCubit>().signOut(),
-                icon: Icon(Icons.logout,
-                    size: 20, color: Colors.white.withValues(alpha: 0.7)),
+                tooltip: context.l10n.settings,
+                onPressed: () => _showDriverControls(context),
+                icon:
+                    const Icon(Icons.more_vert, size: 20, color: Colors.white),
               ),
             ],
           ),

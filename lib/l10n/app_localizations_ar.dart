@@ -1288,6 +1288,280 @@ class AppLocalizationsAr extends AppLocalizations {
   String get busyMode => 'وضع الازدحام (+15 دقيقة)';
 
   @override
+  String get addMoreToReachMinimum => 'أضف';
+
+  @override
+  String get tips => 'الإكراميات';
+
+  @override
+  String get financialReports => 'التقارير المالية والمبيعات';
+
+  @override
+  String get platformTab => 'المنصة';
+
+  @override
+  String get vendorSalesTab => 'مبيعات المتاجر';
+
+  @override
+  String get driverPayoutsTab => 'مستحقات السائقين';
+
+  @override
+  String get period => 'الفترة';
+
+  @override
+  String get periodToday => 'اليوم';
+
+  @override
+  String get periodWeek => '٧ أيام';
+
+  @override
+  String get periodMonth => 'شهر';
+
+  @override
+  String get periodAll => 'كل الفترات';
+
+  @override
+  String get grossRevenue => 'إجمالي الإيرادات';
+
+  @override
+  String get itemSales => 'مبيعات الأصناف';
+
+  @override
+  String get platformCommission => 'عمولة المنصة';
+
+  @override
+  String get driverCost => 'مستحقات السائقين';
+
+  @override
+  String get netMargin => 'صافي المنصة';
+
+  @override
+  String get cashCollected => 'نقدية مع السائقين';
+
+  @override
+  String get cardCollected => 'مدفوع بالبطاقة';
+
+  @override
+  String get averageOrder => 'متوسط الطلب';
+
+  @override
+  String get deliveredOrders => 'الطلبات المكتملة';
+
+  @override
+  String get cancelledOrders => 'ملغاة';
+
+  @override
+  String get deliveryFeesTotal => 'رسوم التوصيل';
+
+  @override
+  String get discountsGiven => 'الخصومات';
+
+  @override
+  String get vendorPayouts => 'مستحقات المتاجر';
+
+  @override
+  String get noReportData => 'لا توجد طلبات موصلة في هذه الفترة.';
+
+  @override
+  String get settlement => 'التسوية';
+
+  @override
+  String get volume => 'الحجم';
+
+  @override
+  String get accountBlockedTitle => 'الحساب موقوف';
+
+  @override
+  String get accountBlockedBody =>
+      'قام أحد المشرفين بإيقاف هذا الحساب، لذا لا يمكنه إرسال الطلبات أو التوصيل أو البيع. تواصل مع الدعم إذا كنت ترى أن هذا خطأ.';
+
+  @override
+  String get accountClosedTitle => 'الحساب مغلق';
+
+  @override
+  String get accountClosedBody =>
+      'تم إغلاق هذا الحساب ولا يمكن استخدامه بعد الآن. تبقى الطلبات السابقة مسجلة.';
+
+  @override
+  String get supportChat => 'الدعم';
+
+  @override
+  String get supportResolvedNotice =>
+      'تم إغلاق هذه المحادثة. تُحذف الرسائل بعد ٢٤ ساعة من الإغلاق — أرسل رسالة لإعادة فتحها.';
+
+  @override
+  String get supportChatEmpty => 'أرسل لنا رسالة وسنرد عليك.';
+
+  @override
+  String get typeAMessage => 'اكتب رسالة';
+
+  @override
+  String get markResolved => 'تم الحل';
+
+  @override
+  String get reopen => 'إعادة فتح';
+
+  @override
+  String get resolved => 'تم الحل';
+
+  @override
+  String get noSupportThreads => 'لا توجد محادثات دعم بعد.';
+
+  @override
+  String get openOnly => 'المفتوحة فقط';
+
+  @override
+  String get users => 'المستخدمون';
+
+  @override
+  String get blockUser => 'حظر المستخدم';
+
+  @override
+  String get unblockUser => 'إلغاء الحظر';
+
+  @override
+  String get blocked => 'محظور';
+
+  @override
+  String get blockReasonHint => 'السبب (لسجلاتك فقط)';
+
+  @override
+  String get deleteAccount => 'حذف الحساب';
+
+  @override
+  String get deleteAccountWarning =>
+      'سيتم إغلاق حسابك نهائيًا. تبقى الطلبات السابقة مسجلة، لكن لن تتمكن من تسجيل الدخول مرة أخرى.';
+
+  @override
+  String get deleteAccountActiveOrders =>
+      'لديك طلب قيد التنفيذ. يمكنك حذف حسابك بعد انتهائه.';
+
+  @override
+  String deleteAccountWalletWarning(String amount) {
+    return 'لديك $amount في محفظتك. حذف الحساب يعني فقدان هذا الرصيد.';
+  }
+
+  @override
+  String get deleteAccountConfirm => 'نعم، احذف حسابي';
+
+  @override
+  String get accountDeleted => 'تم إغلاق حسابك.';
+
+  @override
+  String get userBlocked => 'تم حظر المستخدم.';
+
+  @override
+  String get userUnblocked => 'تم إلغاء الحظر.';
+
+  @override
+  String get userDeleted => 'تم إغلاق حساب المستخدم.';
+
+  @override
+  String get searchUsers => 'ابحث بالاسم أو رقم الهاتف';
+
+  @override
+  String get bySigningUpYouAgree => 'بالمتابعة فإنك توافق على';
+
+  @override
+  String get and => 'و';
+
+  @override
+  String get nearbyRestaurants => 'الأقرب إليك';
+
+  @override
+  String get aboutUs => 'من نحن';
+
+  @override
+  String get termsAndConditions => 'الشروط والأحكام';
+
+  @override
+  String get privacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get followUs => 'تابعنا';
+
+  @override
+  String get lastUpdated => 'آخر تحديث';
+
+  @override
+  String get contentNotAvailableYet => 'لم يتم نشر هذه الصفحة بعد.';
+
+  @override
+  String get couldNotOpenLink => 'تعذر فتح هذا الرابط.';
+
+  @override
+  String get recommended => 'مُوصى به';
+
+  @override
+  String get content => 'المحتوى والصفحات';
+
+  @override
+  String get socialLinks => 'روابط التواصل';
+
+  @override
+  String get addLink => 'إضافة رابط';
+
+  @override
+  String get platform => 'المنصة';
+
+  @override
+  String get linkUrl => 'رابط الصفحة';
+
+  @override
+  String get published => 'منشور';
+
+  @override
+  String get draft => 'مسودة — مخفية عن العملاء';
+
+  @override
+  String get sortOrder => 'ترتيب العرض';
+
+  @override
+  String get englishBody => 'النص · الإنجليزية';
+
+  @override
+  String get arabicBody => 'النص · العربية';
+
+  @override
+  String get englishTitle => 'العنوان · الإنجليزية';
+
+  @override
+  String get arabicTitle => 'العنوان · العربية';
+
+  @override
+  String get manageRecommended => 'المتاجر المُوصى بها';
+
+  @override
+  String get storeLocationOnMap => 'موقع المتجر على الخريطة';
+
+  @override
+  String get pickOnMap => 'اختر على الخريطة';
+
+  @override
+  String get pickStoreLocationFirst => 'اختر موقع متجرك على الخريطة أولاً.';
+
+  @override
+  String get sortNearest => 'الأقرب';
+
+  @override
+  String get awayFromYou => 'تبعد';
+
+  @override
+  String get storeControls => 'إعدادات المتجر';
+
+  @override
+  String get storeClosedNotice => 'متجرك مغلق — لا يمكن للعملاء إرسال طلبات.';
+
+  @override
+  String get needsYourAttention => 'بحاجة إلى إجراء';
+
+  @override
+  String get allCaughtUp => 'لا يوجد شيء معلق';
+
+  @override
+  String get totalAmount => 'الإجمالي';
+
+  @override
   String get openInMaps => 'فتح في الخريطة';
 
   @override
@@ -1351,9 +1625,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get totalRevenue => 'إجمالي الإيرادات';
-
-  @override
-  String get deliveredOrders => 'الطلبات المكتملة';
 
   @override
   String get performanceOverview => 'نظرة عامة على الأداء';
@@ -1852,4 +2123,371 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get edit => 'تعديل';
+
+  @override
+  String get attachment => 'مرفق';
+
+  @override
+  String get attachmentUnavailable => 'المرفق غير متاح';
+
+  @override
+  String get attachmentOpenFailed => 'تعذّر فتح هذا الملف.';
+
+  @override
+  String get attachPhoto => 'صورة';
+
+  @override
+  String get attachCamera => 'الكاميرا';
+
+  @override
+  String get attachFile => 'ملف';
+
+  @override
+  String get attachSomething => 'إرفاق';
+
+  @override
+  String get attachmentUploadFailed => 'تعذّر رفع المرفق.';
+
+  @override
+  String get howCanWeHelp => 'كيف يمكننا مساعدتك؟';
+
+  @override
+  String get pickTopicOrWrite =>
+      'اختر موضوعًا للحصول على رد فوري، أو اكتب لنا مباشرة.';
+
+  @override
+  String get supportOtherTopic => 'شيء آخر';
+
+  @override
+  String get automaticReply => 'رد تلقائي';
+
+  @override
+  String get errNetwork => 'لا يوجد اتصال. تحقق من الإنترنت ثم أعد المحاولة.';
+
+  @override
+  String get errSessionExpired => 'انتهت الجلسة. سجّل الدخول مرة أخرى.';
+
+  @override
+  String get errNoPermission =>
+      'لا تملك صلاحية لهذا الإجراء. إذا تم إيقاف حسابك أو متجرك، تواصل مع الدعم.';
+
+  @override
+  String get errNotFound => 'لم يعد متاحاً.';
+
+  @override
+  String get errServer => 'حدثت مشكلة في الخادم. حاول بعد قليل.';
+
+  @override
+  String get errUnknown => 'حدث خطأ ما. حاول مرة أخرى.';
+
+  @override
+  String get errCartEmpty => 'سلتك فارغة.';
+
+  @override
+  String get errVendorClosed => 'المتجر مغلق حالياً.';
+
+  @override
+  String get errVendorNotApproved => 'لم يتم اعتماد هذا المتجر بعد.';
+
+  @override
+  String get errAddressNotFound => 'اختر عنوان التوصيل.';
+
+  @override
+  String get errOutsideServiceArea =>
+      'لا نوصّل إلى هذا العنوان حتى الآن. اختر عنواناً آخر داخل نطاق التغطية.';
+
+  @override
+  String get errRoleAlreadySet => 'تم تحديد نوع الحساب مسبقاً.';
+
+  @override
+  String get errRoleChangeNotAllowed => 'لا يمكن تغيير نوع الحساب من هنا.';
+
+  @override
+  String get errCouponInvalid => 'كود الخصم غير صالح.';
+
+  @override
+  String get errCouponMinOrder => 'إجمالي الطلب أقل من الحد الأدنى للكوبون.';
+
+  @override
+  String get errMinOrderNotMet => 'إجمالي الطلب أقل من الحد الأدنى للمتجر.';
+
+  @override
+  String get errNotAnOnlineDriver =>
+      'فعّل الاتصال لاستلام الطلبات. حساب المندوب الجديد يحتاج موافقة الإدارة أولاً.';
+
+  @override
+  String get errDriverNotApproved =>
+      'حساب المندوب في انتظار موافقة الإدارة. يمكنك العمل بعد الموافقة.';
+
+  @override
+  String get errInsufficientWallet => 'رصيد المحفظة لا يكفي لهذا الطلب.';
+
+  @override
+  String get errCardPaymentsUnavailable =>
+      'الدفع بالبطاقة غير متاح حالياً. جرّب وسيلة أخرى.';
+
+  @override
+  String get errPaymentPageFailed => 'تعذر فتح صفحة الدفع. حاول مرة أخرى.';
+
+  @override
+  String get errAlreadyPaid => 'تم دفع هذا الطلب بالفعل.';
+
+  @override
+  String get errAlreadyRefunded => 'تم استرداد قيمة هذا الطلب بالفعل.';
+
+  @override
+  String get errOrderNotPaid => 'لم يتم دفع هذا الطلب، لا يوجد ما يُسترد.';
+
+  @override
+  String get errOrderNotCancelled =>
+      'الاسترداد متاح للطلبات الملغاة أو المرفوضة فقط.';
+
+  @override
+  String get errNotACardOrder =>
+      'الاسترداد للمحفظة متاح للطلبات المدفوعة بالبطاقة فقط.';
+
+  @override
+  String get errProductUnavailable => 'أحد الأصناف في سلتك لم يعد متاحاً.';
+
+  @override
+  String get errTransitionNotAllowed =>
+      'تم تحديث هذا الطلب بالفعل. جارٍ التحديث…';
+
+  @override
+  String get errAccountBlocked =>
+      'تم إيقاف هذا الحساب. تواصل مع الدعم إذا كنت ترى أن ذلك خطأ.';
+
+  @override
+  String get errHasActiveOrders =>
+      'لديك طلب قيد التنفيذ. يمكنك حذف الحساب بعد انتهائه.';
+
+  @override
+  String get errWalletHasBalance =>
+      'ما زال في محفظتك رصيد. أكّد موافقتك على فقدانه للمتابعة.';
+
+  @override
+  String get errCannotBlockSelf => 'لا يمكنك حظر حسابك.';
+
+  @override
+  String get errCannotDeleteSelf => 'لا يمكنك حذف حسابك من هنا.';
+
+  @override
+  String get errCannotBlockAdmin => 'لا يمكن حظر حسابات الإدارة.';
+
+  @override
+  String get errCannotDeleteAdmin => 'لا يمكن حذف حسابات الإدارة.';
+
+  @override
+  String get errInvalidLogin => 'البريد أو كلمة المرور غير صحيحة.';
+
+  @override
+  String get errEmailNotConfirmed =>
+      'أكّد بريدك الإلكتروني أولاً ثم سجّل الدخول.';
+
+  @override
+  String get errUserAlreadyExists => 'يوجد حساب مسجل بهذا البريد.';
+
+  @override
+  String get errWeakPassword => 'كلمة المرور قصيرة جداً.';
+
+  @override
+  String get errDuplicate => 'هذا موجود بالفعل.';
+
+  @override
+  String get errStillReferenced => 'ما زال مستخدماً في مكان آخر ولا يمكن حذفه.';
+
+  @override
+  String get paymentCancelledNotice =>
+      'تم إلغاء الدفع. لم يُرسل الطلب إلى المتجر.';
+
+  @override
+  String get paymentFailedNotice => 'فشل الدفع. لم يُرسل الطلب إلى المتجر.';
+
+  @override
+  String get paymentPendingNotice =>
+      'ما زلنا نؤكد عملية الدفع مع البنك. لن يصل الطلب إلى المتجر إلا بعد التأكيد.';
+
+  @override
+  String get errLocationPermission => 'نحتاج إذن الموقع لمشاركة موقعك.';
+
+  @override
+  String get errOrderTaken => 'مندوب آخر استلم هذا الطلب.';
+
+  @override
+  String get uncategorized => 'بدون قسم';
+
+  @override
+  String get manageSections => 'إدارة الأقسام';
+
+  @override
+  String get reorderSections => 'اسحب لإعادة ترتيب الأقسام';
+
+  @override
+  String get searchMenuHint => 'ابحث في الأصناف';
+
+  @override
+  String get sections => 'الأقسام';
+
+  @override
+  String get duplicateItem => 'نسخ';
+
+  @override
+  String get moveToSection => 'نقل إلى قسم';
+
+  @override
+  String get deleteItem => 'حذف الصنف';
+
+  @override
+  String get deleteItemConfirm =>
+      'حذف هذا الصنف؟ سيختفي من القائمة فوراً. الطلبات السابقة تحتفظ به.';
+
+  @override
+  String get deleteSectionConfirm =>
+      'حذف هذا القسم؟ أصنافه تبقى في القائمة وتنتقل إلى «بدون قسم».';
+
+  @override
+  String get itemDuplicated => 'تم إنشاء نسخة، وهي غير متاحة حتى تعدّلها.';
+
+  @override
+  String get itemDeleted => 'تم حذف الصنف';
+
+  @override
+  String get sectionDeleted => 'تم حذف القسم';
+
+  @override
+  String get markSectionSoldOut => 'إيقاف بيع القسم';
+
+  @override
+  String get markSectionAvailable => 'إتاحة القسم';
+
+  @override
+  String get markAllSoldOut => 'إيقاف بيع كل الأصناف';
+
+  @override
+  String get markAllAvailable => 'إتاحة كل الأصناف';
+
+  @override
+  String itemsUpdatedCount(int count) {
+    return 'تم تحديث $count صنف';
+  }
+
+  @override
+  String get sortManual => 'ترتيبي';
+
+  @override
+  String get sortNameAsc => 'الاسم أ–ي';
+
+  @override
+  String get sortPriceAsc => 'السعر من الأقل';
+
+  @override
+  String get sortPriceDesc => 'السعر من الأعلى';
+
+  @override
+  String get clearFilters => 'مسح الفلاتر';
+
+  @override
+  String get noMatchingItems => 'لا توجد أصناف مطابقة لبحثك.';
+
+  @override
+  String optionGroupsCount(int count) {
+    return '$count مجموعات خيارات';
+  }
+
+  @override
+  String get dragToReorderItems =>
+      'اضغط مطولاً واسحب الصنف لإعادة ترتيب القائمة.';
+
+  @override
+  String get reorderUnavailableWhileFiltered =>
+      'إعادة الترتيب متاحة في «ترتيبي» بدون بحث أو فلتر.';
+
+  @override
+  String menuStats(int items, int sections, int soldOut) {
+    return '$items صنف · $sections قسم · $soldOut غير متاح';
+  }
+
+  @override
+  String get sectionHasNoItems => 'لا توجد أصناف في هذا القسم بعد.';
+
+  @override
+  String get saved => 'تم الحفظ';
+
+  @override
+  String get reviews => 'التقييمات';
+
+  @override
+  String get ratingsAndReviews => 'التقييمات والمراجعات';
+
+  @override
+  String get noReviewsYet => 'لا توجد تقييمات بعد. كن أول من يكتب واحداً.';
+
+  @override
+  String get seeAllReviews => 'عرض كل التقييمات';
+
+  @override
+  String basedOnReviews(int count) {
+    return '$count تقييم';
+  }
+
+  @override
+  String get rateTheStore => 'كيف كان الطعام؟';
+
+  @override
+  String get howWasTheDriver => 'كيف كان التوصيل؟';
+
+  @override
+  String get anonymous => 'أحد العملاء';
+
+  @override
+  String get reviewsInbox => 'آراء العملاء';
+
+  @override
+  String get averageRating => 'متوسط التقييم';
+
+  @override
+  String get skipDriverRating => 'تخطي';
+
+  @override
+  String estimatedArrival(int minutes) {
+    return 'الوصول خلال $minutes دقيقة تقريباً';
+  }
+
+  @override
+  String get arrivingSoon => 'يصل في أي لحظة';
+
+  @override
+  String deliveredAtTime(String time) {
+    return 'تم التسليم $time';
+  }
+
+  @override
+  String get etaUnavailable => 'في الطريق إليك';
+
+  @override
+  String get dishes => 'الأصناف';
+
+  @override
+  String matchesOnMenu(String items) {
+    return 'في القائمة: $items';
+  }
+
+  @override
+  String get storesLabel => 'المتاجر';
+
+  @override
+  String get cartItemsUnavailable => 'بعض الأصناف لم تعد متاحة';
+
+  @override
+  String get removeUnavailable => 'إزالتها';
+
+  @override
+  String get cartPricesChanged =>
+      'تغيّرت الأسعار منذ إضافتها. المعروض هو السعر الجديد.';
+
+  @override
+  String get unavailableNow => 'غير متاح';
+
+  @override
+  String get newPrice => 'سعر جديد';
 }

@@ -95,9 +95,40 @@ class AuthCubit extends Cubit<AppAuthState> {
 
   final AuthRepository _repository;
   StreamSubscription<dynamic>? _subscription;
+  StreamSubscription<Profile?>? _profileSubscription;
+
+  /// Watches the signed-in user's own profile row.
+  ///
+  /// Without this a block only took hold on the next cold start: the server
+  /// refused the writes but the app carried on, so the user met unexplained
+  /// failures — "error adding a category" on the vendor side, a review that
+  /// would not post — rather than the blocked screen. The router already reads
+  /// `profile.isLockedOut`, so re-emitting the row is the whole fix.
+  void _watchProfile() {
+    _profileSubscription?.cancel();
+    _profileSubscription = _repository.watchMyProfile().listen(
+      (profile) {
+        if (profile == null || isClosed) return;
+        if (state.status != AuthStatus.authenticated) return;
+        if (profile == state.profile) return;
+        // A role change has to go the long way round: the vendor record hangs
+        // off it, and the shell for the new role needs it loaded.
+        if (profile.role != state.profile?.role) {
+          _refresh();
+          return;
+        }
+        emit(state.copyWith(profile: profile));
+      },
+      // A dropped socket must not sign anyone out; the next reconnect or cold
+      // start picks the row up again.
+      onError: (Object error) => debugPrint('Profile watch dropped: $error'),
+    );
+  }
 
   Future<void> _refresh() async {
     if (_repository.currentSession == null) {
+      _profileSubscription?.cancel();
+      _profileSubscription = null;
       emit(const AppAuthState(status: AuthStatus.unauthenticated));
       return;
     }
@@ -119,6 +150,7 @@ class AuthCubit extends Cubit<AppAuthState> {
         profile: profile,
         vendor: vendor,
       ));
+      _watchProfile();
     } catch (_) {
       // Keep whatever state we had; a transient network error on profile
       // fetch should not log the user out.
@@ -263,6 +295,8 @@ class AuthCubit extends Cubit<AppAuthState> {
   void vendorUpdated(Vendor vendor) => emit(state.copyWith(vendor: vendor));
 
   Future<void> signOut() async {
+    _profileSubscription?.cancel();
+    _profileSubscription = null;
     try {
       await _repository.signOut();
       // onAuthStateChange normally drives _refresh, but emit immediately so the
@@ -277,6 +311,7 @@ class AuthCubit extends Cubit<AppAuthState> {
   @override
   Future<void> close() {
     _subscription?.cancel();
+    _profileSubscription?.cancel();
     return super.close();
   }
 }

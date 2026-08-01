@@ -43,6 +43,8 @@ class Vendor extends Equatable {
     this.extraPrepMinutes = 0,
     this.commissionRate = 10.0,
     this.deliveryRadiusKm = 10.0,
+    this.isRecommended = false,
+    this.recommendedRank = 0,
   });
 
   final String id;
@@ -62,6 +64,10 @@ class Vendor extends Equatable {
   final int extraPrepMinutes;
   final double commissionRate;
   final double deliveryRadiusKm;
+
+  /// Promoted onto the customer home's recommended rail by an admin.
+  final bool isRecommended;
+  final int recommendedRank;
 
   /// Platform approval lifecycle: 'pending' | 'active' | 'suspended'.
   final String approvalStatus;
@@ -103,6 +109,8 @@ class Vendor extends Equatable {
         extraPrepMinutes: ((map['extra_prep_minutes'] as num?) ?? 0).toInt(),
         commissionRate: ((map['commission_rate'] as num?) ?? 10.0).toDouble(),
         deliveryRadiusKm: ((map['delivery_radius_km'] as num?) ?? 10.0).toDouble(),
+        isRecommended: (map['is_recommended'] as bool?) ?? false,
+        recommendedRank: ((map['recommended_rank'] as num?) ?? 0).toInt(),
       );
 
   @override
@@ -123,6 +131,8 @@ class Vendor extends Equatable {
         extraPrepMinutes,
         commissionRate,
         deliveryRadiusKm,
+        isRecommended,
+        recommendedRank,
       ];
 }
 

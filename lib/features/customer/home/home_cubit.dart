@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/models/address.dart';
 import '../../../core/models/banner_item.dart';
+import '../../../core/models/product.dart' show ProductHit;
+import '../../../core/models/service_area.dart' show distanceKm;
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/catalog_repository.dart';
@@ -13,7 +15,7 @@ import '../../../core/repositories/favorites_repository.dart';
 /// How the store list is ordered. `recommended` is the server's own order
 /// (open first, then rating), which is what the list shows before the customer
 /// expresses a preference.
-enum VendorSort { recommended, rating, deliveryFee, prepTime }
+enum VendorSort { recommended, nearest, rating, deliveryFee, prepTime }
 
 /// The customer's store filters. Sorting and the toggles are applied on the
 /// already-fetched list: the result set is one page of nearby stores, so
@@ -93,6 +95,9 @@ class HomeState extends Equatable {
     this.addressLoaded = false,
     this.favoriteVendorIds = const {},
     this.filters = const VendorFilters(),
+    this.productHits = const [],
+    this.menuMatches = const {},
+    this.searching = false,
   });
 
   final bool loading;
@@ -111,6 +116,74 @@ class HomeState extends Equatable {
 
   final Set<String> favoriteVendorIds;
   final VendorFilters filters;
+
+  /// Dishes matching the current search, across every open store. Empty when
+  /// nothing is being searched.
+  final List<ProductHit> productHits;
+
+  /// Store id to the names of its items that matched — what explains a store
+  /// appearing in results its own name has nothing to do with.
+  final Map<String, List<String>> menuMatches;
+
+  /// A search is in flight. Separate from [loading]: the results below should
+  /// dim, not be replaced by a full-page spinner on every keystroke.
+  final bool searching;
+
+  /// Stores closest to the delivery address, nearest first.
+  ///
+  /// Capped at six: this is a shortcut to "who can feed me fastest", not a
+  /// second copy of the list below it. Empty whenever distance is unknowable,
+  /// or once the customer has searched or filtered — at that point they have
+  /// stated an intent more specific than proximity.
+  List<Vendor> get nearbyVendors {
+    if (search.trim().isNotEmpty || selectedCategoryId != null) {
+      return const [];
+    }
+    final measured = <(Vendor, double)>[];
+    for (final vendor in vendors) {
+      if (!vendor.isOpen) continue;
+      final km = distanceToVendor(vendor);
+      if (km != null) measured.add((vendor, km));
+    }
+    measured.sort((a, b) => a.$2.compareTo(b.$2));
+    return [for (final (vendor, _) in measured.take(6)) vendor];
+  }
+
+  /// The admin's promoted stores, best rank first.
+  ///
+  /// Only shown while the customer is browsing everything: once they have
+  /// searched or picked a category they have stated an intent, and a promo rail
+  /// on top of their own filter is noise.
+  List<Vendor> get recommendedVendors {
+    if (search.trim().isNotEmpty || selectedCategoryId != null) {
+      return const [];
+    }
+    final promoted = vendors.where((v) => v.isRecommended && v.isOpen).toList()
+      ..sort((a, b) {
+        final byRank = a.recommendedRank.compareTo(b.recommendedRank);
+        return byRank != 0 ? byRank : b.ratingAvg.compareTo(a.ratingAvg);
+      });
+    return promoted;
+  }
+
+  /// How far [vendor] is from where the order would actually go, in km.
+  ///
+  /// Null whenever the distance is unknowable — the customer has no address
+  /// yet, the address predates the map picker, or the store never dropped a
+  /// pin. Callers show nothing rather than a made-up number.
+  double? distanceToVendor(Vendor vendor) {
+    final from = deliverToAddress;
+    if (from?.lat == null || from?.lng == null) return null;
+    if (vendor.lat == null || vendor.lng == null) return null;
+    return distanceKm(from!.lat!, from.lng!, vendor.lat!, vendor.lng!);
+  }
+
+  /// True once distances can actually be computed, so the UI can hide the
+  /// "nearest" sort instead of offering an option that does nothing.
+  bool get canSortByDistance =>
+      deliverToAddress?.lat != null &&
+      deliverToAddress?.lng != null &&
+      vendors.any((v) => v.lat != null && v.lng != null);
 
   /// The list the customer actually sees: [vendors] narrowed by [filters] and
   /// ordered by the chosen sort. Kept as a getter so the raw fetch result stays
@@ -132,6 +205,17 @@ class HomeState extends Equatable {
     switch (filters.sort) {
       case VendorSort.recommended:
         break; // Already open-first, then rating, from the query.
+      case VendorSort.nearest:
+        // Stores with no pin cannot be measured, so they sink to the bottom
+        // rather than pretending to be at distance zero.
+        result.sort((a, b) {
+          final da = distanceToVendor(a);
+          final db = distanceToVendor(b);
+          if (da == null && db == null) return 0;
+          if (da == null) return 1;
+          if (db == null) return -1;
+          return da.compareTo(db);
+        });
       case VendorSort.rating:
         result.sort((a, b) => b.ratingAvg.compareTo(a.ratingAvg));
       case VendorSort.deliveryFee:
@@ -154,6 +238,9 @@ class HomeState extends Equatable {
     bool? addressLoaded,
     Set<String>? favoriteVendorIds,
     VendorFilters? filters,
+    List<ProductHit>? productHits,
+    Map<String, List<String>>? menuMatches,
+    bool? searching,
     bool clearCategory = false,
     bool clearError = false,
     bool clearAddress = false,
@@ -172,6 +259,9 @@ class HomeState extends Equatable {
         addressLoaded: addressLoaded ?? this.addressLoaded,
         favoriteVendorIds: favoriteVendorIds ?? this.favoriteVendorIds,
         filters: filters ?? this.filters,
+        productHits: productHits ?? this.productHits,
+        menuMatches: menuMatches ?? this.menuMatches,
+        searching: searching ?? this.searching,
       );
 
   @override
@@ -187,6 +277,9 @@ class HomeState extends Equatable {
         addressLoaded,
         favoriteVendorIds,
         filters,
+        productHits,
+        menuMatches,
+        searching,
       ];
 }
 
@@ -302,23 +395,60 @@ class HomeCubit extends Cubit<HomeState> {
     await _reloadVendors();
   }
 
+  /// Debounced: this runs on every keystroke, and each run is two round
+  /// trips. 300ms is below the point a search feels laggy and well above a
+  /// fast typist's gap between letters.
+  Timer? _searchDebounce;
+
   Future<void> setSearch(String search) async {
-    emit(state.copyWith(search: search));
-    await _reloadVendors();
+    emit(state.copyWith(search: search, searching: search.trim().isNotEmpty));
+    _searchDebounce?.cancel();
+    _searchDebounce =
+        Timer(const Duration(milliseconds: 300), _reloadVendors);
   }
 
   Future<void> _reloadVendors() async {
+    final query = state.search.trim();
     try {
-      final vendors = await _catalog.fetchVendors(
-          categoryId: state.selectedCategoryId, search: state.search);
-      emit(state.copyWith(vendors: vendors));
+      if (query.isEmpty) {
+        final vendors = await _catalog.fetchVendors(
+            categoryId: state.selectedCategoryId);
+        if (isClosed) return;
+        emit(state.copyWith(
+          vendors: vendors,
+          productHits: const [],
+          menuMatches: const {},
+          searching: false,
+        ));
+        return;
+      }
+
+      // Stores and dishes are fetched together: a customer searching "kofta"
+      // wants both "who sells it" and "which one", and two sequential trips
+      // would show the first list settle and then jump.
+      final results = await Future.wait([
+        _catalog.searchVendors(
+            query: query, categoryId: state.selectedCategoryId),
+        _catalog.searchProducts(query),
+      ]);
+      if (isClosed) return;
+      final vendorResult = results[0]
+          as ({List<Vendor> vendors, Map<String, List<String>> matches});
+      emit(state.copyWith(
+        vendors: vendorResult.vendors,
+        menuMatches: vendorResult.matches,
+        productHits: results[1] as List<ProductHit>,
+        searching: false,
+      ));
     } catch (error) {
-      emit(state.copyWith(error: error.toString()));
+      if (isClosed) return;
+      emit(state.copyWith(error: error.toString(), searching: false));
     }
   }
 
   @override
   Future<void> close() {
+    _searchDebounce?.cancel();
     _categoriesSubscription?.cancel();
     return super.close();
   }

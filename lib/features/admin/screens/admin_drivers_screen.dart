@@ -65,7 +65,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
       showSnack(context, 'Document image uploaded successfully! 📄');
       await _load();
     } catch (e) {
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -145,7 +145,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
       );
       await _load();
     } catch (e) {
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }

@@ -481,7 +481,7 @@ class _AddressEditorState extends State<_AddressEditor> {
     } catch (error) {
       if (mounted) {
         setState(() => _saving = false);
-        showSnack(context, readableError(error), error: true);
+        showFailure(context, error);
       }
     }
   }

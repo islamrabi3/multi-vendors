@@ -1,11 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:latlong2/latlong.dart';
 
+import '../../../app/tokens.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/location_picker.dart';
 import '../auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+
+/// Map pin for the store, styled to sit beside the form's text fields.
+///
+/// Deliberately not optional: a store with no coordinates is invisible to the
+/// customer's "nearby" list and cannot be distance-ranked, and backfilling one
+/// later means chasing the owner.
+class _LocationField extends StatelessWidget {
+  const _LocationField({required this.pin, required this.onTap});
+
+  final LatLng? pin;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isSet = pin != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: l10n.storeLocationOnMap,
+          errorText: isSet ? null : l10n.required,
+          border: const OutlineInputBorder(),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSet ? Icons.location_on : Icons.add_location_alt_outlined,
+              size: 20,
+              color: isSet ? AppColors.success : AppColors.primary,
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Text(
+                isSet
+                    ? '${pin!.latitude.toStringAsFixed(5)}, '
+                        '${pin!.longitude.toStringAsFixed(5)}'
+                    : l10n.pickOnMap,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: isSet ? AppColors.ink : AppColors.textMuted,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textFaint),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// Shown once after a vendor-role signup: creates the `vendors` row.
 class VendorOnboardingScreen extends StatefulWidget {
@@ -27,6 +86,10 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
   List<VendorCategory> _categories = const [];
   String? _categoryId;
 
+  /// Where the store physically is. Required: without a pin the store cannot be
+  /// ranked by distance and never appears in "nearby".
+  LatLng? _pin;
+
   @override
   void initState() {
     super.initState();
@@ -45,14 +108,39 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
     super.dispose();
   }
 
+  Future<void> _pickLocation() async {
+    final picked = await showLocationPicker(
+      context,
+      initial: _pin,
+      title: context.l10n.storeAddress,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _pin = picked.point;
+      // The picker resolves an address for the pin; only fill the field when
+      // the vendor has not typed their own.
+      final resolved = picked.address?.trim() ?? '';
+      if (_address.text.trim().isEmpty && resolved.isNotEmpty) {
+        _address.text = resolved;
+      }
+    });
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    final pin = _pin;
+    if (pin == null) {
+      showSnack(context, context.l10n.pickStoreLocationFirst, error: true);
+      return;
+    }
     context.read<AuthCubit>().completeVendorOnboarding({
       'name': _name.text.trim(),
       'description': _description.text.trim(),
       'phone': _phone.text.trim(),
       'address_text': _address.text.trim(),
       'category_id': _categoryId,
+      'lat': pin.latitude,
+      'lng': pin.longitude,
       'delivery_fee': double.tryParse(_deliveryFee.text) ?? 0,
       'min_order_amount': double.tryParse(_minOrder.text) ?? 0,
       'avg_prep_minutes': int.tryParse(_prepMinutes.text) ?? 20,
@@ -75,7 +163,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         listenWhen: (previous, current) =>
             previous.error != current.error && current.error != null,
         listener: (context, state) =>
-            showSnack(context, readableError(state.error!), error: true),
+            showFailure(context, state.error!),
         child: SingleChildScrollView(
           // "Open my store" is the last thing in this form, so the scroll view
           // has to clear Android's gesture bar itself.
@@ -124,6 +212,8 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
+                const SizedBox(height: 12),
+                _LocationField(pin: _pin, onTap: _pickLocation),
                 const SizedBox(height: 12),
                 Row(
                   children: [

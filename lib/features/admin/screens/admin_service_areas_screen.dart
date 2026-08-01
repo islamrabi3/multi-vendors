@@ -57,7 +57,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
     try {
       await _repo.setActive(area.id, !area.isActive);
     } catch (e) {
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -77,7 +77,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
       if (!mounted) return;
       showSnack(context, context.l10n.serviceAreaDeleted);
     } catch (e) {
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     }
   }
 
@@ -100,8 +100,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
               return const _AreasSkeleton();
             }
             if (snap.hasError) {
-              return ErrorView(
-                  message: readableError(snap.error!), onRetry: _reload);
+              return FailureView(error: snap.error!, onRetry: _reload);
             }
             final areas = snap.data ?? const <ServiceArea>[];
             return RefreshIndicator(
@@ -397,7 +396,7 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
     } catch (error) {
       if (mounted) {
         setState(() => _saving = false);
-        showSnack(context, readableError(error), error: true);
+        showFailure(context, error);
       }
     }
   }

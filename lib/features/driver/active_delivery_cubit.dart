@@ -125,7 +125,7 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         emit(state.copyWith(
-            error: 'Location permission is needed to share your position.'));
+            error: 'LOCATION_PERMISSION_DENIED'));
         return;
       }
       _positionSubscription = Geolocator.getPositionStream(

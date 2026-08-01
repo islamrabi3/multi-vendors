@@ -38,6 +38,49 @@ class ProductCategory extends Equatable {
   List<Object?> get props => [id, vendorId, name, nameAr, sortOrder];
 }
 
+/// One dish in a search result.
+///
+/// Deliberately not a [Product]: a search hit needs the store it belongs to
+/// and nothing about options or availability, and loading full products for
+/// every match across the platform would be a much larger query for data the
+/// result list never shows.
+class ProductHit extends Equatable {
+  const ProductHit({
+    required this.id,
+    required this.vendorId,
+    required this.vendorName,
+    required this.name,
+    required this.price,
+    this.nameAr,
+    this.imageUrl,
+  });
+
+  final String id;
+  final String vendorId;
+  final String vendorName;
+  final String name;
+  final String? nameAr;
+  final String? imageUrl;
+  final double price;
+
+  String displayName(String languageCode) =>
+      localizedText(name, nameAr, languageCode);
+
+  factory ProductHit.fromMap(Map<String, dynamic> map) => ProductHit(
+        id: map['id'] as String,
+        vendorId: map['vendor_id'] as String,
+        vendorName: (map['vendor_name'] as String?) ?? '',
+        name: map['name'] as String,
+        nameAr: map['name_ar'] as String?,
+        imageUrl: map['image_url'] as String?,
+        price: ((map['price'] as num?) ?? 0).toDouble(),
+      );
+
+  @override
+  List<Object?> get props =>
+      [id, vendorId, vendorName, name, nameAr, imageUrl, price];
+}
+
 class ProductOption extends Equatable {
   const ProductOption({
     required this.id,
@@ -142,6 +185,26 @@ class Product extends Equatable {
     return localizedText(canonical, descriptionAr, languageCode);
   }
 
+  /// Only the fields a menu edit can change without reopening the editor.
+  ///
+  /// A reorder is applied locally before its write lands, so the dragged row
+  /// does not jump back to its old place for the length of a round trip.
+  Product copyWith({int? sortOrder, bool? isAvailable, String? categoryId}) =>
+      Product(
+        id: id,
+        vendorId: vendorId,
+        categoryId: categoryId ?? this.categoryId,
+        name: name,
+        nameAr: nameAr,
+        description: description,
+        descriptionAr: descriptionAr,
+        imageUrl: imageUrl,
+        price: price,
+        isAvailable: isAvailable ?? this.isAvailable,
+        sortOrder: sortOrder ?? this.sortOrder,
+        optionGroups: optionGroups,
+      );
+
   factory Product.fromMap(Map<String, dynamic> map) => Product(
         id: map['id'] as String,
         vendorId: map['vendor_id'] as String,
@@ -159,7 +222,22 @@ class Product extends Equatable {
             .toList(),
       );
 
+  // `sortOrder` belongs here: a reorder changes nothing else about a row, and
+  // without it two differently ordered lists compare equal and the rebuild
+  // that would show the drag never happens.
   @override
-  List<Object?> get props =>
-      [id, vendorId, categoryId, name, nameAr, price, isAvailable, optionGroups];
+  List<Object?> get props => [
+        id,
+        vendorId,
+        categoryId,
+        name,
+        nameAr,
+        description,
+        descriptionAr,
+        imageUrl,
+        price,
+        isAvailable,
+        sortOrder,
+        optionGroups,
+      ];
 }

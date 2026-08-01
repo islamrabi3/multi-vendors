@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
         listenWhen: (previous, current) =>
             previous.error != current.error && current.error != null,
         listener: (context, state) =>
-            showSnack(context, readableError(state.error!), error: true),
+            showFailure(context, state.error!),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(

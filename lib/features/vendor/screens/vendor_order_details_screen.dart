@@ -66,7 +66,7 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
       await _repository.updateStatus(widget.orderId, status, reason: reason);
       await _load();
     } catch (error) {
-      if (mounted) showSnack(context, readableError(error), error: true);
+      if (mounted) showFailure(context, error);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -108,7 +108,7 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
   Widget build(BuildContext context) {
     final order = _order;
     final content = _error != null
-        ? ErrorView(message: readableError(_error!), onRetry: _load)
+        ? FailureView(error: _error!, onRetry: _load)
         : order == null
             ? const LoadingView()
             : Column(

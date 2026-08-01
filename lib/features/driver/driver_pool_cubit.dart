@@ -223,7 +223,7 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
             claimedOrderId: order.id, clearClaiming: true));
       } else {
         emit(state.copyWith(
-            error: 'Another driver took this order.',
+            error: 'ORDER_TAKEN',
             orders: state.orders.where((o) => o.id != order.id).toList(),
             clearClaiming: true));
       }

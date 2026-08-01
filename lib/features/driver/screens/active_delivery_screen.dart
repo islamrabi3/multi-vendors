@@ -40,7 +40,7 @@ class _ActiveDeliveryView extends StatelessWidget {
       listenWhen: (previous, current) =>
           previous.error != current.error && current.error != null,
       listener: (context, state) =>
-          showSnack(context, readableError(state.error!), error: true),
+          showFailure(context, state.error!),
       builder: (context, state) {
         if (state.loading) return const LoadingView();
         final order = state.order;

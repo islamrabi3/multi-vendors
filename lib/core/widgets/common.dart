@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
+import '../errors/app_failure.dart';
 import '../models/order.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -413,6 +414,66 @@ void showSnack(BuildContext context, String message, {bool error = false}) {
   ));
 }
 
+/// The localized sentence for anything that went wrong.
+///
+/// Prefer this to [readableError] everywhere a BuildContext is in hand:
+/// [readableError] can only answer in English, which is what an Arabic user
+/// used to be shown.
+String errorText(BuildContext context, Object error) =>
+    AppFailure.from(error).message(context.l10n);
+
+/// Reports a failure to the user, with a retry when retrying could help.
+///
+/// Every screen used to write `showSnack(context, readableError(e),
+/// error: true)` by hand, which meant an English string, no retry, and a
+/// silent drop wherever somebody forgot. This is the one way to surface one.
+void showFailure(
+  BuildContext context,
+  Object error, {
+  VoidCallback? onRetry,
+}) {
+  final failure = AppFailure.from(error);
+  // Worth seeing in a debug console even when the user gets a short sentence.
+  debugPrint('Failure: $failure');
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(SnackBar(
+    content: Text(failure.message(context.l10n)),
+    backgroundColor: Theme.of(context).colorScheme.error,
+    duration: const Duration(seconds: 5),
+    action: onRetry != null && failure.isRetryable
+        ? SnackBarAction(
+            label: context.l10n.retry,
+            textColor: Colors.white,
+            onPressed: onRetry,
+          )
+        : null,
+  ));
+}
+
+/// Full-screen version of [showFailure]: for a page that has nothing to show
+/// because the load itself failed.
+class FailureView extends StatelessWidget {
+  const FailureView({super.key, required this.error, this.onRetry});
+
+  final Object error;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final failure = AppFailure.from(error);
+    return ErrorView(
+      message: failure.message(context.l10n),
+      // A permission or not-found failure does not become true on a second
+      // attempt; offering the button would only teach the user it does not
+      // work.
+      onRetry: failure.isRetryable || failure.kind == FailureKind.unknown
+          ? onRetry
+          : null,
+    );
+  }
+}
+
 /// Strips PostgrestException noise down to a readable message.
 String readableError(Object error) {
   final text = error.toString();
@@ -445,6 +506,19 @@ String readableError(Object error) {
     'ORDER_NOT_PAID': 'This order was never paid, nothing to refund.',
     'ORDER_NOT_CANCELLED': 'Only cancelled or rejected orders can be refunded.',
     'NOT_A_CARD_ORDER': 'Only card-paid orders can be refunded to the wallet.',
+    'ACCOUNT_BLOCKED':
+        'This account has been suspended. Contact support if you think that '
+        'is a mistake.',
+    'HAS_ACTIVE_ORDERS':
+        'You still have an order in progress. You can delete your account '
+        'once it is finished.',
+    'WALLET_HAS_BALANCE':
+        'Your wallet still has a balance. Confirm you accept losing it to '
+        'continue.',
+    'CANNOT_BLOCK_SELF': 'You cannot block your own account.',
+    'CANNOT_DELETE_SELF': 'You cannot delete your own account from here.',
+    'CANNOT_BLOCK_ADMIN': 'Admin accounts cannot be blocked.',
+    'CANNOT_DELETE_ADMIN': 'Admin accounts cannot be deleted.',
   };
   for (final entry in known.entries) {
     if (text.contains(entry.key)) return entry.value;
@@ -463,6 +537,15 @@ String readableError(Object error) {
   }
   if (text.contains('Invalid login credentials')) {
     return 'Incorrect email or password.';
+  }
+  // Postgres' own wording for a refused write. Everywhere it can reach a user
+  // here it means one of three things — the account is suspended, the store is
+  // not approved, or the row belongs to somebody else — and the raw sentence
+  // said none of them. This is what a vendor saw when adding a menu section
+  // while their account was blocked.
+  if (text.contains('row-level security policy') || text.contains('42501')) {
+    return 'You do not have permission to do that. If your account or store '
+        'was suspended, contact support.';
   }
   return 'Something went wrong. Please try again.';
 }

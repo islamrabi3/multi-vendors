@@ -47,11 +47,39 @@ class _VendorScheduleScreenState extends State<VendorScheduleScreen> {
 
   Future<void> _loadSchedules() async {
     setState(() => _isLoading = true);
-    final data = await _vendorRepo.fetchSchedules(widget.vendorId);
-    setState(() {
-      _schedules = data;
-      _isLoading = false;
-    });
+    try {
+      final data = await _vendorRepo.fetchSchedules(widget.vendorId);
+      if (!mounted) return;
+      setState(() => _schedules = data);
+    } catch (e) {
+      // A failed read used to leave the spinner up for good.
+      if (mounted) showFailure(context, e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// The day whose switch is mid-write, so it cannot be toggled twice.
+  int? _savingDay;
+
+  Future<void> _setDayOpen(Map<String, dynamic> day, int index, bool isOpen) async {
+    setState(() => _savingDay = index);
+    try {
+      await _vendorRepo.updateSchedule(
+        widget.vendorId,
+        index,
+        day['open_time'] as String? ?? '09:00',
+        day['close_time'] as String? ?? '23:00',
+        !isOpen,
+      );
+      await _loadSchedules();
+    } catch (e) {
+      // Previously this threw into nothing: no message, no reload, and the
+      // switch silently sprang back — which read as "it will not turn on".
+      if (mounted) showFailure(context, e);
+    } finally {
+      if (mounted) setState(() => _savingDay = null);
+    }
   }
 
   @override
@@ -90,16 +118,9 @@ class _VendorScheduleScreenState extends State<VendorScheduleScreen> {
                           : '${context.l10n.openStatus}: ${match['open_time']} - ${match['close_time']}',
                     ),
                     value: !isClosed,
-                    onChanged: (val) async {
-                      await _vendorRepo.updateSchedule(
-                        widget.vendorId,
-                        index,
-                        match['open_time'] as String? ?? '09:00',
-                        match['close_time'] as String? ?? '23:00',
-                        !val,
-                      );
-                      _loadSchedules();
-                    },
+                    onChanged: _savingDay != null
+                        ? null
+                        : (val) => _setDayOpen(match, index, val),
                   ),
                 );
               },

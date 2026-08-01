@@ -3,13 +3,33 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import 'cart_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Checked on every open rather than on a timer: this is the last screen
+    // before checkout, and a cart is often hours old by the time it is
+    // reopened.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context
+          .read<CartCubit>()
+          .revalidate(CatalogRepository().fetchProductsByIds);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +75,7 @@ class CartScreen extends StatelessWidget {
 
           return Column(
             children: [
+              if (cart.hasProblems) _CartWarnings(cart: cart),
               // Store Header Card
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -169,6 +190,22 @@ class CartScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ],
+                                // Says which line the banner above is about.
+                                if (cart.isUnavailable(item) ||
+                                    cart.isRepriced(item)) ...[
+                                  const SizedBox(height: 4),
+                                  SoftBadge(
+                                    label: cart.isUnavailable(item)
+                                        ? context.l10n.unavailableNow
+                                        : context.l10n.newPrice,
+                                    fill: cart.isUnavailable(item)
+                                        ? AppColors.dangerFill
+                                        : AppColors.amberFill,
+                                    ink: cart.isUnavailable(item)
+                                        ? AppColors.dangerInk
+                                        : AppColors.amberInk,
+                                  ),
+                                ],
                                 const SizedBox(height: 8),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -219,34 +256,82 @@ class CartScreen extends StatelessWidget {
                           PriceText(formatMoney(cart.subtotal), size: 14),
                         ],
                       ),
+                      // The store minimum is enforced by place_order, the very
+                      // last step of checkout. Without this the customer picks
+                      // an address and a payment method before being told they
+                      // were never eligible to order.
+                      if (cart.subtotal < (cart.vendor?.minOrderAmount ?? 0))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline,
+                                  size: 15, color: AppColors.amberInk),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '${context.l10n.addMoreToReachMinimum} '
+                                  '${formatMoney((cart.vendor?.minOrderAmount ?? 0) - cart.subtotal)}',
+                                  style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.amberInk),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 14),
                       InkWell(
-                        onTap: () => context.push('/checkout'),
+                        // An unavailable line would be refused by the server
+                        // anyway; stopping here means the customer finds out
+                        // before entering an address and a payment method.
+                        onTap: !cart.canCheckout ||
+                                cart.subtotal <
+                                    (cart.vendor?.minOrderAmount ?? 0)
+                            ? null
+                            : () => context.push('/checkout'),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           height: 54,
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            color: cart.subtotal <
+                                    (cart.vendor?.minOrderAmount ?? 0)
+                                ? AppColors.borderStrong
+                                : AppColors.primary,
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: AppShadows.primaryGlow,
+                            boxShadow: cart.subtotal <
+                                    (cart.vendor?.minOrderAmount ?? 0)
+                                ? null
+                                : AppShadows.primaryGlow,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                context.l10n.goToCheckout,
+                                cart.subtotal <
+                                        (cart.vendor?.minOrderAmount ?? 0)
+                                    ? '${context.l10n.minimumOrder} '
+                                        '${formatMoney(cart.vendor?.minOrderAmount ?? 0)}'
+                                    : context.l10n.goToCheckout,
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: cart.subtotal <
+                                          (cart.vendor?.minOrderAmount ?? 0)
+                                      ? AppColors.textMuted
+                                      : Colors.white,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 16,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              PriceText(
-                                formatMoney(cart.subtotal),
-                                size: 15,
-                                color: Colors.white,
-                              ),
+                              if (cart.subtotal >=
+                                  (cart.vendor?.minOrderAmount ?? 0)) ...[
+                                const SizedBox(width: 8),
+                                PriceText(
+                                  formatMoney(cart.subtotal),
+                                  size: 15,
+                                  color: Colors.white,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -263,3 +348,72 @@ class CartScreen extends StatelessWidget {
   }
 }
 
+/// What changed since the cart was filled: sold-out lines, and price moves.
+class _CartWarnings extends StatelessWidget {
+  const _CartWarnings({required this.cart});
+
+  final CartState cart;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        children: [
+          if (cart.unavailable.isNotEmpty)
+            _banner(
+              context,
+              icon: Icons.remove_shopping_cart_outlined,
+              fill: AppColors.dangerFill,
+              ink: AppColors.dangerInk,
+              message: l10n.cartItemsUnavailable,
+              action: TextButton(
+                onPressed: context.read<CartCubit>().removeUnavailable,
+                child: Text(l10n.removeUnavailable),
+              ),
+            ),
+          if (cart.repriced.isNotEmpty)
+            _banner(
+              context,
+              icon: Icons.sell_outlined,
+              fill: AppColors.amberFill,
+              ink: AppColors.amberInk,
+              message: l10n.cartPricesChanged,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _banner(
+    BuildContext context, {
+    required IconData icon,
+    required Color fill,
+    required Color ink,
+    required String message,
+    Widget? action,
+  }) =>
+      Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 6, 10),
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 17, color: ink),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w600, color: ink),
+              ),
+            ),
+            ?action,
+          ],
+        ),
+      );
+}

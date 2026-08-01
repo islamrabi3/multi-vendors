@@ -53,7 +53,7 @@ class _RoleChoiceScreenState extends State<RoleChoiceScreen> {
     return BlocListener<AuthCubit, AppAuthState>(
       listenWhen: (a, b) => b.error != null && a.error != b.error,
       listener: (context, state) =>
-          showSnack(context, readableError(state.error!), error: true),
+          showFailure(context, state.error!),
       child: Scaffold(
         backgroundColor: AppColors.canvas,
         body: SafeArea(

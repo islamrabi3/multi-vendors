@@ -11,6 +11,7 @@ import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/payment_repository.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/ui_kit.dart';
@@ -55,6 +56,10 @@ class _CheckoutViewState extends State<_CheckoutView> {
   /// that does not settle is deleted outright.
   Future<void> _onPlaced(CheckoutState state) async {
     final orderId = state.placedOrderId!;
+    // Held before the first await: everything below runs after a round trip to
+    // Paymob, and reading the context for a string at that point is exactly
+    // what `use_build_context_synchronously` warns about.
+    final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     final cartCubit = context.read<CartCubit>();
@@ -77,7 +82,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
     try {
       checkout = await PaymentRepository().createOrderCheckout(orderId);
     } catch (error) {
-      await discard(readableError(error.toString()));
+      await discard(AppFailure.from(error).message(l10n));
       return;
     }
     if (!mounted) return;
@@ -90,22 +95,16 @@ class _CheckoutViewState extends State<_CheckoutView> {
         cartCubit.clear();
         router.pushReplacement('/order/$orderId');
       case PaymobFlowResult.cancelled:
-        await discard(
-            'Payment cancelled. The order was not sent to the restaurant.');
+        await discard(l10n.paymentCancelledNotice);
       case PaymobFlowResult.failed:
-        await discard(
-            'Payment failed. The order was not sent to the restaurant.');
+        await discard(l10n.paymentFailedNotice);
       case PaymobFlowResult.unresolved:
         // Keep the order: it is still unpaid and invisible to the restaurant,
         // and the customer can retry or watch it settle from order details.
         cartCubit.clear();
         router.pushReplacement('/order/$orderId');
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Still confirming your payment with the bank. The restaurant '
-                'is notified only once it is confirmed.'),
-          ),
+          SnackBar(content: Text(l10n.paymentPendingNotice)),
         );
     }
   }
@@ -122,7 +121,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
           if (state.step == CheckoutStep.placed) {
             _onPlaced(state);
           } else if (state.error != null) {
-            showSnack(context, readableError(state.error!), error: true);
+            showFailure(context, state.error!);
           }
         },
         builder: (context, state) {
@@ -273,7 +272,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
                           hintText: context.l10n.couponCode,
                           fillColor: AppColors.surface,
                           errorText: state.couponError != null
-                              ? readableError(state.couponError!)
+                              ? errorText(context, state.couponError!)
                               : null,
                         ),
                       ),

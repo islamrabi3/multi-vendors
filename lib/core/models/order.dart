@@ -102,6 +102,10 @@ class AppOrder extends Equatable {
     this.walletAmountUsed = 0.0,
     this.deliveryProofUrl,
     this.deliveryOtp,
+    this.acceptedAt,
+    this.readyAt,
+    this.pickedUpAt,
+    this.deliveredAt,
   });
 
   final String id;
@@ -132,10 +136,23 @@ class AppOrder extends Equatable {
   final String? deliveryProofUrl;
   final String? deliveryOtp;
 
+  /// When each stage actually happened. The columns have been written by the
+  /// status trigger since the beginning; nothing read them back, so the
+  /// customer's tracker showed which stage the order was in but never when it
+  /// got there.
+  final DateTime? acceptedAt;
+  final DateTime? readyAt;
+  final DateTime? pickedUpAt;
+  final DateTime? deliveredAt;
+
   bool get isPaid => paymentStatus == 'paid';
   bool get isCod => paymentMethod == 'cod';
   bool get isPickup => orderType == 'pickup';
   bool get isScheduled => orderType == 'scheduled';
+
+  static DateTime? _time(Object? value) => value == null
+      ? null
+      : DateTime.parse(value as String).toLocal();
 
   String get addressSummary {
     final a = deliveryAddress;
@@ -185,6 +202,10 @@ class AppOrder extends Equatable {
       walletAmountUsed: ((map['wallet_amount_used'] as num?) ?? 0).toDouble(),
       deliveryProofUrl: map['delivery_proof_url'] as String?,
       deliveryOtp: map['delivery_otp'] as String?,
+      acceptedAt: _time(map['accepted_at']),
+      readyAt: _time(map['ready_at']),
+      pickedUpAt: _time(map['picked_up_at']),
+      deliveredAt: _time(map['delivered_at']),
     );
   }
 

@@ -117,6 +117,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     if (order.status == OrderStatus.outForDelivery &&
         _trackingChannel == null) {
       _loadDriverContact();
+      // Draw something the moment the page opens, rather than waiting for the
+      // driver's phone to broadcast — which may be a minute away, or never if
+      // their app is asleep.
+      _seedDriverPosition();
       _trackingChannel = supabase.channel('order-tracking:$orderId')
         ..onBroadcast(
           event: 'location',
@@ -132,6 +136,22 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     } else if (order.status.isTerminal && _trackingChannel != null) {
       _trackingChannel?.unsubscribe();
       _trackingChannel = null;
+    }
+  }
+
+  /// Last position the driver's app stored, used until a live broadcast lands.
+  Future<void> _seedDriverPosition() async {
+    if (state.driverLocation != null) return;
+    try {
+      final position = await _orders.fetchDriverPosition(orderId);
+      if (position == null || isClosed) return;
+      // A broadcast that arrived while this was in flight is newer than the
+      // stored row by definition, so it wins.
+      if (state.driverLocation != null) return;
+      emit(state.copyWith(
+          driverLocation: LatLng(position.lat, position.lng)));
+    } catch (_) {
+      // Non-critical: the map falls back to the destination alone.
     }
   }
 
@@ -170,7 +190,15 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     }
   }
 
-  Future<bool> submitReview(int rating, String? comment) async {
+  /// One review covers the food and, when there was a driver, the delivery.
+  /// A null [driverRating] means the customer skipped that half, and the
+  /// driver's average never sees it.
+  Future<bool> submitReview({
+    required int rating,
+    String? comment,
+    int? driverRating,
+    String? driverComment,
+  }) async {
     final order = state.order;
     if (order == null) return false;
     try {
@@ -179,6 +207,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         vendorId: order.vendorId,
         rating: rating,
         comment: comment,
+        driverId: order.driverId,
+        driverRating: order.driverId == null ? null : driverRating,
+        driverComment: driverComment,
       );
       emit(state.copyWith(hasReview: true));
       return true;

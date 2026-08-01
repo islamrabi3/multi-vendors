@@ -1,0 +1,152 @@
+-- Restores the full place_order body and adds the blocked-account guard.
+--
+-- The previous migration had replaced this function with a wrapper calling a
+-- helper that was never created, so every checkout raised "function
+-- _place_order_impl does not exist". The body below is the one from
+-- 20260730212310_place_order_service_area.sql with a single new precondition
+-- at the top, kept alongside the others rather than in a separate layer.
+
+create or replace function public.place_order(
+  p_address_id uuid,
+  p_payment_method public.payment_method,
+  p_coupon_code text default null,
+  p_notes text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cart public.carts%rowtype;
+  v_vendor public.vendors%rowtype;
+  v_address public.addresses%rowtype;
+  v_customer public.profiles%rowtype;
+  v_item record;
+  v_subtotal numeric := 0;
+  v_discount numeric := 0;
+  v_coupon_id uuid;
+  v_order_id uuid;
+  v_unit_price numeric;
+  v_options_snapshot jsonb;
+  v_options_delta numeric;
+begin
+  if public.is_blocked() then
+    raise exception 'ACCOUNT_BLOCKED';
+  end if;
+
+  select * into v_cart from public.carts where user_id = auth.uid();
+  if not found then
+    raise exception 'CART_EMPTY';
+  end if;
+  if not exists (select 1 from public.cart_items where cart_id = v_cart.id) then
+    raise exception 'CART_EMPTY';
+  end if;
+
+  select * into v_vendor from public.vendors
+  where id = v_cart.vendor_id and is_active and approval_status = 'active';
+  if not found or not v_vendor.is_open then
+    raise exception 'VENDOR_CLOSED';
+  end if;
+
+  select * into v_address from public.addresses
+  where id = p_address_id and user_id = auth.uid();
+  if not found then
+    raise exception 'ADDRESS_NOT_FOUND';
+  end if;
+
+  if not public.is_within_service_area(v_address.lat, v_address.lng) then
+    raise exception 'OUTSIDE_SERVICE_AREA';
+  end if;
+
+  select * into v_customer from public.profiles where id = auth.uid();
+
+  for v_item in
+    select ci.id, ci.quantity, ci.selected_options, p.id as product_id,
+           p.name as product_name, p.price, p.is_available
+    from public.cart_items ci
+    join public.products p on p.id = ci.product_id
+    where ci.cart_id = v_cart.id
+  loop
+    if not v_item.is_available then
+      raise exception 'PRODUCT_UNAVAILABLE:%', v_item.product_name;
+    end if;
+
+    select coalesce(sum(po.price_delta), 0),
+           coalesce(jsonb_agg(jsonb_build_object(
+             'option_id', po.id, 'name', po.name, 'price_delta', po.price_delta
+           )), '[]'::jsonb)
+    into v_options_delta, v_options_snapshot
+    from jsonb_array_elements(v_item.selected_options) sel
+    join public.product_options po on po.id = (sel ->> 'option_id')::uuid;
+
+    v_unit_price := v_item.price + v_options_delta;
+    v_subtotal := v_subtotal + v_unit_price * v_item.quantity;
+  end loop;
+
+  if v_subtotal < v_vendor.min_order_amount then
+    raise exception 'MIN_ORDER_NOT_MET:%', v_vendor.min_order_amount;
+  end if;
+
+  if p_coupon_code is not null and trim(p_coupon_code) <> '' then
+    select o_coupon_id, o_discount into v_coupon_id, v_discount
+    from public.compute_coupon_discount(p_coupon_code, v_vendor.id, v_subtotal);
+    update public.coupons set used_count = used_count + 1 where id = v_coupon_id;
+  end if;
+
+  insert into public.orders (
+    customer_id, vendor_id, delivery_address, delivery_lat, delivery_lng,
+    subtotal, delivery_fee, discount, total,
+    payment_method, payment_status, coupon_id, customer_notes, order_number
+  ) values (
+    auth.uid(), v_vendor.id,
+    jsonb_build_object(
+      'label', v_address.label,
+      'street', v_address.street,
+      'building', v_address.building,
+      'floor', v_address.floor,
+      'apartment', v_address.apartment,
+      'notes', v_address.notes,
+      'customer_name', v_customer.full_name,
+      'customer_phone', v_customer.phone
+    ),
+    v_address.lat, v_address.lng,
+    v_subtotal, v_vendor.delivery_fee, v_discount,
+    v_subtotal - v_discount + v_vendor.delivery_fee,
+    p_payment_method, 'unpaid', v_coupon_id, p_notes, ''
+  )
+  returning id into v_order_id;
+
+  for v_item in
+    select ci.quantity, ci.selected_options, p.id as product_id,
+           p.name as product_name, p.price
+    from public.cart_items ci
+    join public.products p on p.id = ci.product_id
+    where ci.cart_id = v_cart.id
+  loop
+    select coalesce(sum(po.price_delta), 0),
+           coalesce(jsonb_agg(jsonb_build_object(
+             'option_id', po.id, 'name', po.name, 'price_delta', po.price_delta
+           )), '[]'::jsonb)
+    into v_options_delta, v_options_snapshot
+    from jsonb_array_elements(v_item.selected_options) sel
+    join public.product_options po on po.id = (sel ->> 'option_id')::uuid;
+
+    v_unit_price := v_item.price + v_options_delta;
+
+    insert into public.order_items (
+      order_id, product_id, product_name, unit_price, quantity,
+      selected_options, line_total
+    ) values (
+      v_order_id, v_item.product_id, v_item.product_name, v_unit_price,
+      v_item.quantity, v_options_snapshot, v_unit_price * v_item.quantity
+    );
+  end loop;
+
+  delete from public.carts where id = v_cart.id;
+
+  return v_order_id;
+end;
+$$;
+
+revoke execute on function public.place_order(uuid, public.payment_method, text, text) from anon;

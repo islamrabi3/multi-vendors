@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -58,7 +59,7 @@ class _SignupFormState extends State<SignupForm> {
             previous.error != current.error || previous.info != current.info,
         listener: (context, state) {
           if (state.error != null) {
-            showSnack(context, readableError(state.error!), error: true);
+            showFailure(context, state.error!);
           } else if (state.info != null) {
             showSnack(context, state.info!);
             context.go('/login');
@@ -370,12 +371,58 @@ class _SignupFormState extends State<SignupForm> {
                     ),
                   ],
                   const SizedBox(height: 24),
+                  const _TermsNotice(),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Continuing is the acceptance, which is why this sits under every sign-up
+/// path — password and both identity providers — rather than beside one button.
+///
+/// The two pages it links are fetched at read time, so amending them is an
+/// admin edit rather than a store release.
+class _TermsNotice extends StatelessWidget {
+  const _TermsNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    const base =
+        TextStyle(fontSize: 11.5, height: 1.5, color: AppColors.textMuted);
+    final link = base.copyWith(
+      color: AppColors.primaryDark,
+      fontWeight: FontWeight.w700,
+      decoration: TextDecoration.underline,
+      decorationColor: AppColors.primaryDark,
+    );
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: [
+          TextSpan(text: '${l10n.bySigningUpYouAgree} '),
+          TextSpan(
+            text: l10n.termsAndConditions,
+            style: link,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => context.push('/terms'),
+          ),
+          TextSpan(text: ' ${l10n.and} '),
+          TextSpan(
+            text: l10n.privacyPolicy,
+            style: link,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => context.push('/privacy'),
+          ),
+        ],
+      ),
+      textAlign: TextAlign.center,
     );
   }
 }

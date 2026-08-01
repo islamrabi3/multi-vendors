@@ -1,7 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'tokens.dart';
+
+/// The app is light-only, so the status and navigation bars are transparent
+/// with *dark* icons throughout.
+///
+/// Android was drawing the clock, signal and battery in white on our light
+/// canvas, which made them invisible: with no style set, Flutter derives the
+/// overlay from the AppBar's own colour, and every screen without an AppBar —
+/// the shells, the sheets, the splash — fell back to the platform default.
+/// Setting it once here and once at startup covers both.
+///
+/// The naming reads backwards: `Brightness.dark` on these fields means dark
+/// *content* on a light bar, which is what we want.
+const SystemUiOverlayStyle appOverlayStyle = SystemUiOverlayStyle(
+  statusBarColor: Colors.transparent,
+  statusBarIconBrightness: Brightness.dark,
+  statusBarBrightness: Brightness.light, // iOS reads this one.
+  systemNavigationBarColor: AppColors.canvas,
+  systemNavigationBarIconBrightness: Brightness.dark,
+  systemNavigationBarDividerColor: Colors.transparent,
+);
 
 /// Eaty theme — warm, confident food-delivery brand.
 /// Body face Plus Jakarta Sans; display Bricolage Grotesque via [AppType].
@@ -73,6 +94,7 @@ ThemeData buildTheme() {
       scrolledUnderElevation: 0,
       centerTitle: false,
       titleTextStyle: AppType.heading(20),
+      systemOverlayStyle: appOverlayStyle,
     ),
     dividerTheme: const DividerThemeData(
       color: AppColors.borderSoft,

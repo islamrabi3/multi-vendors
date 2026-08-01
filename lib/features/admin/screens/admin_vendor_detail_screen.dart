@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
+import '../../../core/repositories/vendor_admin_repository.dart';
+import '../../../core/widgets/location_picker.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
@@ -74,7 +77,58 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showSnack(context, readableError(e), error: true);
+        showFailure(context, e);
+      }
+    }
+  }
+
+  /// Drops the store's map pin on the owner's behalf.
+  Future<void> _setLocation(Vendor vendor) async {
+    final picked = await showLocationPicker(
+      context,
+      initial: vendor.lat == null || vendor.lng == null
+          ? null
+          : LatLng(vendor.lat!, vendor.lng!),
+      title: context.l10n.storeLocationOnMap,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await VendorAdminRepository().updateVendor(vendor.id, {
+        'lat': picked.point.latitude,
+        'lng': picked.point.longitude,
+      });
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _future = _load();
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showFailure(context, e);
+      }
+    }
+  }
+
+  /// Promotion onto the customer home's recommended rail. Only offered for an
+  /// approved store — promoting a pending one would advertise a store the
+  /// customer cannot order from.
+  Future<void> _setRecommended(bool recommended, {int rank = 0}) async {
+    setState(() => _busy = true);
+    try {
+      await _repo.setVendorRecommended(widget.vendorId, recommended,
+          rank: rank);
+      if (!mounted) return;
+      widget.onStatusChanged?.call();
+      setState(() {
+        _busy = false;
+        _future = _load();
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showFailure(context, e);
       }
     }
   }
@@ -92,10 +146,103 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
             );
           }
           final (vendor, owner) = snap.data!;
-          return _Body(
-            vendor: vendor,
-            owner: owner,
-            showBack: !widget.embedded,
+          return Column(
+            children: [
+              Expanded(
+                child: _Body(
+                  vendor: vendor,
+                  owner: owner,
+                  showBack: !widget.embedded,
+                ),
+              ),
+              // Stores onboarded before the map picker have no pin, so they
+              // never surface in "nearby". The owner can fix it in their own
+              // settings, but an operator should not have to chase them.
+              if (vendor.lat == null || vendor.lng == null)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(
+                      AppSpace.gutter, 0, AppSpace.gutter, AppSpace.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.warmFill,
+                    border: Border.all(color: AppColors.attentionBorder),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.add_location_alt_outlined,
+                        color: AppColors.primary),
+                    title: Text(context.l10n.storeLocationOnMap,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(context.l10n.pickOnMap,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textMuted)),
+                    onTap: _busy ? null : () => _setLocation(vendor),
+                  ),
+                ),
+              if (vendor.isApproved)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(
+                      AppSpace.gutter, 0, AppSpace.gutter, AppSpace.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        value: vendor.isRecommended,
+                        onChanged: _busy
+                            ? null
+                            : (v) => _setRecommended(v,
+                                rank: vendor.recommendedRank),
+                        secondary: Icon(Icons.auto_awesome,
+                            color: vendor.isRecommended
+                                ? AppColors.primary
+                                : AppColors.textMuted),
+                        title: Text(context.l10n.manageRecommended,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(context.l10n.recommended,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textMuted)),
+                      ),
+                      // Rank decides the order of the rail on the customer
+                      // home. Only meaningful once the store is promoted, so
+                      // it stays hidden until then.
+                      if (vendor.isRecommended)
+                        ListTile(
+                          dense: true,
+                          leading: const SizedBox(width: 24),
+                          title: Text(context.l10n.sortOrder,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600)),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline),
+                                onPressed: _busy || vendor.recommendedRank <= 0
+                                    ? null
+                                    : () => _setRecommended(true,
+                                        rank: vendor.recommendedRank - 1),
+                              ),
+                              Text('${vendor.recommendedRank}',
+                                  style: AppType.mono(15)),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline),
+                                onPressed: _busy
+                                    ? null
+                                    : () => _setRecommended(true,
+                                        rank: vendor.recommendedRank + 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
           );
         },
       );

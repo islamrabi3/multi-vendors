@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
-import 'common.dart' show readableError;
+import 'common.dart' show errorText;
 import 'skeleton.dart' show ButtonSpinner;
 
 /// How loud a dialog is. Drives the medallion colours and the primary button.
@@ -139,7 +139,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = readableError(error);
+        _error = errorText(context, error);
       });
     }
   }
@@ -336,6 +336,7 @@ class _FormBodyState<T> extends State<_FormBody<T>> {
   }
 
   Future<void> _submit() async {
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -344,36 +345,44 @@ class _FormBodyState<T> extends State<_FormBody<T>> {
       final value = await widget.onSubmit();
       if (!mounted) return;
       if (value == null) {
-        setState(() => _busy = false);
+        if (ModalRoute.of(context)?.isCurrent == true) {
+          setState(() => _busy = false);
+        }
         return;
       }
       Navigator.pop(context, value);
     } catch (error) {
       if (!mounted) return;
-      // Stay up: the user's input is not ours to throw away.
-      setState(() {
-        _busy = false;
-        _error = readableError(error);
-      });
+      if (ModalRoute.of(context)?.isCurrent == true) {
+        setState(() {
+          _busy = false;
+          _error = errorText(context, error);
+        });
+      }
     }
   }
 
   Future<void> _destruct() async {
     final work = widget.onDestructive;
     if (work == null) return;
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       await work();
-      if (mounted) Navigator.pop(context);
+      if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+        Navigator.pop(context);
+      }
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = readableError(error);
-      });
+      if (ModalRoute.of(context)?.isCurrent == true) {
+        setState(() {
+          _busy = false;
+          _error = errorText(context, error);
+        });
+      }
     }
   }
 

@@ -48,7 +48,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location is used to set delivery addresses and to share the driver's position during deliveries.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Used to pick images for your store and products.</string>
+	<string>Used to pick images for your store and products, and to attach photos to a chat.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to take a photo to attach to a chat with support or your driver.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

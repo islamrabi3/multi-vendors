@@ -13,6 +13,7 @@ import '../../../core/widgets/skeleton.dart';
 import '../cart/cart_cubit.dart';
 import 'product_sheet.dart';
 import 'vendor_details_cubit.dart';
+import 'vendor_reviews_preview.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class VendorDetailsScreen extends StatelessWidget {
@@ -184,6 +185,14 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
                 vendor: vendor, product: section.products[index]),
           ),
         ]),
+      // Under the menu rather than above it: the customer came to order, and
+      // what other people said is what they read while deciding.
+      SliverToBoxAdapter(
+        child: VendorReviewsPreview(
+          vendorId: vendor.id,
+          vendorName: vendor.name,
+        ),
+      ),
     ];
   }
 }

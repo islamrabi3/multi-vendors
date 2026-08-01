@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -59,14 +61,35 @@ class VendorDetailsCubit extends Cubit<VendorDetailsState> {
   VendorDetailsCubit(this._catalog, this._favorites, this.vendorId)
       : super(const VendorDetailsState()) {
     load();
+    _watchCatalog();
   }
 
   final CatalogRepository _catalog;
   final FavoritesRepository _favorites;
   final String vendorId;
 
-  Future<void> load() async {
-    emit(state.copyWith(loading: true));
+  StreamSubscription<void>? _catalogSubscription;
+  Timer? _refreshDebounce;
+
+  /// Follows the vendor's own edits while the customer is on the page.
+  ///
+  /// A vendor marking a section sold out fires one event per item, so the
+  /// reload is debounced: without it a ten-item section would trigger ten
+  /// full refetches in the same second.
+  void _watchCatalog() {
+    _catalogSubscription = _catalog.catalogChanges(vendorId).listen((_) {
+      _refreshDebounce?.cancel();
+      _refreshDebounce = Timer(
+        const Duration(milliseconds: 400),
+        () => load(silent: true),
+      );
+    });
+  }
+
+  /// [silent] keeps the menu on screen while it refreshes. A live update must
+  /// not blank a page the customer is reading.
+  Future<void> load({bool silent = false}) async {
+    if (!silent) emit(state.copyWith(loading: true));
     try {
       final results = await Future.wait([
         _catalog.fetchVendor(vendorId),
@@ -94,5 +117,12 @@ class VendorDetailsCubit extends Cubit<VendorDetailsState> {
     } catch (_) {
       emit(state.copyWith(isFavorite: !next));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _refreshDebounce?.cancel();
+    _catalogSubscription?.cancel();
+    return super.close();
   }
 }

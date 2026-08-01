@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/chat_message.dart';
+import '../services/attachment_service.dart';
 
 class ChatRepository {
   final SupabaseClient _client;
@@ -35,6 +36,7 @@ class ChatRepository {
     required String orderId,
     required String message,
     String? imageUrl,
+    ChatAttachment? attachment,
   }) async {
     final senderId = _client.auth.currentUser?.id;
     if (senderId == null) return;
@@ -48,6 +50,11 @@ class ChatRepository {
       'sender_id': senderId,
       'message': message,
       'image_url': imageUrl,
+      if (attachment != null) ...{
+        'attachment_url': attachment.path,
+        'attachment_name': attachment.name,
+        'attachment_type': attachment.type,
+      },
     });
   }
 }

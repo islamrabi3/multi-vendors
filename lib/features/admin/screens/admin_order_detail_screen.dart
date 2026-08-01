@@ -76,7 +76,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       showSnack(context, '${context.l10n.assignedTo} ${driver.name}');
       _reload();
     } catch (e) {
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -115,7 +115,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       showSnack(context, context.l10n.orderCancelled);
       _reload();
     } catch (e) {
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -142,7 +142,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       _reload();
     } catch (e) {
       debugPrint('refund failed: $e');
-      if (mounted) showSnack(context, readableError(e), error: true);
+      if (mounted) showFailure(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

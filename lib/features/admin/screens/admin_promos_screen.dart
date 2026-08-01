@@ -66,12 +66,12 @@ class _PromosView extends StatelessWidget {
                   BlocListener<AdminOffersCubit, AdminOffersState>(
                     listenWhen: (p, c) => p.error != c.error && c.error != null,
                     listener: (context, s) =>
-                        showSnack(context, readableError(s.error!), error: true),
+                        showFailure(context, s.error!),
                   ),
                   BlocListener<AdminCouponsCubit, AdminCouponsState>(
                     listenWhen: (p, c) => p.error != c.error && c.error != null,
                     listener: (context, s) =>
-                        showSnack(context, readableError(s.error!), error: true),
+                        showFailure(context, s.error!),
                   ),
                 ],
                 child: RefreshIndicator(
@@ -503,12 +503,12 @@ class _BannerFormState extends State<_BannerForm> {
           .from('vendors')
           .select('id, name')
           .eq('approval_status', 'active')
-          .order('name');
+          .order('name', ascending: true);
       final coupons = await client
           .from('coupons')
           .select('code')
           .eq('is_active', true)
-          .order('code');
+          .order('code', ascending: true);
       if (!mounted) return;
       setState(() {
         _vendors = (vendors as List)
@@ -546,7 +546,7 @@ class _BannerFormState extends State<_BannerForm> {
       });
       if (mounted) showSnack(context, 'Image uploaded successfully!');
     } catch (error) {
-      if (mounted) showSnack(context, readableError(error), error: true);
+      if (mounted) showFailure(context, error);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }

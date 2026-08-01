@@ -10,6 +10,9 @@ class ChatMessage extends Equatable {
     this.imageUrl,
     this.isRead = false,
     this.senderName,
+    this.attachmentPath,
+    this.attachmentName,
+    this.attachmentType,
   });
 
   final String id;
@@ -20,6 +23,17 @@ class ChatMessage extends Equatable {
   final bool isRead;
   final DateTime createdAt;
   final String? senderName;
+
+  /// Object key in the private `chat-attachments` bucket — signed at render
+  /// rather than stored as a URL, which would expire inside the hour.
+  final String? attachmentPath;
+  final String? attachmentName;
+
+  /// `image` | `file`, or null when the message is text only.
+  final String? attachmentType;
+
+  bool get hasAttachment => attachmentPath != null;
+  bool get isImageAttachment => attachmentType == 'image';
 
   factory ChatMessage.fromMap(Map<String, dynamic> map) {
     final sender = map['profiles'];
@@ -32,9 +46,22 @@ class ChatMessage extends Equatable {
       isRead: (map['is_read'] as bool?) ?? false,
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
       senderName: sender is Map ? sender['full_name'] as String? : null,
+      attachmentPath: map['attachment_url'] as String?,
+      attachmentName: map['attachment_name'] as String?,
+      attachmentType: map['attachment_type'] as String?,
     );
   }
 
   @override
-  List<Object?> get props => [id, orderId, senderId, message, createdAt, isRead];
+  List<Object?> get props => [
+        id,
+        orderId,
+        senderId,
+        message,
+        createdAt,
+        isRead,
+        attachmentPath,
+        attachmentName,
+        attachmentType,
+      ];
 }

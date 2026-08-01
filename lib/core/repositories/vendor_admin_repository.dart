@@ -61,8 +61,51 @@ class VendorAdminRepository {
     return ProductCategory.fromMap(data);
   }
 
+  /// Deleting a section does not delete its items: `products.category_id` is
+  /// `on delete set null`, so they fall into the uncategorised bucket and stay
+  /// on sale. The vendor is told as much before confirming.
   Future<void> deleteCategory(String id) =>
       supabase.from('product_categories').delete().eq('id', id);
+
+  /// Renumbers whole lists rather than moving one row: two rows swapping
+  /// places is two writes that must agree, and a client that sends only the
+  /// moved row leaves the rest of the menu holding stale positions.
+  Future<void> reorderCategories(String vendorId, List<String> ids) =>
+      supabase.rpc('vendor_reorder_categories',
+          params: {'p_vendor_id': vendorId, 'p_ids': ids});
+
+  Future<void> reorderProducts(String vendorId, List<String> ids) =>
+      supabase.rpc('vendor_reorder_products',
+          params: {'p_vendor_id': vendorId, 'p_ids': ids});
+
+  /// Copies an item with its option groups and options. The copy arrives
+  /// unavailable, directly after its source.
+  Future<String> duplicateProduct(String productId) async {
+    final id = await supabase
+        .rpc('vendor_duplicate_product', params: {'p_product_id': productId});
+    return id as String;
+  }
+
+  /// Marks a whole section available or sold out. [categoryId] null means the
+  /// entire menu. Returns how many items actually changed.
+  Future<int> setSectionAvailability({
+    required String vendorId,
+    required String? categoryId,
+    required bool available,
+  }) async {
+    final count = await supabase.rpc('vendor_set_section_availability', params: {
+      'p_vendor_id': vendorId,
+      'p_category_id': categoryId,
+      'p_available': available,
+    });
+    return (count as num?)?.toInt() ?? 0;
+  }
+
+  /// Moves an item between sections without opening the full editor.
+  Future<void> setProductCategory(String productId, String? categoryId) =>
+      supabase
+          .from('products')
+          .update({'category_id': categoryId}).eq('id', productId);
 
   Future<Product> saveProduct(Map<String, dynamic> values, {String? id}) async {
     final query = id == null
@@ -138,18 +181,26 @@ class VendorAdminRepository {
         .from('vendor_schedules')
         .select()
         .eq('vendor_id', vendorId)
-        .order('day_of_week');
+        .order('day_of_week', ascending: true);
     return (data as List).cast<Map<String, dynamic>>();
   }
 
-  Future<void> updateSchedule(String vendorId, int dayOfWeek, String openTime, String closeTime, bool isClosed) async {
+  /// One row per (vendor, weekday).
+  ///
+  /// `onConflict` is required: the row is identified by the unique
+  /// (vendor_id, day_of_week) pair, not by `id`, which is never sent. Without
+  /// it the upsert conflicts on the primary key instead — never matches, and
+  /// so becomes a plain insert that trips the unique index the second time a
+  /// day is edited.
+  Future<void> updateSchedule(String vendorId, int dayOfWeek, String openTime,
+      String closeTime, bool isClosed) async {
     await supabase.from('vendor_schedules').upsert({
       'vendor_id': vendorId,
       'day_of_week': dayOfWeek,
       'open_time': openTime,
       'close_time': closeTime,
       'is_closed': isClosed,
-    });
+    }, onConflict: 'vendor_id,day_of_week');
   }
 
   Future<Map<String, dynamic>> fetchAnalytics(String vendorId) async {

@@ -30,6 +30,16 @@ class AdminManageScreen extends StatelessWidget {
             route: '/admin-app/complaints',
           ),
           _ManageItem(
+            icon: Icons.support_agent_outlined,
+            label: l10n.supportChat,
+            route: '/admin-app/support',
+          ),
+          _ManageItem(
+            icon: Icons.people_outline,
+            label: l10n.users,
+            route: '/admin-app/users',
+          ),
+          _ManageItem(
             icon: Icons.payments_outlined,
             label: 'Sales & Financial Reports',
             route: '/admin-app/sales-reports',
@@ -68,6 +78,11 @@ class AdminManageScreen extends StatelessWidget {
             icon: Icons.local_offer_outlined,
             label: l10n.promos,
             route: '/admin-app/promos',
+          ),
+          _ManageItem(
+            icon: Icons.article_outlined,
+            label: l10n.content,
+            route: '/admin-app/content',
           ),
         ],
       ),

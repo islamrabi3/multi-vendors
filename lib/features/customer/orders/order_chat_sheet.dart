@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/repositories/chat_repository.dart';
+import '../../../core/services/attachment_service.dart';
+import '../../../core/widgets/chat_attachment_view.dart';
+import '../../../core/widgets/common.dart' show showFailure;
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/ui_kit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -28,11 +31,33 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
   final ChatRepository _chatRepo = ChatRepository();
   final TextEditingController _msgController = TextEditingController();
 
-  void _sendMessage() async {
+  bool _busy = false;
+
+  Future<void> _sendMessage({ChatAttachment? attachment}) async {
     final text = _msgController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && attachment == null) return;
     _msgController.clear();
-    await _chatRepo.sendMessage(orderId: widget.orderId, message: text);
+    try {
+      await _chatRepo.sendMessage(
+        orderId: widget.orderId,
+        message: text,
+        attachment: attachment,
+      );
+    } catch (error) {
+      if (mounted) showFailure(context, error);
+    }
+  }
+
+  Future<void> _attach() async {
+    setState(() => _busy = true);
+    ChatAttachment? attachment;
+    try {
+      attachment = await pickChatAttachment(context);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (attachment == null || !mounted) return;
+    await _sendMessage(attachment: attachment);
   }
 
   @override
@@ -143,14 +168,25 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
                               ? CrossAxisAlignment.end
                               : CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              msg.message,
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                color: isMe ? Colors.white : AppColors.ink,
-                                height: 1.3,
+                            if (msg.hasAttachment) ...[
+                              ChatAttachmentView(
+                                path: msg.attachmentPath!,
+                                name: msg.attachmentName,
+                                isImage: msg.isImageAttachment,
+                                onDark: isMe,
                               ),
-                            ),
+                              if (msg.message.isNotEmpty)
+                                const SizedBox(height: 6),
+                            ],
+                            if (msg.message.isNotEmpty)
+                              Text(
+                                msg.message,
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  color: isMe ? Colors.white : AppColors.ink,
+                                  height: 1.3,
+                                ),
+                              ),
                             const SizedBox(height: 4),
                             Text(
                               timeStr,
@@ -181,6 +217,12 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
               ),
               child: Row(
                 children: [
+                  IconButton(
+                    tooltip: context.l10n.attachSomething,
+                    onPressed: _busy ? null : _attach,
+                    icon: const Icon(Icons.attach_file_rounded, size: 21),
+                    color: AppColors.textMuted,
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _msgController,
@@ -201,7 +243,7 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
                     child: IconButton(
                       icon: const DirectionalIcon(Icons.send,
                           color: Colors.white),
-                      onPressed: _sendMessage,
+                      onPressed: _busy ? null : () => _sendMessage(),
                     ),
                   ),
                 ],

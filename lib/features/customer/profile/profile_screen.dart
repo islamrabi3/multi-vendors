@@ -6,6 +6,7 @@ import 'wallet_screen.dart';
 import 'loyalty_screen.dart';
 import '../../../app/tokens.dart';
 import '../../../core/repositories/auth_repository.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/ui_kit.dart';
@@ -26,6 +27,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _repo.fetchMyStats();
 
   void _reloadStats() => setState(() => _stats = _repo.fetchMyStats());
+
+  /// Closing an account is irreversible, so the two things that would surprise
+  /// someone afterwards are checked first: work still in flight, and money
+  /// still in the wallet. An in-flight order is refused outright; a balance is
+  /// stated plainly and forfeited only on an explicit second confirmation.
+  Future<void> _confirmDeleteAccount() async {
+    final l10n = context.l10n;
+    AccountDeletionBlockers blockers;
+    try {
+      blockers = await _repo.accountDeletionBlockers();
+    } catch (e) {
+      if (mounted) showFailure(context, e);
+      return;
+    }
+    if (!mounted) return;
+
+    if (blockers.hasActiveOrders) {
+      showSnack(context, l10n.deleteAccountActiveOrders, error: true);
+      return;
+    }
+
+    final message = blockers.hasBalance
+        ? '${l10n.deleteAccountWarning}\n\n'
+            '${l10n.deleteAccountWalletWarning(formatMoney(blockers.walletBalance))}'
+        : l10n.deleteAccountWarning;
+
+    final confirmed = await AppDialogs.showConfirmDialog(
+      context: context,
+      title: l10n.deleteAccount,
+      message: message,
+      confirmText: l10n.deleteAccountConfirm,
+      isDestructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _repo.deleteOwnAccount(forfeitBalance: blockers.hasBalance);
+      if (mounted) showSnack(context, l10n.accountDeleted);
+    } catch (e) {
+      if (mounted) showFailure(context, e);
+    }
+  }
 
   Future<void> _editProfile() async {
     final profile = context.read<AuthCubit>().state.profile;
@@ -73,7 +116,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     showSnack(
       context,
-      ok ? l10n.profileUpdated : readableError(context.read<AuthCubit>().state.error ?? ''),
+      ok
+          ? l10n.profileUpdated
+          : errorText(context, context.read<AuthCubit>().state.error ?? ''),
       error: !ok,
     );
   }
@@ -204,6 +249,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }),
                   const _MenuDivider(),
                   _MenuRow(
+                      icon: Icons.support_agent_outlined,
+                      label: context.l10n.supportChat,
+                      onTap: () => context.push('/support')),
+                  const _MenuDivider(),
+                  _MenuRow(
+                      icon: Icons.info_outline,
+                      label: context.l10n.aboutUs,
+                      onTap: () => context.push('/about')),
+                  const _MenuDivider(),
+                  _MenuRow(
+                      icon: Icons.gavel_outlined,
+                      label: context.l10n.termsAndConditions,
+                      onTap: () => context.push('/terms')),
+                  const _MenuDivider(),
+                  _MenuRow(
+                      icon: Icons.privacy_tip_outlined,
+                      label: context.l10n.privacyPolicy,
+                      onTap: () => context.push('/privacy')),
+                  const _MenuDivider(),
+                  _MenuRow(
                       icon: Icons.settings_outlined,
                       label: context.l10n.settings,
                       onTap: () {
@@ -278,6 +343,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primaryDark)),
+              ),
+            ),
+            // Deliberately last and understated: closing an account is a real
+            // action the user is entitled to, but it should never be adjacent
+            // to log out by accident.
+            Center(
+              child: TextButton(
+                onPressed: _confirmDeleteAccount,
+                child: Text(context.l10n.deleteAccount,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted)),
               ),
             ),
           ],

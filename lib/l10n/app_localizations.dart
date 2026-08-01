@@ -2601,6 +2601,540 @@ abstract class AppLocalizations {
   /// **'Busy Mode (+15m)'**
   String get busyMode;
 
+  /// No description provided for @addMoreToReachMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addMoreToReachMinimum;
+
+  /// No description provided for @tips.
+  ///
+  /// In en, this message translates to:
+  /// **'Tips'**
+  String get tips;
+
+  /// No description provided for @financialReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Financial & sales'**
+  String get financialReports;
+
+  /// No description provided for @platformTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform'**
+  String get platformTab;
+
+  /// No description provided for @vendorSalesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Vendor sales'**
+  String get vendorSalesTab;
+
+  /// No description provided for @driverPayoutsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver payouts'**
+  String get driverPayoutsTab;
+
+  /// No description provided for @period.
+  ///
+  /// In en, this message translates to:
+  /// **'Period'**
+  String get period;
+
+  /// No description provided for @periodToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get periodToday;
+
+  /// No description provided for @periodWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get periodWeek;
+
+  /// No description provided for @periodMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get periodMonth;
+
+  /// No description provided for @periodAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get periodAll;
+
+  /// No description provided for @grossRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Gross revenue'**
+  String get grossRevenue;
+
+  /// No description provided for @itemSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Item sales'**
+  String get itemSales;
+
+  /// No description provided for @platformCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform commission'**
+  String get platformCommission;
+
+  /// No description provided for @driverCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver payouts'**
+  String get driverCost;
+
+  /// No description provided for @netMargin.
+  ///
+  /// In en, this message translates to:
+  /// **'Net to platform'**
+  String get netMargin;
+
+  /// No description provided for @cashCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash with drivers'**
+  String get cashCollected;
+
+  /// No description provided for @cardCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by card'**
+  String get cardCollected;
+
+  /// No description provided for @averageOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Average order'**
+  String get averageOrder;
+
+  /// No description provided for @deliveredOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered Orders'**
+  String get deliveredOrders;
+
+  /// No description provided for @cancelledOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get cancelledOrders;
+
+  /// No description provided for @deliveryFeesTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery fees'**
+  String get deliveryFeesTotal;
+
+  /// No description provided for @discountsGiven.
+  ///
+  /// In en, this message translates to:
+  /// **'Discounts given'**
+  String get discountsGiven;
+
+  /// No description provided for @vendorPayouts.
+  ///
+  /// In en, this message translates to:
+  /// **'Vendor payouts'**
+  String get vendorPayouts;
+
+  /// No description provided for @noReportData.
+  ///
+  /// In en, this message translates to:
+  /// **'No delivered orders in this period.'**
+  String get noReportData;
+
+  /// No description provided for @settlement.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlement'**
+  String get settlement;
+
+  /// No description provided for @volume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get volume;
+
+  /// No description provided for @accountBlockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account suspended'**
+  String get accountBlockedTitle;
+
+  /// No description provided for @accountBlockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'An administrator has suspended this account, so it cannot place orders, deliver, or trade. Contact support if you believe this is a mistake.'**
+  String get accountBlockedBody;
+
+  /// No description provided for @accountClosedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account closed'**
+  String get accountClosedTitle;
+
+  /// No description provided for @accountClosedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been closed and can no longer be used. Past orders remain on record.'**
+  String get accountClosedBody;
+
+  /// No description provided for @supportChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get supportChat;
+
+  /// No description provided for @supportResolvedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This conversation is resolved. Messages are removed 24 hours after it closes — send a reply to reopen it.'**
+  String get supportResolvedNotice;
+
+  /// No description provided for @supportChatEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Send us a message and we\'ll get back to you.'**
+  String get supportChatEmpty;
+
+  /// No description provided for @typeAMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a message'**
+  String get typeAMessage;
+
+  /// No description provided for @markResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve'**
+  String get markResolved;
+
+  /// No description provided for @reopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get reopen;
+
+  /// No description provided for @resolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get resolved;
+
+  /// No description provided for @noSupportThreads.
+  ///
+  /// In en, this message translates to:
+  /// **'No support conversations yet.'**
+  String get noSupportThreads;
+
+  /// No description provided for @openOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Open only'**
+  String get openOnly;
+
+  /// No description provided for @users.
+  ///
+  /// In en, this message translates to:
+  /// **'Users'**
+  String get users;
+
+  /// No description provided for @blockUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Block user'**
+  String get blockUser;
+
+  /// No description provided for @unblockUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock user'**
+  String get unblockUser;
+
+  /// No description provided for @blocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get blocked;
+
+  /// No description provided for @blockReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (shown to nobody, kept for your records)'**
+  String get blockReasonHint;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This closes your account for good. Past orders stay on record, but you will not be able to sign in again.'**
+  String get deleteAccountWarning;
+
+  /// No description provided for @deleteAccountActiveOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'You still have an order in progress. You can delete your account once it is finished.'**
+  String get deleteAccountActiveOrders;
+
+  /// No description provided for @deleteAccountWalletWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'You still have {amount} in your wallet. Deleting your account forfeits it.'**
+  String deleteAccountWalletWarning(String amount);
+
+  /// No description provided for @deleteAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, delete my account'**
+  String get deleteAccountConfirm;
+
+  /// No description provided for @accountDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been closed.'**
+  String get accountDeleted;
+
+  /// No description provided for @userBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'User blocked.'**
+  String get userBlocked;
+
+  /// No description provided for @userUnblocked.
+  ///
+  /// In en, this message translates to:
+  /// **'User unblocked.'**
+  String get userUnblocked;
+
+  /// No description provided for @userDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'User account closed.'**
+  String get userDeleted;
+
+  /// No description provided for @searchUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name or phone'**
+  String get searchUsers;
+
+  /// No description provided for @bySigningUpYouAgree.
+  ///
+  /// In en, this message translates to:
+  /// **'By continuing you agree to our'**
+  String get bySigningUpYouAgree;
+
+  /// No description provided for @and.
+  ///
+  /// In en, this message translates to:
+  /// **'and'**
+  String get and;
+
+  /// No description provided for @nearbyRestaurants.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby'**
+  String get nearbyRestaurants;
+
+  /// No description provided for @aboutUs.
+  ///
+  /// In en, this message translates to:
+  /// **'About us'**
+  String get aboutUs;
+
+  /// No description provided for @termsAndConditions.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms & Conditions'**
+  String get termsAndConditions;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @followUs.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow us'**
+  String get followUs;
+
+  /// No description provided for @lastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated'**
+  String get lastUpdated;
+
+  /// No description provided for @contentNotAvailableYet.
+  ///
+  /// In en, this message translates to:
+  /// **'This page has not been published yet.'**
+  String get contentNotAvailableYet;
+
+  /// No description provided for @couldNotOpenLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open that link.'**
+  String get couldNotOpenLink;
+
+  /// No description provided for @recommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get recommended;
+
+  /// No description provided for @content.
+  ///
+  /// In en, this message translates to:
+  /// **'Content & pages'**
+  String get content;
+
+  /// No description provided for @socialLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Social links'**
+  String get socialLinks;
+
+  /// No description provided for @addLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Add link'**
+  String get addLink;
+
+  /// No description provided for @platform.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform'**
+  String get platform;
+
+  /// No description provided for @linkUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Link URL'**
+  String get linkUrl;
+
+  /// No description provided for @published.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get published;
+
+  /// No description provided for @draft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft — hidden from customers'**
+  String get draft;
+
+  /// No description provided for @sortOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort order'**
+  String get sortOrder;
+
+  /// No description provided for @englishBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Body · English'**
+  String get englishBody;
+
+  /// No description provided for @arabicBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Body · Arabic'**
+  String get arabicBody;
+
+  /// No description provided for @englishTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title · English'**
+  String get englishTitle;
+
+  /// No description provided for @arabicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title · Arabic'**
+  String get arabicTitle;
+
+  /// No description provided for @manageRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended stores'**
+  String get manageRecommended;
+
+  /// No description provided for @storeLocationOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Store location on map'**
+  String get storeLocationOnMap;
+
+  /// No description provided for @pickOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick on map'**
+  String get pickOnMap;
+
+  /// No description provided for @pickStoreLocationFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your store location on the map first.'**
+  String get pickStoreLocationFirst;
+
+  /// No description provided for @sortNearest.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearest'**
+  String get sortNearest;
+
+  /// No description provided for @awayFromYou.
+  ///
+  /// In en, this message translates to:
+  /// **'away'**
+  String get awayFromYou;
+
+  /// No description provided for @storeControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Store controls'**
+  String get storeControls;
+
+  /// No description provided for @storeClosedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Your store is closed — customers cannot place orders.'**
+  String get storeClosedNotice;
+
+  /// No description provided for @needsYourAttention.
+  ///
+  /// In en, this message translates to:
+  /// **'need your attention'**
+  String get needsYourAttention;
+
+  /// No description provided for @allCaughtUp.
+  ///
+  /// In en, this message translates to:
+  /// **'All caught up'**
+  String get allCaughtUp;
+
+  /// No description provided for @totalAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total amount'**
+  String get totalAmount;
+
   /// No description provided for @openInMaps.
   ///
   /// In en, this message translates to:
@@ -2720,12 +3254,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total Revenue'**
   String get totalRevenue;
-
-  /// No description provided for @deliveredOrders.
-  ///
-  /// In en, this message translates to:
-  /// **'Delivered Orders'**
-  String get deliveredOrders;
 
   /// No description provided for @performanceOverview.
   ///
@@ -3692,6 +4220,672 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit'**
   String get edit;
+
+  /// No description provided for @attachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment'**
+  String get attachment;
+
+  /// No description provided for @attachmentUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment unavailable'**
+  String get attachmentUnavailable;
+
+  /// No description provided for @attachmentOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open this file.'**
+  String get attachmentOpenFailed;
+
+  /// No description provided for @attachPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get attachPhoto;
+
+  /// No description provided for @attachCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get attachCamera;
+
+  /// No description provided for @attachFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get attachFile;
+
+  /// No description provided for @attachSomething.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach'**
+  String get attachSomething;
+
+  /// No description provided for @attachmentUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not upload that attachment.'**
+  String get attachmentUploadFailed;
+
+  /// No description provided for @howCanWeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'How can we help?'**
+  String get howCanWeHelp;
+
+  /// No description provided for @pickTopicOrWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a topic for an instant answer, or write to us directly.'**
+  String get pickTopicOrWrite;
+
+  /// No description provided for @supportOtherTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Something else'**
+  String get supportOtherTopic;
+
+  /// No description provided for @automaticReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic reply'**
+  String get automaticReply;
+
+  /// No description provided for @errNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. Check your internet and try again.'**
+  String get errNetwork;
+
+  /// No description provided for @errSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has ended. Sign in again.'**
+  String get errSessionExpired;
+
+  /// No description provided for @errNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to do that. If your account or store was suspended, contact support.'**
+  String get errNoPermission;
+
+  /// No description provided for @errNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That is no longer available.'**
+  String get errNotFound;
+
+  /// No description provided for @errServer.
+  ///
+  /// In en, this message translates to:
+  /// **'The server had a problem. Try again in a moment.'**
+  String get errServer;
+
+  /// No description provided for @errUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get errUnknown;
+
+  /// No description provided for @errCartEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cart is empty.'**
+  String get errCartEmpty;
+
+  /// No description provided for @errVendorClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'This store is currently closed.'**
+  String get errVendorClosed;
+
+  /// No description provided for @errVendorNotApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'This store is not approved yet.'**
+  String get errVendorNotApproved;
+
+  /// No description provided for @errAddressNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Please choose a delivery address.'**
+  String get errAddressNotFound;
+
+  /// No description provided for @errOutsideServiceArea.
+  ///
+  /// In en, this message translates to:
+  /// **'We don\'t deliver to this address yet. Pick another address inside our delivery area.'**
+  String get errOutsideServiceArea;
+
+  /// No description provided for @errRoleAlreadySet.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account type has already been set.'**
+  String get errRoleAlreadySet;
+
+  /// No description provided for @errRoleChangeNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Account type cannot be changed here.'**
+  String get errRoleChangeNotAllowed;
+
+  /// No description provided for @errCouponInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This coupon code is not valid.'**
+  String get errCouponInvalid;
+
+  /// No description provided for @errCouponMinOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Order total is below the coupon minimum.'**
+  String get errCouponMinOrder;
+
+  /// No description provided for @errMinOrderNotMet.
+  ///
+  /// In en, this message translates to:
+  /// **'Order total is below the store minimum.'**
+  String get errMinOrderNotMet;
+
+  /// No description provided for @errNotAnOnlineDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Go online to claim orders. A new driver account needs admin approval first.'**
+  String get errNotAnOnlineDriver;
+
+  /// No description provided for @errDriverNotApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Your driver account is awaiting admin approval. You can go online once it is approved.'**
+  String get errDriverNotApproved;
+
+  /// No description provided for @errInsufficientWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Your wallet balance is not enough for this order.'**
+  String get errInsufficientWallet;
+
+  /// No description provided for @errCardPaymentsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Card payments are unavailable right now. Please try another method.'**
+  String get errCardPaymentsUnavailable;
+
+  /// No description provided for @errPaymentPageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The payment page could not be opened. Please try again.'**
+  String get errPaymentPageFailed;
+
+  /// No description provided for @errAlreadyPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'This order has already been paid.'**
+  String get errAlreadyPaid;
+
+  /// No description provided for @errAlreadyRefunded.
+  ///
+  /// In en, this message translates to:
+  /// **'This order has already been refunded.'**
+  String get errAlreadyRefunded;
+
+  /// No description provided for @errOrderNotPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'This order was never paid, nothing to refund.'**
+  String get errOrderNotPaid;
+
+  /// No description provided for @errOrderNotCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Only cancelled or rejected orders can be refunded.'**
+  String get errOrderNotCancelled;
+
+  /// No description provided for @errNotACardOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Only card-paid orders can be refunded to the wallet.'**
+  String get errNotACardOrder;
+
+  /// No description provided for @errProductUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'An item in your cart is no longer available.'**
+  String get errProductUnavailable;
+
+  /// No description provided for @errTransitionNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'This order was already updated. Refreshing…'**
+  String get errTransitionNotAllowed;
+
+  /// No description provided for @errAccountBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been suspended. Contact support if you think that is a mistake.'**
+  String get errAccountBlocked;
+
+  /// No description provided for @errHasActiveOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'You still have an order in progress. You can delete your account once it is finished.'**
+  String get errHasActiveOrders;
+
+  /// No description provided for @errWalletHasBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Your wallet still has a balance. Confirm you accept losing it to continue.'**
+  String get errWalletHasBalance;
+
+  /// No description provided for @errCannotBlockSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot block your own account.'**
+  String get errCannotBlockSelf;
+
+  /// No description provided for @errCannotDeleteSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot delete your own account from here.'**
+  String get errCannotDeleteSelf;
+
+  /// No description provided for @errCannotBlockAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin accounts cannot be blocked.'**
+  String get errCannotBlockAdmin;
+
+  /// No description provided for @errCannotDeleteAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin accounts cannot be deleted.'**
+  String get errCannotDeleteAdmin;
+
+  /// No description provided for @errInvalidLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect email or password.'**
+  String get errInvalidLogin;
+
+  /// No description provided for @errEmailNotConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your email address first, then sign in.'**
+  String get errEmailNotConfirmed;
+
+  /// No description provided for @errUserAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'An account with this email already exists.'**
+  String get errUserAlreadyExists;
+
+  /// No description provided for @errWeakPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is too short.'**
+  String get errWeakPassword;
+
+  /// No description provided for @errDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'That already exists.'**
+  String get errDuplicate;
+
+  /// No description provided for @errStillReferenced.
+  ///
+  /// In en, this message translates to:
+  /// **'This is still in use elsewhere and cannot be removed.'**
+  String get errStillReferenced;
+
+  /// No description provided for @paymentCancelledNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment cancelled. The order was not sent to the restaurant.'**
+  String get paymentCancelledNotice;
+
+  /// No description provided for @paymentFailedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment failed. The order was not sent to the restaurant.'**
+  String get paymentFailedNotice;
+
+  /// No description provided for @paymentPendingNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Still confirming your payment with the bank. The restaurant is notified only once it is confirmed.'**
+  String get paymentPendingNotice;
+
+  /// No description provided for @errLocationPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission is needed to share your position.'**
+  String get errLocationPermission;
+
+  /// No description provided for @errOrderTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Another driver took this order.'**
+  String get errOrderTaken;
+
+  /// No description provided for @uncategorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncategorized'**
+  String get uncategorized;
+
+  /// No description provided for @manageSections.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage sections'**
+  String get manageSections;
+
+  /// No description provided for @reorderSections.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder sections'**
+  String get reorderSections;
+
+  /// No description provided for @searchMenuHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search items'**
+  String get searchMenuHint;
+
+  /// No description provided for @sections.
+  ///
+  /// In en, this message translates to:
+  /// **'Sections'**
+  String get sections;
+
+  /// No description provided for @duplicateItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get duplicateItem;
+
+  /// No description provided for @moveToSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to section'**
+  String get moveToSection;
+
+  /// No description provided for @deleteItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete item'**
+  String get deleteItem;
+
+  /// No description provided for @deleteItemConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this item? It disappears from the menu straight away. Past orders keep it.'**
+  String get deleteItemConfirm;
+
+  /// No description provided for @deleteSectionConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this section? Its items stay on the menu and move to Uncategorized.'**
+  String get deleteSectionConfirm;
+
+  /// No description provided for @itemDuplicated.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy created and left sold out until you edit it.'**
+  String get itemDuplicated;
+
+  /// No description provided for @itemDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Item deleted'**
+  String get itemDeleted;
+
+  /// No description provided for @sectionDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Section deleted'**
+  String get sectionDeleted;
+
+  /// No description provided for @markSectionSoldOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark section sold out'**
+  String get markSectionSoldOut;
+
+  /// No description provided for @markSectionAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark section available'**
+  String get markSectionAvailable;
+
+  /// No description provided for @markAllSoldOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark everything sold out'**
+  String get markAllSoldOut;
+
+  /// No description provided for @markAllAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark everything available'**
+  String get markAllAvailable;
+
+  /// No description provided for @itemsUpdatedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items updated'**
+  String itemsUpdatedCount(int count);
+
+  /// No description provided for @sortManual.
+  ///
+  /// In en, this message translates to:
+  /// **'My order'**
+  String get sortManual;
+
+  /// No description provided for @sortNameAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Name A–Z'**
+  String get sortNameAsc;
+
+  /// No description provided for @sortPriceAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Price, low to high'**
+  String get sortPriceAsc;
+
+  /// No description provided for @sortPriceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Price, high to low'**
+  String get sortPriceDesc;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// No description provided for @noMatchingItems.
+  ///
+  /// In en, this message translates to:
+  /// **'No items match your search.'**
+  String get noMatchingItems;
+
+  /// No description provided for @optionGroupsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} option groups'**
+  String optionGroupsCount(int count);
+
+  /// No description provided for @dragToReorderItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold and drag an item to reorder the menu.'**
+  String get dragToReorderItems;
+
+  /// No description provided for @reorderUnavailableWhileFiltered.
+  ///
+  /// In en, this message translates to:
+  /// **'Reordering works in “My order” with no search or filter.'**
+  String get reorderUnavailableWhileFiltered;
+
+  /// No description provided for @menuStats.
+  ///
+  /// In en, this message translates to:
+  /// **'{items} items · {sections} sections · {soldOut} sold out'**
+  String menuStats(int items, int sections, int soldOut);
+
+  /// No description provided for @sectionHasNoItems.
+  ///
+  /// In en, this message translates to:
+  /// **'This section has no items yet.'**
+  String get sectionHasNoItems;
+
+  /// No description provided for @saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get saved;
+
+  /// No description provided for @reviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews'**
+  String get reviews;
+
+  /// No description provided for @ratingsAndReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Ratings & reviews'**
+  String get ratingsAndReviews;
+
+  /// No description provided for @noReviewsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No reviews yet. Be the first to leave one.'**
+  String get noReviewsYet;
+
+  /// No description provided for @seeAllReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'See all reviews'**
+  String get seeAllReviews;
+
+  /// No description provided for @basedOnReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} reviews'**
+  String basedOnReviews(int count);
+
+  /// No description provided for @rateTheStore.
+  ///
+  /// In en, this message translates to:
+  /// **'How was the food?'**
+  String get rateTheStore;
+
+  /// No description provided for @howWasTheDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'How was the delivery?'**
+  String get howWasTheDriver;
+
+  /// No description provided for @anonymous.
+  ///
+  /// In en, this message translates to:
+  /// **'A customer'**
+  String get anonymous;
+
+  /// No description provided for @reviewsInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer feedback'**
+  String get reviewsInbox;
+
+  /// No description provided for @averageRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Average rating'**
+  String get averageRating;
+
+  /// No description provided for @skipDriverRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get skipDriverRating;
+
+  /// No description provided for @estimatedArrival.
+  ///
+  /// In en, this message translates to:
+  /// **'Arriving in about {minutes} min'**
+  String estimatedArrival(int minutes);
+
+  /// No description provided for @arrivingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Arriving any minute'**
+  String get arrivingSoon;
+
+  /// No description provided for @deliveredAtTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered at {time}'**
+  String deliveredAtTime(String time);
+
+  /// No description provided for @etaUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'On the way'**
+  String get etaUnavailable;
+
+  /// No description provided for @dishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Dishes'**
+  String get dishes;
+
+  /// No description provided for @matchesOnMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'On the menu: {items}'**
+  String matchesOnMenu(String items);
+
+  /// No description provided for @storesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stores'**
+  String get storesLabel;
+
+  /// No description provided for @cartItemsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Some items are no longer available'**
+  String get cartItemsUnavailable;
+
+  /// No description provided for @removeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove them'**
+  String get removeUnavailable;
+
+  /// No description provided for @cartPricesChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices changed since you added these. The new prices are shown.'**
+  String get cartPricesChanged;
+
+  /// No description provided for @unavailableNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get unavailableNow;
+
+  /// No description provided for @newPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'New price'**
+  String get newPrice;
 }
 
 class _AppLocalizationsDelegate

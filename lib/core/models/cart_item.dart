@@ -27,8 +27,8 @@ class CartItem extends Equatable {
     return '${product.id}|${optionIds.join(',')}|${notes ?? ''}';
   }
 
-  CartItem copyWith({int? quantity}) => CartItem(
-        product: product,
+  CartItem copyWith({int? quantity, Product? product}) => CartItem(
+        product: product ?? this.product,
         quantity: quantity ?? this.quantity,
         selectedOptions: selectedOptions,
         notes: notes,

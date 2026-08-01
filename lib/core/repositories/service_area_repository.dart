@@ -8,7 +8,7 @@ class ServiceAreaRepository {
   Stream<List<ServiceArea>> serviceAreasStream() => supabase
       .from('service_areas')
       .stream(primaryKey: ['id'])
-      .order('name')
+      .order('name', ascending: true)
       .map((rows) => rows.map((e) => ServiceArea.fromMap(e)).toList());
 
   Future<List<ServiceArea>> fetchActive() async {
@@ -16,7 +16,7 @@ class ServiceAreaRepository {
         .from('service_areas')
         .select()
         .eq('is_active', true)
-        .order('name');
+        .order('name', ascending: true);
     return (data as List)
         .map((e) => ServiceArea.fromMap(e as Map<String, dynamic>))
         .toList();
@@ -28,7 +28,7 @@ class ServiceAreaRepository {
         .from('service_areas')
         .select()
         .order('is_active', ascending: false)
-        .order('name');
+        .order('name', ascending: true);
     return (data as List)
         .map((e) => ServiceArea.fromMap(e as Map<String, dynamic>))
         .toList();
