@@ -24,19 +24,18 @@ enum OrderStatus {
   static OrderStatus fromName(String? name) =>
       _wire[name] ?? OrderStatus.pending;
 
-  String get wireName =>
-      _wire.entries.firstWhere((e) => e.value == this).key;
+  String get wireName => _wire.entries.firstWhere((e) => e.value == this).key;
 
   String get label => switch (this) {
-        pending => 'Pending',
-        accepted => 'Accepted',
-        preparing => 'Preparing',
-        readyForPickup => 'Ready for pickup',
-        outForDelivery => 'Out for delivery',
-        delivered => 'Delivered',
-        cancelled => 'Cancelled',
-        rejected => 'Rejected',
-      };
+    pending => 'Pending',
+    accepted => 'Accepted',
+    preparing => 'Preparing',
+    readyForPickup => 'Ready for pickup',
+    outForDelivery => 'Out for delivery',
+    delivered => 'Delivered',
+    cancelled => 'Cancelled',
+    rejected => 'Rejected',
+  };
 
   bool get isTerminal =>
       this == delivered || this == cancelled || this == rejected;
@@ -48,29 +47,57 @@ class OrderItem extends Equatable {
     required this.unitPrice,
     required this.quantity,
     required this.lineTotal,
+    this.productId,
     this.optionNames = const [],
+    this.optionIds = const [],
   });
 
+  /// The line records the name and price it was bought at, so a renamed or
+  /// repriced product never rewrites history. [productId] is what points back
+  /// at the live product — needed to put the same thing in a cart again.
+  ///
+  /// Null only for rows written before the column existed.
+  final String? productId;
   final String productName;
   final double unitPrice;
   final int quantity;
   final double lineTotal;
+
+  /// For display.
   final List<String> optionNames;
 
-  factory OrderItem.fromMap(Map<String, dynamic> map) => OrderItem(
-        productName: map['product_name'] as String,
-        unitPrice: ((map['unit_price'] as num?) ?? 0).toDouble(),
-        quantity: ((map['quantity'] as num?) ?? 1).toInt(),
-        lineTotal: ((map['line_total'] as num?) ?? 0).toDouble(),
-        optionNames: ((map['selected_options'] as List?) ?? [])
-            .map((o) => (o as Map)['name'] as String? ?? '')
-            .where((n) => n.isNotEmpty)
-            .toList(),
-      );
+  /// For rebuilding: the option rows themselves, so a reorder brings back
+  /// "extra cheese" rather than a plain burger.
+  final List<String> optionIds;
+
+  factory OrderItem.fromMap(Map<String, dynamic> map) {
+    final options = ((map['selected_options'] as List?) ?? []).cast<Map>();
+    return OrderItem(
+      productId: map['product_id'] as String?,
+      productName: map['product_name'] as String,
+      unitPrice: ((map['unit_price'] as num?) ?? 0).toDouble(),
+      quantity: ((map['quantity'] as num?) ?? 1).toInt(),
+      lineTotal: ((map['line_total'] as num?) ?? 0).toDouble(),
+      optionNames: options
+          .map((o) => o['name'] as String? ?? '')
+          .where((n) => n.isNotEmpty)
+          .toList(),
+      optionIds: options
+          .map((o) => o['option_id'] as String? ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList(),
+    );
+  }
 
   @override
-  List<Object?> get props =>
-      [productName, unitPrice, quantity, lineTotal, optionNames];
+  List<Object?> get props => [
+    productId,
+    productName,
+    unitPrice,
+    quantity,
+    lineTotal,
+    optionNames,
+  ];
 }
 
 class AppOrder extends Equatable {
@@ -102,6 +129,7 @@ class AppOrder extends Equatable {
     this.walletAmountUsed = 0.0,
     this.deliveryProofUrl,
     this.deliveryOtp,
+    this.releasedAt,
     this.acceptedAt,
     this.readyAt,
     this.pickedUpAt,
@@ -136,6 +164,10 @@ class AppOrder extends Equatable {
   final String? deliveryProofUrl;
   final String? deliveryOtp;
 
+  /// When the store was allowed to see it. Null on a scheduled order that is
+  /// still waiting for its slot; stamped immediately on everything else.
+  final DateTime? releasedAt;
+
   /// When each stage actually happened. The columns have been written by the
   /// status trigger since the beginning; nothing read them back, so the
   /// customer's tracker showed which stage the order was in but never when it
@@ -148,19 +180,23 @@ class AppOrder extends Equatable {
   bool get isPaid => paymentStatus == 'paid';
   bool get isCod => paymentMethod == 'cod';
   bool get isPickup => orderType == 'pickup';
+
+  /// Whether the store may see it yet.
+  bool get isReleased => releasedAt != null;
   bool get isScheduled => orderType == 'scheduled';
 
-  static DateTime? _time(Object? value) => value == null
-      ? null
-      : DateTime.parse(value as String).toLocal();
+  static DateTime? _time(Object? value) =>
+      value == null ? null : DateTime.parse(value as String).toLocal();
 
   String get addressSummary {
     final a = deliveryAddress;
     return [
       a['street'],
-      if ((a['building'] as String?)?.isNotEmpty ?? false) 'Bldg ${a['building']}',
+      if ((a['building'] as String?)?.isNotEmpty ?? false)
+        'Bldg ${a['building']}',
       if ((a['floor'] as String?)?.isNotEmpty ?? false) 'Floor ${a['floor']}',
-      if ((a['apartment'] as String?)?.isNotEmpty ?? false) 'Apt ${a['apartment']}',
+      if ((a['apartment'] as String?)?.isNotEmpty ?? false)
+        'Apt ${a['apartment']}',
     ].whereType<String>().join(', ');
   }
 
@@ -202,6 +238,7 @@ class AppOrder extends Equatable {
       walletAmountUsed: ((map['wallet_amount_used'] as num?) ?? 0).toDouble(),
       deliveryProofUrl: map['delivery_proof_url'] as String?,
       deliveryOtp: map['delivery_otp'] as String?,
+      releasedAt: _time(map['released_at']),
       acceptedAt: _time(map['accepted_at']),
       readyAt: _time(map['ready_at']),
       pickedUpAt: _time(map['picked_up_at']),
@@ -211,19 +248,18 @@ class AppOrder extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        status,
-        paymentStatus,
-        driverId,
-        total,
-        items,
-        vendorName,
-        orderType,
-        scheduledAt,
-        driverTip,
-        walletAmountUsed,
-        deliveryProofUrl,
-        deliveryOtp,
-      ];
+    id,
+    status,
+    paymentStatus,
+    driverId,
+    total,
+    items,
+    vendorName,
+    orderType,
+    scheduledAt,
+    driverTip,
+    walletAmountUsed,
+    deliveryProofUrl,
+    deliveryOtp,
+  ];
 }
-

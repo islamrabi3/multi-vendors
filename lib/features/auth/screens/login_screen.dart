@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/platform_capabilities.dart';
 import '../../../core/widgets/common.dart';
 import '../auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -34,8 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: BlocListener<AuthCubit, AppAuthState>(
         listenWhen: (previous, current) =>
             previous.error != current.error && current.error != null,
-        listener: (context, state) =>
-            showFailure(context, state.error!),
+        listener: (context, state) => showFailure(context, state.error!),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -68,7 +68,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               margin: const EdgeInsets.only(top: 17),
                               decoration: const BoxDecoration(
                                 border: Border(
-                                  bottom: BorderSide(color: Colors.white, width: 5),
+                                  bottom: BorderSide(
+                                    color: Colors.white,
+                                    width: 5,
+                                  ),
                                 ),
                                 borderRadius: BorderRadius.vertical(
                                   bottom: Radius.circular(12),
@@ -137,17 +140,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _password,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        letterSpacing: 1.5,
-                      ),
+                      style: const TextStyle(fontSize: 18, letterSpacing: 1.5),
                       decoration: InputDecoration(
                         hintText: context.l10n.emptyString,
                         hintStyle: const TextStyle(letterSpacing: 1.5),
                         fillColor: Colors.white,
                         suffixIcon: TextButton(
                           onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                           child: Text(
                             _obscurePassword ? 'Show' : 'Hide',
                             style: const TextStyle(
@@ -193,9 +194,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? null
                             : () {
                                 if (_formKey.currentState!.validate()) {
-                                  context
-                                      .read<AuthCubit>()
-                                      .signIn(_email.text, _password.text);
+                                  context.read<AuthCubit>().signIn(
+                                    _email.text,
+                                    _password.text,
+                                  );
                                 }
                               },
                         borderRadius: BorderRadius.circular(16),
@@ -253,34 +255,51 @@ class _LoginScreenState extends State<LoginScreen> {
                       builder: (context, state) {
                         return Row(
                           children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: state.busy
-                                    ? null
-                                    : () => context.read<AuthCubit>().signInWithApple(),
-                                icon: const Icon(Icons.apple, size: 20),
-                                label: Text(context.l10n.apple),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  side: BorderSide(color: AppColors.border),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                            // Apple only where it means something. On Android
+                            // it drops into a web flow for an Apple ID most
+                            // users do not have.
+                            if (supportsAppleSignIn) ...[
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: state.busy
+                                      ? null
+                                      : () => context
+                                            .read<AuthCubit>()
+                                            .signInWithApple(),
+                                  icon: const Icon(Icons.apple, size: 20),
+                                  label: Text(context.l10n.apple),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    side: BorderSide(color: AppColors.border),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
+                              const SizedBox(width: 12),
+                            ],
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: state.busy
                                     ? null
-                                    : () => context.read<AuthCubit>().signInWithGoogle(),
-                                icon: Text('G',
-                                    style: AppType.display(18,
-                                        color: AppColors.primaryDark)),
+                                    : () => context
+                                          .read<AuthCubit>()
+                                          .signInWithGoogle(),
+                                icon: Text(
+                                  'G',
+                                  style: AppType.display(
+                                    18,
+                                    color: AppColors.primaryDark,
+                                  ),
+                                ),
                                 label: Text(context.l10n.google),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                   side: BorderSide(color: AppColors.border),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
@@ -329,4 +348,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

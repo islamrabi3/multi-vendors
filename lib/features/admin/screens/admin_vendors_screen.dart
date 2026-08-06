@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -35,6 +37,24 @@ class _VendorsViewState extends State<_VendorsView> {
   /// still pushes the detail route.
   String? _selectedId;
 
+  /// The search runs against the database, so it is debounced rather than
+  /// firing a query per keystroke.
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearch(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(
+      const Duration(milliseconds: 300),
+      () => context.read<AdminVendorsCubit>().setSearch(value.trim()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,6 +84,17 @@ class _VendorsViewState extends State<_VendorsView> {
                             ),
                           Text(context.l10n.vendors, style: AppType.display(26)),
                         ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: TextField(
+                        onChanged: _onSearch,
+                        decoration: InputDecoration(
+                          hintText: context.l10n.searchVendorsHint,
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          isDense: true,
+                        ),
                       ),
                     ),
                     _FilterBar(state: state, cubit: cubit),

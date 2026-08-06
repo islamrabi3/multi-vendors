@@ -63,9 +63,18 @@ class NotificationService {
   }
 
   /// Initializes FCM and local notification listeners.
+  ///
+  /// No-op on web. Web push needs a `firebase-messaging-sw.js` and a VAPID
+  /// key that this project does not have, so every call below would throw into
+  /// the catch — after the browser had already been asked for notification
+  /// permission on page load, which is the surest way to have it denied
+  /// forever.
   Future<void> initialize() async {
+    if (kIsWeb) return;
     try {
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
 
       // Notification Permissions
       final settings = await _fcm.requestPermission(
@@ -89,8 +98,10 @@ class NotificationService {
       // Initialize Local Notifications for Foreground display
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosInit = DarwinInitializationSettings();
-      const initSettings =
-          InitializationSettings(android: androidInit, iOS: iosInit);
+      const initSettings = InitializationSettings(
+        android: androidInit,
+        iOS: iosInit,
+      );
 
       // A foreground banner is drawn by flutter_local_notifications, so its own
       // tap callback is what fires for those — the FCM stream never sees them.
@@ -121,7 +132,8 @@ class NotificationService {
 
       final androidPlugin = _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidPlugin?.createNotificationChannel(androidChannel);
 
       // Listen for FCM messages while app is in foreground
@@ -178,6 +190,7 @@ class NotificationService {
   /// getToken() waits for APNs itself. Gating on it skipped the sync entirely
   /// on iOS.
   Future<void> syncFcmToken() async {
+    if (kIsWeb) return;
     try {
       final token = await _fcm.getToken();
       if (token == null) {
@@ -200,10 +213,13 @@ class NotificationService {
       // because this is the first moment after sign-in where a session exists.
       final prefs = await SharedPreferences.getInstance();
       final locale = prefs.getString('app_locale');
-      await Supabase.instance.client.from('profiles').update({
-        'fcm_token': fcmToken,
-        if (locale == 'en' || locale == 'ar') 'locale': locale,
-      }).eq('id', userId);
+      await Supabase.instance.client
+          .from('profiles')
+          .update({
+            'fcm_token': fcmToken,
+            if (locale == 'en' || locale == 'ar') 'locale': locale,
+          })
+          .eq('id', userId);
     } catch (e) {
       if (kDebugMode) print('Error saving FCM token to profile: $e');
     }
@@ -211,10 +227,17 @@ class NotificationService {
 
   /// Sends a push to [userId] via the `send-push` Edge Function. Fire and
   /// forget: a failed push must never break the action that triggered it.
+  ///
+  /// Prefer [titleKey] to [title]. The sender has no idea what language the
+  /// recipient reads — an admin working in English resolving a complaint for
+  /// an Arabic customer would otherwise send them an English heading — so a
+  /// keyed title is resolved server-side against the recipient's own
+  /// `profiles.locale`.
   Future<void> sendNotificationToUser({
     required String userId,
-    required String title,
     required String body,
+    String? title,
+    String? titleKey,
     Map<String, String>? data,
   }) async {
     try {
@@ -222,7 +245,8 @@ class NotificationService {
         'send-push',
         body: {
           'user_id': userId,
-          'title': title,
+          'title': ?title,
+          'title_key': ?titleKey,
           'body': body,
           'data': ?data,
         },

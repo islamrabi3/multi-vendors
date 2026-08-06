@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../app/tokens.dart';
 import '../../../core/repositories/admin_repository.dart';
+import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/common.dart';
+import '../../auth/auth_cubit.dart';
 
 enum DriverFilter { all, pending, active, suspended }
 
@@ -50,7 +53,10 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
 
   Future<void> _uploadDoc(DriverAccount driver, String docType) async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
     if (file == null) return;
     final bytes = await file.readAsBytes();
     setState(() => _busyId = driver.id);
@@ -62,7 +68,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
         filename: file.name,
       );
       if (!mounted) return;
-      showSnack(context, 'Document image uploaded successfully! 📄');
+      showSnack(context, context.l10n.documentUploaded);
       await _load();
     } catch (e) {
       if (mounted) showFailure(context, e);
@@ -71,7 +77,12 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
     }
   }
 
-  void _onDocumentBoxTap(DriverAccount driver, String docTitle, String docType, String? imageUrl) {
+  void _onDocumentBoxTap(
+    DriverAccount driver,
+    String docTitle,
+    String docType,
+    String? imageUrl,
+  ) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       showModalBottomSheet(
         context: context,
@@ -80,7 +91,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.remove_red_eye_outlined),
-                title: Text('View $docTitle'),
+                title: Text(context.l10n.viewDocument(docTitle)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showImagePreview('${driver.name} - $docTitle', imageUrl);
@@ -88,7 +99,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.upload_file_outlined),
-                title: Text('Upload / Replace $docTitle'),
+                title: Text(context.l10n.uploadReplaceDocument(docTitle)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _uploadDoc(driver, docType);
@@ -110,22 +121,22 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
       reason = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Reject / Suspend Driver'),
+          title: Text(context.l10n.rejectSuspendDriver),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'Reason for rejection (e.g. Invalid license)',
+            decoration: InputDecoration(
+              hintText: context.l10n.rejectionReasonHint,
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, null),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Reject'),
+              child: Text(context.l10n.reject),
             ),
           ],
         ),
@@ -137,12 +148,11 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
     try {
       await _repo.setDriverStatus(driver.id, status, reason: reason);
       if (!mounted) return;
-      showSnack(
-        context,
-        status == 'active'
-            ? 'Driver approved successfully! 🎉'
-            : 'Driver account rejected/suspended',
-      );
+      showSnack(context, switch (status) {
+        'active' => context.l10n.driverApproved,
+        'suspended' => context.l10n.driverSuspendedToast,
+        _ => context.l10n.driverRejected,
+      });
       await _load();
     } catch (e) {
       if (mounted) showFailure(context, e);
@@ -190,7 +200,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                 errorBuilder: (context, error, stackTrace) => Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    'Could not load document image',
+                    context.l10n.couldNotLoadDocument,
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                 ),
@@ -204,13 +214,14 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canApprove = context.watch<AuthCubit>().state.can('drivers.approve');
     final pendingCount = _drivers.where((d) => d.isPending).length;
     final activeCount = _drivers.where((d) => d.isApproved).length;
     final suspendedCount = _drivers.where((d) => d.isSuspended).length;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(title: const Text('Driver Approvals & Accounts')),
+      appBar: AppBar(title: Text(context.l10n.driverApprovals)),
       body: SafeArea(
         top: false,
         child: Column(
@@ -226,14 +237,14 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                 children: [
                   FilterChip(
                     selectedColor: AppColors.attentionBorder,
-                    label: Text('All (${_drivers.length})'),
+                    label: Text(context.l10n.allWithCount(_drivers.length)),
                     selected: _filter == DriverFilter.all,
                     onSelected: (_) =>
                         setState(() => _filter = DriverFilter.all),
                   ),
                   const SizedBox(width: 8),
                   FilterChip(
-                    label: Text('Pending ($pendingCount)'),
+                    label: Text(context.l10n.pendingWithCount(pendingCount)),
                     selected: _filter == DriverFilter.pending,
                     selectedColor: AppColors.amberFill,
                     onSelected: (_) =>
@@ -241,7 +252,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                   ),
                   const SizedBox(width: 8),
                   FilterChip(
-                    label: Text('Approved ($activeCount)'),
+                    label: Text(context.l10n.approvedWithCount(activeCount)),
                     selected: _filter == DriverFilter.active,
                     selectedColor: AppColors.successFill,
                     onSelected: (_) =>
@@ -249,7 +260,9 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                   ),
                   const SizedBox(width: 8),
                   FilterChip(
-                    label: Text('Suspended ($suspendedCount)'),
+                    label: Text(
+                      context.l10n.suspendedWithCount(suspendedCount),
+                    ),
                     selected: _filter == DriverFilter.suspended,
                     selectedColor: Colors.red.shade100,
                     onSelected: (_) =>
@@ -267,11 +280,10 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                       onRefresh: _load,
                       child: _visibleDrivers.isEmpty
                           ? ListView(
-                              children: const [
-                                SizedBox(height: 80),
+                              children: [
+                                const SizedBox(height: 80),
                                 EmptyView(
-                                  message:
-                                      'No driver applications found for this filter.',
+                                  message: context.l10n.noDriverApplications,
                                   icon: Icons.two_wheeler_outlined,
                                 ),
                               ],
@@ -330,6 +342,35 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                                                         fontSize: 13,
                                                       ),
                                                     ),
+                                                  const SizedBox(height: 2),
+                                                  // Whether this application
+                                                  // is even reviewable yet.
+                                                  Text(
+                                                    context.l10n
+                                                        .documentsOnFile(
+                                                          driver.documents
+                                                              .where(
+                                                                (d) =>
+                                                                    d.url !=
+                                                                    null,
+                                                              )
+                                                              .length,
+                                                        ),
+                                                    style: TextStyle(
+                                                      fontSize: 11.5,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          driver.documents
+                                                              .every(
+                                                                (d) =>
+                                                                    d.url !=
+                                                                    null,
+                                                              )
+                                                          ? AppColors.successInk
+                                                          : AppColors.amberInk,
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -349,8 +390,18 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                                                     BorderRadius.circular(12),
                                               ),
                                               child: Text(
-                                                driver.approvalStatus
-                                                    .toUpperCase(),
+                                                // Not the raw column value:
+                                                // "ACTIVE" is a database word,
+                                                // and it was never translated.
+                                                driver.isPending
+                                                    ? context.l10n.statusPending
+                                                    : driver.isApproved
+                                                    ? context
+                                                          .l10n
+                                                          .statusApproved
+                                                    : context
+                                                          .l10n
+                                                          .statusSuspended,
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.bold,
@@ -366,56 +417,86 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                                         ),
                                         const Divider(height: 24),
                                         Text(
-                                          'Vehicle: ${driver.vehicleType ?? 'Motorcycle'}',
+                                          '${context.l10n.vehicleLabel}: '
+                                          '${driver.vehicleType ?? '—'}',
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
                                         const SizedBox(height: 12),
-                                        const Text(
-                                          'Submitted Documents:',
-                                          style: TextStyle(
+                                        Text(
+                                          context.l10n.submittedDocuments,
+                                          style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _DocumentBox(
-                                                title: 'National ID Card',
-                                                imageUrl: driver.idCardUrl,
-                                                onTap: () => _onDocumentBoxTap(
-                                                  driver,
-                                                  'National ID',
-                                                  'id_card_url',
-                                                  driver.idCardUrl,
-                                                ),
+                                        // All four, because both sides are
+                                        // what verifies a document: a front
+                                        // shows a photo and a name, while the
+                                        // expiry and issuing details are on
+                                        // the back.
+                                        if (!driver.hasAnyDocument)
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
+                                            child: Text(
+                                              context.l10n.noDocumentsUploaded,
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                color: AppColors.textMuted,
                                               ),
                                             ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: _DocumentBox(
-                                                title: 'Driver License',
-                                                imageUrl: driver.licenseUrl,
-                                                onTap: () => _onDocumentBoxTap(
-                                                  driver,
-                                                  'Driver License',
-                                                  'license_url',
-                                                  driver.licenseUrl,
-                                                ),
-                                              ),
+                                          )
+                                        else
+                                          // Horizontal: four documents side by
+                                          // side is how a reviewer compares
+                                          // them, and stacking them pushes the
+                                          // approve buttons off the screen.
+                                          SizedBox(
+                                            height: 118,
+                                            child: ListView.separated(
+                                              scrollDirection: Axis.horizontal,
+                                              itemCount:
+                                                  driver.documents.length,
+                                              separatorBuilder: (_, _) =>
+                                                  const SizedBox(width: 12),
+                                              itemBuilder: (context, i) {
+                                                final doc = driver.documents[i];
+                                                final label = _documentLabel(
+                                                  context,
+                                                  doc.column,
+                                                );
+                                                return SizedBox(
+                                                  width: 150,
+                                                  child: _DocumentBox(
+                                                    title: label,
+                                                    imageUrl: doc.url,
+                                                    onTap: () =>
+                                                        _onDocumentBoxTap(
+                                                          driver,
+                                                          label,
+                                                          doc.column,
+                                                          doc.url,
+                                                        ),
+                                                  ),
+                                                );
+                                              },
                                             ),
-                                          ],
-                                        ),
+                                          ),
                                         const SizedBox(height: 16),
                                         if (isBusy)
                                           const Center(
                                             child: CircularProgressIndicator(),
                                           )
-                                        else
+                                        // Approving and suspending are both
+                                        // `drivers.approve`; a role with only
+                                        // `drivers.view` sees the list and no
+                                        // buttons.
+                                        else if (canApprove)
                                           Row(
                                             children: [
                                               if (!driver.isApproved)
@@ -430,8 +511,8 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                                                           .check_circle_outline,
                                                       size: 18,
                                                     ),
-                                                    label: const Text(
-                                                      'Approve',
+                                                    label: Text(
+                                                      context.l10n.approve,
                                                     ),
                                                     style:
                                                         FilledButton.styleFrom(
@@ -457,8 +538,8 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
                                                     ),
                                                     label: Text(
                                                       driver.isApproved
-                                                          ? 'Suspend'
-                                                          : 'Reject',
+                                                          ? context.l10n.suspend
+                                                          : context.l10n.reject,
                                                     ),
                                                     style:
                                                         OutlinedButton.styleFrom(
@@ -484,6 +565,15 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
   }
 }
 
+/// The reviewer-facing name of a document column.
+String _documentLabel(BuildContext context, String column) => switch (column) {
+  'id_card_url' => context.l10n.idFront,
+  'id_card_back_url' => context.l10n.idBack,
+  'license_url' => context.l10n.licenseFront,
+  'license_back_url' => context.l10n.licenseBack,
+  _ => column,
+};
+
 class _DocumentBox extends StatelessWidget {
   const _DocumentBox({required this.title, this.imageUrl, required this.onTap});
 
@@ -498,7 +588,7 @@ class _DocumentBox extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 90,
+        height: 110,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(10),
@@ -551,7 +641,7 @@ class _DocumentBox extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Not uploaded',
+                    context.l10n.notUploaded,
                     style: TextStyle(fontSize: 9, color: Colors.red.shade400),
                   ),
                 ],

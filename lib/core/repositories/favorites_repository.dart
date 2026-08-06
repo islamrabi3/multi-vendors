@@ -8,7 +8,11 @@ class FavoritesRepository {
   }
 
   Future<List<Vendor>> fetchFavoriteVendors() async {
-    final data = await supabase.from('favorites').select('vendors(*)');
+    // Opening hours ride along, or a saved store that closed an hour ago still
+    // reads as open on this page while reading as shut everywhere else.
+    final data = await supabase
+        .from('favorites')
+        .select('vendors(*, vendor_schedules(*))');
     return data
         .map((row) => row['vendors'])
         .whereType<Map<String, dynamic>>()

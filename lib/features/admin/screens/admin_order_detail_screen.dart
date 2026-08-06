@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -9,6 +10,7 @@ import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../auth/auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// Ordered happy-path stages used to render the intervention timeline.
@@ -28,8 +30,7 @@ class AdminOrderDetailScreen extends StatelessWidget {
   final String orderId;
 
   @override
-  Widget build(BuildContext context) =>
-      AdminOrderDetailView(orderId: orderId);
+  Widget build(BuildContext context) => AdminOrderDetailView(orderId: orderId);
 }
 
 /// The order intervention view. Embedded (`embedded: true`) it drops the back
@@ -60,7 +61,9 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     _future = _repo.fetchOrder(widget.orderId);
   }
 
-  void _reload() => setState(() => _future = _repo.fetchOrder(widget.orderId));
+  void _reload() => setState(() {
+    _future = _repo.fetchOrder(widget.orderId);
+  });
 
   Future<void> _assign() async {
     final driver = await showModalBottomSheet<DriverOption>(
@@ -109,8 +112,10 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     if (reason == null) return;
     setState(() => _busy = true);
     try {
-      await _repo.cancelOrder(widget.orderId,
-          reason: reason.isEmpty ? localCancelledByAdmin : reason);
+      await _repo.cancelOrder(
+        widget.orderId,
+        reason: reason.isEmpty ? localCancelledByAdmin : reason,
+      );
       if (!mounted) return;
       showSnack(context, context.l10n.orderCancelled);
       _reload();
@@ -137,8 +142,10 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     try {
       final amount = await _repo.refundOrderToWallet(widget.orderId);
       if (!mounted) return;
-      showSnack(context,
-          '${context.l10n.refundedToWallet} (${formatMoney(amount)})');
+      showSnack(
+        context,
+        '${context.l10n.refundedToWallet} (${formatMoney(amount)})',
+      );
       _reload();
     } catch (e) {
       debugPrint('refund failed: $e');
@@ -149,35 +156,44 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   }
 
   Widget _content() => FutureBuilder<AppOrder>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const LoadingView();
-          }
-          if (snap.hasError || !snap.hasData) {
-            return ErrorView(
-                message: context.l10n.couldNotLoadThisOrder, onRetry: _reload);
-          }
-          return _Body(
-            order: snap.data!,
-            onAssign: _assign,
-            showBack: !widget.embedded,
-          );
-        },
+    future: _future,
+    builder: (context, snap) {
+      if (snap.connectionState != ConnectionState.done) {
+        return const LoadingView();
+      }
+      if (snap.hasError || !snap.hasData) {
+        return ErrorView(
+          message: context.l10n.couldNotLoadThisOrder,
+          onRetry: _reload,
+        );
+      }
+      return _Body(
+        order: snap.data!,
+        // Reassigning a delivery is `orders.assign`; without it the row
+        // still shows who is carrying the order, just no way to change it.
+        onAssign: context.watch<AuthCubit>().state.can('orders.assign')
+            ? _assign
+            : null,
+        showBack: !widget.embedded,
       );
+    },
+  );
 
   Widget _actionBar() => FutureBuilder<AppOrder>(
-        future: _future,
-        builder: (context, snap) {
-          if (!snap.hasData) return const SizedBox.shrink();
-          return _ActionBar(
-            order: snap.data!,
-            busy: _busy,
-            onCancel: _cancel,
-            onRefund: () => _refund(snap.data!),
-          );
-        },
+    future: _future,
+    builder: (context, snap) {
+      if (!snap.hasData) return const SizedBox.shrink();
+      final auth = context.watch<AuthCubit>().state;
+      return _ActionBar(
+        order: snap.data!,
+        busy: _busy,
+        canCancel: auth.can('orders.cancel'),
+        canRefund: auth.can('payments.refund'),
+        onCancel: _cancel,
+        onRefund: () => _refund(snap.data!),
       );
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +221,9 @@ class _Body extends StatelessWidget {
   });
 
   final AppOrder order;
-  final VoidCallback onAssign;
+
+  /// Null when this member of staff may not reassign the delivery.
+  final VoidCallback? onAssign;
   final bool showBack;
 
   /// A cancelled/rejected card order whose money is still held: the customer
@@ -256,7 +274,9 @@ class _Body extends StatelessWidget {
                   '${context.l10n.placed} ${DateFormat('h:mm a').format(order.createdAt)} · '
                   '${order.isCod ? context.l10n.cod : context.l10n.card}',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.textMuted),
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -279,26 +299,33 @@ class _Body extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.warning_amber_rounded,
-                      color: AppColors.primaryLight, size: 20),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.primaryLight,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${context.l10n.stuckIn} ${order.status.localizedLabel(context)} · $mins${context.l10n.mShort}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14)),
+                      Text(
+                        '${context.l10n.stuckIn} ${order.status.localizedLabel(context)} · $mins${context.l10n.mShort}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
                       Text(
                         order.driverId == null
                             ? context.l10n.pastSlaNoDriverAssigned
                             : context.l10n.pastSla,
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 11.5),
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 11.5,
+                        ),
                       ),
                     ],
                   ),
@@ -313,40 +340,46 @@ class _Body extends StatelessWidget {
             decoration: BoxDecoration(
               color: _refunded ? AppColors.successFill : AppColors.amberFill,
               border: Border.all(
-                  color: _refunded
-                      ? const Color(0xFFCDEBD9)
-                      : const Color(0xFFF6E2C0)),
+                color: _refunded
+                    ? const Color(0xFFCDEBD9)
+                    : const Color(0xFFF6E2C0),
+              ),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               children: [
                 Icon(
-                    _refunded
-                        ? Icons.check_circle_outline
-                        : Icons.account_balance_wallet_outlined,
-                    size: 19,
-                    color: _refunded
-                        ? AppColors.successInk
-                        : AppColors.amberInk),
+                  _refunded
+                      ? Icons.check_circle_outline
+                      : Icons.account_balance_wallet_outlined,
+                  size: 19,
+                  color: _refunded ? AppColors.successInk : AppColors.amberInk,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                          _refunded
-                              ? context.l10n.refundedToWallet
-                              : '${context.l10n.refundRequired} · ${formatMoney(order.total)}',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: _refunded
-                                  ? AppColors.successInk
-                                  : AppColors.amberInk)),
+                        _refunded
+                            ? context.l10n.refundedToWallet
+                            : '${context.l10n.refundRequired} · ${formatMoney(order.total)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: _refunded
+                              ? AppColors.successInk
+                              : AppColors.amberInk,
+                        ),
+                      ),
                       if (!_refunded)
-                        Text(context.l10n.refundDueDesc,
-                            style: const TextStyle(
-                                fontSize: 11.5, color: AppColors.textMuted)),
+                        Text(
+                          context.l10n.refundDueDesc,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -360,13 +393,19 @@ class _Body extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _party(context.l10n.vendors.toUpperCase(), order.vendorName ?? context.l10n.store,
-                  order.addressSummary.isEmpty ? '—' : context.l10n.store),
+              child: _party(
+                context.l10n.vendors.toUpperCase(),
+                order.vendorName ?? context.l10n.store,
+                order.addressSummary.isEmpty ? '—' : context.l10n.store,
+              ),
             ),
             const SizedBox(width: 9),
             Expanded(
-              child: _party(context.l10n.customer.toUpperCase(), order.customerName ?? context.l10n.customer,
-                  order.addressSummary),
+              child: _party(
+                context.l10n.customer.toUpperCase(),
+                order.customerName ?? context.l10n.customer,
+                order.addressSummary,
+              ),
             ),
           ],
         ),
@@ -383,13 +422,20 @@ class _Body extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline,
-                    size: 18, color: Color(0xFFC0392B)),
+                const Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: Color(0xFFC0392B),
+                ),
                 const SizedBox(width: 9),
                 Expanded(
-                  child: Text('${context.l10n.reason}: ${order.rejectionReason}',
-                      style: const TextStyle(
-                          fontSize: 12.5, color: Color(0xFFC0392B))),
+                  child: Text(
+                    '${context.l10n.reason}: ${order.rejectionReason}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFFC0392B),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -400,36 +446,43 @@ class _Body extends StatelessWidget {
   }
 
   Widget _party(String label, String name, String sub) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(14),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textFaint,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textFaint)),
-            const SizedBox(height: 2),
-            Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: AppColors.ink)),
-            Text(sub,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textMuted)),
-          ],
+        const SizedBox(height: 2),
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: AppColors.ink,
+          ),
         ),
-      );
+        Text(
+          sub,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Timeline extends StatelessWidget {
@@ -439,7 +492,8 @@ class _Timeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final voided = order.status == OrderStatus.cancelled ||
+    final voided =
+        order.status == OrderStatus.cancelled ||
         order.status == OrderStatus.rejected;
     final currentIndex = _flow.indexOf(order.status);
     return Container(
@@ -457,7 +511,8 @@ class _Timeline extends StatelessWidget {
               label: _flow[i].localizedLabel(context),
               done: !voided && currentIndex >= 0 && i < currentIndex,
               current: !voided && i == currentIndex,
-              stalled: !voided &&
+              stalled:
+                  !voided &&
                   i == currentIndex &&
                   order.status != OrderStatus.delivered,
               isLast: i == _flow.length - 1,
@@ -489,10 +544,10 @@ class _Timeline extends StatelessWidget {
     final Color dot = voided
         ? const Color(0xFFC0392B)
         : done
-            ? AppColors.success
-            : current
-                ? AppColors.primaryDark
-                : const Color(0xFFE4DDD4);
+        ? AppColors.success
+        : current
+        ? AppColors.primaryDark
+        : const Color(0xFFE4DDD4);
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -509,10 +564,7 @@ class _Timeline extends StatelessWidget {
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(
-                    width: 2,
-                    color: const Color(0xFFE4DDD4),
-                  ),
+                  child: Container(width: 2, color: const Color(0xFFE4DDD4)),
                 ),
             ],
           ),
@@ -525,11 +577,12 @@ class _Timeline extends StatelessWidget {
                 Text(
                   stalled ? '$label${context.l10n.stalledSuffix}' : label,
                   style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: (current || done)
-                          ? (stalled ? AppColors.primaryDark : AppColors.ink)
-                          : AppColors.textFaint),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: (current || done)
+                        ? (stalled ? AppColors.primaryDark : AppColors.ink)
+                        : AppColors.textFaint,
+                  ),
                 ),
               ],
             ),
@@ -544,43 +597,51 @@ class _DriverRow extends StatelessWidget {
   const _DriverRow({required this.order, required this.onAssign});
 
   final AppOrder order;
-  final VoidCallback onAssign;
+  final VoidCallback? onAssign;
 
   @override
   Widget build(BuildContext context) {
     final assigned = order.driverId != null;
-    final canAssign = !order.status.isTerminal && !assigned;
+    // Null onAssign means this member of staff holds no `orders.assign`, so
+    // the row still says who is carrying the order and offers no button.
+    final canAssign = onAssign != null && !order.status.isTerminal && !assigned;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
         color: assigned ? AppColors.successFill : AppColors.amberFill,
         border: Border.all(
-            color: assigned
-                ? const Color(0xFFCDEBD9)
-                : const Color(0xFFF6E2C0)),
+          color: assigned ? const Color(0xFFCDEBD9) : const Color(0xFFF6E2C0),
+        ),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Icon(assigned ? Icons.delivery_dining : Icons.person_off_outlined,
-              size: 19,
-              color: assigned ? AppColors.successInk : AppColors.amberInk),
+          Icon(
+            assigned ? Icons.delivery_dining : Icons.person_off_outlined,
+            size: 19,
+            color: assigned ? AppColors.successInk : AppColors.amberInk,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(context.l10n.driver,
-                    style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color:
-                            assigned ? AppColors.successInk : AppColors.amberInk)),
-                Text(assigned ? context.l10n.assigned : context.l10n.notAssigned,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.ink)),
+                Text(
+                  context.l10n.driver,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: assigned ? AppColors.successInk : AppColors.amberInk,
+                  ),
+                ),
+                Text(
+                  assigned ? context.l10n.assigned : context.l10n.notAssigned,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppColors.ink,
+                  ),
+                ),
               ],
             ),
           ),
@@ -588,17 +649,22 @@ class _DriverRow extends StatelessWidget {
             GestureDetector(
               onTap: onAssign,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.ink,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(context.l10n.assign,
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11.5)),
+                child: Text(
+                  context.l10n.assign,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                  ),
+                ),
               ),
             ),
         ],
@@ -611,12 +677,19 @@ class _ActionBar extends StatelessWidget {
   const _ActionBar({
     required this.order,
     required this.busy,
+    required this.canCancel,
+    required this.canRefund,
     required this.onCancel,
     required this.onRefund,
   });
 
   final AppOrder order;
   final bool busy;
+
+  /// Held by this member of staff. Money and order state are different
+  /// responsibilities, so a role can have one without the other.
+  final bool canCancel;
+  final bool canRefund;
   final VoidCallback onCancel;
   final VoidCallback onRefund;
 
@@ -635,25 +708,28 @@ class _ActionBar extends StatelessWidget {
         minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
         child: FilledButton(
           style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryDark,
-              minimumSize: const Size.fromHeight(52)),
+            backgroundColor: AppColors.primaryDark,
+            minimumSize: const Size.fromHeight(52),
+          ),
           onPressed: null,
           child: const ButtonSpinner(),
         ),
       );
     }
     if (order.status.isTerminal) {
-      if (_refundDue) {
+      if (_refundDue && canRefund) {
         return SafeArea(
           minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
-                backgroundColor: AppColors.ink,
-                minimumSize: const Size.fromHeight(52)),
+              backgroundColor: AppColors.ink,
+              minimumSize: const Size.fromHeight(52),
+            ),
             onPressed: onRefund,
             icon: const Icon(Icons.account_balance_wallet_outlined, size: 19),
             label: Text(
-                '${context.l10n.refundToWallet} · ${formatMoney(order.total)}'),
+              '${context.l10n.refundToWallet} · ${formatMoney(order.total)}',
+            ),
           ),
         );
       }
@@ -667,9 +743,13 @@ class _ActionBar extends StatelessWidget {
             border: Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(15),
           ),
-          child: Text('${context.l10n.order} ${order.status.localizedLabel(context).toLowerCase()}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+          child: Text(
+            '${context.l10n.order} ${order.status.localizedLabel(context).toLowerCase()}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+            ),
+          ),
         ),
       );
     }
@@ -677,8 +757,9 @@ class _ActionBar extends StatelessWidget {
       minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
       child: FilledButton.icon(
         style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primaryDark,
-            minimumSize: const Size.fromHeight(52)),
+          backgroundColor: AppColors.primaryDark,
+          minimumSize: const Size.fromHeight(52),
+        ),
         onPressed: onCancel,
         icon: const Icon(Icons.close_rounded, size: 19),
         label: Text(context.l10n.cancelRefundOrder),
@@ -713,41 +794,52 @@ class _DriverPickerState extends State<_DriverPicker> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.l10n.assignADriver,
-              style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            context.l10n.assignADriver,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 14),
           FutureBuilder<List<DriverOption>>(
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
                 return const Padding(
-                    padding: EdgeInsets.all(24), child: LoadingView());
+                  padding: EdgeInsets.all(24),
+                  child: LoadingView(),
+                );
               }
               final drivers = snap.data ?? const [];
               if (drivers.isEmpty) {
                 return Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Text(context.l10n.noDriversAreOnlineRightNow,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textMuted)),
+                  child: Text(
+                    context.l10n.noDriversAreOnlineRightNow,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textMuted),
+                  ),
                 );
               }
               return Column(
                 children: drivers
-                    .map((d) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(
-                            backgroundColor: AppColors.warmFill,
-                            child: Icon(Icons.delivery_dining,
-                                color: AppColors.primary),
+                    .map(
+                      (d) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const CircleAvatar(
+                          backgroundColor: AppColors.warmFill,
+                          child: Icon(
+                            Icons.delivery_dining,
+                            color: AppColors.primary,
                           ),
-                          title: Text(d.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700)),
-                          subtitle: d.phone != null ? Text(d.phone!) : null,
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.pop(context, d),
-                        ))
+                        ),
+                        title: Text(
+                          d.name,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: d.phone != null ? Text(d.phone!) : null,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.pop(context, d),
+                      ),
+                    )
                     .toList(),
               );
             },

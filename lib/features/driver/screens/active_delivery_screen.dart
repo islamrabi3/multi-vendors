@@ -24,8 +24,8 @@ class ActiveDeliveryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ActiveDeliveryCubit(
-          OrderRepository(), DriverRepository(), supabase),
+      create: (_) =>
+          ActiveDeliveryCubit(OrderRepository(), DriverRepository(), supabase),
       child: const _ActiveDeliveryView(),
     );
   }
@@ -39,8 +39,7 @@ class _ActiveDeliveryView extends StatelessWidget {
     return BlocConsumer<ActiveDeliveryCubit, ActiveDeliveryState>(
       listenWhen: (previous, current) =>
           previous.error != current.error && current.error != null,
-      listener: (context, state) =>
-          showFailure(context, state.error!),
+      listener: (context, state) => showFailure(context, state.error!),
       builder: (context, state) {
         if (state.loading) return const LoadingView();
         final order = state.order;
@@ -67,7 +66,9 @@ class _ActiveDeliveryView extends StatelessWidget {
                               color: AppColors.warmFill,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.primary.withValues(alpha: 0.15),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.15,
+                                ),
                                 width: 4,
                               ),
                             ),
@@ -95,15 +96,21 @@ class _ActiveDeliveryView extends StatelessWidget {
                           ),
                           const SizedBox(height: 28),
                           ElevatedButton.icon(
-                            onPressed: () => context.read<ActiveDeliveryCubit>().refresh(),
+                            onPressed: () =>
+                                context.read<ActiveDeliveryCubit>().refresh(),
                             icon: const Icon(Icons.refresh_rounded, size: 20),
                             label: Text(context.l10n.refreshStatus),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(AppRadii.lg),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.lg,
+                                ),
                               ),
                               elevation: 0,
                             ),
@@ -119,9 +126,10 @@ class _ActiveDeliveryView extends StatelessWidget {
         }
         final destination =
             order.deliveryLat != null && order.deliveryLng != null
-                ? LatLng(order.deliveryLat!, order.deliveryLng!)
-                : null;
-        final center = state.myLocation ??
+            ? LatLng(order.deliveryLat!, order.deliveryLng!)
+            : null;
+        final center =
+            state.myLocation ??
             state.vendorLocation ??
             destination ??
             const LatLng(30.0444, 31.2357);
@@ -129,7 +137,10 @@ class _ActiveDeliveryView extends StatelessWidget {
         String? distanceLabel;
         if (destination != null && state.myLocation != null) {
           final km = const Distance().as(
-              LengthUnit.Kilometer, state.myLocation!, destination);
+            LengthUnit.Kilometer,
+            state.myLocation!,
+            destination,
+          );
           distanceLabel = '${km.toStringAsFixed(1)} ${context.l10n.km}';
         }
 
@@ -143,7 +154,7 @@ class _ActiveDeliveryView extends StatelessWidget {
                 myLocation: state.myLocation,
               ),
             ),
-            
+
             // Premium Floating Navigation Guidance Bar at top
             Positioned(
               top: 16,
@@ -151,7 +162,10 @@ class _ActiveDeliveryView extends StatelessWidget {
               right: 16,
               child: SafeArea(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.ink,
                     borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -172,7 +186,11 @@ class _ActiveDeliveryView extends StatelessWidget {
                           color: AppColors.success,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
+                        child: const Icon(
+                          Icons.navigation_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -205,7 +223,10 @@ class _ActiveDeliveryView extends StatelessWidget {
                       if (distanceLabel != null) ...[
                         const SizedBox(width: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(AppRadii.sm),
@@ -225,7 +246,7 @@ class _ActiveDeliveryView extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Bottom Sheet
             Positioned(
               left: 0,
@@ -271,8 +292,11 @@ class _ActiveDeliveryView extends StatelessWidget {
                   color: AppColors.successFill,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.camera_alt_rounded,
-                    color: AppColors.success, size: 28),
+                child: const Icon(
+                  Icons.camera_alt_rounded,
+                  color: AppColors.success,
+                  size: 28,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -281,9 +305,9 @@ class _ActiveDeliveryView extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'You can optionally attach a photo as proof of delivery or skip directly.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+              Text(
+                context.l10n.deliveryProofOptionalHint,
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -291,22 +315,49 @@ class _ActiveDeliveryView extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
+                  // Every step here can fail — the camera can be refused, the
+                  // upload can be rejected — and this was an async callback
+                  // with no catch, so any of them took the app down mid
+                  // delivery. The photo is optional, so a failure to attach
+                  // one must never block completing the drop.
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final l10n = context.l10n;
                     Navigator.pop(sheetCtx);
-                    final picker = ImagePicker();
-                    final file = await picker.pickImage(
-                        source: ImageSource.camera, maxWidth: 1024);
-                    if (file != null) {
-                      final bytes = await file.readAsBytes();
-                      final url = await OrderRepository()
-                          .uploadDeliveryProofImage(order.id, bytes, file.name);
-                      cubit.markDelivered(proofUrl: url);
-                    } else {
+                    XFile? file;
+                    try {
+                      file = await ImagePicker().pickImage(
+                        source: ImageSource.camera,
+                        maxWidth: 1024,
+                        imageQuality: 85,
+                      );
+                    } catch (error) {
+                      // Could not even open the camera: leave the order alone
+                      // so the driver can retry or skip deliberately.
+                      showFailureOn(messenger, l10n, error);
+                      return;
+                    }
+                    if (file == null) {
                       cubit.markDelivered();
+                      return;
+                    }
+                    try {
+                      final url = await OrderRepository()
+                          .uploadDeliveryProofImage(
+                            order.id,
+                            await file.readAsBytes(),
+                            file.name,
+                          );
+                      cubit.markDelivered(proofUrl: url);
+                    } catch (_) {
+                      cubit.markDelivered();
+                      showSnackOn(messenger, l10n.proofPhotoFailed);
                     }
                   },
-                  icon: const Icon(Icons.photo_camera_rounded,
-                      color: AppColors.primary),
+                  icon: const Icon(
+                    Icons.photo_camera_rounded,
+                    color: AppColors.primary,
+                  ),
                   label: Text(
                     context.l10n.addPhotoProof,
                     style: const TextStyle(fontWeight: FontWeight.w700),
@@ -368,62 +419,72 @@ class _DeliveryMap extends StatelessWidget {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.multi_vendor',
         ),
-        MarkerLayer(markers: [
-          if (vendorLocation != null)
-            Marker(
-              point: vendorLocation!,
-              width: 46,
-              height: 46,
-              child: _mapPin(Icons.storefront_rounded, AppColors.primary),
-            ),
-          if (destination != null)
-            Marker(
-              point: destination!,
-              width: 46,
-              height: 46,
-              child: _mapPin(Icons.place_rounded, AppColors.success),
-            ),
-          if (myLocation != null)
-            Marker(
-              point: myLocation!,
-              width: 46,
-              height: 46,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.1), width: 3),
-                  boxShadow: [
-                    BoxShadow(
+        MarkerLayer(
+          markers: [
+            if (vendorLocation != null)
+              Marker(
+                point: vendorLocation!,
+                width: 46,
+                height: 46,
+                child: _mapPin(Icons.storefront_rounded, AppColors.primary),
+              ),
+            if (destination != null)
+              Marker(
+                point: destination!,
+                width: 46,
+                height: 46,
+                child: _mapPin(Icons.place_rounded, AppColors.success),
+              ),
+            if (myLocation != null)
+              Marker(
+                point: myLocation!,
+                width: 46,
+                height: 46,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      width: 3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
                         color: Colors.black.withValues(alpha: 0.15),
                         blurRadius: 14,
-                        offset: const Offset(0, 6)),
-                  ],
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.delivery_dining_rounded,
+                    size: 24,
+                    color: AppColors.primary,
+                  ),
                 ),
-                child: const Icon(Icons.delivery_dining_rounded,
-                    size: 24, color: AppColors.primary),
               ),
-            ),
-        ]),
+          ],
+        ),
       ],
     );
   }
 
   Widget _mapPin(IconData icon, Color color) => Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2.5),
-          boxShadow: [
-            BoxShadow(
-                color: color.withValues(alpha: 0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 5)),
-          ],
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: color,
+      shape: BoxShape.circle,
+      border: Border.all(color: Colors.white, width: 2.5),
+      boxShadow: [
+        BoxShadow(
+          color: color.withValues(alpha: 0.35),
+          blurRadius: 12,
+          offset: const Offset(0, 5),
         ),
-        child: Icon(icon, size: 20, color: Colors.white),
-      );
+      ],
+    ),
+    child: Icon(icon, size: 20, color: Colors.white),
+  );
 }
 
 class _Sheet extends StatelessWidget {
@@ -446,6 +507,24 @@ class _Sheet extends StatelessWidget {
   Future<void> _call(BuildContext context) =>
       callPhone(context, order.customerPhone);
 
+  /// The store's own line, for the problems only the restaurant can answer:
+  /// a missing item, a wrong bag, a shutter that is still down.
+  ///
+  /// Fetched on tap rather than with the order — most deliveries never need
+  /// it, and the number is not on the order row.
+  Future<void> _callVendor(BuildContext context) async {
+    final contact = await showBlockingProgress(
+      context,
+      () => OrderRepository().fetchVendorContact(order.id),
+    );
+    if (!context.mounted) return;
+    if (contact == null) {
+      showSnack(context, context.l10n.noStorePhone, error: true);
+      return;
+    }
+    await callPhone(context, contact.phone);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -454,9 +533,10 @@ class _Sheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
         boxShadow: [
           BoxShadow(
-              color: Color(0x1A281406),
-              blurRadius: 30,
-              offset: Offset(0, -8)),
+            color: Color(0x1A281406),
+            blurRadius: 30,
+            offset: Offset(0, -8),
+          ),
         ],
       ),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
@@ -497,29 +577,44 @@ class _Sheet extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       'Order #${order.orderNumber}',
-                      style: AppType.mono(14.5, color: AppColors.ink, weight: FontWeight.w700),
+                      style: AppType.mono(
+                        14.5,
+                        color: AppColors.ink,
+                        weight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: order.isCod ? AppColors.amberFill : AppColors.successFill,
+                    color: order.isCod
+                        ? AppColors.amberFill
+                        : AppColors.successFill,
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        order.isCod ? Icons.payments_rounded : Icons.credit_card_rounded,
+                        order.isCod
+                            ? Icons.payments_rounded
+                            : Icons.credit_card_rounded,
                         size: 13,
-                        color: order.isCod ? AppColors.amberInk : AppColors.successInk,
+                        color: order.isCod
+                            ? AppColors.amberInk
+                            : AppColors.successInk,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         order.isCod ? 'Collect Cash' : 'Paid Online',
                         style: TextStyle(
-                          color: order.isCod ? AppColors.amberInk : AppColors.successInk,
+                          color: order.isCod
+                              ? AppColors.amberInk
+                              : AppColors.successInk,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
                         ),
@@ -580,8 +675,12 @@ class _Sheet extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    order.isCod ? Icons.info_outline_rounded : Icons.check_circle_outline_rounded,
-                    color: order.isCod ? AppColors.amberInk : AppColors.successInk,
+                    order.isCod
+                        ? Icons.info_outline_rounded
+                        : Icons.check_circle_outline_rounded,
+                    color: order.isCod
+                        ? AppColors.amberInk
+                        : AppColors.successInk,
                     size: 18,
                   ),
                   const SizedBox(width: 8),
@@ -591,11 +690,12 @@ class _Sheet extends StatelessWidget {
                           ? '${context.l10n.collect} ${formatMoney(order.total)} ${context.l10n.inCash}'
                           : context.l10n.paidOnlineNothingToCollect,
                       style: TextStyle(
-                          color: order.isCod
-                              ? AppColors.amberInk
-                              : AppColors.successInk,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13),
+                        color: order.isCod
+                            ? AppColors.amberInk
+                            : AppColors.successInk,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -617,7 +717,11 @@ class _Sheet extends StatelessWidget {
                     ),
                     child: IconButton(
                       onPressed: () => _call(context),
-                      icon: const Icon(Icons.phone_in_talk_rounded, color: AppColors.primary, size: 20),
+                      icon: const Icon(
+                        Icons.phone_in_talk_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                       tooltip: context.l10n.callCustomer,
                     ),
                   ),
@@ -632,12 +736,35 @@ class _Sheet extends StatelessWidget {
                     border: Border.all(color: AppColors.border),
                   ),
                   child: IconButton(
+                    onPressed: () => _callVendor(context),
+                    icon: const Icon(
+                      Icons.storefront_rounded,
+                      color: AppColors.ink,
+                      size: 20,
+                    ),
+                    tooltip: context.l10n.callStore,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: IconButton(
                     onPressed: () => showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
                       builder: (_) => OrderChatSheet(orderId: order.id),
                     ),
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.orange, size: 20),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
                     tooltip: context.l10n.liveChat,
                   ),
                 ),
@@ -653,12 +780,21 @@ class _Sheet extends StatelessWidget {
                   child: IconButton(
                     onPressed: () async {
                       if (destination != null) {
-                        final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=${destination!.latitude},${destination!.longitude}');
-                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                        final url = Uri.parse(
+                          'https://www.google.com/maps/search/?api=1&query=${destination!.latitude},${destination!.longitude}',
+                        );
+                        await launchUrl(
+                          url,
+                          mode: LaunchMode.externalApplication,
+                        );
                       }
                     },
-                    icon: const Icon(Icons.navigation_rounded, color: Colors.blue, size: 20),
-                    tooltip: 'Open in Maps',
+                    icon: const Icon(
+                      Icons.navigation_rounded,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                    tooltip: context.l10n.openInMaps,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -717,10 +853,7 @@ class _Sheet extends StatelessWidget {
             Container(
               width: 32,
               height: 32,
-              decoration: BoxDecoration(
-                color: iconBg,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
               child: Icon(icon, color: iconColor, size: 16),
             ),
             if (showConnector)
@@ -728,9 +861,7 @@ class _Sheet extends StatelessWidget {
                 width: 2,
                 height: 30,
                 margin: const EdgeInsets.symmetric(vertical: 4),
-                decoration: const BoxDecoration(
-                  color: AppColors.border,
-                ),
+                decoration: const BoxDecoration(color: AppColors.border),
               ),
           ],
         ),

@@ -5,16 +5,26 @@ import '../../../app/tokens.dart';
 import '../../../core/models/cart_item.dart';
 import '../../../core/models/product.dart';
 import '../../../core/models/vendor.dart';
+import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/utils/money.dart';
-import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../cart/cart_cubit.dart';
+import 'add_to_cart.dart';
+import 'product_suggestion_card.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 Future<void> showProductSheet(
-    BuildContext context, Vendor vendor, Product product) {
+  BuildContext context,
+  Vendor vendor,
+  Product product,
+) async {
   final cartCubit = context.read<CartCubit>();
-  return showModalBottomSheet(
+  // A related item pops this sheet and hands its product back, rather than
+  // opening the next sheet itself. It cannot open it: by the time it would,
+  // its own context has been unmounted by the pop, so the call reaches a dead
+  // element and nothing happens. Reopening from here uses the caller's
+  // context — the screen, which is still there.
+  final next = await showModalBottomSheet<Product>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -23,6 +33,9 @@ Future<void> showProductSheet(
       child: _ProductSheet(vendor: vendor, product: product),
     ),
   );
+  if (next != null && context.mounted) {
+    await showProductSheet(context, vendor, next);
+  }
 }
 
 class _ProductSheet extends StatefulWidget {
@@ -48,17 +61,18 @@ class _ProductSheetState extends State<_ProductSheet> {
     super.dispose();
   }
 
-  List<ProductOption> get _selectedOptions =>
-      [for (final set in _selections.values) ...set];
+  List<ProductOption> get _selectedOptions => [
+    for (final set in _selections.values) ...set,
+  ];
 
   double get _unitPrice =>
       product.price +
       _selectedOptions.fold<double>(0, (sum, o) => sum + o.priceDelta);
 
   bool get _selectionValid => product.optionGroups.every((group) {
-        final count = _selections[group.id]?.length ?? 0;
-        return count >= group.minSelect && count <= group.maxSelect;
-      });
+    final count = _selections[group.id]?.length ?? 0;
+    return count >= group.minSelect && count <= group.maxSelect;
+  });
 
   void _toggleOption(ProductOptionGroup group, ProductOption option) {
     setState(() {
@@ -76,32 +90,20 @@ class _ProductSheetState extends State<_ProductSheet> {
   }
 
   Future<void> _addToCart() async {
-    final cart = context.read<CartCubit>();
     final item = CartItem(
       product: product,
       quantity: _quantity,
       selectedOptions: _selectedOptions,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
     );
-    if (cart.conflictsWithCart(widget.vendor)) {
-      // Clearing a cart is destructive, but the user asked for the new item —
-      // `danger` tone, and "Keep cart" is the safe way out.
-      final replace = await showConfirmDialog(
-        context: context,
-        title: context.l10n.startANewCart,
-        message: 'Your cart has items from ${cart.state.vendor!.name}. '
-            'Adding this item will clear it.',
-        confirmLabel: context.l10n.startNewCart,
-        cancelLabel: context.l10n.keepCart,
-        tone: AppDialogTone.danger,
-        icon: Icons.remove_shopping_cart_rounded,
-      );
-      if (!replace || !mounted) return;
-      cart.startNewCart(widget.vendor, item);
-      Navigator.pop(context);
-      return;
-    }
-    cart.addItem(widget.vendor, item);
+    // The snack is raised after this sheet closes, not from under it.
+    final added = await addCartItem(
+      context,
+      widget.vendor,
+      item,
+      showConfirmation: false,
+    );
+    if (!added || !mounted) return;
     Navigator.pop(context);
     showSnack(context, context.l10n.addedToCart);
   }
@@ -121,21 +123,27 @@ class _ProductSheetState extends State<_ProductSheet> {
               children: [
                 if (product.imageUrl != null)
                   AppNetworkImage(
-                      url: product.imageUrl,
-                      height: 180,
-                      width: double.infinity,
-                      borderRadius: BorderRadius.circular(16)),
+                    url: product.imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 const SizedBox(height: 12),
                 Text(
-                    product.displayName(
-                        Localizations.localeOf(context).languageCode),
-                    style: Theme.of(context).textTheme.displaySmall),
+                  product.displayName(
+                    Localizations.localeOf(context).languageCode,
+                  ),
+                  style: Theme.of(context).textTheme.displaySmall,
+                ),
                 if (product.displayDescription(
-                        Localizations.localeOf(context).languageCode)
+                      Localizations.localeOf(context).languageCode,
+                    )
                     case final description?) ...[
                   const SizedBox(height: 6),
-                  Text(description,
-                      style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 ],
                 const SizedBox(height: 12),
                 PriceText(formatMoney(product.price), size: 18),
@@ -143,27 +151,38 @@ class _ProductSheetState extends State<_ProductSheet> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Text(group.name,
-                          style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        group.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(width: 8),
                       if (group.isRequired)
                         SoftBadge(
-                            label: context.l10n.required,
-                            fill: AppColors.warmFill,
-                            ink: AppColors.primaryDark)
+                          label: context.l10n.required,
+                          fill: AppColors.warmFill,
+                          ink: AppColors.primaryDark,
+                        )
                       else
-                        Text('Optional · up to ${group.maxSelect}',
-                            style: const TextStyle(
-                                color: AppColors.textFaint, fontSize: 12)),
+                        Text(
+                          context.l10n.optionalUpTo(group.maxSelect),
+                          style: const TextStyle(
+                            color: AppColors.textFaint,
+                            fontSize: 12,
+                          ),
+                        ),
                     ],
                   ),
                   Column(
                     children: [
-                      for (final option in group.options.where((o) => o.isAvailable))
+                      for (final option in group.options.where(
+                        (o) => o.isAvailable,
+                      ))
                         _OptionTile(
                           name: option.name,
                           priceDelta: option.priceDelta,
-                          selected: (_selections[group.id] ?? {}).contains(option),
+                          selected: (_selections[group.id] ?? {}).contains(
+                            option,
+                          ),
                           isRadio: group.isSingleChoice,
                           onTap: () => _toggleOption(group, option),
                         ),
@@ -174,8 +193,14 @@ class _ProductSheetState extends State<_ProductSheet> {
                 TextField(
                   controller: _notes,
                   decoration: InputDecoration(
-                      labelText: context.l10n.notesEgNoOnions),
+                    labelText: context.l10n.notesEgNoOnions,
+                  ),
                 ),
+                // Under the note field rather than above the price: the
+                // customer has decided on this item by the time they get here,
+                // so a suggestion reads as "anything else" instead of
+                // competing with what they came for.
+                _RelatedProducts(vendor: widget.vendor, product: product),
               ],
             ),
           ),
@@ -192,14 +217,26 @@ class _ProductSheetState extends State<_ProductSheet> {
                   Expanded(
                     child: FilledButton(
                       onPressed: _selectionValid ? _addToCart : null,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(context.l10n.addToCart),
-                          const SizedBox(width: 8),
-                          PriceText(formatMoney(_unitPrice * _quantity),
-                              size: 15, color: Colors.white),
-                        ],
+                      // Scaled rather than ellipsised: neither half of this
+                      // label can be cut. A truncated price is the number the
+                      // customer is about to be charged, and the Arabic label
+                      // ("أضف إلى السلة") loses a whole word before it loses a
+                      // letter. It runs out of room on narrow phones once the
+                      // quantity pushes the total into four digits.
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(context.l10n.addToCart),
+                            const SizedBox(width: 8),
+                            PriceText(
+                              formatMoney(_unitPrice * _quantity),
+                              size: 15,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -247,9 +284,7 @@ class _OptionTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              priceDelta != 0
-                  ? '$name · +${formatMoney(priceDelta)}'
-                  : name,
+              priceDelta != 0 ? '$name · +${formatMoney(priceDelta)}' : name,
               style: TextStyle(
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                 fontSize: 14,
@@ -270,16 +305,78 @@ class _OptionTile extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: selected
-                  ? const Icon(
-                      Icons.check,
-                      size: 13,
-                      color: Colors.white,
-                    )
+                  ? const Icon(Icons.check, size: 13, color: Colors.white)
                   : null,
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Goes well with" — what people who ordered this also ordered.
+///
+/// Loaded per sheet rather than with the menu: most customers never open an
+/// item sheet at all, and the ranking needs the whole platform's order history
+/// behind it, which is not something to ship down with a store page.
+class _RelatedProducts extends StatefulWidget {
+  const _RelatedProducts({required this.vendor, required this.product});
+
+  final Vendor vendor;
+  final Product product;
+
+  @override
+  State<_RelatedProducts> createState() => _RelatedProductsState();
+}
+
+class _RelatedProductsState extends State<_RelatedProducts> {
+  late final Future<List<Product>> _future = CatalogRepository()
+      .relatedProducts(widget.product.id);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Product>>(
+      future: _future,
+      builder: (context, snap) {
+        // A suggestion strip is a bonus, never the point of the screen: it
+        // stays invisible while it loads and if it fails.
+        final items = snap.data ?? const <Product>[];
+        if (items.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 22),
+            Text(
+              context.l10n.goesWellWith,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 150,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, i) {
+                  final item = items[i];
+                  // Both taps replace this sheet instead of stacking a second
+                  // one on top: two half-open item sheets is a trap the back
+                  // button has to be pressed twice to escape. The caller
+                  // reopens it — see showProductSheet.
+                  return ProductSuggestionCard(
+                    vendor: widget.vendor,
+                    product: item,
+                    onTap: () => Navigator.pop(context, item),
+                    onConfigure: () => Navigator.pop(context, item),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

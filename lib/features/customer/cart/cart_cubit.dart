@@ -54,18 +54,16 @@ class CartState extends Equatable {
     List<String>? unavailable,
     List<String>? repriced,
     bool? checking,
-  }) =>
-      CartState(
-        vendor: vendor ?? this.vendor,
-        items: items ?? this.items,
-        unavailable: unavailable ?? this.unavailable,
-        repriced: repriced ?? this.repriced,
-        checking: checking ?? this.checking,
-      );
+  }) => CartState(
+    vendor: vendor ?? this.vendor,
+    items: items ?? this.items,
+    unavailable: unavailable ?? this.unavailable,
+    repriced: repriced ?? this.repriced,
+    checking: checking ?? this.checking,
+  );
 
   @override
-  List<Object?> get props =>
-      [vendor, items, unavailable, repriced, checking];
+  List<Object?> get props => [vendor, items, unavailable, repriced, checking];
 }
 
 /// Local-first cart. Mutations apply instantly; persistence to the server is
@@ -73,8 +71,8 @@ class CartState extends Equatable {
 /// optional to keep the cubit unit-testable without Supabase.
 class CartCubit extends Cubit<CartState> {
   CartCubit({CartRepository? repository})
-      : _repository = repository,
-        super(const CartState());
+    : _repository = repository,
+      super(const CartState());
 
   final CartRepository? _repository;
 
@@ -85,11 +83,13 @@ class CartCubit extends Cubit<CartState> {
 
   void addItem(Vendor vendor, CartItem item) {
     final items = List<CartItem>.of(state.items);
-    final index =
-        items.indexWhere((existing) => existing.signature == item.signature);
+    final index = items.indexWhere(
+      (existing) => existing.signature == item.signature,
+    );
     if (index >= 0) {
-      items[index] =
-          items[index].copyWith(quantity: items[index].quantity + item.quantity);
+      items[index] = items[index].copyWith(
+        quantity: items[index].quantity + item.quantity,
+      );
     } else {
       items.add(item);
     }
@@ -111,13 +111,29 @@ class CartCubit extends Cubit<CartState> {
     } else {
       items[index] = items[index].copyWith(quantity: quantity);
     }
-    emit(items.isEmpty
-        ? const CartState()
-        : CartState(vendor: state.vendor, items: items));
+    emit(
+      items.isEmpty
+          ? const CartState()
+          : CartState(vendor: state.vendor, items: items),
+    );
     _persist();
   }
 
   void removeItem(CartItem item) => updateQuantity(item, 0);
+
+  /// Swaps the whole cart for a prepared set of lines — a reorder.
+  ///
+  /// Replaces rather than merges: a reorder is "this again", and folding it
+  /// into whatever was already there would leave the customer unpicking a
+  /// cart they did not build.
+  void replaceWith(Vendor vendor, List<CartItem> items) {
+    emit(
+      items.isEmpty
+          ? const CartState()
+          : CartState(vendor: vendor, items: items),
+    );
+    _persist();
+  }
 
   void clear() {
     emit(const CartState());
@@ -130,7 +146,8 @@ class CartCubit extends Cubit<CartState> {
 
   /// Restores the cart from the server after sign-in / app restart.
   Future<void> restoreFromServer(
-      Future<Vendor> Function(String vendorId) fetchVendor) async {
+    Future<Vendor> Function(String vendorId) fetchVendor,
+  ) async {
     if (_repository == null) return;
     try {
       final saved = await _repository.loadCart();
@@ -154,7 +171,8 @@ class CartCubit extends Cubit<CartState> {
   /// and picked a payment method; a price rise was never mentioned at all,
   /// because the server recomputes totals from current prices.
   Future<void> revalidate(
-      Future<List<Product>> Function(List<String> ids) fetchProducts) async {
+    Future<List<Product>> Function(List<String> ids) fetchProducts,
+  ) async {
     if (state.items.isEmpty) return;
     emit(state.copyWith(checking: true));
     try {
@@ -183,12 +201,14 @@ class CartCubit extends Cubit<CartState> {
       }
 
       if (isClosed) return;
-      emit(state.copyWith(
-        items: items,
-        unavailable: unavailable,
-        repriced: repriced,
-        checking: false,
-      ));
+      emit(
+        state.copyWith(
+          items: items,
+          unavailable: unavailable,
+          repriced: repriced,
+          checking: false,
+        ),
+      );
     } catch (_) {
       // Offline or a failed read: leave the cart exactly as it was. Checkout
       // still refuses anything genuinely unavailable, so this is a courtesy
@@ -202,9 +222,15 @@ class CartCubit extends Cubit<CartState> {
     final keep = state.items
         .where((item) => !state.unavailable.contains(item.product.id))
         .toList();
-    emit(keep.isEmpty
-        ? const CartState()
-        : CartState(vendor: state.vendor, items: keep, repriced: state.repriced));
+    emit(
+      keep.isEmpty
+          ? const CartState()
+          : CartState(
+              vendor: state.vendor,
+              items: keep,
+              repriced: state.repriced,
+            ),
+    );
     _persist();
   }
 

@@ -23,17 +23,23 @@ import '../features/admin/screens/admin_order_detail_screen.dart';
 import '../features/admin/screens/admin_orders_screen.dart';
 import '../features/admin/screens/admin_promos_screen.dart';
 import '../features/admin/screens/admin_reports_screen.dart';
+import '../features/admin/screens/admin_roles_screen.dart';
 import '../features/admin/screens/admin_service_areas_screen.dart';
 import '../features/admin/screens/admin_vendor_detail_screen.dart';
 import '../features/admin/screens/admin_users_screen.dart';
 import '../features/admin/screens/admin_vendors_screen.dart';
 import '../features/support/my_support_screen.dart';
+import '../features/admin/screens/admin_ads_screen.dart';
+import '../features/admin/screens/admin_announcements_screen.dart';
 import '../features/admin/screens/admin_categories_screen.dart';
+import '../features/admin/screens/admin_price_adjustment_screen.dart';
 import '../features/auth/screens/vendor_onboarding_screen.dart';
 import '../features/customer/addresses/addresses_screen.dart';
+import '../features/customer/categories/category_screen.dart';
 import '../features/customer/cart/cart_screen.dart';
 import '../features/customer/checkout/checkout_screen.dart';
 import '../features/customer/checkout/paymob_checkout_screen.dart';
+import '../features/customer/search/search_screen.dart';
 import '../features/customer/home/customer_shell.dart';
 import '../features/customer/home/home_screen.dart';
 import '../features/customer/orders/order_chat_sheet.dart';
@@ -46,6 +52,7 @@ import '../features/notifications/notifications_screen.dart';
 import '../features/customer/vendor_details/vendor_details_screen.dart';
 import '../features/driver/driver_shell.dart';
 import '../features/driver/screens/active_delivery_screen.dart';
+import '../features/driver/screens/driver_documents_screen.dart';
 import '../features/driver/screens/driver_history_screen.dart';
 import '../features/driver/screens/driver_pool_screen.dart';
 import '../features/vendor/screens/menu_screen.dart';
@@ -74,11 +81,11 @@ class _AuthRefreshNotifier extends ChangeNotifier {
 const _authPaths = {'/login', '/signup'};
 
 String _roleHome(UserRole role) => switch (role) {
-      UserRole.vendor => '/vendor-app/dashboard',
-      UserRole.driver => '/driver-app/pool',
-      UserRole.admin => '/admin-app/overview',
-      _ => '/home',
-    };
+  UserRole.vendor => '/vendor-app/dashboard',
+  UserRole.driver => '/driver-app/pool',
+  UserRole.admin => '/admin-app/overview',
+  _ => '/home',
+};
 
 /// Pages every role can open. Legal text and the about page belong to the
 /// platform, not to the customer app, so a vendor or driver reading them must
@@ -91,9 +98,10 @@ bool _allowedForRole(UserRole role, String location) {
     UserRole.vendor => location.startsWith('/vendor-app'),
     UserRole.driver => location.startsWith('/driver-app'),
     UserRole.admin => location.startsWith('/admin-app'),
-    _ => !location.startsWith('/vendor-app') &&
-        !location.startsWith('/driver-app') &&
-        !location.startsWith('/admin-app'),
+    _ =>
+      !location.startsWith('/vendor-app') &&
+          !location.startsWith('/driver-app') &&
+          !location.startsWith('/admin-app'),
   };
 }
 
@@ -150,7 +158,9 @@ GoRouter buildRouter(AuthCubit authCubit) {
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(
-          path: '/onboarding', builder: (_, _) => const AppOnboardingScreen()),
+        path: '/onboarding',
+        builder: (_, _) => const AppOnboardingScreen(),
+      ),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
       GoRoute(
@@ -167,21 +177,38 @@ GoRouter buildRouter(AuthCubit authCubit) {
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => CustomerShell(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/orders', builder: (_, _) => const OrdersScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/orders', builder: (_, _) => const OrdersScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (_, _) => const ProfileScreen(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
         path: '/vendors/:id',
         builder: (_, state) =>
             VendorDetailsScreen(vendorId: state.pathParameters['id']!),
+      ),
+      // Outside the customer shell on purpose: search and categories are
+      // drill-downs with a back arrow, not extra tabs.
+      GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+      GoRoute(
+        path: '/categories/:id',
+        builder: (_, state) =>
+            CategoryScreen(categoryId: state.pathParameters['id']!),
       ),
       GoRoute(path: '/cart', builder: (_, _) => const CartScreen()),
       GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
@@ -233,30 +260,39 @@ GoRouter buildRouter(AuthCubit authCubit) {
       ),
       GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
       GoRoute(path: '/favorites', builder: (_, _) => const FavoritesScreen()),
-      GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, _) => const NotificationsScreen(),
+      ),
 
       // Vendor area.
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => VendorShell(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/vendor-app/dashboard',
-              builder: (_, _) => const VendorDashboardScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/vendor-app/menu',
-              builder: (_, _) => const MenuScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/vendor-app/settings',
-              builder: (_, _) => const VendorSettingsScreen(),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/vendor-app/dashboard',
+                builder: (_, _) => const VendorDashboardScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/vendor-app/menu',
+                builder: (_, _) => const MenuScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/vendor-app/settings',
+                builder: (_, _) => const VendorSettingsScreen(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
@@ -270,39 +306,46 @@ GoRouter buildRouter(AuthCubit authCubit) {
       ),
       GoRoute(
         path: '/vendor-app/product-editor',
-        builder: (_, state) => ProductEditorScreen(
-          args: state.extra! as ProductEditorArgs,
-        ),
+        builder: (_, state) =>
+            ProductEditorScreen(args: state.extra! as ProductEditorArgs),
       ),
 
       // Admin area.
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AdminShell(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/admin-app/overview',
-              builder: (_, _) => const AdminDashboardScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/admin-app/orders',
-              builder: (_, _) => const AdminOrdersScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/admin-app/vendors',
-              builder: (_, _) => const AdminVendorsScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/admin-app/manage',
-              builder: (_, _) => const AdminManageScreen(),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin-app/overview',
+                builder: (_, _) => const AdminDashboardScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin-app/orders',
+                builder: (_, _) => const AdminOrdersScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin-app/vendors',
+                builder: (_, _) => const AdminVendorsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin-app/manage',
+                builder: (_, _) => const AdminManageScreen(),
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -319,6 +362,18 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/admin-app/content',
         builder: (_, _) => const AdminContentScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/ads',
+        builder: (_, _) => const AdminAdsScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/announcements',
+        builder: (_, _) => const AdminAnnouncementsScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/roles',
+        builder: (_, _) => const AdminRolesScreen(),
       ),
       GoRoute(
         path: '/admin-app/users',
@@ -364,29 +419,48 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/admin-app/menu-import',
         builder: (_, _) => const AdminMenuImportScreen(),
       ),
+      GoRoute(
+        path: '/admin-app/price-adjustment',
+        builder: (_, _) => const AdminPriceAdjustmentScreen(),
+      ),
 
       // Driver area.
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => DriverShell(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/driver-app/pool',
-              builder: (_, _) => const DriverPoolScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/driver-app/active',
-              builder: (_, _) => const ActiveDeliveryScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/driver-app/history',
-              builder: (_, _) => const DriverHistoryScreen(),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/driver-app/pool',
+                builder: (_, _) => const DriverPoolScreen(),
+                routes: [
+                  // Nested so the shell's tab bar stays put: verification is
+                  // something a driver steps into and back out of, not a
+                  // fourth place to be.
+                  GoRoute(
+                    path: 'documents',
+                    builder: (_, _) => const DriverDocumentsScreen(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/driver-app/active',
+                builder: (_, _) => const ActiveDeliveryScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/driver-app/history',
+                builder: (_, _) => const DriverHistoryScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],

@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/models/address.dart';
 import '../../../core/models/banner_item.dart';
-import '../../../core/models/product.dart' show ProductHit;
 import '../../../core/models/service_area.dart' show distanceKm;
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/address_repository.dart';
@@ -89,15 +88,10 @@ class HomeState extends Equatable {
     this.banners = const [],
     this.categories = const [],
     this.vendors = const [],
-    this.selectedCategoryId,
-    this.search = '',
     this.deliverToAddress,
     this.addressLoaded = false,
     this.favoriteVendorIds = const {},
     this.filters = const VendorFilters(),
-    this.productHits = const [],
-    this.menuMatches = const {},
-    this.searching = false,
   });
 
   final bool loading;
@@ -105,8 +99,6 @@ class HomeState extends Equatable {
   final List<BannerItem> banners;
   final List<VendorCategory> categories;
   final List<Vendor> vendors;
-  final String? selectedCategoryId;
-  final String search;
 
   /// The address this order would go to — the user's default, or their most
   /// recent if none is flagged default. Null once [addressLoaded] means "the
@@ -117,31 +109,30 @@ class HomeState extends Equatable {
   final Set<String> favoriteVendorIds;
   final VendorFilters filters;
 
-  /// Dishes matching the current search, across every open store. Empty when
-  /// nothing is being searched.
-  final List<ProductHit> productHits;
+  /// The kinds of shop — Food, Groceries, Pharmacies, Stores — which is what
+  /// the home page leads with. The cuisine-level entries live beneath one of
+  /// these and are shown on that category's own page, not here.
+  List<VendorCategory> get topCategories {
+    final tops = categories.where((c) => c.isTopLevel).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return tops;
+  }
 
-  /// Store id to the names of its items that matched — what explains a store
-  /// appearing in results its own name has nothing to do with.
-  final Map<String, List<String>> menuMatches;
-
-  /// A search is in flight. Separate from [loading]: the results below should
-  /// dim, not be replaced by a full-page spinner on every keystroke.
-  final bool searching;
+  /// The level below [parentId], in the admin's order.
+  List<VendorCategory> childrenOf(String parentId) {
+    final children = categories.where((c) => c.parentId == parentId).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return children;
+  }
 
   /// Stores closest to the delivery address, nearest first.
   ///
   /// Capped at six: this is a shortcut to "who can feed me fastest", not a
-  /// second copy of the list below it. Empty whenever distance is unknowable,
-  /// or once the customer has searched or filtered — at that point they have
-  /// stated an intent more specific than proximity.
+  /// second copy of the list below it. Empty whenever distance is unknowable.
   List<Vendor> get nearbyVendors {
-    if (search.trim().isNotEmpty || selectedCategoryId != null) {
-      return const [];
-    }
     final measured = <(Vendor, double)>[];
     for (final vendor in vendors) {
-      if (!vendor.isOpen) continue;
+      if (!vendor.isOpenNow()) continue;
       final km = distanceToVendor(vendor);
       if (km != null) measured.add((vendor, km));
     }
@@ -150,15 +141,10 @@ class HomeState extends Equatable {
   }
 
   /// The admin's promoted stores, best rank first.
-  ///
-  /// Only shown while the customer is browsing everything: once they have
-  /// searched or picked a category they have stated an intent, and a promo rail
-  /// on top of their own filter is noise.
   List<Vendor> get recommendedVendors {
-    if (search.trim().isNotEmpty || selectedCategoryId != null) {
-      return const [];
-    }
-    final promoted = vendors.where((v) => v.isRecommended && v.isOpen).toList()
+    final promoted = vendors
+        .where((v) => v.isRecommended && v.isOpenNow())
+        .toList()
       ..sort((a, b) {
         final byRank = a.recommendedRank.compareTo(b.recommendedRank);
         return byRank != 0 ? byRank : b.ratingAvg.compareTo(a.ratingAvg);
@@ -190,7 +176,7 @@ class HomeState extends Equatable {
   /// intact and clearing a filter never needs a refetch.
   List<Vendor> get visibleVendors {
     final result = vendors.where((v) {
-      if (filters.openOnly && !v.isOpen) return false;
+      if (filters.openOnly && !v.isOpenNow()) return false;
       if (filters.freeDeliveryOnly && v.deliveryFee > 0) return false;
       if (filters.favoritesOnly && !favoriteVendorIds.contains(v.id)) {
         return false;
@@ -232,16 +218,10 @@ class HomeState extends Equatable {
     List<BannerItem>? banners,
     List<VendorCategory>? categories,
     List<Vendor>? vendors,
-    String? selectedCategoryId,
-    String? search,
     Address? deliverToAddress,
     bool? addressLoaded,
     Set<String>? favoriteVendorIds,
     VendorFilters? filters,
-    List<ProductHit>? productHits,
-    Map<String, List<String>>? menuMatches,
-    bool? searching,
-    bool clearCategory = false,
     bool clearError = false,
     bool clearAddress = false,
   }) =>
@@ -251,17 +231,11 @@ class HomeState extends Equatable {
         banners: banners ?? this.banners,
         categories: categories ?? this.categories,
         vendors: vendors ?? this.vendors,
-        selectedCategoryId:
-            clearCategory ? null : (selectedCategoryId ?? this.selectedCategoryId),
-        search: search ?? this.search,
         deliverToAddress:
             clearAddress ? null : (deliverToAddress ?? this.deliverToAddress),
         addressLoaded: addressLoaded ?? this.addressLoaded,
         favoriteVendorIds: favoriteVendorIds ?? this.favoriteVendorIds,
         filters: filters ?? this.filters,
-        productHits: productHits ?? this.productHits,
-        menuMatches: menuMatches ?? this.menuMatches,
-        searching: searching ?? this.searching,
       );
 
   @override
@@ -271,15 +245,10 @@ class HomeState extends Equatable {
         banners,
         categories,
         vendors,
-        selectedCategoryId,
-        search,
         deliverToAddress,
         addressLoaded,
         favoriteVendorIds,
         filters,
-        productHits,
-        menuMatches,
-        searching,
       ];
 }
 
@@ -315,8 +284,7 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       final results = await Future.wait([
         _catalog.fetchBanners(),
-        _catalog.fetchVendors(
-            categoryId: state.selectedCategoryId, search: state.search),
+        _catalog.fetchVendors(),
       ]).timeout(_fetchTimeout);
       banners = results[0] as List<BannerItem>;
       vendors = results[1] as List<Vendor>;
@@ -388,67 +356,8 @@ class HomeCubit extends Cubit<HomeState> {
 
   void clearFilters() => emit(state.copyWith(filters: const VendorFilters()));
 
-  Future<void> selectCategory(String? categoryId) async {
-    emit(categoryId == null
-        ? state.copyWith(clearCategory: true)
-        : state.copyWith(selectedCategoryId: categoryId));
-    await _reloadVendors();
-  }
-
-  /// Debounced: this runs on every keystroke, and each run is two round
-  /// trips. 300ms is below the point a search feels laggy and well above a
-  /// fast typist's gap between letters.
-  Timer? _searchDebounce;
-
-  Future<void> setSearch(String search) async {
-    emit(state.copyWith(search: search, searching: search.trim().isNotEmpty));
-    _searchDebounce?.cancel();
-    _searchDebounce =
-        Timer(const Duration(milliseconds: 300), _reloadVendors);
-  }
-
-  Future<void> _reloadVendors() async {
-    final query = state.search.trim();
-    try {
-      if (query.isEmpty) {
-        final vendors = await _catalog.fetchVendors(
-            categoryId: state.selectedCategoryId);
-        if (isClosed) return;
-        emit(state.copyWith(
-          vendors: vendors,
-          productHits: const [],
-          menuMatches: const {},
-          searching: false,
-        ));
-        return;
-      }
-
-      // Stores and dishes are fetched together: a customer searching "kofta"
-      // wants both "who sells it" and "which one", and two sequential trips
-      // would show the first list settle and then jump.
-      final results = await Future.wait([
-        _catalog.searchVendors(
-            query: query, categoryId: state.selectedCategoryId),
-        _catalog.searchProducts(query),
-      ]);
-      if (isClosed) return;
-      final vendorResult = results[0]
-          as ({List<Vendor> vendors, Map<String, List<String>> matches});
-      emit(state.copyWith(
-        vendors: vendorResult.vendors,
-        menuMatches: vendorResult.matches,
-        productHits: results[1] as List<ProductHit>,
-        searching: false,
-      ));
-    } catch (error) {
-      if (isClosed) return;
-      emit(state.copyWith(error: error.toString(), searching: false));
-    }
-  }
-
   @override
   Future<void> close() {
-    _searchDebounce?.cancel();
     _categoriesSubscription?.cancel();
     return super.close();
   }

@@ -39,11 +39,15 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
     );
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() => setState(() {
+    _future = _load();
+  });
 
   Future<void> _editPage(AppContent page) async {
     final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => _PageEditor(page: page, repo: _repo)),
+      MaterialPageRoute(
+        builder: (_) => _PageEditor(page: page, repo: _repo),
+      ),
     );
     if (saved == true) _reload();
   }
@@ -109,7 +113,9 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
                   },
                   title: page.titleEn.isEmpty ? page.key : page.titleEn,
                   subtitle: page.isPublished
-                      ? (page.isEmpty ? l10n.contentNotAvailableYet : l10n.published)
+                      ? (page.isEmpty
+                            ? l10n.contentNotAvailableYet
+                            : l10n.published)
                       : l10n.draft,
                   // An unpublished or empty page is the one an operator needs
                   // to notice, so it is the one that gets the warm tint.
@@ -131,7 +137,9 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
                   child: EmptyView(
-                      message: l10n.socialLinks, icon: Icons.link_outlined),
+                    message: l10n.socialLinks,
+                    icon: Icons.link_outlined,
+                  ),
                 )
               else
                 for (final link in data.links)
@@ -142,8 +150,10 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
                     dimmed: !link.isActive,
                     onTap: () => _editLink(link),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          color: AppColors.dangerInk),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: AppColors.dangerInk,
+                      ),
                       onPressed: () => _deleteLink(link),
                     ),
                   ),
@@ -155,18 +165,22 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
   }
 
   Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpace.xs, AppSpace.sm, AppSpace.xs, AppSpace.sm),
-        child: Text(
-          text.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: AppColors.textMuted,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(
+      AppSpace.xs,
+      AppSpace.sm,
+      AppSpace.xs,
+      AppSpace.sm,
+    ),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
+        color: AppColors.textMuted,
+      ),
+    ),
+  );
 }
 
 class _Tile extends StatelessWidget {
@@ -197,23 +211,30 @@ class _Tile extends StatelessWidget {
         decoration: BoxDecoration(
           color: attention ? AppColors.warmFill : AppColors.surface,
           border: Border.all(
-              color: attention ? AppColors.attentionBorder : AppColors.border),
+            color: attention ? AppColors.attentionBorder : AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppRadii.lg),
         ),
         clipBehavior: Clip.antiAlias,
         child: ListTile(
           onTap: onTap,
           leading: Icon(icon, color: AppColors.primary),
-          title: Text(title,
-              style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text(subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textMuted)),
-          trailing: trailing ??
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textFaint),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          trailing:
+              trailing ??
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textFaint,
+              ),
         ),
       ),
     );
@@ -251,14 +272,16 @@ class _PageEditorState extends State<_PageEditor> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await widget.repo.saveContent(AppContent(
-        key: widget.page.key,
-        titleEn: _titleEn.text.trim(),
-        titleAr: _titleAr.text.trim().isEmpty ? null : _titleAr.text.trim(),
-        bodyEn: _bodyEn.text.trim(),
-        bodyAr: _bodyAr.text.trim().isEmpty ? null : _bodyAr.text.trim(),
-        isPublished: _published,
-      ));
+      await widget.repo.saveContent(
+        AppContent(
+          key: widget.page.key,
+          titleEn: _titleEn.text.trim(),
+          titleAr: _titleAr.text.trim().isEmpty ? null : _titleAr.text.trim(),
+          bodyEn: _bodyEn.text.trim(),
+          bodyAr: _bodyAr.text.trim().isEmpty ? null : _bodyAr.text.trim(),
+          isPublished: _published,
+        ),
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -274,9 +297,9 @@ class _PageEditorState extends State<_PageEditor> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(widget.page.titleEn.isEmpty
-            ? widget.page.key
-            : widget.page.titleEn),
+        title: Text(
+          widget.page.titleEn.isEmpty ? widget.page.key : widget.page.titleEn,
+        ),
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
@@ -329,19 +352,24 @@ class _PageEditorState extends State<_PageEditor> {
             child: SwitchListTile(
               value: _published,
               onChanged: (v) => setState(() => _published = v),
-              title: Text(l10n.published,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text(
+                l10n.published,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               subtitle: Text(
                 _published ? l10n.published : l10n.draft,
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textMuted),
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
           ),
           const SizedBox(height: AppSpace.xl),
           FilledButton(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
             onPressed: _saving ? null : _save,
             child: _saving ? const ButtonSpinner() : Text(l10n.save),
           ),
@@ -379,8 +407,9 @@ class _LinkEditorSheetState extends State<_LinkEditorSheet> {
   late String _platform = widget.link?.platform ?? _platforms.first;
   late final _url = TextEditingController(text: widget.link?.url ?? '');
   late bool _active = widget.link?.isActive ?? true;
-  late final _sort =
-      TextEditingController(text: '${widget.link?.sortOrder ?? 0}');
+  late final _sort = TextEditingController(
+    text: '${widget.link?.sortOrder ?? 0}',
+  );
   bool _saving = false;
 
   @override
@@ -465,13 +494,16 @@ class _LinkEditorSheetState extends State<_LinkEditorSheet> {
             contentPadding: EdgeInsets.zero,
             value: _active,
             onChanged: (v) => setState(() => _active = v),
-            title: Text(l10n.active,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
+            title: Text(
+              l10n.active,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
           const SizedBox(height: AppSpace.md),
           FilledButton(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+            ),
             onPressed: _saving ? null : _save,
             child: _saving ? const ButtonSpinner() : Text(l10n.save),
           ),

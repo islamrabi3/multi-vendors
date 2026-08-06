@@ -16,7 +16,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retry => 'Retry';
 
   @override
-  String get createYournaccount => 'Create your\\naccount';
+  String get createYournaccount => 'Create your account';
 
   @override
   String get howWillYouUseEaty => 'How will you use Eaty?';
@@ -269,7 +269,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home12TahrirSt => 'Home · 12 Tahrir St';
 
   @override
-  String get s40OffYournfirstOrder => '40% off your\\nfirst order';
+  String get s40OffYournfirstOrder => '40% off your first order';
 
   @override
   String get codeEaty40 => 'CODE · EATY40';
@@ -523,7 +523,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get missingSupabaseConfigurationnn1 =>
-      'Missing Supabase configuration.\\\\n\\\\n';
+      'Missing Supabase configuration.';
 
   @override
   String get multiVendor => 'Multi Vendor';
@@ -561,7 +561,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noActiveDeliverynpullToRefresh =>
-      'No active delivery.\\nPull to refresh · or claim one from Available.';
+      'No active delivery.\nPull to refresh · or claim one from Available.';
 
   @override
   String get overview => 'Overview';
@@ -645,6 +645,170 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profile => 'Profile';
+
+  @override
+  String get driverDocumentsTitle => 'Verification documents';
+
+  @override
+  String get driverDocumentsSubtitle =>
+      'Your national ID and vehicle licence, front and back. An admin reviews these before you can accept deliveries.';
+
+  @override
+  String get driverDocumentsIncomplete =>
+      'Add all four photos so your application can be reviewed.';
+
+  @override
+  String get driverDocumentsPending =>
+      'Documents received. An admin will review them shortly.';
+
+  @override
+  String get enterAValidPhone => 'Enter a valid phone number';
+
+  @override
+  String get enterAValidEmail => 'Enter a valid email address';
+
+  @override
+  String get passwordMinSixChars => 'Use at least 6 characters';
+
+  @override
+  String get tapToUpload => 'Tap to upload';
+
+  @override
+  String get photoAdded => 'Added';
+
+  @override
+  String get submittedDocuments => 'Submitted documents';
+
+  @override
+  String get vehicleLabel => 'Vehicle';
+
+  @override
+  String get noDocumentsUploaded => 'This applicant uploaded no documents.';
+
+  @override
+  String get driverVerificationTitle => 'Verification';
+
+  @override
+  String get driverVerificationPending =>
+      'Under review. You can accept deliveries once an admin approves your documents.';
+
+  @override
+  String get driverVerificationApproved =>
+      'Approved. You can go online and accept deliveries.';
+
+  @override
+  String get driverVerificationRejected =>
+      'Your documents were rejected. Replace them and they will be reviewed again.';
+
+  @override
+  String get driverVerificationSuspended =>
+      'Your account is suspended. Contact support.';
+
+  @override
+  String get driverDocumentsMissingBanner =>
+      'Finish your verification to start delivering';
+
+  @override
+  String get submitForReview => 'Submit for review';
+
+  @override
+  String get documentsSubmitted => 'Documents submitted for review.';
+
+  @override
+  String get onFileLabel => 'On file';
+
+  @override
+  String get userDeletedAnonymised =>
+      'Account closed and anonymised. It could not be removed because it has order history.';
+
+  @override
+  String get unverifiedDriverNotice =>
+      'You cannot accept deliveries until an admin verifies your account.';
+
+  @override
+  String get unverifiedVendorNotice =>
+      'You cannot accept orders until an admin verifies your store.';
+
+  @override
+  String get suspendedVendorNotice =>
+      'Your store is suspended, so it cannot accept orders. Contact support.';
+
+  @override
+  String get documentPreview => 'Document';
+
+  @override
+  String get notUploaded => 'Not uploaded';
+
+  @override
+  String get deliveryProofOptionalHint =>
+      'Attach a photo as proof of delivery, or skip.';
+
+  @override
+  String get proofPhotoFailed =>
+      'The photo could not be attached. The delivery was still completed.';
+
+  @override
+  String get adjustWallet => 'Adjust wallet';
+
+  @override
+  String get walletAdjustCredit => 'Credit';
+
+  @override
+  String get walletAdjustDebit => 'Debit';
+
+  @override
+  String get walletAdjustAmount => 'Amount';
+
+  @override
+  String get walletAdjustReason => 'Reason (shown to the customer)';
+
+  @override
+  String get walletAdjustReasonRequired =>
+      'Give a reason — the customer sees it in their wallet history.';
+
+  @override
+  String walletAdjusted(String balance) {
+    return 'Wallet updated. New balance: $balance';
+  }
+
+  @override
+  String get documentUploaded => 'Document uploaded.';
+
+  @override
+  String get driverRejected =>
+      'Driver rejected. They can replace their documents and reapply.';
+
+  @override
+  String get driverSuspendedToast => 'Driver suspended and taken offline.';
+
+  @override
+  String get couldNotLoadDocument => 'Could not load this document';
+
+  @override
+  String get noDriverApplications => 'No driver applications in this filter.';
+
+  @override
+  String get approve => 'Approve';
+
+  @override
+  String get statusApproved => 'Approved';
+
+  @override
+  String get statusSuspended => 'Suspended';
+
+  @override
+  String documentsOnFile(int count) {
+    return '$count of 4 documents';
+  }
+
+  @override
+  String get searchVendorsHint => 'Search stores by name or phone';
+
+  @override
+  String get openSupportThreads => 'Open support';
+
+  @override
+  String get driversToApprove => 'Drivers to approve';
 
   @override
   String get required => 'Required';
@@ -2021,14 +2185,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick the account type that fits you. This is the only time we ask.';
 
   @override
-  String get roleCustomerDesc =>
-      'Browse stores, order food and track delivery.';
+  String get roleCustomerDesc => 'Browse stores & get it delivered';
 
   @override
-  String get roleVendorDesc => 'Run your store, manage your menu and orders.';
+  String get roleVendorDesc => 'Manage a store & menu';
 
   @override
-  String get roleDriverDesc => 'Pick up orders and deliver them to customers.';
+  String get roleDriverDesc => 'Earn on your schedule';
 
   @override
   String get roleChoiceIsPermanent =>
@@ -2506,4 +2669,975 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newPrice => 'New price';
+
+  @override
+  String get reorderTitle => 'Order again';
+
+  @override
+  String get reorderNothingAvailable =>
+      'None of these items are on the menu any more.';
+
+  @override
+  String reorderStoreClosed(String store) {
+    return '$store is closed right now. Add the items to your cart anyway?';
+  }
+
+  @override
+  String reorderStoreInactive(String store) {
+    return '$store is not taking orders at the moment.';
+  }
+
+  @override
+  String reorderReplaceCart(String store) {
+    return 'Your cart has items from $store. Replacing it with this order?';
+  }
+
+  @override
+  String reorderSomeMissing(int count) {
+    return '$count items are no longer available and were left out.';
+  }
+
+  @override
+  String get reorderOptionsChanged =>
+      'Some choices are no longer offered and were left out.';
+
+  @override
+  String get reorderAdded => 'Added to your cart';
+
+  @override
+  String get addAnyway => 'Add anyway';
+
+  @override
+  String get replaceCart => 'Replace cart';
+
+  @override
+  String get okLabel => 'OK';
+
+  @override
+  String get errCouponNotStarted => 'This offer hasn\'t started yet.';
+
+  @override
+  String get errCouponExpired => 'This offer has expired.';
+
+  @override
+  String get errCouponExhausted => 'This offer has been fully claimed.';
+
+  @override
+  String get errCouponAlreadyUsed => 'You have already used this code.';
+
+  @override
+  String get errCouponFirstOrderOnly =>
+      'This code is for your first order only.';
+
+  @override
+  String get errCouponWrongVendor => 'This code does not work at this store.';
+
+  @override
+  String get errPlatformTermsAdminOnly =>
+      'Delivery fee and commission are set by the platform.';
+
+  @override
+  String get errBillingModelLocked =>
+      'Your billing plan is set. Contact support to change it.';
+
+  @override
+  String get setByPlatform => 'Set by the platform';
+
+  @override
+  String get billingPlan => 'Billing plan';
+
+  @override
+  String get billingCommission => 'Commission';
+
+  @override
+  String get billingSubscription => 'Fixed subscription';
+
+  @override
+  String billingCommissionDesc(String rate) {
+    return 'No monthly fee. The platform takes $rate% of each order.';
+  }
+
+  @override
+  String get billingSubscriptionDesc =>
+      'A fixed fee per month. The platform takes nothing per order.';
+
+  @override
+  String get choosePlan => 'Choose how you pay';
+
+  @override
+  String get choosePlanDesc =>
+      'Pick the plan that suits your volume. You can ask support to change it later.';
+
+  @override
+  String get callStore => 'Call the store';
+
+  @override
+  String get noStorePhone => 'This store has no phone number on file.';
+
+  @override
+  String get couponTypeFreeDelivery => 'Free delivery';
+
+  @override
+  String get perCustomerLimit => 'Uses per customer';
+
+  @override
+  String get perCustomerUnlimited => 'Unlimited per customer';
+
+  @override
+  String get totalUsageLimit => 'Total uses (optional)';
+
+  @override
+  String get couponStartsAt => 'Starts';
+
+  @override
+  String get couponExpiresAt => 'Expires';
+
+  @override
+  String get couponFirstOrderOnly => 'First order only';
+
+  @override
+  String get couponFirstOrderOnlyDesc =>
+      'Only for customers who have never had an order delivered.';
+
+  @override
+  String get couponPublic => 'Show on the offers page';
+
+  @override
+  String get couponPublicDesc =>
+      'Customers see it without having to know the code.';
+
+  @override
+  String get couponTitleLabel => 'Campaign name (optional)';
+
+  @override
+  String get notSet => 'Not set';
+
+  @override
+  String get clearDate => 'Clear';
+
+  @override
+  String get couponScheduled => 'Scheduled';
+
+  @override
+  String get couponExhausted => 'Fully claimed';
+
+  @override
+  String get couponRedemptions => 'Redemptions';
+
+  @override
+  String get oncePerCustomer => 'Once per customer';
+
+  @override
+  String usesPerCustomer(int count) {
+    return '${count}x per customer';
+  }
+
+  @override
+  String get platformTerms => 'Platform terms';
+
+  @override
+  String get commissionRate => 'Commission rate';
+
+  @override
+  String get subscriptionFee => 'Subscription fee';
+
+  @override
+  String get editTerms => 'Edit terms';
+
+  @override
+  String get termsSaved => 'Terms updated';
+
+  @override
+  String get youMightAlsoLike => 'You might also like';
+
+  @override
+  String get goesWellWith => 'Goes well with';
+
+  @override
+  String get managementRoles => 'Management roles';
+
+  @override
+  String get staff => 'Staff';
+
+  @override
+  String get auditTrail => 'Audit trail';
+
+  @override
+  String get newRole => 'New role';
+
+  @override
+  String get editRole => 'Edit role';
+
+  @override
+  String get roleName => 'Role name';
+
+  @override
+  String get roleNameArabic => 'Role name (Arabic)';
+
+  @override
+  String get permissions => 'Permissions';
+
+  @override
+  String permissionsCount(int count) {
+    return '$count permissions';
+  }
+
+  @override
+  String get unrestricted => 'Full access';
+
+  @override
+  String get unrestrictedDesc => 'No role assigned — can do everything.';
+
+  @override
+  String get assignRole => 'Assign role';
+
+  @override
+  String get roleInUse =>
+      'Reassign the people holding this role before deleting it.';
+
+  @override
+  String get roleSaved => 'Role saved';
+
+  @override
+  String get roleDeleted => 'Role deleted';
+
+  @override
+  String get roleAssigned => 'Role assigned';
+
+  @override
+  String get noStaffYet => 'No admin accounts yet.';
+
+  @override
+  String get noAuditYet => 'Nothing has been done yet.';
+
+  @override
+  String get permGroupOrders => 'Orders';
+
+  @override
+  String get permGroupVendors => 'Stores';
+
+  @override
+  String get permGroupCatalogue => 'Catalogue & marketing';
+
+  @override
+  String get permGroupDrivers => 'Drivers';
+
+  @override
+  String get permGroupUsers => 'Users & staff';
+
+  @override
+  String get permGroupSupport => 'Support';
+
+  @override
+  String get permGroupFinance => 'Finance';
+
+  @override
+  String get cannotChangeOwnRole => 'You cannot change your own role.';
+
+  @override
+  String get deleteRoleConfirm => 'Delete this role? Nobody may be holding it.';
+
+  @override
+  String get errCannotChangeOwnRole => 'You cannot change your own role.';
+
+  @override
+  String get errRoleInUse =>
+      'Reassign the people holding this role before deleting it.';
+
+  @override
+  String get errNotAnAdmin => 'That account is not an admin.';
+
+  @override
+  String get announcements => 'Announcements';
+
+  @override
+  String get newAnnouncement => 'New announcement';
+
+  @override
+  String get sendNow => 'Send now';
+
+  @override
+  String get audience => 'Audience';
+
+  @override
+  String get audienceAll => 'Everyone';
+
+  @override
+  String get audienceCustomers => 'Customers';
+
+  @override
+  String get audienceVendors => 'Stores';
+
+  @override
+  String get audienceDrivers => 'Drivers';
+
+  @override
+  String reachableDevices(int count) {
+    return '$count devices can be reached';
+  }
+
+  @override
+  String get announcementTitle => 'Title';
+
+  @override
+  String get announcementBody => 'Message';
+
+  @override
+  String get deepLinkOptional => 'Open this screen on tap (optional)';
+
+  @override
+  String campaignSent(int delivered, int recipients) {
+    return 'Sent to $delivered of $recipients devices';
+  }
+
+  @override
+  String campaignSendConfirm(int count) {
+    return 'Send this to $count devices? It cannot be unsent.';
+  }
+
+  @override
+  String get noCampaignsYet => 'No announcements yet.';
+
+  @override
+  String get statusDraft => 'Draft';
+
+  @override
+  String get statusSending => 'Sending…';
+
+  @override
+  String get statusSent => 'Sent';
+
+  @override
+  String get statusFailed => 'Failed';
+
+  @override
+  String deliveredOf(int delivered, int failed) {
+    return '$delivered delivered · $failed failed';
+  }
+
+  @override
+  String get saveAsDraft => 'Save as draft';
+
+  @override
+  String get draftSaved => 'Saved as draft';
+
+  @override
+  String get campaignNothingToReach =>
+      'Nobody in this audience can receive notifications yet.';
+
+  @override
+  String get drafts => 'Drafts';
+
+  @override
+  String get resend => 'Send again';
+
+  @override
+  String resendConfirm(int count) {
+    return 'Send this again to $count devices? It goes out as a new announcement.';
+  }
+
+  @override
+  String get addStaff => 'Add staff';
+
+  @override
+  String get createNewLogin => 'Create a new login';
+
+  @override
+  String get createNewLoginDesc =>
+      'Email and password for someone who has no account yet.';
+
+  @override
+  String get promoteExisting => 'Promote an existing user';
+
+  @override
+  String get promoteExistingDesc =>
+      'Give an account that already exists a management role.';
+
+  @override
+  String get searchUsersHint => 'Search by name, email or phone';
+
+  @override
+  String get searchMinChars => 'Type at least 3 characters.';
+
+  @override
+  String get noUsersFound => 'Nobody matched that.';
+
+  @override
+  String get alreadyStaff => 'Already staff';
+
+  @override
+  String get staffCreated => 'Staff account created';
+
+  @override
+  String get staffPromoted => 'Added to staff';
+
+  @override
+  String get staffRevoked => 'Removed from staff';
+
+  @override
+  String get removeFromStaff => 'Remove from staff';
+
+  @override
+  String get removeFromStaffConfirm =>
+      'Remove this person from staff? They keep their account and history, but lose admin access.';
+
+  @override
+  String get emailAddress => 'Email address';
+
+  @override
+  String get passwordMin => 'At least 8 characters';
+
+  @override
+  String get roleForNewStaff => 'Role';
+
+  @override
+  String get ownerFullAccess => 'Owner — full access';
+
+  @override
+  String get errUserAlreadyExists2 =>
+      'An account with this email already exists. Promote it instead.';
+
+  @override
+  String get errCreateFailed => 'The account could not be created.';
+
+  @override
+  String get ownsStore => 'Owns a store';
+
+  @override
+  String get isDriverAccount => 'Driver account';
+
+  @override
+  String get conflictWarning =>
+      'This account also operates on the platform. Admin rights let it approve or promote itself.';
+
+  @override
+  String staffRestoredTo(String role) {
+    return 'Removed from staff — restored to $role';
+  }
+
+  @override
+  String get errCannotPromoteVendor =>
+      'A store owner cannot be made an admin — they would be able to approve and price their own store.';
+
+  @override
+  String get errCannotPromoteDriver =>
+      'A driver cannot be made an admin — they would be able to approve their own account.';
+
+  @override
+  String get nationalIdSection => 'National ID';
+
+  @override
+  String get idFront => 'ID front';
+
+  @override
+  String get idBack => 'ID back';
+
+  @override
+  String get vehicleLicenseSection => 'Vehicle licence';
+
+  @override
+  String get licenseFront => 'Licence front';
+
+  @override
+  String get licenseBack => 'Licence back';
+
+  @override
+  String get categoryNameLabel => 'Category name';
+
+  @override
+  String get resolveComplaint => 'Resolve customer complaint';
+
+  @override
+  String get complaintReplyHint => 'Reply to the customer…';
+
+  @override
+  String get sendAndResolve => 'Send & resolve';
+
+  @override
+  String get pendingLabel => 'Pending';
+
+  @override
+  String get resolvedLabel => 'Resolved';
+
+  @override
+  String get noComplaints => 'No complaints or reports found.';
+
+  @override
+  String viewDocument(String document) {
+    return 'View $document';
+  }
+
+  @override
+  String uploadReplaceDocument(String document) {
+    return 'Upload / replace $document';
+  }
+
+  @override
+  String get rejectSuspendDriver => 'Reject / suspend driver';
+
+  @override
+  String get rejectionReasonHint =>
+      'Reason for rejection (e.g. invalid licence)';
+
+  @override
+  String get driverApprovals => 'Driver approvals & accounts';
+
+  @override
+  String get salesAndFinancialReports => 'Sales & financial reports';
+
+  @override
+  String allWithCount(int count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String pendingWithCount(int count) {
+    return 'Pending ($count)';
+  }
+
+  @override
+  String approvedWithCount(int count) {
+    return 'Approved ($count)';
+  }
+
+  @override
+  String suspendedWithCount(int count) {
+    return 'Suspended ($count)';
+  }
+
+  @override
+  String get nationalIdCard => 'National ID card';
+
+  @override
+  String get driverLicence => 'Driver licence';
+
+  @override
+  String optionalUpTo(int count) {
+    return 'Optional · up to $count';
+  }
+
+  @override
+  String cartFromOtherStore(String store) {
+    return 'Your cart has items from $store. Adding this item will clear it.';
+  }
+
+  @override
+  String get promoCodeLabel => 'CODE';
+
+  @override
+  String subjectLine(String subject) {
+    return 'Subject: $subject';
+  }
+
+  @override
+  String get complaintFallback => 'Complaint';
+
+  @override
+  String get adManager => 'Ads';
+
+  @override
+  String get newAd => 'New ad';
+
+  @override
+  String get adPlacement => 'Placement';
+
+  @override
+  String get placementHomeCarousel => 'Home carousel';
+
+  @override
+  String get placementHomeInline => 'Home — between sections';
+
+  @override
+  String get placementVendorTop => 'Store page — top';
+
+  @override
+  String get placementCart => 'Cart';
+
+  @override
+  String get placementOrderTracking => 'Order tracking';
+
+  @override
+  String get adMedia => 'Media';
+
+  @override
+  String get adImage => 'Image';
+
+  @override
+  String get adVideo => 'Video';
+
+  @override
+  String get adVideoUrl => 'Video URL';
+
+  @override
+  String get adLinkUrl => 'Link on tap (optional)';
+
+  @override
+  String get advertiser => 'Advertiser (optional)';
+
+  @override
+  String get adAudience => 'Audience';
+
+  @override
+  String get audienceNewCustomers => 'New customers';
+
+  @override
+  String get audienceReturning => 'Returning customers';
+
+  @override
+  String get adStarts => 'Starts';
+
+  @override
+  String get adEnds => 'Ends';
+
+  @override
+  String adPerformance(int impressions, int clicks, String rate) {
+    return '$impressions views · $clicks taps · $rate% tap rate';
+  }
+
+  @override
+  String get noAdsYet => 'No ads yet.';
+
+  @override
+  String get adCreated => 'Ad created';
+
+  @override
+  String get adDeleted => 'Ad deleted';
+
+  @override
+  String get deleteAdConfirm =>
+      'Delete this ad? Its view and tap counts go with it.';
+
+  @override
+  String get adLive => 'Live';
+
+  @override
+  String get adEnded => 'Ended';
+
+  @override
+  String get uploadArtwork => 'Upload artwork';
+
+  @override
+  String get artworkRequired =>
+      'Add artwork first — it is the poster for a video ad too.';
+
+  @override
+  String get tipDriver => 'Tip your driver';
+
+  @override
+  String tipDriverDesc(String driver) {
+    return 'Paid from your wallet, straight to $driver.';
+  }
+
+  @override
+  String get tipDriverGeneric =>
+      'Paid from your wallet, straight to your driver.';
+
+  @override
+  String get tipAmount => 'Amount';
+
+  @override
+  String get sendTip => 'Send tip';
+
+  @override
+  String tipSent(String amount) {
+    return 'Thanks — $amount sent to your driver.';
+  }
+
+  @override
+  String tippedAlready(String amount) {
+    return 'You tipped $amount for this order.';
+  }
+
+  @override
+  String get errTipTooLarge =>
+      'That tip is larger than we allow. Try a smaller amount.';
+
+  @override
+  String get errAlreadyTipped => 'You have already tipped for this order.';
+
+  @override
+  String get errNoDriver => 'This order had no driver to tip.';
+
+  @override
+  String get errOrderNotDelivered =>
+      'You can tip once the order has been delivered.';
+
+  @override
+  String get errInvalidAmount => 'Enter a valid amount.';
+
+  @override
+  String get orderTypeDelivery => 'Delivery';
+
+  @override
+  String get orderTypePickup => 'Pick up';
+
+  @override
+  String get orderTypeScheduled => 'Schedule';
+
+  @override
+  String get pickupNoFee => 'Collect from the store — no delivery fee.';
+
+  @override
+  String pickupCollectAt(String store) {
+    return 'Collect from $store';
+  }
+
+  @override
+  String get scheduleForLater => 'Choose a time';
+
+  @override
+  String scheduledFor(String time) {
+    return 'Scheduled for $time';
+  }
+
+  @override
+  String get scheduleHint => 'At least 45 minutes ahead, up to a week.';
+
+  @override
+  String get errScheduleRequired => 'Choose a time for your order.';
+
+  @override
+  String get errScheduleTooSoon => 'Pick a time at least 45 minutes from now.';
+
+  @override
+  String get errScheduleTooFar => 'You can schedule up to a week ahead.';
+
+  @override
+  String get readyForCollection => 'Ready for collection';
+
+  @override
+  String get markCollected => 'Mark as collected';
+
+  @override
+  String get shopByCategory => 'Shop by category';
+
+  @override
+  String get closedNow => 'Closed now';
+
+  @override
+  String openUntil(String time) {
+    return 'Open until $time';
+  }
+
+  @override
+  String get closedOutsideHours => 'Closed — outside opening hours';
+
+  @override
+  String get outsideOpeningHoursNotice =>
+      'Your store is switched on but today\'s opening hours have it closed, so customers cannot order.';
+
+  @override
+  String get editHours => 'Hours';
+
+  @override
+  String get proPartner => 'pro';
+
+  @override
+  String get freeDelivery => 'Free delivery';
+
+  @override
+  String deliveryFeeLabel(String fee) {
+    return '$fee delivery';
+  }
+
+  @override
+  String minutesRange(int from, int to) {
+    return '$from–$to min';
+  }
+
+  @override
+  String recommendedIn(String category) {
+    return 'Recommended in $category';
+  }
+
+  @override
+  String allStoresIn(String category) {
+    return 'All in $category';
+  }
+
+  @override
+  String get noStoresInCategory => 'No stores here yet.';
+
+  @override
+  String get noRecommendationsYet => 'No promoted stores in this category yet.';
+
+  @override
+  String get addStore => 'Add store';
+
+  @override
+  String get parentCategory => 'Parent category';
+
+  @override
+  String get noParentTopLevel => 'Top level';
+
+  @override
+  String get subCategory => 'Sub-category';
+
+  @override
+  String get topLevelCategoryWithChildren =>
+      'This category has sub-categories, so it stays at the top level.';
+
+  @override
+  String get categoryNameArabicLabel => 'Name (Arabic)';
+
+  @override
+  String get pickupFromBranch => 'Pickup from branch';
+
+  @override
+  String get priceAdjustment => 'Price adjustment';
+
+  @override
+  String get adjustmentType => 'Adjustment';
+
+  @override
+  String get fixedAmount => 'Fixed amount';
+
+  @override
+  String get increase => 'Increase';
+
+  @override
+  String get decrease => 'Decrease';
+
+  @override
+  String get percentValue => 'Percent';
+
+  @override
+  String get amountValue => 'Amount';
+
+  @override
+  String get appliesTo => 'Applies to';
+
+  @override
+  String get scopeAllProducts => 'Every product on the platform';
+
+  @override
+  String get scopeOneStore => 'One store';
+
+  @override
+  String get scopeOneCategory => 'One category';
+
+  @override
+  String get counting => 'Counting…';
+
+  @override
+  String productsInScope(int count) {
+    return '$count products in scope';
+  }
+
+  @override
+  String priceIncreaseSummary(String amount, String target) {
+    return 'Raise prices by $amount across $target.';
+  }
+
+  @override
+  String priceDecreaseSummary(String amount, String target) {
+    return 'Lower prices by $amount across $target.';
+  }
+
+  @override
+  String priceAdjustConfirm(String summary, int count) {
+    return '$summary\n\nThis rewrites $count prices and cannot be undone automatically.';
+  }
+
+  @override
+  String get applyToAllProducts => 'Apply price change';
+
+  @override
+  String pricesUpdated(int count) {
+    return '$count prices updated.';
+  }
+
+  @override
+  String get recentAdjustments => 'Recent adjustments';
+
+  @override
+  String productsUpdatedCount(int count) {
+    return '$count products';
+  }
+
+  @override
+  String get recentSearches => 'Recent searches';
+
+  @override
+  String get searchPrompt => 'Search for a store or a dish.';
+
+  @override
+  String noResultsFor(String query) {
+    return 'Nothing found for “$query”.';
+  }
+
+  @override
+  String get searchFailed => 'Search could not be completed. Try again.';
+
+  @override
+  String deliveryMargin(String share) {
+    return 'Delivery margin ($share)';
+  }
+
+  @override
+  String get platformFundedDiscounts => 'Discounts funded by platform';
+
+  @override
+  String get storeFundedDiscounts => 'Store-funded discounts';
+
+  @override
+  String get owedOut => 'Owed out';
+
+  @override
+  String get tipsPassedThrough => 'Tips (passed through)';
+
+  @override
+  String get subscriptions => 'Subscriptions';
+
+  @override
+  String subscriptionFeesMonthly(int count) {
+    return 'Monthly fees ($count stores)';
+  }
+
+  @override
+  String get subscriptionNotInNet =>
+      'Billed monthly, so it is not included in the net above — that figure covers this period\'s orders only.';
+
+  @override
+  String get subscriptionPlan => 'Subscription';
+
+  @override
+  String get perMonthSuffix => '/mo';
+
+  @override
+  String get driverShareLabel => 'Driver share';
+
+  @override
+  String get platformShareLabel => 'Platform share';
+
+  @override
+  String get netPayout => 'Net payout';
+
+  @override
+  String get allTime => 'All time';
+
+  @override
+  String get last7Days => 'Last 7 days';
+
+  @override
+  String get last30Days => 'Last 30 days';
+
+  @override
+  String minutesShort(int count) {
+    return '$count min';
+  }
+
+  @override
+  String get noRatingsYet => 'No ratings yet';
+
+  @override
+  String get collectedForOthers => 'Collected, not yours';
+
+  @override
+  String get deliveryFeesNotYours =>
+      'Charged to the customer for delivery and paid to the driver and the platform. It is never part of your payout.';
+
+  @override
+  String get subscriptionNotDeductedNote =>
+      'Your monthly subscription is billed separately and is not deducted from the payout above.';
 }

@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'
-    show AuthChangeEvent;
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent;
 import 'package:url_launcher/url_launcher.dart' show closeInAppWebView;
 
 import '../../core/models/profile.dart';
 import '../../core/models/vendor.dart';
+import '../../core/repositories/admin_roles_repository.dart';
 import '../../core/repositories/auth_repository.dart';
 import '../../core/services/notification_service.dart';
 import 'screens/app_onboarding_screen.dart' show AppOnboarding;
@@ -23,6 +23,7 @@ class AppAuthState extends Equatable {
     this.busy = false,
     this.error,
     this.info,
+    this.permissions = const [],
   });
 
   final AuthStatus status;
@@ -33,6 +34,17 @@ class AppAuthState extends Equatable {
   final bool busy;
   final String? error;
   final String? info;
+
+  /// What this admin may do. `['*']` is unrestricted; empty for every
+  /// non-admin role.
+  ///
+  /// Only ever used to hide controls. Every action is enforced again on the
+  /// server, so a stale copy of this list grants nothing.
+  final List<String> permissions;
+
+  /// True when the signed-in admin holds [key], or holds everything.
+  bool can(String key) =>
+      permissions.contains('*') || permissions.contains(key);
 
   /// A social sign-up that has not answered the role picker yet. Checked before
   /// vendor onboarding, since the answer decides whether onboarding applies.
@@ -52,21 +64,30 @@ class AppAuthState extends Equatable {
     bool? busy,
     String? error,
     String? info,
+    List<String>? permissions,
     bool clearMessages = false,
     bool clearVendor = false,
     bool clearProfile = false,
-  }) =>
-      AppAuthState(
-        status: status ?? this.status,
-        profile: clearProfile ? null : (profile ?? this.profile),
-        vendor: clearVendor ? null : (vendor ?? this.vendor),
-        busy: busy ?? this.busy,
-        error: clearMessages ? null : error,
-        info: clearMessages ? null : info,
-      );
+  }) => AppAuthState(
+    status: status ?? this.status,
+    profile: clearProfile ? null : (profile ?? this.profile),
+    vendor: clearVendor ? null : (vendor ?? this.vendor),
+    busy: busy ?? this.busy,
+    error: clearMessages ? null : error,
+    info: clearMessages ? null : info,
+    permissions: permissions ?? this.permissions,
+  );
 
   @override
-  List<Object?> get props => [status, profile, vendor, busy, error, info];
+  List<Object?> get props => [
+    status,
+    profile,
+    vendor,
+    busy,
+    error,
+    info,
+    permissions,
+  ];
 }
 
 class AuthCubit extends Cubit<AppAuthState> {
@@ -94,8 +115,10 @@ class AuthCubit extends Cubit<AppAuthState> {
   }
 
   final AuthRepository _repository;
+  final AdminRolesRepository _adminRoles = AdminRolesRepository();
   StreamSubscription<dynamic>? _subscription;
   StreamSubscription<Profile?>? _profileSubscription;
+  StreamSubscription<Vendor?>? _vendorSubscription;
 
   /// Watches the signed-in user's own profile row.
   ///
@@ -125,10 +148,38 @@ class AuthCubit extends Cubit<AppAuthState> {
     );
   }
 
+  /// Watches the owner's store row, so an approval or suspension decided by an
+  /// admin reaches the dashboard while it is open rather than at next sign-in.
+  void _watchVendor() {
+    _vendorSubscription?.cancel();
+    _vendorSubscription = _repository.watchMyVendor().listen(
+      (vendor) async {
+        if (vendor == null || isClosed) return;
+        if (vendor == state.vendor) return;
+        // The row from the socket carries no opening hours: a realtime stream
+        // cannot embed a related table. Taking it as-is left the dashboard
+        // flipping between "closed — outside hours" and "open" depending on
+        // which of the two sources spoke last, so the event is treated as a
+        // signal to re-read the whole thing.
+        try {
+          final full = await _repository.fetchMyVendor();
+          if (isClosed || full == null) return;
+          if (full == state.vendor) return;
+          emit(state.copyWith(vendor: full));
+        } catch (error) {
+          debugPrint('Vendor re-read failed: $error');
+        }
+      },
+      onError: (Object error) => debugPrint('Vendor watch dropped: $error'),
+    );
+  }
+
   Future<void> _refresh() async {
     if (_repository.currentSession == null) {
       _profileSubscription?.cancel();
       _profileSubscription = null;
+      _vendorSubscription?.cancel();
+      _vendorSubscription = null;
       emit(const AppAuthState(status: AuthStatus.unauthenticated));
       return;
     }
@@ -145,12 +196,24 @@ class AuthCubit extends Cubit<AppAuthState> {
       final vendor = profile.role == UserRole.vendor
           ? await _repository.fetchMyVendor()
           : null;
-      emit(AppAuthState(
-        status: AuthStatus.authenticated,
-        profile: profile,
-        vendor: vendor,
-      ));
+      // Only an admin has any, and a failure here must not block sign-in —
+      // the console simply shows nothing rather than refusing to open.
+      final permissions = profile.role == UserRole.admin
+          ? await _adminRoles.myPermissions().catchError(
+              (_) => const <String>[],
+            )
+          : const <String>[];
+      emit(
+        AppAuthState(
+          status: AuthStatus.authenticated,
+          profile: profile,
+          vendor: vendor,
+          permissions: permissions,
+        ),
+      );
       _watchProfile();
+      // Only a store owner has a row to watch.
+      if (vendor != null) _watchVendor();
     } catch (_) {
       // Keep whatever state we had; a transient network error on profile
       // fetch should not log the user out.
@@ -224,10 +287,7 @@ class AuthCubit extends Cubit<AppAuthState> {
   }
 
   /// Name/phone edit from the profile screen.
-  Future<bool> updateProfile({
-    required String fullName,
-    String? phone,
-  }) async {
+  Future<bool> updateProfile({required String fullName, String? phone}) async {
     emit(state.copyWith(busy: true, clearMessages: true));
     try {
       final profile = await _repository.updateMyProfile(
@@ -261,6 +321,7 @@ class AuthCubit extends Cubit<AppAuthState> {
     required String fullName,
     required String phone,
     required UserRole role,
+    DriverDocuments? documents,
   }) async {
     emit(state.copyWith(busy: true, clearMessages: true));
     try {
@@ -270,13 +331,16 @@ class AuthCubit extends Cubit<AppAuthState> {
         fullName: fullName.trim(),
         phone: phone.trim(),
         role: role,
+        documents: documents,
       );
-      emit(state.copyWith(
-        busy: false,
-        info: hasSession
-            ? null
-            : 'Account created. Check your email to confirm, then sign in.',
-      ));
+      emit(
+        state.copyWith(
+          busy: false,
+          info: hasSession
+              ? null
+              : 'Account created. Check your email to confirm, then sign in.',
+        ),
+      );
     } catch (error) {
       emit(state.copyWith(busy: false, error: error.toString()));
     }
@@ -297,6 +361,8 @@ class AuthCubit extends Cubit<AppAuthState> {
   Future<void> signOut() async {
     _profileSubscription?.cancel();
     _profileSubscription = null;
+    _vendorSubscription?.cancel();
+    _vendorSubscription = null;
     try {
       await _repository.signOut();
       // onAuthStateChange normally drives _refresh, but emit immediately so the
@@ -312,6 +378,7 @@ class AuthCubit extends Cubit<AppAuthState> {
   Future<void> close() {
     _subscription?.cancel();
     _profileSubscription?.cancel();
+    _vendorSubscription?.cancel();
     return super.close();
   }
 }

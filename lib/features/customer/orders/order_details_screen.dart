@@ -19,6 +19,7 @@ import '../../../core/widgets/skeleton.dart';
 import '../checkout/paymob_flow.dart';
 import 'order_chat_sheet.dart';
 import 'order_details_cubit.dart';
+import 'reorder_action.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
@@ -30,7 +31,11 @@ class OrderDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => OrderDetailsCubit(
-          OrderRepository(), ReviewRepository(), PaymentRepository(), orderId),
+        OrderRepository(),
+        ReviewRepository(),
+        PaymentRepository(),
+        orderId,
+      ),
       child: const _OrderDetailsView(),
     );
   }
@@ -62,15 +67,15 @@ class _OrderDetailsView extends StatelessWidget {
             TextField(
               controller: subject,
               textCapitalization: TextCapitalization.sentences,
-              decoration:
-                  InputDecoration(labelText: context.l10n.issueSubject),
+              decoration: InputDecoration(labelText: context.l10n.issueSubject),
             ),
             const SizedBox(height: AppSpace.md),
             TextField(
               controller: description,
               maxLines: 3,
               decoration: InputDecoration(
-                  labelText: context.l10n.issueDescription),
+                labelText: context.l10n.issueDescription,
+              ),
             ),
           ],
         ),
@@ -104,8 +109,7 @@ class _OrderDetailsView extends StatelessWidget {
       body: BlocConsumer<OrderDetailsCubit, OrderDetailsState>(
         listenWhen: (previous, current) =>
             previous.error != current.error && current.error != null,
-        listener: (context, state) =>
-            showFailure(context, state.error!),
+        listener: (context, state) => showFailure(context, state.error!),
         builder: (context, state) {
           if (state.loading) return const _OrderDetailsSkeleton();
           final order = state.order;
@@ -113,22 +117,30 @@ class _OrderDetailsView extends StatelessWidget {
             return ErrorView(message: context.l10n.orderNotFound);
           }
           return ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16,
-                16 + MediaQuery.paddingOf(context).bottom),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(order.orderNumber,
-                      style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    order.orderNumber,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   OrderStatusChip(status: order.status),
                 ],
               ),
               if (order.vendorName != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(order.vendorName!,
-                      style: Theme.of(context).textTheme.bodyLarge),
+                  child: Text(
+                    order.vendorName!,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                 ),
               const SizedBox(height: 16),
               if (order.status == OrderStatus.rejected ||
@@ -137,42 +149,53 @@ class _OrderDetailsView extends StatelessWidget {
                   color: Theme.of(context).colorScheme.errorContainer,
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Text(order.status == OrderStatus.rejected
-                        ? context.l10n.rejectedByStore(
-                            order.rejectionReason != null ? ': ${order.rejectionReason}' : '')
-                        : context.l10n.orderCancelled),
+                    child: Text(
+                      order.status == OrderStatus.rejected
+                          ? context.l10n.rejectedByStore(
+                              order.rejectionReason != null
+                                  ? ': ${order.rejectionReason}'
+                                  : '',
+                            )
+                          : context.l10n.orderCancelled,
+                    ),
                   ),
                 )
               else
                 _StatusStepper(order: order),
               if (order.status == OrderStatus.outForDelivery) ...[
                 const SizedBox(height: 16),
-                _EtaBanner(
+                _EtaBanner(order: order, driverLocation: state.driverLocation),
+                const SizedBox(height: 12),
+                _TrackingMap(
                   order: order,
                   driverLocation: state.driverLocation,
                 ),
-                const SizedBox(height: 12),
-                _TrackingMap(order: order, driverLocation: state.driverLocation),
                 if (state.driverContact != null) ...[
                   const SizedBox(height: 12),
                   _CallDriverCard(contact: state.driverContact!),
                 ],
               ],
-              if (order.deliveryProofUrl != null && order.deliveryProofUrl!.isNotEmpty) ...[
+              if (order.deliveryProofUrl != null &&
+                  order.deliveryProofUrl!.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 _DeliveryProofCard(proofUrl: order.deliveryProofUrl!),
               ],
               const Divider(height: 32),
               _PaymentCard(order: order, busy: state.busy),
               const SizedBox(height: 8),
-              Text(context.l10n.items, style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                context.l10n.items,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 4),
               for (final item in state.items)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  leading: Text('${item.quantity}x',
-                      style: Theme.of(context).textTheme.titleSmall),
+                  leading: Text(
+                    '${item.quantity}x',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
                   title: Text(item.productName),
                   subtitle: item.optionNames.isEmpty
                       ? null
@@ -180,17 +203,34 @@ class _OrderDetailsView extends StatelessWidget {
                   trailing: Text(formatMoney(item.lineTotal)),
                 ),
               const Divider(),
-              _Row(label: context.l10n.subtotal, value: formatMoney(order.subtotal)),
-              _Row(label: context.l10n.deliveryFee1, value: formatMoney(order.deliveryFee)),
+              _Row(
+                label: context.l10n.subtotal,
+                value: formatMoney(order.subtotal),
+              ),
+              _Row(
+                label: context.l10n.deliveryFee1,
+                value: formatMoney(order.deliveryFee),
+              ),
               if (order.discount > 0)
-                _Row(label: context.l10n.discount1, value: '-${formatMoney(order.discount)}'),
-              _Row(label: context.l10n.total, value: formatMoney(order.total), bold: true),
+                _Row(
+                  label: context.l10n.discount1,
+                  value: '-${formatMoney(order.discount)}',
+                ),
+              _Row(
+                label: context.l10n.total,
+                value: formatMoney(order.total),
+                bold: true,
+              ),
               const SizedBox(height: 16),
-              Text(context.l10n.deliveringTo(order.addressSummary),
-                  style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                context.l10n.deliveringTo(order.addressSummary),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               const SizedBox(height: 24),
               const SizedBox(height: 24),
-              if (order.status == OrderStatus.outForDelivery || order.status == OrderStatus.preparing || order.status == OrderStatus.accepted)
+              if (order.status == OrderStatus.outForDelivery ||
+                  order.status == OrderStatus.preparing ||
+                  order.status == OrderStatus.accepted)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: SizedBox(
@@ -212,12 +252,22 @@ class _OrderDetailsView extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: state.busy
                         ? null
-                        : () =>
-                            context.read<OrderDetailsCubit>().cancelOrder(),
+                        : () => context.read<OrderDetailsCubit>().cancelOrder(),
                     child: Text(context.l10n.cancelOrder),
                   ),
                 ),
               if (order.status == OrderStatus.delivered) ...[
+                // Only where there was somebody to tip, and only once. The
+                // server enforces both; this keeps a dead button off the
+                // screen for a pickup order or a second visit.
+                if (order.driverId != null) ...[
+                  _TipCard(
+                    order: order,
+                    driverName: state.driverContact?.name,
+                    onTipped: context.read<OrderDetailsCubit>().reload,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 if (!state.hasReview)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -233,12 +283,7 @@ class _OrderDetailsView extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await OrderRepository().reorderPastOrder(order);
-                      if (context.mounted) {
-                        context.push('/cart');
-                      }
-                    },
+                    onPressed: () => reorderIntoCart(context, order),
                     icon: const Icon(Icons.refresh_rounded),
                     label: Text(context.l10n.reorderItems),
                   ),
@@ -249,13 +294,16 @@ class _OrderDetailsView extends StatelessWidget {
                 width: double.infinity,
                 child: TextButton.icon(
                   onPressed: () => _showReportDialog(context, order),
-                  icon: const Icon(Icons.report_problem_outlined,
-                      color: AppColors.dangerInk),
+                  icon: const Icon(
+                    Icons.report_problem_outlined,
+                    color: AppColors.dangerInk,
+                  ),
                   label: Text(
                     context.l10n.reportAnIssue,
                     style: const TextStyle(
-                        color: AppColors.dangerInk,
-                        fontWeight: FontWeight.w700),
+                      color: AppColors.dangerInk,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -266,7 +314,6 @@ class _OrderDetailsView extends StatelessWidget {
       ),
     );
   }
-
 
   void _showReviewSheet(BuildContext context) {
     final cubit = context.read<OrderDetailsCubit>();
@@ -289,9 +336,11 @@ class _StatusStepper extends StatelessWidget {
     int currentStep = 0;
     if (order.status == OrderStatus.pending) {
       currentStep = 0;
-    } else if (order.status == OrderStatus.accepted || order.status == OrderStatus.preparing) {
+    } else if (order.status == OrderStatus.accepted ||
+        order.status == OrderStatus.preparing) {
       currentStep = 1;
-    } else if (order.status == OrderStatus.readyForPickup || order.status == OrderStatus.outForDelivery) {
+    } else if (order.status == OrderStatus.readyForPickup ||
+        order.status == OrderStatus.outForDelivery) {
       currentStep = 2;
     } else if (order.status == OrderStatus.delivered) {
       currentStep = 3;
@@ -312,7 +361,12 @@ class _StatusStepper extends StatelessWidget {
               _buildLine(0, currentStep),
               _buildStepNode(1, currentStep, isIcon: false, text: '✓'),
               _buildLine(1, currentStep),
-              _buildStepNode(2, currentStep, isIcon: true, icon: Icons.delivery_dining),
+              _buildStepNode(
+                2,
+                currentStep,
+                isIcon: true,
+                icon: Icons.delivery_dining,
+              ),
               _buildLine(2, currentStep),
               _buildStepNode(3, currentStep, isIcon: false, text: ''),
             ],
@@ -347,17 +401,21 @@ class _StatusStepper extends StatelessWidget {
   }
 
   Widget _buildStepTime(BuildContext context, DateTime? at) => SizedBox(
-        width: 62,
-        child: Text(
-          at == null
-              ? ''
-              : TimeOfDay.fromDateTime(at).format(context),
-          textAlign: TextAlign.center,
-          style: AppType.mono(9.5, color: AppColors.textFaint),
-        ),
-      );
+    width: 62,
+    child: Text(
+      at == null ? '' : TimeOfDay.fromDateTime(at).format(context),
+      textAlign: TextAlign.center,
+      style: AppType.mono(9.5, color: AppColors.textFaint),
+    ),
+  );
 
-  Widget _buildStepNode(int index, int currentStep, {required bool isIcon, IconData? icon, String text = ''}) {
+  Widget _buildStepNode(
+    int index,
+    int currentStep, {
+    required bool isIcon,
+    IconData? icon,
+    String text = '',
+  }) {
     final done = index < currentStep;
     final active = index == currentStep;
 
@@ -438,11 +496,8 @@ class _EtaBanner extends StatelessWidget {
     final lat = order.deliveryLat;
     final lng = order.deliveryLng;
     if (driver == null || lat == null || lng == null) return null;
-    final km = const Distance().as(
-          LengthUnit.Kilometer,
-          driver,
-          LatLng(lat, lng),
-        ) *
+    final km =
+        const Distance().as(LengthUnit.Kilometer, driver, LatLng(lat, lng)) *
         _detourFactor;
     return (km / _averageKmPerHour * 60).ceil();
   }
@@ -454,20 +509,25 @@ class _EtaBanner extends StatelessWidget {
     final label = minutes == null
         ? l10n.etaUnavailable
         : minutes <= 2
-            ? l10n.arrivingSoon
-            : l10n.estimatedArrival(minutes);
+        ? l10n.arrivingSoon
+        : l10n.estimatedArrival(minutes);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpace.lg, vertical: AppSpace.md),
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
       decoration: BoxDecoration(
         color: AppColors.successFill,
         borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Row(
         children: [
-          const Icon(Icons.delivery_dining_rounded,
-              size: 20, color: AppColors.successInk),
+          const Icon(
+            Icons.delivery_dining_rounded,
+            size: 20,
+            color: AppColors.successInk,
+          ),
           const SizedBox(width: AppSpace.md),
           Expanded(
             child: Text(
@@ -516,24 +576,32 @@ class _TrackingMap extends StatelessWidget {
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.example.multi_vendor',
             ),
-            MarkerLayer(markers: [
-              if (destination != null)
-                Marker(
-                  point: destination,
-                  width: 40,
-                  height: 40,
-                  child: const Icon(Icons.home,
-                      color: AppColors.dangerInk, size: 32),
-                ),
-              if (driverLocation != null)
-                Marker(
-                  point: driverLocation!,
-                  width: 40,
-                  height: 40,
-                  child: const Icon(Icons.delivery_dining,
-                      color: AppColors.primary, size: 36),
-                ),
-            ]),
+            MarkerLayer(
+              markers: [
+                if (destination != null)
+                  Marker(
+                    point: destination,
+                    width: 40,
+                    height: 40,
+                    child: const Icon(
+                      Icons.home,
+                      color: AppColors.dangerInk,
+                      size: 32,
+                    ),
+                  ),
+                if (driverLocation != null)
+                  Marker(
+                    point: driverLocation!,
+                    width: 40,
+                    height: 40,
+                    child: const Icon(
+                      Icons.delivery_dining,
+                      color: AppColors.primary,
+                      size: 36,
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -576,14 +644,23 @@ class _PaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final needsPayment = !order.isCod && !order.isPaid && !order.status.isTerminal;
+    final needsPayment =
+        !order.isCod && !order.isPaid && !order.status.isTerminal;
     return Card(
       child: ListTile(
         leading: Icon(
-            order.isCod ? Icons.payments_outlined : Icons.credit_card),
-        title: Text(order.isCod ? context.l10n.cashOnDelivery : context.l10n.cardOrWallet),
-        subtitle: Text(context.l10n.paymentStatusLabel(
-            order.paymentStatus == 'paid' ? context.l10n.paymentStatusPaid : context.l10n.paymentStatusUnpaid)),
+          order.isCod ? Icons.payments_outlined : Icons.credit_card,
+        ),
+        title: Text(
+          order.isCod ? context.l10n.cashOnDelivery : context.l10n.cardOrWallet,
+        ),
+        subtitle: Text(
+          context.l10n.paymentStatusLabel(
+            order.paymentStatus == 'paid'
+                ? context.l10n.paymentStatusPaid
+                : context.l10n.paymentStatusUnpaid,
+          ),
+        ),
         trailing: needsPayment
             ? FilledButton(
                 onPressed: busy
@@ -595,14 +672,17 @@ class _PaymentCard extends StatelessWidget {
                         final checkout = await cubit.retryPayment();
                         if (checkout == null) return;
 
-                        final result =
-                            await runPaymobCheckout(router, checkout);
+                        final result = await runPaymobCheckout(
+                          router,
+                          checkout,
+                        );
                         if (result != PaymobFlowResult.paid) {
                           messenger.showSnackBar(
                             SnackBar(
                               content: const Text(
-                                  'Payment not completed. The order stays '
-                                  'unpaid and is not sent to the restaurant.'),
+                                'Payment not completed. The order stays '
+                                'unpaid and is not sent to the restaurant.',
+                              ),
                               backgroundColor: AppColors.dangerInk,
                             ),
                           );
@@ -611,8 +691,8 @@ class _PaymentCard extends StatelessWidget {
                 child: Text(context.l10n.payNow),
               )
             : order.isPaid
-                ? const Icon(Icons.check_circle, color: AppColors.success)
-                : null,
+            ? const Icon(Icons.check_circle, color: AppColors.success)
+            : null,
       ),
     );
   }
@@ -634,7 +714,10 @@ class _Row extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [Text(label, style: style), Text(value, style: style)],
+        children: [
+          Text(label, style: style),
+          Text(value, style: style),
+        ],
       ),
     );
   }
@@ -702,14 +785,17 @@ class _ReviewSheetState extends State<_ReviewSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.howWasYourOrder,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              l10n.howWasYourOrder,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
-            Text(l10n.rateTheStore,
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            Text(
+              l10n.rateTheStore,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
             RatingInput(
               value: _rating,
               size: 32,
@@ -724,10 +810,14 @@ class _ReviewSheetState extends State<_ReviewSheet> {
               const SizedBox(height: 20),
               const Divider(height: 1),
               const SizedBox(height: 12),
-              Text(l10n.howWasTheDriver,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textMuted)),
+              Text(
+                l10n.howWasTheDriver,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                ),
+              ),
               RatingInput(
                 value: _driverRating,
                 size: 30,
@@ -777,7 +867,11 @@ class _DeliveryProofCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.verified_rounded, color: AppColors.success, size: 20),
+              const Icon(
+                Icons.verified_rounded,
+                color: AppColors.success,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 context.l10n.proofOfDelivery,
@@ -840,6 +934,146 @@ class _OrderDetailsSkeleton extends StatelessWidget {
             const SizedBox(height: AppSpace.md + 2),
           ],
           const Skeleton.box(height: 104, radius: AppRadii.md),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tipping the driver, after the food has arrived.
+///
+/// Paid from the customer's wallet rather than added to the order total: the
+/// order is already settled by this point, and re-charging a card for a few
+/// pounds is both slow and expensive. A tip on an order that already has one
+/// shows the amount instead of the form.
+class _TipCard extends StatefulWidget {
+  const _TipCard({
+    required this.order,
+    required this.driverName,
+    required this.onTipped,
+  });
+
+  final AppOrder order;
+  final String? driverName;
+  final VoidCallback onTipped;
+
+  @override
+  State<_TipCard> createState() => _TipCardState();
+}
+
+class _TipCardState extends State<_TipCard> {
+  /// The amounts most people pick, so most people never type anything.
+  static const _presets = [5.0, 10.0, 20.0];
+
+  double? _selected;
+  bool _sending = false;
+
+  Future<void> _send() async {
+    final amount = _selected;
+    if (amount == null) return;
+    final l10n = context.l10n;
+    setState(() => _sending = true);
+    try {
+      await OrderRepository().addDriverTip(widget.order.id, amount);
+      if (!mounted) return;
+      showSnack(context, l10n.tipSent(formatMoney(amount)));
+      widget.onTipped();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      showFailure(context, error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    // Already tipped: say so and stop. The server refuses a second one, and
+    // an enabled form that always fails is worse than no form.
+    if (widget.order.driverTip > 0) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpace.lg),
+        decoration: BoxDecoration(
+          color: AppColors.successFill,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.volunteer_activism_outlined,
+              size: 19,
+              color: AppColors.successInk,
+            ),
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              child: Text(
+                l10n.tippedAlready(formatMoney(widget.order.driverTip)),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.successInk,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.tipDriver, style: AppType.heading(15)),
+          const SizedBox(height: 2),
+          Text(
+            widget.driverName == null
+                ? l10n.tipDriverGeneric
+                : l10n.tipDriverDesc(widget.driverName!),
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: AppSpace.md),
+          Row(
+            children: [
+              for (final amount in _presets) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _sending
+                        ? null
+                        : () => setState(() => _selected = amount),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _selected == amount
+                          ? AppColors.warmFill
+                          : null,
+                      side: BorderSide(
+                        color: _selected == amount
+                            ? AppColors.primary
+                            : AppColors.border,
+                      ),
+                    ),
+                    child: Text(formatMoney(amount)),
+                  ),
+                ),
+                if (amount != _presets.last) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _selected == null || _sending ? null : _send,
+              child: _sending ? const ButtonSpinner() : Text(l10n.sendTip),
+            ),
+          ),
         ],
       ),
     );

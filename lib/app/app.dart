@@ -81,6 +81,16 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
               debugShowCheckedModeBanner: false,
               theme: buildTheme(),
               routerConfig: _router,
+              // Accessibility text scaling is the single biggest source of
+              // overflowing labels: at the 2.0x some users run, a two-word
+              // button caption is twice as wide as the button. Capped rather
+              // than ignored — 1.3x is a real accessibility gain and still fits
+              // the layouts. Beyond that the app stops being usable at all,
+              // which helps nobody.
+              builder: (context, child) => MediaQuery.withClampedTextScaling(
+                maxScaleFactor: 1.3,
+                child: child ?? const SizedBox.shrink(),
+              ),
               locale: locale,
               localizationsDelegates: [
                 AppLocalizations.delegate,

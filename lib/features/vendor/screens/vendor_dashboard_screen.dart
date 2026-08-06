@@ -37,8 +37,11 @@ class VendorDashboardScreen extends StatelessWidget {
     final vendor = context.read<AuthCubit>().state.vendor;
     if (vendor == null) return const LoadingView();
     return BlocProvider(
-      create: (_) => VendorOrdersCubit(OrderRepository(), vendor.id,
-          autoAccept: vendor.autoAccept),
+      create: (_) => VendorOrdersCubit(
+        OrderRepository(),
+        vendor.id,
+        autoAccept: vendor.autoAccept,
+      ),
       child: const _DashboardView(),
     );
   }
@@ -99,8 +102,7 @@ class _DashboardViewState extends State<_DashboardView> {
       showDragHandle: true,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
       ),
       builder: (sheetContext) => _StoreControlsSheet(
         onToggleBusy: (value) {
@@ -112,7 +114,8 @@ class _DashboardViewState extends State<_DashboardView> {
           Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => VendorAnalyticsScreen(vendorId: vendor.id)),
+              builder: (_) => VendorAnalyticsScreen(vendorId: vendor.id),
+            ),
           );
         },
         onSchedule: () {
@@ -120,7 +123,8 @@ class _DashboardViewState extends State<_DashboardView> {
           Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => VendorScheduleScreen(vendorId: vendor.id)),
+              builder: (_) => VendorScheduleScreen(vendorId: vendor.id),
+            ),
           );
         },
       ),
@@ -169,12 +173,14 @@ class _DashboardViewState extends State<_DashboardView> {
                   hasMore: state.hasMoreHistory,
                   onLoadMore: cubit.loadMoreHistory,
                   selectedId: split ? _selectedId : null,
-                  onSelect:
-                      split ? (o) => setState(() => _selectedId = o.id) : null,
+                  onSelect: split
+                      ? (o) => setState(() => _selectedId = o.id)
+                      : null,
                 ),
               );
               return Column(
                 children: [
+                  _VerificationNotice(vendor: vendor),
                   _Header(
                     vendor: vendor,
                     actionable: state.pending.length + state.preparing.length,
@@ -187,6 +193,13 @@ class _DashboardViewState extends State<_DashboardView> {
                     busyPending: _togglingBusy,
                     onClearBusy: () => _toggleBusy(false),
                     onOpenStore: () => _toggleOpen(true),
+                    onEditHours: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            VendorScheduleScreen(vendorId: vendor.id),
+                      ),
+                    ),
                   ),
                   if (state.loading)
                     const Expanded(child: LoadingView())
@@ -209,7 +222,10 @@ class _DashboardViewState extends State<_DashboardView> {
                               Expanded(
                                 flex: 4,
                                 child: Column(
-                                  children: [tabs, Expanded(child: list)],
+                                  children: [
+                                    tabs,
+                                    Expanded(child: list),
+                                  ],
                                 ),
                               ),
                               Expanded(
@@ -242,11 +258,11 @@ class _DashboardViewState extends State<_DashboardView> {
   }
 
   List<AppOrder> _visibleOrders(VendorOrdersState state) => switch (_filter) {
-        _OrderFilter.incoming => state.pending,
-        _OrderFilter.preparing => state.preparing,
-        _OrderFilter.ready => state.ready,
-        _OrderFilter.past => state.history,
-      };
+    _OrderFilter.incoming => state.pending,
+    _OrderFilter.preparing => state.preparing,
+    _OrderFilter.ready => state.ready,
+    _OrderFilter.past => state.history,
+  };
 }
 
 /// Right-hand pane of the wide layout: the selected order, or a hint to pick
@@ -311,8 +327,11 @@ class _Header extends StatelessWidget {
     return Container(
       color: AppColors.ink,
       padding: EdgeInsets.fromLTRB(
-          AppSpace.xl, MediaQuery.paddingOf(context).top + AppSpace.md,
-          AppSpace.md, AppSpace.lg),
+        AppSpace.xl,
+        MediaQuery.paddingOf(context).top + AppSpace.md,
+        AppSpace.md,
+        AppSpace.lg,
+      ),
       child: Column(
         children: [
           Row(
@@ -326,9 +345,15 @@ class _Header extends StatelessWidget {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: vendor.logoUrl != null
-                    ? AppNetworkImage(url: vendor.logoUrl, width: 44, height: 44)
-                    : const Icon(Icons.storefront_rounded,
-                        color: AppColors.primary),
+                    ? AppNetworkImage(
+                        url: vendor.logoUrl,
+                        width: 44,
+                        height: 44,
+                      )
+                    : const Icon(
+                        Icons.storefront_rounded,
+                        color: AppColors.primary,
+                      ),
               ),
               const SizedBox(width: AppSpace.md),
               Expanded(
@@ -372,6 +397,11 @@ class _Header extends StatelessWidget {
           const SizedBox(height: AppSpace.md),
           _OpenToggle(
             isOpen: vendor.isOpen,
+            // The switch says "we are trading"; the timetable can still have
+            // the store shut. Showing only the switch let an owner sit there
+            // believing they were open at 2am.
+            outsideHours: vendor.isOpen && !vendor.isOpenNow(),
+            closingTime: vendor.closingTime(),
             busy: togglingOpen,
             onChanged: onToggleOpen,
           ),
@@ -387,19 +417,39 @@ class _OpenToggle extends StatelessWidget {
     required this.isOpen,
     required this.busy,
     required this.onChanged,
+    this.outsideHours = false,
+    this.closingTime,
   });
 
+  /// The owner's own switch. Left as-is when the timetable closes the store, so
+  /// tomorrow's opening does not need anyone to come back and flip it.
   final bool isOpen;
+
+  /// The switch is on but today's hours have it shut anyway.
+  final bool outsideHours;
+
+  /// Today's closing time, `HH:MM`, when there is one.
+  final String? closingTime;
+
   final bool busy;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final accent = isOpen ? AppColors.onDarkSuccess : AppColors.navInactive;
+    final trading = isOpen && !outsideHours;
+    final accent = trading
+        ? AppColors.onDarkSuccess
+        : outsideHours
+        ? AppColors.amberInk
+        : AppColors.navInactive;
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(
-          AppSpace.lg, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+        AppSpace.lg,
+        AppSpace.sm,
+        AppSpace.sm,
+        AppSpace.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.inkElevated,
         borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -415,7 +465,15 @@ class _OpenToggle extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text(
-              isOpen ? l10n.open : l10n.closed,
+              outsideHours
+                  ? l10n.closedOutsideHours
+                  : trading && closingTime != null
+                  ? l10n.openUntil(closingTime!)
+                  : isOpen
+                  ? l10n.open
+                  : l10n.closed,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: accent,
                 fontWeight: FontWeight.w800,
@@ -430,7 +488,10 @@ class _OpenToggle extends StatelessWidget {
                 ? const Padding(
                     padding: EdgeInsets.all(5),
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : Transform.scale(
                     scale: 0.85,
                     child: Switch(
@@ -440,8 +501,7 @@ class _OpenToggle extends StatelessWidget {
                       activeTrackColor: AppColors.success,
                       inactiveThumbColor: Colors.white,
                       inactiveTrackColor: AppColors.onDarkTrack,
-                      materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
           ),
@@ -462,12 +522,17 @@ class _StatusBanner extends StatelessWidget {
     required this.busyPending,
     required this.onClearBusy,
     required this.onOpenStore,
+    required this.onEditHours,
   });
 
   final Vendor vendor;
   final bool busyPending;
   final VoidCallback onClearBusy;
   final VoidCallback onOpenStore;
+
+  /// Opens the weekly hours — the only thing that fixes an out-of-hours store,
+  /// since the switch is already on.
+  final VoidCallback onEditHours;
 
   @override
   Widget build(BuildContext context) {
@@ -481,6 +546,20 @@ class _StatusBanner extends StatelessWidget {
         message: l10n.storeClosedNotice,
         actionLabel: l10n.open,
         onAction: onOpenStore,
+        pending: false,
+      );
+    }
+    // The switch is on and the store still takes nothing, which is the state
+    // most likely to be mistaken for a dead app. Flipping the switch would not
+    // help, so the action goes to the timetable instead.
+    if (!vendor.isOpenNow()) {
+      return _banner(
+        icon: Icons.schedule_rounded,
+        fill: AppColors.amberFill,
+        ink: AppColors.amberInk,
+        message: l10n.outsideOpeningHoursNotice,
+        actionLabel: l10n.editHours,
+        onAction: onEditHours,
         pending: false,
       );
     }
@@ -510,7 +589,11 @@ class _StatusBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.md, AppSpace.sm, AppSpace.md),
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.sm,
+        AppSpace.md,
+      ),
       color: fill,
       child: Row(
         children: [
@@ -520,10 +603,11 @@ class _StatusBanner extends StatelessWidget {
             child: Text(
               message,
               style: TextStyle(
-                  fontSize: 12.5,
-                  height: 1.35,
-                  fontWeight: FontWeight.w600,
-                  color: ink),
+                fontSize: 12.5,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: ink,
+              ),
             ),
           ),
           if (pending)
@@ -535,8 +619,10 @@ class _StatusBanner extends StatelessWidget {
             TextButton(
               onPressed: onAction,
               style: TextButton.styleFrom(foregroundColor: ink),
-              child: Text(actionLabel,
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              child: Text(
+                actionLabel,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
         ],
       ),
@@ -565,7 +651,11 @@ class _KpiBar extends StatelessWidget {
     final l10n = context.l10n;
     return Container(
       margin: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.xs),
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.lg,
+        AppSpace.xs,
+      ),
       padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -574,7 +664,7 @@ class _KpiBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _stat(formatMoney(revenue), l10n.today),
+          _stat(formatMoney(revenue), l10n.itemSales),
           _divider(),
           _stat('$orders', l10n.orders),
           _divider(),
@@ -584,37 +674,37 @@ class _KpiBar extends StatelessWidget {
     );
   }
 
-  Widget _divider() => Container(
-        width: 1,
-        height: 26,
-        color: AppColors.borderSoft,
-      );
+  Widget _divider() =>
+      Container(width: 1, height: 26, color: AppColors.borderSoft);
 
   Widget _stat(String value, String label) => Expanded(
-        child: Column(
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                style: AppType.mono(15,
-                    color: AppColors.ink, weight: FontWeight.w800),
-              ),
+    child: Column(
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: AppType.mono(
+              15,
+              color: AppColors.ink,
+              weight: FontWeight.w800,
             ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        const SizedBox(height: 3),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Busy mode, analytics and opening hours — labelled, with the consequence of
@@ -643,39 +733,60 @@ class _StoreControlsSheet extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpace.xl, 0, AppSpace.xl, AppSpace.md),
+              AppSpace.xl,
+              0,
+              AppSpace.xl,
+              AppSpace.md,
+            ),
             child: Text(l10n.storeControls, style: AppType.heading(17)),
           ),
           SwitchListTile(
             value: vendor.isBusy,
             onChanged: onToggleBusy,
-            secondary: Icon(Icons.local_fire_department_outlined,
-                color: vendor.isBusy ? AppColors.amberInk : AppColors.textMuted),
-            title: Text(l10n.busyStore,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(l10n.busyMode,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textMuted)),
+            secondary: Icon(
+              Icons.local_fire_department_outlined,
+              color: vendor.isBusy ? AppColors.amberInk : AppColors.textMuted,
+            ),
+            title: Text(
+              l10n.busyStore,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              l10n.busyMode,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
           ),
           const Divider(height: 1, color: AppColors.borderSoft),
           ListTile(
             onTap: onAnalytics,
-            leading: const Icon(Icons.insights_rounded,
-                color: AppColors.textSecondary),
-            title: Text(l10n.vendorAnalytics,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            trailing: const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textFaint),
+            leading: const Icon(
+              Icons.insights_rounded,
+              color: AppColors.textSecondary,
+            ),
+            title: Text(
+              l10n.vendorAnalytics,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textFaint,
+            ),
           ),
           const Divider(height: 1, color: AppColors.borderSoft),
           ListTile(
             onTap: onSchedule,
-            leading: const Icon(Icons.schedule_rounded,
-                color: AppColors.textSecondary),
-            title: Text(l10n.operatingSchedule,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            trailing: const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textFaint),
+            leading: const Icon(
+              Icons.schedule_rounded,
+              color: AppColors.textSecondary,
+            ),
+            title: Text(
+              l10n.operatingSchedule,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textFaint,
+            ),
           ),
           const SizedBox(height: AppSpace.sm),
         ],
@@ -708,8 +819,12 @@ class _FilterTabs extends StatelessWidget {
         children: [
           _tab(context.l10n.newText, incoming, _OrderFilter.incoming, context),
           const SizedBox(width: 10),
-          _tab(context.l10n.preparing, preparing, _OrderFilter.preparing,
-              context),
+          _tab(
+            context.l10n.preparing,
+            preparing,
+            _OrderFilter.preparing,
+            context,
+          ),
           const SizedBox(width: 10),
           _tab(context.l10n.ready, ready, _OrderFilter.ready, context),
           const SizedBox(width: 10),
@@ -721,7 +836,11 @@ class _FilterTabs extends StatelessWidget {
   }
 
   Widget _tab(
-      String label, int? count, _OrderFilter value, BuildContext context) {
+    String label,
+    int? count,
+    _OrderFilter value,
+    BuildContext context,
+  ) {
     final selected = filter == value;
     // A zero count is noise on a filter chip — the tab is still reachable.
     final showCount = count != null && count > 0;
@@ -737,8 +856,8 @@ class _FilterTabs extends StatelessWidget {
               color: selected
                   ? AppColors.ink
                   : hovered
-                      ? AppColors.primary
-                      : AppColors.border,
+                  ? AppColors.primary
+                  : AppColors.border,
               width: 1.2,
             ),
             borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -758,8 +877,10 @@ class _FilterTabs extends StatelessWidget {
               if (showCount) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: selected ? AppColors.primary : AppColors.warmFill,
                     borderRadius: BorderRadius.circular(10),
@@ -814,8 +935,9 @@ class _OrderList extends StatelessWidget {
             const LoadingView()
           else
             EmptyView(
-                message: context.l10n.nothingHereRightNow,
-                icon: Icons.receipt_long_outlined),
+              message: context.l10n.nothingHereRightNow,
+              icon: Icons.receipt_long_outlined,
+            ),
         ],
       );
     }
@@ -860,9 +982,10 @@ class _OrderAgeChip extends StatelessWidget {
       return Text(
         DateFormat('h:mm a').format(placedAt),
         style: const TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textMuted),
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textMuted,
+        ),
       );
     }
 
@@ -886,7 +1009,10 @@ class _OrderAgeChip extends StatelessWidget {
           Text(
             '$minutes${context.l10n.minutesAgo}',
             style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w800, color: ink),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: ink,
+            ),
           ),
         ],
       ),
@@ -895,11 +1021,7 @@ class _OrderAgeChip extends StatelessWidget {
 }
 
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({
-    required this.order,
-    this.selected = false,
-    this.onSelect,
-  });
+  const _OrderCard({required this.order, this.selected = false, this.onSelect});
 
   final AppOrder order;
   final bool selected;
@@ -911,13 +1033,12 @@ class _OrderCard extends StatelessWidget {
   String _payLabel(BuildContext context) => order.isCod
       ? context.l10n.cod
       : order.isPaid
-          ? context.l10n.cardPaid
-          : context.l10n.cardUnpaid;
+      ? context.l10n.cardPaid
+      : context.l10n.cardUnpaid;
 
   @override
-  Widget build(BuildContext context) => HoverBuilder(
-        builder: (context, hovered) => _card(context, hovered),
-      );
+  Widget build(BuildContext context) =>
+      HoverBuilder(builder: (context, hovered) => _card(context, hovered));
 
   Widget _card(BuildContext context, bool hovered) {
     final cubit = context.read<VendorOrdersCubit>();
@@ -929,10 +1050,10 @@ class _OrderCard extends StatelessWidget {
           color: selected
               ? AppColors.primary
               : hovered
-                  ? AppColors.primaryLight
-                  : isNew
-                      ? AppColors.attentionBorder
-                      : AppColors.border,
+              ? AppColors.primaryLight
+              : isNew
+              ? AppColors.attentionBorder
+              : AppColors.border,
           width: isNew || selected ? 1.6 : 1.0,
         ),
         borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -956,8 +1077,11 @@ class _OrderCard extends StatelessWidget {
                     children: [
                       SelectableId(
                         order.orderNumber,
-                        style: AppType.mono(14.5,
-                            color: AppColors.ink, weight: FontWeight.w700),
+                        style: AppType.mono(
+                          14.5,
+                          color: AppColors.ink,
+                          weight: FontWeight.w700,
+                        ),
                         selectable: onSelect != null,
                       ),
                       const SizedBox(width: AppSpace.sm),
@@ -967,7 +1091,15 @@ class _OrderCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpace.sm),
-                  // Line 2: who it is for, what it is worth, how it is paid.
+                  // Line 2: how it leaves the kitchen. A collection order and a
+                  // slot booked for tonight need different handling from a
+                  // rider job, and the card said nothing about either.
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OrderTypeChip(order: order),
+                  ),
+                  const SizedBox(height: AppSpace.sm),
+                  // Line 3: who it is for, what it is worth, how it is paid.
                   // Three facts on one row replaces the old divider plus
                   // "TOTAL AMOUNT" caps label, which cost height and said
                   // nothing the number did not.
@@ -988,7 +1120,9 @@ class _OrderCard extends StatelessWidget {
                       const SizedBox(width: AppSpace.sm),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: order.isCod
                               ? AppColors.amberFill
@@ -1041,8 +1175,9 @@ class _ActionRow extends StatelessWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(context.l10n.back)),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.back),
+          ),
           FilledButton(
             onPressed: () =>
                 Navigator.pop(dialogContext, controller.text.trim()),
@@ -1060,74 +1195,153 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final child = switch (order.status) {
       OrderStatus.pending => Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                    )),
-                onPressed: () => _rejectWithReason(context),
-                child: Text(context.l10n.reject),
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(46),
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
               ),
+              onPressed: () => _rejectWithReason(context),
+              child: Text(context.l10n.reject),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                    )),
-                onPressed: () => cubit.accept(order),
-                child: Text(context.l10n.acceptOrder),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.success,
+                minimumSize: const Size.fromHeight(46),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+              ),
+              onPressed: () => cubit.accept(order),
+              child: Text(context.l10n.acceptOrder),
+            ),
+          ),
+        ],
+      ),
+      OrderStatus.accepted => FilledButton(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(46),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+        ),
+        onPressed: () => cubit.startPreparing(order),
+        child: Text(context.l10n.startPreparing),
+      ),
+      OrderStatus.preparing => FilledButton(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(46),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+        ),
+        onPressed: () => cubit.markReady(order),
+        child: Text(context.l10n.markReadyForPickup),
+      ),
+      // Nobody is coming for a collection order, so "waiting for a driver"
+      // would be a lie the store could never act on.
+      OrderStatus.readyForPickup when order.isPickup => FilledButton.icon(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(46),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+        ),
+        onPressed: () => cubit.markCollected(order),
+        icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+        label: Text(context.l10n.markCollected),
+      ),
+      OrderStatus.readyForPickup => Padding(
+        padding: const EdgeInsets.only(top: AppSpace.sm),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.hourglass_empty_rounded,
+              color: AppColors.success,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              context.l10n.waitingForADriver,
+              style: const TextStyle(
+                color: AppColors.success,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
             ),
           ],
         ),
-      OrderStatus.accepted => FilledButton(
-          style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(46),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-              )),
-          onPressed: () => cubit.startPreparing(order),
-          child: Text(context.l10n.startPreparing),
-        ),
-      OrderStatus.preparing => FilledButton(
-          style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(46),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-              )),
-          onPressed: () => cubit.markReady(order),
-          child: Text(context.l10n.markReadyForPickup),
-        ),
-      OrderStatus.readyForPickup => Padding(
-          padding: const EdgeInsets.only(top: AppSpace.sm),
-          child: Row(
-            children: [
-              const Icon(Icons.hourglass_empty_rounded,
-                  color: AppColors.success, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                context.l10n.waitingForADriver,
-                style: const TextStyle(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13),
-              ),
-            ],
-          ),
-        ),
+      ),
       _ => const SizedBox.shrink(),
     };
     if (child is SizedBox) return child;
     return Padding(
-        padding: const EdgeInsets.only(top: AppSpace.md), child: child);
+      padding: const EdgeInsets.only(top: AppSpace.md),
+      child: child,
+    );
+  }
+}
+
+
+/// Why an unapproved store sees orders it cannot act on.
+///
+/// Accepting is refused server-side by is_vendor_owner(), which requires
+/// approval_status = 'active'. Without this the vendor met a bare
+/// TRANSITION_NOT_ALLOWED and no explanation.
+class _VerificationNotice extends StatelessWidget {
+  const _VerificationNotice({required this.vendor});
+
+  final Vendor vendor;
+
+  @override
+  Widget build(BuildContext context) {
+    if (vendor.isApproved) return const SizedBox.shrink();
+    final suspended = vendor.approvalStatus == 'suspended';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(
+        AppSpace.lg,
+        AppSpace.sm,
+        AppSpace.lg,
+        0,
+      ),
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: suspended ? AppColors.dangerFill : AppColors.warmFill,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            suspended ? Icons.block_rounded : Icons.hourglass_top_rounded,
+            size: 20,
+            color: suspended ? AppColors.dangerInk : AppColors.primaryDark,
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(
+              suspended
+                  ? context.l10n.suspendedVendorNotice
+                  : context.l10n.unverifiedVendorNotice,
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: suspended ? AppColors.dangerInk : AppColors.primaryDark,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

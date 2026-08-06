@@ -629,7 +629,7 @@ class _ActionRow extends StatelessWidget {
                   ),
                 ),
                 onPressed: busy ? null : onCancel,
-                child: Text(cancelLabel!),
+                child: _Label(cancelLabel!),
               ),
             ),
           ),
@@ -643,13 +643,33 @@ class _ActionRow extends StatelessWidget {
               onPressed: busy ? null : onSubmit,
               // Swapping the label for a same-height spinner keeps the button
               // exactly where it was when the finger left it.
-              child: busy ? const ButtonSpinner() : Text(submitLabel),
+              child: busy ? const ButtonSpinner() : _Label(submitLabel),
             ),
           ),
         ),
       ],
     );
   }
+}
+
+/// A dialog action's caption, shrunk to fit rather than clipped.
+///
+/// Two buttons splitting a ~370pt dialog leave each about 165pt, and an
+/// Arabic "Confirm deletion" or a German compound does not fit that. Scaling
+/// down keeps the whole word readable, which matters more on the one control
+/// that destroys something than saving a couple of points of type size; the
+/// ellipsis is the floor under it for a caption long enough that even shrinking
+/// cannot help.
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+      );
 }
 
 ButtonStyle _submitStyle(AppDialogTone tone) => FilledButton.styleFrom(

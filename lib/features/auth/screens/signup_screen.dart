@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,7 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/platform_capabilities.dart';
 import '../../../core/models/profile.dart';
+import '../../../core/repositories/auth_repository.dart';
 import '../../../core/widgets/common.dart';
 import '../auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -33,6 +37,13 @@ class _SignupFormState extends State<SignupForm> {
   XFile? _licenseFront;
   XFile? _licenseBack;
 
+  DriverDocuments get _documents => DriverDocuments(
+    idCardFront: _idFront,
+    idCardBack: _idBack,
+    licenseFront: _licenseFront,
+    licenseBack: _licenseBack,
+  );
+
   @override
   void dispose() {
     _name.dispose();
@@ -40,6 +51,37 @@ class _SignupFormState extends State<SignupForm> {
     _email.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDocument(ValueChanged<XFile> onPicked) async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      // Identity photos come off a modern camera at several megabytes each,
+      // and four of those on a phone connection is a signup people abandon.
+      // Still far more than legible for reading an ID.
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    if (picked != null) onPicked(picked);
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    // A driver whose documents are missing gets a pending account nobody can
+    // approve, so the application stops here rather than in the review queue,
+    // where it would sit as an unexplained rejection.
+    if (_role == UserRole.driver && !_documents.isComplete) {
+      showSnack(context, context.l10n.driverDocumentsIncomplete, error: true);
+      return;
+    }
+    context.read<AuthCubit>().signUp(
+      email: _email.text,
+      password: _password.text,
+      fullName: _name.text,
+      phone: _phone.text,
+      role: _role,
+      documents: _role == UserRole.driver ? _documents : null,
+    );
   }
 
   @override
@@ -50,7 +92,11 @@ class _SignupFormState extends State<SignupForm> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.ink, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.ink,
+            size: 20,
+          ),
           onPressed: () => context.pop(),
         ),
       ),
@@ -80,10 +126,7 @@ class _SignupFormState extends State<SignupForm> {
                   const SizedBox(height: 8),
                   Text(
                     context.l10n.howWillYouUseEaty,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textMuted,
-                    ),
+                    style: TextStyle(fontSize: 14, color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 22),
 
@@ -91,7 +134,7 @@ class _SignupFormState extends State<SignupForm> {
                   _RoleCard(
                     emoji: '🍔',
                     title: context.l10n.orderFood,
-                    subtitle: 'Browse stores & get it delivered',
+                    subtitle: context.l10n.roleCustomerDesc,
                     selected: _role == UserRole.customer,
                     onTap: () => setState(() => _role = UserRole.customer),
                   ),
@@ -99,7 +142,7 @@ class _SignupFormState extends State<SignupForm> {
                   _RoleCard(
                     emoji: '🏪',
                     title: context.l10n.sellAsAVendor,
-                    subtitle: 'Manage a store & menu',
+                    subtitle: context.l10n.roleVendorDesc,
                     selected: _role == UserRole.vendor,
                     onTap: () => setState(() => _role = UserRole.vendor),
                   ),
@@ -107,7 +150,7 @@ class _SignupFormState extends State<SignupForm> {
                   _RoleCard(
                     emoji: '🛵',
                     title: context.l10n.deliverOrders,
-                    subtitle: 'Earn on your schedule',
+                    subtitle: context.l10n.roleDriverDesc,
                     selected: _role == UserRole.driver,
                     onTap: () => setState(() => _role = UserRole.driver),
                   ),
@@ -121,8 +164,9 @@ class _SignupFormState extends State<SignupForm> {
                       hintText: context.l10n.fullName,
                       fillColor: Colors.white,
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? context.l10n.required
+                        : null,
                   ),
                   const SizedBox(height: 11),
                   TextFormField(
@@ -133,7 +177,7 @@ class _SignupFormState extends State<SignupForm> {
                       fillColor: Colors.white,
                     ),
                     validator: (v) => (v == null || v.trim().length < 8)
-                        ? 'Enter a valid phone'
+                        ? context.l10n.enterAValidPhone
                         : null,
                   ),
                   const SizedBox(height: 11),
@@ -145,7 +189,7 @@ class _SignupFormState extends State<SignupForm> {
                       fillColor: Colors.white,
                     ),
                     validator: (v) => (v == null || !v.contains('@'))
-                        ? 'Enter a valid email'
+                        ? context.l10n.enterAValidEmail
                         : null,
                   ),
                   const SizedBox(height: 11),
@@ -157,7 +201,7 @@ class _SignupFormState extends State<SignupForm> {
                       fillColor: Colors.white,
                     ),
                     validator: (v) => (v == null || v.length < 6)
-                        ? 'Min 6 characters'
+                        ? context.l10n.passwordMinSixChars
                         : null,
                   ),
                   if (_role == UserRole.driver) ...[
@@ -175,77 +219,94 @@ class _SignupFormState extends State<SignupForm> {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.badge_rounded, color: AppColors.primary, size: 20),
+                              const Icon(
+                                Icons.badge_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
-                              Text(
-                                'Driver Verification Documents',
-                                style: AppType.heading(15, color: AppColors.ink),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.driverDocumentsTitle,
+                                  style: AppType.heading(
+                                    15,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            'Upload National ID & Vehicle License (Front & Back)',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
+                          Text(
+                            context.l10n.driverDocumentsSubtitle,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11.5,
+                              height: 1.4,
+                            ),
                           ),
                           const SizedBox(height: 14),
 
-                          const Text('🪪 National ID', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                          Text(
+                            '🪪 ${context.l10n.nationalIdSection}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.5,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
                                 child: _DocUploadButton(
-                                  label: 'ID Front',
+                                  label: context.l10n.idFront,
                                   file: _idFront,
-                                  onTap: () async {
-                                    final picker = ImagePicker();
-                                    final picked = await picker.pickImage(source: ImageSource.gallery);
-                                    if (picked != null) setState(() => _idFront = picked);
-                                  },
+                                  onTap: () => _pickDocument(
+                                    (f) => setState(() => _idFront = f),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: _DocUploadButton(
-                                  label: 'ID Back',
+                                  label: context.l10n.idBack,
                                   file: _idBack,
-                                  onTap: () async {
-                                    final picker = ImagePicker();
-                                    final picked = await picker.pickImage(source: ImageSource.gallery);
-                                    if (picked != null) setState(() => _idBack = picked);
-                                  },
+                                  onTap: () => _pickDocument(
+                                    (f) => setState(() => _idBack = f),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 12),
 
-                          const Text('📜 Vehicle License', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                          Text(
+                            '📜 ${context.l10n.vehicleLicenseSection}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.5,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
                                 child: _DocUploadButton(
-                                  label: 'License Front',
+                                  label: context.l10n.licenseFront,
                                   file: _licenseFront,
-                                  onTap: () async {
-                                    final picker = ImagePicker();
-                                    final picked = await picker.pickImage(source: ImageSource.gallery);
-                                    if (picked != null) setState(() => _licenseFront = picked);
-                                  },
+                                  onTap: () => _pickDocument(
+                                    (f) => setState(() => _licenseFront = f),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: _DocUploadButton(
-                                  label: 'License Back',
+                                  label: context.l10n.licenseBack,
                                   file: _licenseBack,
-                                  onTap: () async {
-                                    final picker = ImagePicker();
-                                    final picked = await picker.pickImage(source: ImageSource.gallery);
-                                    if (picked != null) setState(() => _licenseBack = picked);
-                                  },
+                                  onTap: () => _pickDocument(
+                                    (f) => setState(() => _licenseBack = f),
+                                  ),
                                 ),
                               ),
                             ],
@@ -259,19 +320,7 @@ class _SignupFormState extends State<SignupForm> {
 
                   BlocBuilder<AuthCubit, AppAuthState>(
                     builder: (context, state) => InkWell(
-                      onTap: state.busy
-                          ? null
-                          : () {
-                              if (_formKey.currentState!.validate()) {
-                                context.read<AuthCubit>().signUp(
-                                      email: _email.text,
-                                      password: _password.text,
-                                      fullName: _name.text,
-                                      phone: _phone.text,
-                                      role: _role,
-                                    );
-                              }
-                            },
+                      onTap: state.busy ? null : _submit,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         height: 54,
@@ -313,7 +362,9 @@ class _SignupFormState extends State<SignupForm> {
                           child: Text(
                             context.l10n.or,
                             style: const TextStyle(
-                                color: AppColors.textFaint, fontSize: 12),
+                              color: AppColors.textFaint,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         const Expanded(child: Divider(color: AppColors.border)),
@@ -323,43 +374,53 @@ class _SignupFormState extends State<SignupForm> {
                     BlocBuilder<AuthCubit, AppAuthState>(
                       builder: (context, state) => Row(
                         children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: state.busy
-                                  ? null
-                                  : () => context
-                                      .read<AuthCubit>()
-                                      .signInWithApple(signupRole: _role),
-                              icon: const Icon(Icons.apple, size: 20),
-                              label: Text(context.l10n.apple),
-                              style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                side: const BorderSide(
-                                    color: AppColors.border),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                          // Apple only where it means something; see the
+                          // login screen.
+                          if (supportsAppleSignIn) ...[
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: state.busy
+                                    ? null
+                                    : () => context
+                                          .read<AuthCubit>()
+                                          .signInWithApple(signupRole: _role),
+                                icon: const Icon(Icons.apple, size: 20),
+                                label: Text(context.l10n.apple),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  side: const BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
+                            const SizedBox(width: 12),
+                          ],
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: state.busy
                                   ? null
                                   : () => context
-                                      .read<AuthCubit>()
-                                      .signInWithGoogle(signupRole: _role),
-                              icon: Text('G',
-                                  style: AppType.display(18,
-                                      color: AppColors.primaryDark)),
+                                        .read<AuthCubit>()
+                                        .signInWithGoogle(signupRole: _role),
+                              icon: Text(
+                                'G',
+                                style: AppType.display(
+                                  18,
+                                  color: AppColors.primaryDark,
+                                ),
+                              ),
                               label: Text(context.l10n.google),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                side: const BorderSide(
-                                    color: AppColors.border),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                side: const BorderSide(color: AppColors.border),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
@@ -394,8 +455,11 @@ class _TermsNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    const base =
-        TextStyle(fontSize: 11.5, height: 1.5, color: AppColors.textMuted);
+    const base = TextStyle(
+      fontSize: 11.5,
+      height: 1.5,
+      color: AppColors.textMuted,
+    );
     final link = base.copyWith(
       color: AppColors.primaryDark,
       fontWeight: FontWeight.w700,
@@ -484,10 +548,7 @@ class _RoleCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,
-              child: Text(
-                emoji,
-                style: const TextStyle(fontSize: 22),
-              ),
+              child: Text(emoji, style: const TextStyle(fontSize: 22)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -526,11 +587,7 @@ class _RoleCard extends StatelessWidget {
                 ),
               ),
               child: selected
-                  ? const Icon(
-                      Icons.check,
-                      size: 14,
-                      color: Colors.white,
-                    )
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
                   : null,
             ),
           ],
@@ -540,7 +597,13 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
-class _DocUploadButton extends StatelessWidget {
+/// One document slot: tap to pick, then a thumbnail of what was picked.
+///
+/// The preview is the point. A tick alone tells an applicant a file was
+/// attached but not which one, and the failure this screen has to catch is a
+/// photo of the wrong side, or of a thumb — the review queue would otherwise
+/// catch it days later.
+class _DocUploadButton extends StatefulWidget {
   const _DocUploadButton({
     required this.label,
     required this.file,
@@ -552,27 +615,121 @@ class _DocUploadButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_DocUploadButton> createState() => _DocUploadButtonState();
+}
+
+class _DocUploadButtonState extends State<_DocUploadButton> {
+  Uint8List? _preview;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreview();
+  }
+
+  @override
+  void didUpdateWidget(_DocUploadButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.file?.path != widget.file?.path) _loadPreview();
+  }
+
+  /// Read once per pick, not per rebuild — this runs on the platform's file
+  /// channel and the form rebuilds on every keystroke.
+  Future<void> _loadPreview() async {
+    final file = widget.file;
+    if (file == null) {
+      if (mounted) setState(() => _preview = null);
+      return;
+    }
+    try {
+      final bytes = await file.readAsBytes();
+      if (mounted && widget.file?.path == file.path) {
+        setState(() => _preview = bytes);
+      }
+    } catch (_) {
+      // The tick still shows: the file is attached even if it will not render.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final hasFile = file != null;
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        side: BorderSide(color: hasFile ? AppColors.success : AppColors.border),
-        backgroundColor: hasFile ? AppColors.successFill : AppColors.canvas,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      icon: Icon(
-        hasFile ? Icons.check_circle_rounded : Icons.add_a_photo_rounded,
-        size: 16,
-        color: hasFile ? AppColors.success : AppColors.primary,
-      ),
-      label: Text(
-        hasFile ? 'Attached ✓' : label,
-        style: TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w700,
-          color: hasFile ? AppColors.successInk : AppColors.ink,
+    final hasFile = widget.file != null;
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 96,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: hasFile ? AppColors.successFill : AppColors.canvas,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasFile ? AppColors.success : AppColors.border,
+            ),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_preview != null)
+                Image.memory(_preview!, fit: BoxFit.cover)
+              else
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      hasFile
+                          ? Icons.check_circle_rounded
+                          : Icons.add_a_photo_rounded,
+                      size: 20,
+                      color: hasFile ? AppColors.success : AppColors.primary,
+                    ),
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        widget.label,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              // Over the thumbnail, so the slot stays identifiable once it is
+              // filled — which is when knowing which one it is matters most.
+              if (_preview != null)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    color: Colors.black.withValues(alpha: 0.55),
+                    child: Text(
+                      widget.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

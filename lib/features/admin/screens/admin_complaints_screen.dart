@@ -50,13 +50,16 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
     final reply = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Resolve Customer Complaint'),
+        title: Text(context.l10n.resolveComplaint),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Subject: ${report['subject'] ?? 'Complaint'}',
+              context.l10n.subjectLine(
+                (report['subject'] as String?) ??
+                    context.l10n.complaintFallback,
+              ),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -68,9 +71,9 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
             TextField(
               controller: controller,
               maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Enter reply/resolution message to customer...',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: context.l10n.complaintReplyHint,
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -78,11 +81,11 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Send & Resolve'),
+            child: Text(context.l10n.sendAndResolve),
           ),
         ],
       ),
@@ -128,10 +131,19 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
               child: Row(
                 children: [
                   SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'all', label: Text('All')),
-                      ButtonSegment(value: 'pending', label: Text('Pending')),
-                      ButtonSegment(value: 'resolved', label: Text('Resolved')),
+                    segments: [
+                      ButtonSegment(
+                        value: 'all',
+                        label: Text(context.l10n.all),
+                      ),
+                      ButtonSegment(
+                        value: 'pending',
+                        label: Text(context.l10n.pendingLabel),
+                      ),
+                      ButtonSegment(
+                        value: 'resolved',
+                        label: Text(context.l10n.resolvedLabel),
+                      ),
                     ],
                     selected: {_filterStatus},
                     onSelectionChanged: (set) {
@@ -146,140 +158,144 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? ErrorView(message: _error!, onRetry: _load)
-                      : RefreshIndicator(
-                          onRefresh: _load,
-                          child: _reports.isEmpty
-                              ? ListView(
-                                  children: const [
-                                    SizedBox(height: 80),
-                                    EmptyView(
-                                      message: 'No complaints or reports found.',
-                                      icon: Icons.report_problem_outlined,
-                                    ),
-                                  ],
-                                )
-                              : ListView.builder(
-                                  padding: const EdgeInsets.all(AppSpace.gutter),
-                                  itemCount: _reports.length,
-                                  itemBuilder: (context, index) {
-                                    final report = _reports[index];
-                                    final isResolved =
-                                        report['status'] == 'resolved';
-                                    final vendorName =
-                                        (report['vendors'] as Map?)?['name'];
+                  ? ErrorView(message: _error!, onRetry: _load)
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: _reports.isEmpty
+                          ? ListView(
+                              children: [
+                                const SizedBox(height: 80),
+                                EmptyView(
+                                  message: context.l10n.noComplaints,
+                                  icon: Icons.report_problem_outlined,
+                                ),
+                              ],
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(AppSpace.gutter),
+                              itemCount: _reports.length,
+                              itemBuilder: (context, index) {
+                                final report = _reports[index];
+                                final isResolved =
+                                    report['status'] == 'resolved';
+                                final vendorName =
+                                    (report['vendors'] as Map?)?['name'];
 
-                                    return Card(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        side: BorderSide(
-                                            color: Colors.grey.shade300),
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
                                           children: [
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    report['subject'] ??
-                                                        'Customer Complaint',
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
+                                            Expanded(
+                                              child: Text(
+                                                report['subject'] ??
+                                                    'Customer Complaint',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
                                                 ),
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: isResolved
-                                                        ? AppColors.successFill
-                                                        : AppColors.amberFill,
-                                                    borderRadius:
-                                                        BorderRadius.circular(12),
-                                                  ),
-                                                  child: Text(
-                                                    (report['status'] ?? 'pending')
-                                                        .toUpperCase(),
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: isResolved
-                                                          ? AppColors.successInk
-                                                          : AppColors.amberInk,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                              ),
                                             ),
-                                            if (vendorName != null) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                'Store: $vendorName',
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: isResolved
+                                                    ? AppColors.successFill
+                                                    : AppColors.amberFill,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                (report['status'] ?? 'pending')
+                                                    .toUpperCase(),
                                                 style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey.shade600,
-                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isResolved
+                                                      ? AppColors.successInk
+                                                      : AppColors.amberInk,
                                                 ),
                                               ),
-                                            ],
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              report['description'] ?? '',
-                                              style: const TextStyle(
-                                                  fontSize: 13.5,
-                                                  height: 1.4),
                                             ),
-                                            if (isResolved &&
-                                                report['admin_reply'] !=
-                                                    null) ...[
-                                              const SizedBox(height: 12),
-                                              Container(
-                                                width: double.infinity,
-                                                padding: const EdgeInsets.all(10),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey.shade100,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  'Resolution Reply:\n${report['admin_reply']}',
-                                                  style: const TextStyle(
-                                                      fontSize: 12.5,
-                                                      fontStyle: FontStyle.italic),
-                                                ),
-                                              ),
-                                            ],
-                                            const SizedBox(height: 12),
-                                            if (!isResolved)
-                                              SizedBox(
-                                                width: double.infinity,
-                                                child: OutlinedButton.icon(
-                                                  onPressed: () =>
-                                                      _resolveReport(report),
-                                                  icon: const Icon(
-                                                      Icons.check_circle_outline,
-                                                      size: 18),
-                                                  label: const Text(
-                                                      'Reply & Resolve'),
-                                                ),
-                                              ),
                                           ],
                                         ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                        ),
+                                        if (vendorName != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Store: $vendorName',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          report['description'] ?? '',
+                                          style: const TextStyle(
+                                            fontSize: 13.5,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                        if (isResolved &&
+                                            report['admin_reply'] != null) ...[
+                                          const SizedBox(height: 12),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'Resolution Reply:\n${report['admin_reply']}',
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 12),
+                                        if (!isResolved)
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: OutlinedButton.icon(
+                                              onPressed: () =>
+                                                  _resolveReport(report),
+                                              icon: const Icon(
+                                                Icons.check_circle_outline,
+                                                size: 18,
+                                              ),
+                                              label: const Text(
+                                                'Reply & Resolve',
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
             ),
           ],
         ),

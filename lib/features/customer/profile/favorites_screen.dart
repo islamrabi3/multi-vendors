@@ -180,7 +180,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                     PositionedDirectional(
                                       top: 12,
                                       start: 12,
-                                      child: vendor.isOpen
+                                      child: vendor.isOpenNow()
                                           ? SoftBadge(
                                               label: context.l10n.openNow,
                                               fill: AppColors.successFill,

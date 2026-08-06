@@ -23,10 +23,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _repo = AuthRepository();
-  late Future<({int orders, int favorites, int points})> _stats =
-      _repo.fetchMyStats();
+  late Future<({int orders, int favorites, int points})> _stats = _repo
+      .fetchMyStats();
 
-  void _reloadStats() => setState(() => _stats = _repo.fetchMyStats());
+  void _reloadStats() => setState(() {
+    _stats = _repo.fetchMyStats();
+  });
 
   /// Closing an account is irreversible, so the two things that would surprise
   /// someone afterwards are checked first: work still in flight, and money
@@ -50,7 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final message = blockers.hasBalance
         ? '${l10n.deleteAccountWarning}\n\n'
-            '${l10n.deleteAccountWalletWarning(formatMoney(blockers.walletBalance))}'
+              '${l10n.deleteAccountWalletWarning(formatMoney(blockers.walletBalance))}'
         : l10n.deleteAccountWarning;
 
     final confirmed = await AppDialogs.showConfirmDialog(
@@ -110,9 +112,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (saved != true || !mounted) return;
     final ok = await context.read<AuthCubit>().updateProfile(
-          fullName: nameController.text,
-          phone: phoneController.text,
-        );
+      fullName: nameController.text,
+      phone: phoneController.text,
+    );
     if (!mounted) return;
     showSnack(
       context,
@@ -153,8 +155,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       colors: [AppColors.primaryLight, AppColors.primaryDark],
                     ),
                   ),
-                  child: Text(initial,
-                      style: AppType.display(26, color: Colors.white)),
+                  child: Text(
+                    initial,
+                    style: AppType.display(26, color: Colors.white),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -163,9 +167,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(name, style: AppType.display(22)),
                       if (profile?.phone != null && profile!.phone!.isNotEmpty)
-                        Text(profile.phone!,
-                            style: const TextStyle(
-                                fontSize: 13, color: AppColors.textMuted)),
+                        Text(
+                          profile.phone!,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -184,20 +192,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 return Row(
                   children: [
                     Expanded(
-                        child: _StatBox(
-                            value: value(data?.orders),
-                            label: context.l10n.orders)),
+                      child: _StatBox(
+                        value: value(data?.orders),
+                        label: context.l10n.orders,
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child: _StatBox(
-                            value: value(data?.favorites),
-                            label: context.l10n.favorites)),
+                      child: _StatBox(
+                        value: value(data?.favorites),
+                        label: context.l10n.favorites,
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child: _StatBox(
-                            value: value(data?.points),
-                            label: context.l10n.points,
-                            accent: true)),
+                      child: _StatBox(
+                        value: value(data?.points),
+                        label: context.l10n.points,
+                        accent: true,
+                      ),
+                    ),
                   ],
                 );
               },
@@ -214,123 +228,146 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   _MenuRow(
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: context.l10n.wallet,
-                      onTap: () => Navigator.push(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: context.l10n.wallet,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WalletScreen()),
+                    ),
+                  ),
+                  const _MenuDivider(),
+                  _MenuRow(
+                    icon: Icons.stars_outlined,
+                    label: context.l10n.loyaltyRewards,
+                    // Points can be spent in there, so the header counter is
+                    // re-read on the way back.
+                    onTap: () async {
+                      await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const WalletScreen()),
-                      )),
+                        MaterialPageRoute(
+                          builder: (_) => const LoyaltyScreen(),
+                        ),
+                      );
+                      _reloadStats();
+                    },
+                  ),
                   const _MenuDivider(),
                   _MenuRow(
-                      icon: Icons.stars_outlined,
-                      label: context.l10n.loyaltyRewards,
-                      // Points can be spent in there, so the header counter is
-                      // re-read on the way back.
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const LoyaltyScreen()),
-                        );
-                        _reloadStats();
-                      }),
+                    icon: Icons.location_on_outlined,
+                    label: context.l10n.addresses,
+                    onTap: () => context.push('/addresses'),
+                  ),
                   const _MenuDivider(),
                   _MenuRow(
-                      icon: Icons.location_on_outlined,
-                      label: context.l10n.addresses,
-                      onTap: () => context.push('/addresses')),
+                    icon: Icons.favorite_border,
+                    label: context.l10n.favorites,
+                    onTap: () async {
+                      await context.push('/favorites');
+                      _reloadStats();
+                    },
+                  ),
                   const _MenuDivider(),
                   _MenuRow(
-                      icon: Icons.favorite_border,
-                      label: context.l10n.favorites,
-                      onTap: () async {
-                        await context.push('/favorites');
-                        _reloadStats();
-                      }),
+                    icon: Icons.support_agent_outlined,
+                    label: context.l10n.supportChat,
+                    onTap: () => context.push('/support'),
+                  ),
                   const _MenuDivider(),
                   _MenuRow(
-                      icon: Icons.support_agent_outlined,
-                      label: context.l10n.supportChat,
-                      onTap: () => context.push('/support')),
+                    icon: Icons.info_outline,
+                    label: context.l10n.aboutUs,
+                    onTap: () => context.push('/about'),
+                  ),
                   const _MenuDivider(),
                   _MenuRow(
-                      icon: Icons.info_outline,
-                      label: context.l10n.aboutUs,
-                      onTap: () => context.push('/about')),
+                    icon: Icons.gavel_outlined,
+                    label: context.l10n.termsAndConditions,
+                    onTap: () => context.push('/terms'),
+                  ),
                   const _MenuDivider(),
                   _MenuRow(
-                      icon: Icons.gavel_outlined,
-                      label: context.l10n.termsAndConditions,
-                      onTap: () => context.push('/terms')),
+                    icon: Icons.privacy_tip_outlined,
+                    label: context.l10n.privacyPolicy,
+                    onTap: () => context.push('/privacy'),
+                  ),
                   const _MenuDivider(),
                   _MenuRow(
-                      icon: Icons.privacy_tip_outlined,
-                      label: context.l10n.privacyPolicy,
-                      onTap: () => context.push('/privacy')),
-                  const _MenuDivider(),
-                  _MenuRow(
-                      icon: Icons.settings_outlined,
-                      label: context.l10n.settings,
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (ctx) {
-                            return BlocProvider.value(
-                              value: context.read<LocaleCubit>(),
-                              child: BlocBuilder<LocaleCubit, Locale>(
-                                builder: (sheetCtx, locale) {
-                                  final currentIsAr = locale.languageCode == 'ar';
-                                  return Padding(
-                                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          sheetCtx.l10n.settings,
-                                          style: AppType.display(20),
-                                        ),
-                                        const SizedBox(height: 20),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              sheetCtx.l10n.appLanguage,
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.ink,
-                                              ),
+                    icon: Icons.settings_outlined,
+                    label: context.l10n.settings,
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (ctx) {
+                          return BlocProvider.value(
+                            value: context.read<LocaleCubit>(),
+                            child: BlocBuilder<LocaleCubit, Locale>(
+                              builder: (sheetCtx, locale) {
+                                final currentIsAr = locale.languageCode == 'ar';
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    24,
+                                    24,
+                                    24,
+                                    40,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        sheetCtx.l10n.settings,
+                                        style: AppType.display(20),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            sheetCtx.l10n.appLanguage,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.ink,
                                             ),
-                                            Switch(
-                                              value: currentIsAr,
-                                              onChanged: (v) {
-                                                sheetCtx.read<LocaleCubit>().setLocale(
-                                                  v ? const Locale('ar') : const Locale('en'),
-                                                );
-                                              },
-                                              activeThumbColor: Colors.white,
-                                              activeTrackColor: AppColors.primary,
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          currentIsAr ? 'العربية (Arabic)' : 'English (الإنجليزية)',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: AppColors.textMuted,
                                           ),
+                                          Switch(
+                                            value: currentIsAr,
+                                            onChanged: (v) {
+                                              sheetCtx
+                                                  .read<LocaleCubit>()
+                                                  .setLocale(
+                                                    v
+                                                        ? const Locale('ar')
+                                                        : const Locale('en'),
+                                                  );
+                                            },
+                                            activeThumbColor: Colors.white,
+                                            activeTrackColor: AppColors.primary,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        currentIsAr
+                                            ? 'العربية (Arabic)'
+                                            : 'English (الإنجليزية)',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textMuted,
                                         ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        );
-                      }),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -338,11 +375,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: TextButton(
                 onPressed: () => context.read<AuthCubit>().signOut(),
-                child: Text(context.l10n.logOut,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryDark)),
+                child: Text(
+                  context.l10n.logOut,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
               ),
             ),
             // Deliberately last and understated: closing an account is a real
@@ -351,11 +391,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: TextButton(
                 onPressed: _confirmDeleteAccount,
-                child: Text(context.l10n.deleteAccount,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted)),
+                child: Text(
+                  context.l10n.deleteAccount,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ),
             ),
           ],
@@ -390,8 +433,11 @@ class _SquareIcon extends StatelessWidget {
 }
 
 class _StatBox extends StatelessWidget {
-  const _StatBox(
-      {required this.value, required this.label, this.accent = false});
+  const _StatBox({
+    required this.value,
+    required this.label,
+    this.accent = false,
+  });
 
   final String value;
   final String label;
@@ -408,12 +454,18 @@ class _StatBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(value,
-              style: AppType.display(20,
-                  color: accent ? AppColors.primary : AppColors.ink)),
+          Text(
+            value,
+            style: AppType.display(
+              20,
+              color: accent ? AppColors.primary : AppColors.ink,
+            ),
+          ),
           const SizedBox(height: 1),
-          Text(label,
-              style: const TextStyle(fontSize: 11, color: AppColors.textFaint)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.textFaint),
+          ),
         ],
       ),
     );
@@ -421,8 +473,11 @@ class _StatBox extends StatelessWidget {
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow(
-      {required this.icon, required this.label, required this.onTap});
+  const _MenuRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -448,14 +503,20 @@ class _MenuRow extends StatelessWidget {
             ),
             const SizedBox(width: 13),
             Expanded(
-              child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink)),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink,
+                ),
+              ),
             ),
-            const DirectionalIcon(Icons.chevron_right,
-                size: 20, color: AppColors.navInactive),
+            const DirectionalIcon(
+              Icons.chevron_right,
+              size: 20,
+              color: AppColors.navInactive,
+            ),
           ],
         ),
       ),

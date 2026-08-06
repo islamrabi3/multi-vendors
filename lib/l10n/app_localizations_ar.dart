@@ -15,7 +15,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get retry => 'إعادة المحاولة';
 
   @override
-  String get createYournaccount => 'إنشاء\\nحسابك';
+  String get createYournaccount => 'إنشاء حسابك';
 
   @override
   String get howWillYouUseEaty => 'كيف ستستخدم Eaty؟';
@@ -268,7 +268,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home12TahrirSt => 'المنزل · 12 شارع التحرير';
 
   @override
-  String get s40OffYournfirstOrder => 'خصم 40% على\\nطلبك الأول';
+  String get s40OffYournfirstOrder => 'خصم 40% على طلبك الأول';
 
   @override
   String get codeEaty40 => 'الكود · EATY40';
@@ -521,8 +521,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get changeLanguage => 'تغيير اللغة';
 
   @override
-  String get missingSupabaseConfigurationnn1 =>
-      'إعدادات Supabase مفقودة.\\n\\n';
+  String get missingSupabaseConfigurationnn1 => 'إعدادات Supabase مفقودة.';
 
   @override
   String get multiVendor => 'متعدد البائعين';
@@ -560,7 +559,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noActiveDeliverynpullToRefresh =>
-      'لا توجد عملية توصيل نشطة.\\nاسحب للتحديث · أو اقبل طلباً من المتاح.';
+      'لا توجد عملية توصيل نشطة.\nاسحب للتحديث · أو اقبل طلباً من المتاح.';
 
   @override
   String get overview => 'نظرة عامة';
@@ -643,6 +642,168 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profile => 'الملف الشخصي';
+
+  @override
+  String get driverDocumentsTitle => 'مستندات التحقق';
+
+  @override
+  String get driverDocumentsSubtitle =>
+      'بطاقة الرقم القومي ورخصة المركبة، من الأمام والخلف. يراجعها المشرف قبل أن تتمكن من قبول الطلبات.';
+
+  @override
+  String get driverDocumentsIncomplete =>
+      'أضف الصور الأربع حتى تتم مراجعة طلبك.';
+
+  @override
+  String get driverDocumentsPending =>
+      'تم استلام المستندات. سيراجعها المشرف قريباً.';
+
+  @override
+  String get enterAValidPhone => 'أدخل رقم هاتف صحيح';
+
+  @override
+  String get enterAValidEmail => 'أدخل بريداً إلكترونياً صحيحاً';
+
+  @override
+  String get passwordMinSixChars => 'استخدم 6 أحرف على الأقل';
+
+  @override
+  String get tapToUpload => 'اضغط للرفع';
+
+  @override
+  String get photoAdded => 'تمت الإضافة';
+
+  @override
+  String get submittedDocuments => 'المستندات المرفوعة';
+
+  @override
+  String get vehicleLabel => 'المركبة';
+
+  @override
+  String get noDocumentsUploaded => 'لم يرفع مقدم الطلب أي مستندات.';
+
+  @override
+  String get driverVerificationTitle => 'التحقق';
+
+  @override
+  String get driverVerificationPending =>
+      'قيد المراجعة. ستتمكن من قبول الطلبات بعد موافقة المشرف على مستنداتك.';
+
+  @override
+  String get driverVerificationApproved =>
+      'تمت الموافقة. يمكنك الاتصال وقبول الطلبات.';
+
+  @override
+  String get driverVerificationRejected =>
+      'تم رفض مستنداتك. استبدلها وستتم مراجعتها مرة أخرى.';
+
+  @override
+  String get driverVerificationSuspended => 'تم إيقاف حسابك. تواصل مع الدعم.';
+
+  @override
+  String get driverDocumentsMissingBanner => 'أكمل التحقق لتبدأ التوصيل';
+
+  @override
+  String get submitForReview => 'إرسال للمراجعة';
+
+  @override
+  String get documentsSubmitted => 'تم إرسال المستندات للمراجعة.';
+
+  @override
+  String get onFileLabel => 'مُرفق';
+
+  @override
+  String get userDeletedAnonymised =>
+      'تم إغلاق الحساب وإخفاء هويته. تعذّر حذفه نهائياً لوجود سجل طلبات.';
+
+  @override
+  String get unverifiedDriverNotice =>
+      'لا يمكنك قبول أي طلبات حتى يوثّق المشرف حسابك.';
+
+  @override
+  String get unverifiedVendorNotice =>
+      'لا يمكنك قبول أي طلبات حتى يوثّق المشرف متجرك.';
+
+  @override
+  String get suspendedVendorNotice =>
+      'متجرك موقوف ولا يمكنه قبول الطلبات. تواصل مع الدعم.';
+
+  @override
+  String get documentPreview => 'المستند';
+
+  @override
+  String get notUploaded => 'لم يُرفع';
+
+  @override
+  String get deliveryProofOptionalHint =>
+      'أرفق صورة كإثبات للتسليم، أو تخطَّ الخطوة.';
+
+  @override
+  String get proofPhotoFailed =>
+      'تعذّر إرفاق الصورة. تم إتمام التسليم على أي حال.';
+
+  @override
+  String get adjustWallet => 'تعديل المحفظة';
+
+  @override
+  String get walletAdjustCredit => 'إضافة رصيد';
+
+  @override
+  String get walletAdjustDebit => 'خصم رصيد';
+
+  @override
+  String get walletAdjustAmount => 'المبلغ';
+
+  @override
+  String get walletAdjustReason => 'السبب (يظهر للعميل)';
+
+  @override
+  String get walletAdjustReasonRequired =>
+      'اذكر السبب — يظهر للعميل في سجل محفظته.';
+
+  @override
+  String walletAdjusted(String balance) {
+    return 'تم تحديث المحفظة. الرصيد الجديد: $balance';
+  }
+
+  @override
+  String get documentUploaded => 'تم رفع المستند.';
+
+  @override
+  String get driverRejected =>
+      'تم رفض السائق. يمكنه استبدال مستنداته وإعادة التقديم.';
+
+  @override
+  String get driverSuspendedToast => 'تم إيقاف السائق وفصله عن الخدمة.';
+
+  @override
+  String get couldNotLoadDocument => 'تعذّر تحميل هذا المستند';
+
+  @override
+  String get noDriverApplications => 'لا توجد طلبات سائقين في هذه الفئة.';
+
+  @override
+  String get approve => 'موافقة';
+
+  @override
+  String get statusApproved => 'مُعتمد';
+
+  @override
+  String get statusSuspended => 'موقوف';
+
+  @override
+  String documentsOnFile(int count) {
+    return '$count من 4 مستندات';
+  }
+
+  @override
+  String get searchVendorsHint => 'ابحث عن متجر بالاسم أو الهاتف';
+
+  @override
+  String get openSupportThreads => 'دعم مفتوح';
+
+  @override
+  String get driversToApprove => 'سائقون بانتظار الموافقة';
 
   @override
   String get required => 'مطلوب';
@@ -1562,7 +1723,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get totalAmount => 'الإجمالي';
 
   @override
-  String get openInMaps => 'فتح في الخريطة';
+  String get openInMaps => 'فتح في الخرائط';
 
   @override
   String get enterOtp => 'أدخل رمز التوصيل';
@@ -2014,13 +2175,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'اختر نوع الحساب المناسب لك. لن نسألك مرة أخرى.';
 
   @override
-  String get roleCustomerDesc => 'تصفح المتاجر واطلب الطعام وتتبع التوصيل.';
+  String get roleCustomerDesc => 'تصفح المتاجر واطلب التوصيل';
 
   @override
-  String get roleVendorDesc => 'أدر متجرك وقائمة الطعام والطلبات.';
+  String get roleVendorDesc => 'إدارة متجر وقائمة طعام';
 
   @override
-  String get roleDriverDesc => 'استلم الطلبات ووصّلها إلى العملاء.';
+  String get roleDriverDesc => 'اكسب في الوقت الذي يناسبك';
 
   @override
   String get roleChoiceIsPermanent =>
@@ -2490,4 +2651,963 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get newPrice => 'سعر جديد';
+
+  @override
+  String get reorderTitle => 'اطلب مرة أخرى';
+
+  @override
+  String get reorderNothingAvailable =>
+      'لم يعد أي من هذه الأصناف موجوداً في القائمة.';
+
+  @override
+  String reorderStoreClosed(String store) {
+    return '$store مغلق حالياً. تضيف الأصناف للسلة على أي حال؟';
+  }
+
+  @override
+  String reorderStoreInactive(String store) {
+    return '$store لا يستقبل طلبات حالياً.';
+  }
+
+  @override
+  String reorderReplaceCart(String store) {
+    return 'سلتك بها أصناف من $store. تستبدلها بهذا الطلب؟';
+  }
+
+  @override
+  String reorderSomeMissing(int count) {
+    return '$count صنف لم يعد متاحاً ولم يُضف.';
+  }
+
+  @override
+  String get reorderOptionsChanged => 'بعض الخيارات لم تعد متوفرة ولم تُضف.';
+
+  @override
+  String get reorderAdded => 'تمت الإضافة إلى سلتك';
+
+  @override
+  String get addAnyway => 'أضف على أي حال';
+
+  @override
+  String get replaceCart => 'استبدال السلة';
+
+  @override
+  String get okLabel => 'حسناً';
+
+  @override
+  String get errCouponNotStarted => 'لم يبدأ هذا العرض بعد.';
+
+  @override
+  String get errCouponExpired => 'انتهت صلاحية هذا العرض.';
+
+  @override
+  String get errCouponExhausted => 'تم استهلاك هذا العرض بالكامل.';
+
+  @override
+  String get errCouponAlreadyUsed => 'لقد استخدمت هذا الكود من قبل.';
+
+  @override
+  String get errCouponFirstOrderOnly => 'هذا الكود لأول طلب فقط.';
+
+  @override
+  String get errCouponWrongVendor => 'هذا الكود لا يعمل في هذا المتجر.';
+
+  @override
+  String get errPlatformTermsAdminOnly =>
+      'رسوم التوصيل والعمولة تحددها المنصة.';
+
+  @override
+  String get errBillingModelLocked =>
+      'تم تثبيت خطة الاشتراك. تواصل مع الدعم لتغييرها.';
+
+  @override
+  String get setByPlatform => 'تحدده المنصة';
+
+  @override
+  String get billingPlan => 'خطة الاشتراك';
+
+  @override
+  String get billingCommission => 'عمولة';
+
+  @override
+  String get billingSubscription => 'اشتراك ثابت';
+
+  @override
+  String billingCommissionDesc(String rate) {
+    return 'بدون رسوم شهرية. المنصة تأخذ $rate% من كل طلب.';
+  }
+
+  @override
+  String get billingSubscriptionDesc =>
+      'رسوم ثابتة شهرياً. المنصة لا تأخذ شيئاً من كل طلب.';
+
+  @override
+  String get choosePlan => 'اختر طريقة الدفع';
+
+  @override
+  String get choosePlanDesc =>
+      'اختر الخطة المناسبة لحجم طلباتك. يمكنك طلب تغييرها لاحقاً من الدعم.';
+
+  @override
+  String get callStore => 'الاتصال بالمتجر';
+
+  @override
+  String get noStorePhone => 'لا يوجد رقم هاتف مسجل لهذا المتجر.';
+
+  @override
+  String get couponTypeFreeDelivery => 'توصيل مجاني';
+
+  @override
+  String get perCustomerLimit => 'عدد الاستخدامات لكل عميل';
+
+  @override
+  String get perCustomerUnlimited => 'بلا حد لكل عميل';
+
+  @override
+  String get totalUsageLimit => 'إجمالي الاستخدامات (اختياري)';
+
+  @override
+  String get couponStartsAt => 'يبدأ';
+
+  @override
+  String get couponExpiresAt => 'ينتهي';
+
+  @override
+  String get couponFirstOrderOnly => 'أول طلب فقط';
+
+  @override
+  String get couponFirstOrderOnlyDesc =>
+      'للعملاء الذين لم يستلموا أي طلب من قبل فقط.';
+
+  @override
+  String get couponPublic => 'إظهاره في صفحة العروض';
+
+  @override
+  String get couponPublicDesc => 'يراه العملاء دون الحاجة لمعرفة الكود.';
+
+  @override
+  String get couponTitleLabel => 'اسم الحملة (اختياري)';
+
+  @override
+  String get notSet => 'غير محدد';
+
+  @override
+  String get clearDate => 'مسح';
+
+  @override
+  String get couponScheduled => 'مجدول';
+
+  @override
+  String get couponExhausted => 'مستهلك بالكامل';
+
+  @override
+  String get couponRedemptions => 'مرات الاستخدام';
+
+  @override
+  String get oncePerCustomer => 'مرة واحدة لكل عميل';
+
+  @override
+  String usesPerCustomer(int count) {
+    return '$count مرات لكل عميل';
+  }
+
+  @override
+  String get platformTerms => 'شروط المنصة';
+
+  @override
+  String get commissionRate => 'نسبة العمولة';
+
+  @override
+  String get subscriptionFee => 'رسوم الاشتراك';
+
+  @override
+  String get editTerms => 'تعديل الشروط';
+
+  @override
+  String get termsSaved => 'تم تحديث الشروط';
+
+  @override
+  String get youMightAlsoLike => 'قد يعجبك أيضاً';
+
+  @override
+  String get goesWellWith => 'يُطلب عادة مع';
+
+  @override
+  String get managementRoles => 'أدوار الإدارة';
+
+  @override
+  String get staff => 'فريق العمل';
+
+  @override
+  String get auditTrail => 'سجل الإجراءات';
+
+  @override
+  String get newRole => 'دور جديد';
+
+  @override
+  String get editRole => 'تعديل الدور';
+
+  @override
+  String get roleName => 'اسم الدور';
+
+  @override
+  String get roleNameArabic => 'اسم الدور (بالعربية)';
+
+  @override
+  String get permissions => 'الصلاحيات';
+
+  @override
+  String permissionsCount(int count) {
+    return '$count صلاحية';
+  }
+
+  @override
+  String get unrestricted => 'صلاحية كاملة';
+
+  @override
+  String get unrestrictedDesc => 'بدون دور محدد — يستطيع فعل كل شيء.';
+
+  @override
+  String get assignRole => 'تعيين دور';
+
+  @override
+  String get roleInUse => 'انقل من يحملون هذا الدور قبل حذفه.';
+
+  @override
+  String get roleSaved => 'تم حفظ الدور';
+
+  @override
+  String get roleDeleted => 'تم حذف الدور';
+
+  @override
+  String get roleAssigned => 'تم تعيين الدور';
+
+  @override
+  String get noStaffYet => 'لا توجد حسابات إدارة بعد.';
+
+  @override
+  String get noAuditYet => 'لم يتم تنفيذ أي إجراء بعد.';
+
+  @override
+  String get permGroupOrders => 'الطلبات';
+
+  @override
+  String get permGroupVendors => 'المتاجر';
+
+  @override
+  String get permGroupCatalogue => 'الكتالوج والتسويق';
+
+  @override
+  String get permGroupDrivers => 'المندوبون';
+
+  @override
+  String get permGroupUsers => 'المستخدمون والفريق';
+
+  @override
+  String get permGroupSupport => 'الدعم';
+
+  @override
+  String get permGroupFinance => 'المالية';
+
+  @override
+  String get cannotChangeOwnRole => 'لا يمكنك تغيير دورك.';
+
+  @override
+  String get deleteRoleConfirm => 'حذف هذا الدور؟ يجب ألا يكون أحد يحمله.';
+
+  @override
+  String get errCannotChangeOwnRole => 'لا يمكنك تغيير دورك.';
+
+  @override
+  String get errRoleInUse => 'انقل من يحملون هذا الدور قبل حذفه.';
+
+  @override
+  String get errNotAnAdmin => 'هذا الحساب ليس حساب إدارة.';
+
+  @override
+  String get announcements => 'الإشعارات العامة';
+
+  @override
+  String get newAnnouncement => 'إشعار جديد';
+
+  @override
+  String get sendNow => 'إرسال الآن';
+
+  @override
+  String get audience => 'الجمهور';
+
+  @override
+  String get audienceAll => 'الجميع';
+
+  @override
+  String get audienceCustomers => 'العملاء';
+
+  @override
+  String get audienceVendors => 'المتاجر';
+
+  @override
+  String get audienceDrivers => 'المندوبون';
+
+  @override
+  String reachableDevices(int count) {
+    return 'يمكن الوصول إلى $count جهاز';
+  }
+
+  @override
+  String get announcementTitle => 'العنوان';
+
+  @override
+  String get announcementBody => 'الرسالة';
+
+  @override
+  String get deepLinkOptional => 'فتح شاشة عند الضغط (اختياري)';
+
+  @override
+  String campaignSent(int delivered, int recipients) {
+    return 'تم الإرسال إلى $delivered من $recipients جهاز';
+  }
+
+  @override
+  String campaignSendConfirm(int count) {
+    return 'إرسال هذا إلى $count جهاز؟ لا يمكن التراجع.';
+  }
+
+  @override
+  String get noCampaignsYet => 'لا توجد إشعارات بعد.';
+
+  @override
+  String get statusDraft => 'مسودة';
+
+  @override
+  String get statusSending => 'جارٍ الإرسال…';
+
+  @override
+  String get statusSent => 'تم الإرسال';
+
+  @override
+  String get statusFailed => 'فشل';
+
+  @override
+  String deliveredOf(int delivered, int failed) {
+    return '$delivered وصلت · $failed فشلت';
+  }
+
+  @override
+  String get saveAsDraft => 'حفظ كمسودة';
+
+  @override
+  String get draftSaved => 'تم الحفظ كمسودة';
+
+  @override
+  String get campaignNothingToReach =>
+      'لا يوجد أحد في هذا الجمهور يمكنه استقبال الإشعارات حالياً.';
+
+  @override
+  String get drafts => 'المسودات';
+
+  @override
+  String get resend => 'إرسال مرة أخرى';
+
+  @override
+  String resendConfirm(int count) {
+    return 'إرسال هذا مرة أخرى إلى $count جهاز؟ سيُرسل كإشعار جديد.';
+  }
+
+  @override
+  String get addStaff => 'إضافة موظف';
+
+  @override
+  String get createNewLogin => 'إنشاء حساب جديد';
+
+  @override
+  String get createNewLoginDesc => 'بريد وكلمة مرور لشخص ليس لديه حساب بعد.';
+
+  @override
+  String get promoteExisting => 'ترقية مستخدم موجود';
+
+  @override
+  String get promoteExistingDesc => 'منح حساب موجود بالفعل دوراً إدارياً.';
+
+  @override
+  String get searchUsersHint => 'ابحث بالاسم أو البريد أو الهاتف';
+
+  @override
+  String get searchMinChars => 'اكتب ٣ أحرف على الأقل.';
+
+  @override
+  String get noUsersFound => 'لا توجد نتائج مطابقة.';
+
+  @override
+  String get alreadyStaff => 'ضمن الفريق بالفعل';
+
+  @override
+  String get staffCreated => 'تم إنشاء حساب الموظف';
+
+  @override
+  String get staffPromoted => 'تمت الإضافة إلى الفريق';
+
+  @override
+  String get staffRevoked => 'تمت الإزالة من الفريق';
+
+  @override
+  String get removeFromStaff => 'إزالة من الفريق';
+
+  @override
+  String get removeFromStaffConfirm =>
+      'إزالة هذا الشخص من الفريق؟ يحتفظ بحسابه وسجله لكنه يفقد صلاحيات الإدارة.';
+
+  @override
+  String get emailAddress => 'البريد الإلكتروني';
+
+  @override
+  String get passwordMin => '٨ أحرف على الأقل';
+
+  @override
+  String get roleForNewStaff => 'الدور';
+
+  @override
+  String get ownerFullAccess => 'المالك — صلاحية كاملة';
+
+  @override
+  String get errUserAlreadyExists2 =>
+      'يوجد حساب بهذا البريد بالفعل. قم بترقيته بدلاً من ذلك.';
+
+  @override
+  String get errCreateFailed => 'تعذّر إنشاء الحساب.';
+
+  @override
+  String get ownsStore => 'يمتلك متجراً';
+
+  @override
+  String get isDriverAccount => 'حساب مندوب';
+
+  @override
+  String get conflictWarning =>
+      'هذا الحساب يعمل أيضاً على المنصة. صلاحيات الإدارة تتيح له اعتماد أو ترويج نفسه.';
+
+  @override
+  String staffRestoredTo(String role) {
+    return 'تمت الإزالة من الفريق — أُعيد إلى $role';
+  }
+
+  @override
+  String get errCannotPromoteVendor =>
+      'لا يمكن جعل صاحب متجر مديراً — سيصبح قادراً على اعتماد متجره وتسعيره بنفسه.';
+
+  @override
+  String get errCannotPromoteDriver =>
+      'لا يمكن جعل مندوب مديراً — سيصبح قادراً على اعتماد حسابه بنفسه.';
+
+  @override
+  String get nationalIdSection => 'بطاقة الرقم القومي';
+
+  @override
+  String get idFront => 'وجه البطاقة';
+
+  @override
+  String get idBack => 'ظهر البطاقة';
+
+  @override
+  String get vehicleLicenseSection => 'رخصة المركبة';
+
+  @override
+  String get licenseFront => 'وجه الرخصة';
+
+  @override
+  String get licenseBack => 'ظهر الرخصة';
+
+  @override
+  String get categoryNameLabel => 'اسم القسم';
+
+  @override
+  String get resolveComplaint => 'حل شكوى العميل';
+
+  @override
+  String get complaintReplyHint => 'اكتب رداً للعميل…';
+
+  @override
+  String get sendAndResolve => 'إرسال وإغلاق';
+
+  @override
+  String get pendingLabel => 'قيد الانتظار';
+
+  @override
+  String get resolvedLabel => 'تم الحل';
+
+  @override
+  String get noComplaints => 'لا توجد شكاوى أو بلاغات.';
+
+  @override
+  String viewDocument(String document) {
+    return 'عرض $document';
+  }
+
+  @override
+  String uploadReplaceDocument(String document) {
+    return 'رفع / استبدال $document';
+  }
+
+  @override
+  String get rejectSuspendDriver => 'رفض / إيقاف المندوب';
+
+  @override
+  String get rejectionReasonHint => 'سبب الرفض (مثال: رخصة غير صالحة)';
+
+  @override
+  String get driverApprovals => 'اعتماد المندوبين والحسابات';
+
+  @override
+  String get salesAndFinancialReports => 'تقارير المبيعات والمالية';
+
+  @override
+  String allWithCount(int count) {
+    return 'الكل ($count)';
+  }
+
+  @override
+  String pendingWithCount(int count) {
+    return 'قيد الانتظار ($count)';
+  }
+
+  @override
+  String approvedWithCount(int count) {
+    return 'معتمد ($count)';
+  }
+
+  @override
+  String suspendedWithCount(int count) {
+    return 'موقوف ($count)';
+  }
+
+  @override
+  String get nationalIdCard => 'بطاقة الرقم القومي';
+
+  @override
+  String get driverLicence => 'رخصة القيادة';
+
+  @override
+  String optionalUpTo(int count) {
+    return 'اختياري · حتى $count';
+  }
+
+  @override
+  String cartFromOtherStore(String store) {
+    return 'سلتك تحتوي على أصناف من $store. إضافة هذا الصنف ستفرغها.';
+  }
+
+  @override
+  String get promoCodeLabel => 'الكود';
+
+  @override
+  String subjectLine(String subject) {
+    return 'الموضوع: $subject';
+  }
+
+  @override
+  String get complaintFallback => 'شكوى';
+
+  @override
+  String get adManager => 'الإعلانات';
+
+  @override
+  String get newAd => 'إعلان جديد';
+
+  @override
+  String get adPlacement => 'الموضع';
+
+  @override
+  String get placementHomeCarousel => 'شريط الرئيسية';
+
+  @override
+  String get placementHomeInline => 'الرئيسية — بين الأقسام';
+
+  @override
+  String get placementVendorTop => 'صفحة المتجر — أعلى';
+
+  @override
+  String get placementCart => 'السلة';
+
+  @override
+  String get placementOrderTracking => 'تتبع الطلب';
+
+  @override
+  String get adMedia => 'الوسائط';
+
+  @override
+  String get adImage => 'صورة';
+
+  @override
+  String get adVideo => 'فيديو';
+
+  @override
+  String get adVideoUrl => 'رابط الفيديو';
+
+  @override
+  String get adLinkUrl => 'رابط عند الضغط (اختياري)';
+
+  @override
+  String get advertiser => 'المعلن (اختياري)';
+
+  @override
+  String get adAudience => 'الجمهور';
+
+  @override
+  String get audienceNewCustomers => 'عملاء جدد';
+
+  @override
+  String get audienceReturning => 'عملاء عائدون';
+
+  @override
+  String get adStarts => 'يبدأ';
+
+  @override
+  String get adEnds => 'ينتهي';
+
+  @override
+  String adPerformance(int impressions, int clicks, String rate) {
+    return '$impressions مشاهدة · $clicks ضغطة · $rate% نسبة الضغط';
+  }
+
+  @override
+  String get noAdsYet => 'لا توجد إعلانات بعد.';
+
+  @override
+  String get adCreated => 'تم إنشاء الإعلان';
+
+  @override
+  String get adDeleted => 'تم حذف الإعلان';
+
+  @override
+  String get deleteAdConfirm =>
+      'حذف هذا الإعلان؟ ستُحذف معه أرقام المشاهدات والضغطات.';
+
+  @override
+  String get adLive => 'يعمل';
+
+  @override
+  String get adEnded => 'منتهٍ';
+
+  @override
+  String get uploadArtwork => 'رفع الصورة';
+
+  @override
+  String get artworkRequired => 'أضف صورة أولاً — هي أيضاً غلاف إعلان الفيديو.';
+
+  @override
+  String get tipDriver => 'أضف إكرامية للمندوب';
+
+  @override
+  String tipDriverDesc(String driver) {
+    return 'تُخصم من محفظتك وتذهب مباشرة إلى $driver.';
+  }
+
+  @override
+  String get tipDriverGeneric => 'تُخصم من محفظتك وتذهب مباشرة إلى المندوب.';
+
+  @override
+  String get tipAmount => 'المبلغ';
+
+  @override
+  String get sendTip => 'إرسال الإكرامية';
+
+  @override
+  String tipSent(String amount) {
+    return 'شكراً — تم إرسال $amount إلى المندوب.';
+  }
+
+  @override
+  String tippedAlready(String amount) {
+    return 'أرسلت $amount إكرامية لهذا الطلب.';
+  }
+
+  @override
+  String get errTipTooLarge => 'المبلغ أكبر من المسموح. جرّب مبلغاً أقل.';
+
+  @override
+  String get errAlreadyTipped => 'لقد أرسلت إكرامية لهذا الطلب بالفعل.';
+
+  @override
+  String get errNoDriver => 'لا يوجد مندوب لهذا الطلب.';
+
+  @override
+  String get errOrderNotDelivered => 'يمكنك إرسال الإكرامية بعد تسليم الطلب.';
+
+  @override
+  String get errInvalidAmount => 'أدخل مبلغاً صحيحاً.';
+
+  @override
+  String get orderTypeDelivery => 'توصيل';
+
+  @override
+  String get orderTypePickup => 'استلام';
+
+  @override
+  String get orderTypeScheduled => 'جدولة';
+
+  @override
+  String get pickupNoFee => 'الاستلام من المتجر — بدون رسوم توصيل.';
+
+  @override
+  String pickupCollectAt(String store) {
+    return 'الاستلام من $store';
+  }
+
+  @override
+  String get scheduleForLater => 'اختر الوقت';
+
+  @override
+  String scheduledFor(String time) {
+    return 'مجدول لـ $time';
+  }
+
+  @override
+  String get scheduleHint => 'قبل ٤٥ دقيقة على الأقل، وحتى أسبوع.';
+
+  @override
+  String get errScheduleRequired => 'اختر وقتاً لطلبك.';
+
+  @override
+  String get errScheduleTooSoon => 'اختر وقتاً بعد ٤٥ دقيقة على الأقل من الآن.';
+
+  @override
+  String get errScheduleTooFar => 'يمكنك الجدولة حتى أسبوع مقدماً.';
+
+  @override
+  String get readyForCollection => 'جاهز للاستلام';
+
+  @override
+  String get markCollected => 'تأكيد الاستلام';
+
+  @override
+  String get shopByCategory => 'تسوق حسب الفئة';
+
+  @override
+  String get closedNow => 'مغلق الآن';
+
+  @override
+  String openUntil(String time) {
+    return 'مفتوح حتى $time';
+  }
+
+  @override
+  String get closedOutsideHours => 'مغلق — خارج مواعيد العمل';
+
+  @override
+  String get outsideOpeningHoursNotice =>
+      'متجرك مفعّل لكن مواعيد العمل اليوم تعتبره مغلقاً، فلا يستطيع العملاء الطلب.';
+
+  @override
+  String get editHours => 'المواعيد';
+
+  @override
+  String get proPartner => 'مميز';
+
+  @override
+  String get freeDelivery => 'توصيل مجاني';
+
+  @override
+  String deliveryFeeLabel(String fee) {
+    return 'توصيل $fee';
+  }
+
+  @override
+  String minutesRange(int from, int to) {
+    return '$from–$to دقيقة';
+  }
+
+  @override
+  String recommendedIn(String category) {
+    return 'مرشح في $category';
+  }
+
+  @override
+  String allStoresIn(String category) {
+    return 'كل المتاجر في $category';
+  }
+
+  @override
+  String get noStoresInCategory => 'لا توجد متاجر هنا بعد.';
+
+  @override
+  String get noRecommendationsYet => 'لا توجد متاجر مرشحة في هذه الفئة بعد.';
+
+  @override
+  String get addStore => 'إضافة متجر';
+
+  @override
+  String get parentCategory => 'الفئة الرئيسية';
+
+  @override
+  String get noParentTopLevel => 'فئة رئيسية';
+
+  @override
+  String get subCategory => 'فئة فرعية';
+
+  @override
+  String get topLevelCategoryWithChildren =>
+      'هذه الفئة تحتوي على فئات فرعية، لذلك تبقى فئة رئيسية.';
+
+  @override
+  String get categoryNameArabicLabel => 'الاسم (بالعربية)';
+
+  @override
+  String get pickupFromBranch => 'استلام من الفرع';
+
+  @override
+  String get priceAdjustment => 'تعديل الأسعار';
+
+  @override
+  String get adjustmentType => 'نوع التعديل';
+
+  @override
+  String get fixedAmount => 'مبلغ ثابت';
+
+  @override
+  String get increase => 'زيادة';
+
+  @override
+  String get decrease => 'خصم';
+
+  @override
+  String get percentValue => 'النسبة';
+
+  @override
+  String get amountValue => 'المبلغ';
+
+  @override
+  String get appliesTo => 'ينطبق على';
+
+  @override
+  String get scopeAllProducts => 'كل المنتجات على المنصة';
+
+  @override
+  String get scopeOneStore => 'متجر واحد';
+
+  @override
+  String get scopeOneCategory => 'فئة واحدة';
+
+  @override
+  String get counting => 'جاري الحساب…';
+
+  @override
+  String productsInScope(int count) {
+    return '$count منتج ضمن النطاق';
+  }
+
+  @override
+  String priceIncreaseSummary(String amount, String target) {
+    return 'زيادة الأسعار بمقدار $amount على $target.';
+  }
+
+  @override
+  String priceDecreaseSummary(String amount, String target) {
+    return 'خصم الأسعار بمقدار $amount على $target.';
+  }
+
+  @override
+  String priceAdjustConfirm(String summary, int count) {
+    return '$summary\n\nسيتم تعديل $count سعراً ولا يمكن التراجع تلقائياً.';
+  }
+
+  @override
+  String get applyToAllProducts => 'تطبيق تغيير السعر';
+
+  @override
+  String pricesUpdated(int count) {
+    return 'تم تحديث $count سعراً.';
+  }
+
+  @override
+  String get recentAdjustments => 'التعديلات الأخيرة';
+
+  @override
+  String productsUpdatedCount(int count) {
+    return '$count منتج';
+  }
+
+  @override
+  String get recentSearches => 'عمليات البحث الأخيرة';
+
+  @override
+  String get searchPrompt => 'ابحث عن متجر أو طبق.';
+
+  @override
+  String noResultsFor(String query) {
+    return 'لا توجد نتائج لـ “$query”.';
+  }
+
+  @override
+  String get searchFailed => 'تعذّر إتمام البحث. حاول مرة أخرى.';
+
+  @override
+  String deliveryMargin(String share) {
+    return 'هامش التوصيل ($share)';
+  }
+
+  @override
+  String get platformFundedDiscounts => 'خصومات على حساب المنصة';
+
+  @override
+  String get storeFundedDiscounts => 'خصومات على حساب المتجر';
+
+  @override
+  String get owedOut => 'مستحقات للغير';
+
+  @override
+  String get tipsPassedThrough => 'الإكراميات (تمر كما هي)';
+
+  @override
+  String get subscriptions => 'الاشتراكات';
+
+  @override
+  String subscriptionFeesMonthly(int count) {
+    return 'رسوم شهرية ($count متجر)';
+  }
+
+  @override
+  String get subscriptionNotInNet =>
+      'تُحصّل شهرياً، لذلك لا تدخل في الصافي أعلاه — وهو يخص طلبات هذه الفترة فقط.';
+
+  @override
+  String get subscriptionPlan => 'اشتراك';
+
+  @override
+  String get perMonthSuffix => '/شهرياً';
+
+  @override
+  String get driverShareLabel => 'حصة السائق';
+
+  @override
+  String get platformShareLabel => 'حصة المنصة';
+
+  @override
+  String get netPayout => 'صافي المستحق';
+
+  @override
+  String get allTime => 'كل الفترات';
+
+  @override
+  String get last7Days => 'آخر ٧ أيام';
+
+  @override
+  String get last30Days => 'آخر ٣٠ يوماً';
+
+  @override
+  String minutesShort(int count) {
+    return '$count دقيقة';
+  }
+
+  @override
+  String get noRatingsYet => 'لا توجد تقييمات بعد';
+
+  @override
+  String get collectedForOthers => 'محصّل وليس لك';
+
+  @override
+  String get deliveryFeesNotYours =>
+      'يُحصّل من العميل مقابل التوصيل ويُدفع للسائق والمنصة. لا يدخل ضمن مستحقاتك إطلاقاً.';
+
+  @override
+  String get subscriptionNotDeductedNote =>
+      'اشتراكك الشهري يُحصّل بشكل منفصل ولا يُخصم من المستحق أعلاه.';
 }

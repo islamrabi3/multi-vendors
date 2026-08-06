@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -37,16 +39,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // Fetch recent order status changes & messages for current user
       final orders = await _client
           .from('orders')
-          .select('id, order_number, status, updated_at, vendor_id, vendors(name)')
+          .select(
+            'id, order_number, status, updated_at, vendor_id, vendors(name)',
+          )
           .or('customer_id.eq.$userId,driver_id.eq.$userId')
           .order('updated_at', ascending: false)
           .limit(20);
 
+      // Announcements and anything else written to the inbox. Order updates
+      // are derived from the orders themselves — they need no stored row — but
+      // a broadcast exists nowhere else once its push has been dismissed.
+      final inbox = await _client
+          .from('notifications')
+          .select('id, title, body, type, route, is_read, created_at')
+          .order('created_at', ascending: false)
+          .limit(30);
+
       final list = <Map<String, dynamic>>[];
+
+      for (final n in inbox) {
+        list.add({
+          'id': n['id'],
+          'title': n['title'],
+          'body': n['body'] ?? '',
+          'route': n['route'],
+          'created_at': DateTime.parse(n['created_at'] as String).toLocal(),
+          'icon': Icons.campaign_rounded,
+          'color': AppColors.primaryDark,
+        });
+      }
 
       for (final o in orders) {
         final status = OrderStatus.fromName(o['status'] as String?);
-        final vendorName = (o['vendors'] as Map?)?['name'] as String? ?? 'Store';
+        final vendorName =
+            (o['vendors'] as Map?)?['name'] as String? ?? 'Store';
         list.add({
           'id': o['id'],
           'title': 'Order #${o['order_number'] ?? ''} Update 🚚',
@@ -58,10 +84,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         });
       }
 
+      // One stream, newest first, whichever source a line came from.
+      list.sort(
+        (a, b) => (b['created_at'] as DateTime).compareTo(
+          a['created_at'] as DateTime,
+        ),
+      );
+
       setState(() {
         _notifications = list;
         _isLoading = false;
       });
+
+      // Opening the screen is what marks them read; the bell's unread count
+      // would otherwise never clear.
+      unawaited(_client.rpc('mark_notifications_read').catchError((_) {}));
     } catch (_) {
       setState(() => _isLoading = false);
     }
@@ -105,7 +142,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               const SizedBox(height: 16),
                               Text(
                                 context.l10n.noNotificationsYet,
-                                style: AppType.heading(18, color: AppColors.ink),
+                                style: AppType.heading(
+                                  18,
+                                  color: AppColors.ink,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               Text(
@@ -121,7 +161,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ],
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       itemCount: _notifications.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
@@ -139,7 +182,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             leading: Container(
                               width: 42,
                               height: 42,
@@ -186,6 +231,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               final orderId = notif['order_id'] as String?;
                               if (orderId != null) {
                                 context.push('/order/$orderId');
+                                return;
+                              }
+                              // An announcement carries wherever the admin
+                              // pointed it, or nothing at all — in which case
+                              // the row is just something to read.
+                              final route = notif['route'] as String?;
+                              if (route != null && route.isNotEmpty) {
+                                context.push(route);
                               }
                             },
                           ),
@@ -208,7 +261,9 @@ class _NotificationsSkeleton extends StatelessWidget {
       child: SkeletonList(
         itemCount: 6,
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.lg, vertical: AppSpace.md),
+          horizontal: AppSpace.lg,
+          vertical: AppSpace.md,
+        ),
         separator: const SizedBox(height: AppSpace.sm),
         itemBuilder: (_) => DecoratedBox(
           decoration: BoxDecoration(
@@ -218,7 +273,9 @@ class _NotificationsSkeleton extends StatelessWidget {
           ),
           child: const Padding(
             padding: EdgeInsets.symmetric(
-                horizontal: AppSpace.lg, vertical: AppSpace.lg),
+              horizontal: AppSpace.lg,
+              vertical: AppSpace.lg,
+            ),
             child: Row(
               children: [
                 Skeleton.circle(size: 42),

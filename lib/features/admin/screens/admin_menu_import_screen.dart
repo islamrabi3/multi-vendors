@@ -31,14 +31,14 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
     _future = _repo.fetchVendors();
   }
 
-  void _reload() => setState(() => _future = _repo.fetchVendors());
+  void _reload() => setState(() {
+    _future = _repo.fetchVendors();
+  });
 
   Future<void> _openImport(Vendor vendor) async {
     final imported = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => MenuImportScreen(vendorId: vendor.id),
-      ),
+      MaterialPageRoute(builder: (_) => MenuImportScreen(vendorId: vendor.id)),
     );
     if (imported == true && mounted) {
       showSnack(context, context.l10n.menuImported);
@@ -54,7 +54,11 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpace.gutter, AppSpace.md, AppSpace.gutter, AppSpace.sm),
+              AppSpace.gutter,
+              AppSpace.md,
+              AppSpace.gutter,
+              AppSpace.sm,
+            ),
             child: TextField(
               onChanged: (value) => setState(() => _search = value.trim()),
               decoration: InputDecoration(
@@ -74,18 +78,25 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
                   return FailureView(error: snap.error!, onRetry: _reload);
                 }
                 final vendors = (snap.data ?? const <Vendor>[])
-                    .where((v) =>
-                        _search.isEmpty ||
-                        v.name.toLowerCase().contains(_search.toLowerCase()))
+                    .where(
+                      (v) =>
+                          _search.isEmpty ||
+                          v.name.toLowerCase().contains(_search.toLowerCase()),
+                    )
                     .toList();
                 if (vendors.isEmpty) {
                   return EmptyView(
-                      message: context.l10n.noVendorsHere,
-                      icon: Icons.storefront_outlined);
+                    message: context.l10n.noVendorsHere,
+                    icon: Icons.storefront_outlined,
+                  );
                 }
                 return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.gutter,
-                      AppSpace.xs, AppSpace.gutter, AppSpace.xxl),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.gutter,
+                    AppSpace.xs,
+                    AppSpace.gutter,
+                    AppSpace.xxl,
+                  ),
                   itemCount: vendors.length,
                   separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpace.sm),
@@ -106,12 +117,15 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
                           height: 44,
                           borderRadius: BorderRadius.circular(AppRadii.sm),
                         ),
-                        title: Text(vendor.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w700)),
+                        title: Text(
+                          vendor.name,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                         subtitle: Text(vendor.approvalStatus),
-                        trailing: const Icon(Icons.document_scanner_outlined,
-                            color: AppColors.primary),
+                        trailing: const Icon(
+                          Icons.document_scanner_outlined,
+                          color: AppColors.primary,
+                        ),
                       ),
                     );
                   },

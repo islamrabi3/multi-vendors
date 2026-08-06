@@ -20,12 +20,11 @@ class AdminCouponsState extends Equatable {
     List<Coupon>? coupons,
     String? error,
     bool clearError = false,
-  }) =>
-      AdminCouponsState(
-        loading: loading ?? this.loading,
-        coupons: coupons ?? this.coupons,
-        error: clearError ? null : (error ?? this.error),
-      );
+  }) => AdminCouponsState(
+    loading: loading ?? this.loading,
+    coupons: coupons ?? this.coupons,
+    error: clearError ? null : (error ?? this.error),
+  );
 
   @override
   List<Object?> get props => [loading, coupons, error];
@@ -55,6 +54,12 @@ class AdminCouponsCubit extends Cubit<AdminCouponsState> {
     double minOrderAmount = 0,
     double? maxDiscount,
     int? usageLimit,
+    int? perUserLimit,
+    DateTime? startsAt,
+    DateTime? expiresAt,
+    bool firstOrderOnly = false,
+    bool isPublic = false,
+    String? title,
   }) async {
     try {
       await _repository.create(
@@ -64,6 +69,12 @@ class AdminCouponsCubit extends Cubit<AdminCouponsState> {
         minOrderAmount: minOrderAmount,
         maxDiscount: maxDiscount,
         usageLimit: usageLimit,
+        perUserLimit: perUserLimit,
+        startsAt: startsAt,
+        expiresAt: expiresAt,
+        firstOrderOnly: firstOrderOnly,
+        isPublic: isPublic,
+        title: title,
       );
       await load();
       return true;

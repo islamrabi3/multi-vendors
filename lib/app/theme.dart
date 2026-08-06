@@ -24,6 +24,24 @@ const SystemUiOverlayStyle appOverlayStyle = SystemUiOverlayStyle(
   systemNavigationBarDividerColor: Colors.transparent,
 );
 
+/// Marks a text style as "ellipsise rather than overflow".
+///
+/// This is the only lever that reaches a bare `Text` nobody wrote an
+/// `overflow:` on. `Text` resolves its overflow as
+/// `overflow ?? effectiveStyle.overflow ?? DefaultTextStyle.overflow`, and the
+/// effective style is the enclosing `DefaultTextStyle` merged with the widget's
+/// own — which inside a Material button, chip, app bar or list tile *is* the
+/// style set here. Setting it once per component style therefore fixes every
+/// label in the app at once, including the ones in code that has not been
+/// touched. A `DefaultTextStyle` wrapped around the app cannot do this:
+/// `Material` installs its own with `overflow: clip`, which wins.
+///
+/// Long labels now clip with an ellipsis instead of painting past their button
+/// and tripping a layout overflow — which is what an Arabic translation of a
+/// short English word did on almost every dialog.
+TextStyle _clipping(TextStyle style) =>
+    style.copyWith(overflow: TextOverflow.ellipsis);
+
 /// Eaty theme — warm, confident food-delivery brand.
 /// Body face Plus Jakarta Sans; display Bricolage Grotesque via [AppType].
 ThemeData buildTheme() {
@@ -93,7 +111,7 @@ ThemeData buildTheme() {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: AppType.heading(20),
+      titleTextStyle: _clipping(AppType.heading(20)),
       systemOverlayStyle: appOverlayStyle,
     ),
     dividerTheme: const DividerThemeData(
@@ -118,7 +136,9 @@ ThemeData buildTheme() {
         foregroundColor: Colors.white,
         minimumSize: const Size(0, 54),
         elevation: 0,
-        textStyle: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700),
+        textStyle: _clipping(
+          GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
         ),
@@ -130,7 +150,9 @@ ThemeData buildTheme() {
         backgroundColor: AppColors.surface,
         minimumSize: const Size(0, 54),
         side: const BorderSide(color: AppColors.border, width: 1.5),
-        textStyle: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700),
+        textStyle: _clipping(
+          GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
         ),
@@ -139,7 +161,9 @@ ThemeData buildTheme() {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
-        textStyle: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700),
+        textStyle: _clipping(
+          GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -164,15 +188,19 @@ ThemeData buildTheme() {
       backgroundColor: AppColors.surface,
       selectedColor: AppColors.ink,
       side: const BorderSide(color: AppColors.border),
-      labelStyle: GoogleFonts.cairo(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.ink,
+      labelStyle: _clipping(
+        GoogleFonts.cairo(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.ink,
+        ),
       ),
-      secondaryLabelStyle: GoogleFonts.cairo(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: Colors.white,
+      secondaryLabelStyle: _clipping(
+        GoogleFonts.cairo(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
@@ -235,11 +263,45 @@ ThemeData buildTheme() {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.xxl),
       ),
-      titleTextStyle: AppType.heading(19),
+      titleTextStyle: _clipping(AppType.heading(19)),
+    ),
+    // Styled only to carry the overflow flag: an elevated button, a segmented
+    // control, a list tile and a dropdown entry all render a bare `Text` the
+    // caller never set an overflow on.
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        textStyle: _clipping(
+          GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        textStyle: WidgetStatePropertyAll(
+          _clipping(
+            GoogleFonts.cairo(fontSize: 13.5, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    ),
+    listTileTheme: ListTileThemeData(
+      titleTextStyle: _clipping(
+        GoogleFonts.cairo(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.ink,
+        ),
+      ),
+      subtitleTextStyle: _clipping(
+        GoogleFonts.cairo(fontSize: 12.5, color: AppColors.textMuted),
+      ),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      textStyle: _clipping(GoogleFonts.cairo(fontSize: 14)),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.ink,
-      contentTextStyle: GoogleFonts.cairo(color: Colors.white),
+      contentTextStyle: _clipping(GoogleFonts.cairo(color: Colors.white)),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),

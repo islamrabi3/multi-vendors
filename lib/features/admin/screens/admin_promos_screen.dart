@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../app/tokens.dart';
@@ -65,20 +66,22 @@ class _PromosView extends StatelessWidget {
                 listeners: [
                   BlocListener<AdminOffersCubit, AdminOffersState>(
                     listenWhen: (p, c) => p.error != c.error && c.error != null,
-                    listener: (context, s) =>
-                        showFailure(context, s.error!),
+                    listener: (context, s) => showFailure(context, s.error!),
                   ),
                   BlocListener<AdminCouponsCubit, AdminCouponsState>(
                     listenWhen: (p, c) => p.error != c.error && c.error != null,
-                    listener: (context, s) =>
-                        showFailure(context, s.error!),
+                    listener: (context, s) => showFailure(context, s.error!),
                   ),
                 ],
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: () async {
-                    final offersFuture = context.read<AdminOffersCubit>().load();
-                    final couponsFuture = context.read<AdminCouponsCubit>().load();
+                    final offersFuture = context
+                        .read<AdminOffersCubit>()
+                        .load();
+                    final couponsFuture = context
+                        .read<AdminCouponsCubit>()
+                        .load();
                     await Future.wait([offersFuture, couponsFuture]);
                   },
                   child: ListView(
@@ -131,11 +134,14 @@ class _NewButton extends StatelessWidget {
           children: [
             Icon(Icons.add, size: 16, color: Colors.white),
             SizedBox(width: 4),
-            Text(context.l10n.newText,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5)),
+            Text(
+              context.l10n.newText,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
           ],
         ),
       ),
@@ -150,24 +156,33 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = context.select((AdminOffersCubit c) =>
-        c.state.offers.where((o) => o.isActive).length);
+    final active = context.select(
+      (AdminOffersCubit c) => c.state.offers.where((o) => o.isActive).length,
+    );
     final isBanners = text == 'Home banners';
-    final labelText = isBanners ? context.l10n.homeBanners : context.l10n.coupons;
+    final labelText = isBanners
+        ? context.l10n.homeBanners
+        : context.l10n.coupons;
     return Row(
       children: [
-        Text(labelText.toUpperCase(),
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: AppColors.textFaint)),
+        Text(
+          labelText.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+            color: AppColors.textFaint,
+          ),
+        ),
         if (isBanners)
-          Text('  ·  $active ${context.l10n.active}',
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textFaint)),
+          Text(
+            '  ·  $active ${context.l10n.active}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textFaint,
+            ),
+          ),
       ],
     );
   }
@@ -182,7 +197,9 @@ class _BannersSection extends StatelessWidget {
       builder: (context, state) {
         if (state.loading) {
           return const Padding(
-              padding: EdgeInsets.all(24), child: LoadingView());
+            padding: EdgeInsets.all(24),
+            child: LoadingView(),
+          );
         }
         if (state.offers.isEmpty) {
           return _emptyCard(context.l10n.noBannersYetTapNew);
@@ -190,10 +207,12 @@ class _BannersSection extends StatelessWidget {
         final cubit = context.read<AdminOffersCubit>();
         return Column(
           children: state.offers
-              .map((o) => Padding(
-                    padding: const EdgeInsets.only(bottom: 11),
-                    child: _BannerCard(offer: o, cubit: cubit),
-                  ))
+              .map(
+                (o) => Padding(
+                  padding: const EdgeInsets.only(bottom: 11),
+                  child: _BannerCard(offer: o, cubit: cubit),
+                ),
+              )
               .toList(),
         );
       },
@@ -222,7 +241,10 @@ class _BannerCard extends StatelessWidget {
           Stack(
             children: [
               AppNetworkImage(
-                  url: offer.imageUrl, height: 78, width: double.infinity),
+                url: offer.imageUrl,
+                height: 78,
+                width: double.infinity,
+              ),
               Positioned.fill(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -236,17 +258,22 @@ class _BannerCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(offer.title ?? context.l10n.untitledBanner,
+                      Text(
+                        offer.title ?? context.l10n.untitledBanner,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.heading(18, color: Colors.white),
+                      ),
+                      if (offer.subtitle?.isNotEmpty ?? false)
+                        Text(
+                          offer.subtitle!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppType.heading(18, color: Colors.white)),
-                      if (offer.subtitle?.isNotEmpty ?? false)
-                        Text(offer.subtitle!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.85))),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -261,23 +288,28 @@ class _BannerCard extends StatelessWidget {
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                      color: offer.isActive
-                          ? AppColors.success
-                          : AppColors.textFaint,
-                      shape: BoxShape.circle),
+                    color: offer.isActive
+                        ? AppColors.success
+                        : AppColors.textFaint,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(width: 7),
-                 Text(offer.isActive ? context.l10n.live : context.l10n.hidden,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary)),
+                Text(
+                  offer.isActive ? context.l10n.live : context.l10n.hidden,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 if (offer.code?.isNotEmpty ?? false) ...[
                   const SizedBox(width: 8),
                   SoftBadge(
-                      label: offer.code!,
-                      fill: AppColors.amberFill,
-                      ink: AppColors.amberInk),
+                    label: offer.code!,
+                    fill: AppColors.amberFill,
+                    ink: AppColors.amberInk,
+                  ),
                 ],
                 const Spacer(),
                 Switch(
@@ -288,8 +320,10 @@ class _BannerCard extends StatelessWidget {
                 IconButton(
                   tooltip: context.l10n.delete,
                   onPressed: () => _confirmDelete(context),
-                  icon:
-                      const Icon(Icons.delete_outline, color: Color(0xFFC0392B)),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Color(0xFFC0392B),
+                  ),
                 ),
               ],
             ),
@@ -303,7 +337,8 @@ class _BannerCard extends StatelessWidget {
     final confirmed = await AppDialogs.showConfirmDialog(
       context: context,
       title: context.l10n.deleteBanner,
-      message: '"${offer.title ?? offer.imageUrl}" ${context.l10n.willBeRemoved}',
+      message:
+          '"${offer.title ?? offer.imageUrl}" ${context.l10n.willBeRemoved}',
       confirmText: context.l10n.delete,
       cancelText: context.l10n.cancel,
       isDestructive: true,
@@ -324,7 +359,9 @@ class _CouponsSection extends StatelessWidget {
       builder: (context, state) {
         if (state.loading) {
           return const Padding(
-              padding: EdgeInsets.all(24), child: LoadingView());
+            padding: EdgeInsets.all(24),
+            child: LoadingView(),
+          );
         }
         if (state.coupons.isEmpty) {
           return _emptyCard(context.l10n.noCouponsYetTapNew);
@@ -354,35 +391,57 @@ class _CouponsSection extends StatelessWidget {
 }
 
 class _CouponRow extends StatelessWidget {
-  const _CouponRow(
-      {required this.coupon, required this.cubit, required this.last});
+  const _CouponRow({
+    required this.coupon,
+    required this.cubit,
+    required this.last,
+  });
 
   final Coupon coupon;
   final AdminCouponsCubit cubit;
   final bool last;
 
   String _summary(BuildContext context) {
-    final v = coupon.isPercentage
+    final l10n = context.l10n;
+    final v = coupon.isFreeDelivery
+        ? l10n.couponTypeFreeDelivery
+        : coupon.isPercentage
         ? '${coupon.value.toStringAsFixed(0)}%'
         : formatMoney(coupon.value);
     final cap = coupon.maxDiscount != null
-        ? ' · ${context.l10n.max} ${formatMoney(coupon.maxDiscount!)}'
+        ? ' · ${l10n.max} ${formatMoney(coupon.maxDiscount!)}'
         : '';
     final min = coupon.minOrderAmount > 0
-        ? ' · ${context.l10n.min} ${formatMoney(coupon.minOrderAmount)}'
+        ? ' · ${l10n.min} ${formatMoney(coupon.minOrderAmount)}'
         : '';
-    if (coupon.isExpired) return '$v · ${context.l10n.expired}';
-    return '$v ${context.l10n.off}$cap$min';
+    // The reason it is not working, when it is not working — an admin looking
+    // at a list of codes needs that before anything else.
+    if (coupon.isExpired) return '$v · ${l10n.expired}';
+    if (coupon.isScheduled) return '$v · ${l10n.couponScheduled}';
+    if (coupon.isExhausted) return '$v · ${l10n.couponExhausted}';
+    return coupon.isFreeDelivery ? '$v$min' : '$v ${l10n.off}$cap$min';
   }
 
+  /// Both limits on one line: how much of the campaign is gone, and how many
+  /// times any one customer may take it.
   String _usage(BuildContext context) {
+    final l10n = context.l10n;
     final limit = coupon.usageLimit == null ? '∞' : '${coupon.usageLimit}';
-    return '${coupon.usedCount} / $limit ${context.l10n.used}';
+    final perUser = switch (coupon.perUserLimit) {
+      null => l10n.perCustomerUnlimited,
+      1 => l10n.oncePerCustomer,
+      final n => l10n.usesPerCustomer(n),
+    };
+    return [
+      '${coupon.usedCount} / $limit ${l10n.used}',
+      perUser,
+      if (coupon.firstOrderOnly) l10n.couponFirstOrderOnly,
+    ].join(' · ');
   }
 
   @override
   Widget build(BuildContext context) {
-    final dim = coupon.isExpired || !coupon.isActive;
+    final dim = !coupon.isLive;
     return Container(
       decoration: BoxDecoration(
         border: last
@@ -397,30 +456,44 @@ class _CouponRow extends StatelessWidget {
             color: dim ? const Color(0xFFF1ECE6) : AppColors.amberFill,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(coupon.code,
-              style: AppType.mono(13,
-                  color: dim ? AppColors.textFaint : AppColors.ink)),
+          child: Text(
+            coupon.code,
+            style: AppType.mono(
+              13,
+              color: dim ? AppColors.textFaint : AppColors.ink,
+            ),
+          ),
         ),
-        title: Text(_summary(context),
-            style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                color: dim ? AppColors.textMuted : AppColors.ink)),
-        subtitle: Text(_usage(context),
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        title: Text(
+          _summary(context),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: dim ? AppColors.textMuted : AppColors.ink,
+          ),
+        ),
+        subtitle: Text(
+          _usage(context),
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Switch(
               value: coupon.isActive,
               activeThumbColor: AppColors.primary,
-              onChanged: coupon.isExpired ? null : (_) => cubit.toggleActive(coupon),
+              onChanged: coupon.isExpired || coupon.isExhausted
+                  ? null
+                  : (_) => cubit.toggleActive(coupon),
             ),
             IconButton(
               tooltip: context.l10n.delete,
               onPressed: () => _confirmDelete(context),
-              icon: const Icon(Icons.delete_outline,
-                  color: Color(0xFFC0392B), size: 20),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Color(0xFFC0392B),
+                size: 20,
+              ),
             ),
           ],
         ),
@@ -445,17 +518,19 @@ class _CouponRow extends StatelessWidget {
 }
 
 Widget _emptyCard(String message) => Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: AppColors.textMuted)),
-    );
+  width: double.infinity,
+  padding: const EdgeInsets.all(22),
+  decoration: BoxDecoration(
+    color: AppColors.surface,
+    border: Border.all(color: AppColors.border),
+    borderRadius: BorderRadius.circular(16),
+  ),
+  child: Text(
+    message,
+    textAlign: TextAlign.center,
+    style: const TextStyle(color: AppColors.textMuted),
+  ),
+);
 
 // ---------------------------------------------------------------------------
 // Forms
@@ -466,7 +541,8 @@ void _showBannerForm(BuildContext context, AdminOffersCubit cubit) {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => BlocProvider.value(value: cubit, child: const _BannerForm()),
+    builder: (_) =>
+        BlocProvider.value(value: cubit, child: const _BannerForm()),
   );
 }
 
@@ -514,8 +590,9 @@ class _BannerFormState extends State<_BannerForm> {
         _vendors = (vendors as List)
             .map((v) => (id: v['id'] as String, name: v['name'] as String))
             .toList();
-        _couponCodes =
-            (coupons as List).map((c) => c['code'] as String).toList();
+        _couponCodes = (coupons as List)
+            .map((c) => c['code'] as String)
+            .toList();
       });
     } catch (_) {
       // Pickers stay empty; validation will catch a missing selection.
@@ -531,16 +608,22 @@ class _BannerFormState extends State<_BannerForm> {
   }
 
   Future<void> _pickImage() async {
-    final file = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, maxWidth: 1200);
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+    );
     if (file == null) return;
     setState(() => _uploading = true);
     try {
       final bytes = await file.readAsBytes();
       final name = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       final client = Supabase.instance.client;
-      await client.storage.from('product-images').uploadBinary('banners/$name', bytes);
-      final url = client.storage.from('product-images').getPublicUrl('banners/$name');
+      await client.storage
+          .from('product-images')
+          .uploadBinary('banners/$name', bytes);
+      final url = client.storage
+          .from('product-images')
+          .getPublicUrl('banners/$name');
       setState(() {
         _image.text = url;
       });
@@ -565,7 +648,10 @@ class _BannerFormState extends State<_BannerForm> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.l10n.newBanner, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            context.l10n.newBanner,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 14),
           GestureDetector(
             onTap: _uploading ? null : _pickImage,
@@ -602,7 +688,9 @@ class _BannerFormState extends State<_BannerForm> {
                           _image.text.trim().isNotEmpty
                               ? Icons.edit_outlined
                               : Icons.add_photo_alternate_outlined,
-                          color: _image.text.trim().isNotEmpty ? Colors.white : AppColors.primary,
+                          color: _image.text.trim().isNotEmpty
+                              ? Colors.white
+                              : AppColors.primary,
                           size: 32,
                         ),
                         const SizedBox(height: 6),
@@ -613,7 +701,9 @@ class _BannerFormState extends State<_BannerForm> {
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
-                            color: _image.text.trim().isNotEmpty ? Colors.white : AppColors.primary,
+                            color: _image.text.trim().isNotEmpty
+                                ? Colors.white
+                                : AppColors.primary,
                           ),
                         ),
                       ],
@@ -626,18 +716,20 @@ class _BannerFormState extends State<_BannerForm> {
           SegmentedButton<BannerType>(
             segments: [
               ButtonSegment(
-                  value: BannerType.coupon,
-                  label: Text(context.l10n.bannerTypeCoupon),
-                  icon: const Icon(Icons.confirmation_number_outlined,
-                      size: 16)),
+                value: BannerType.coupon,
+                label: Text(context.l10n.bannerTypeCoupon),
+                icon: const Icon(Icons.confirmation_number_outlined, size: 16),
+              ),
               ButtonSegment(
-                  value: BannerType.vendor,
-                  label: Text(context.l10n.bannerTypeVendor),
-                  icon: const Icon(Icons.storefront_outlined, size: 16)),
+                value: BannerType.vendor,
+                label: Text(context.l10n.bannerTypeVendor),
+                icon: const Icon(Icons.storefront_outlined, size: 16),
+              ),
               ButtonSegment(
-                  value: BannerType.event,
-                  label: Text(context.l10n.bannerTypeEvent),
-                  icon: const Icon(Icons.campaign_outlined, size: 16)),
+                value: BannerType.event,
+                label: Text(context.l10n.bannerTypeEvent),
+                icon: const Icon(Icons.campaign_outlined, size: 16),
+              ),
             ],
             selected: {_type},
             onSelectionChanged: (s) => setState(() => _type = s.first),
@@ -652,9 +744,12 @@ class _BannerFormState extends State<_BannerForm> {
                 prefixIcon: const Icon(Icons.storefront_outlined),
               ),
               items: _vendors
-                  .map((v) => DropdownMenuItem(
+                  .map(
+                    (v) => DropdownMenuItem(
                       value: v.id,
-                      child: Text(v.name, overflow: TextOverflow.ellipsis)))
+                      child: Text(v.name, overflow: TextOverflow.ellipsis),
+                    ),
+                  )
                   .toList(),
               onChanged: (v) => setState(() => _vendorId = v),
             ),
@@ -679,13 +774,15 @@ class _BannerFormState extends State<_BannerForm> {
             controller: _title,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
-                hintText: context.l10n.titleEg40OffFirstOrder),
+              hintText: context.l10n.titleEg40OffFirstOrder,
+            ),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: _subtitle,
-            decoration:
-                InputDecoration(hintText: context.l10n.subtitleOptional),
+            decoration: InputDecoration(
+              hintText: context.l10n.subtitleOptional,
+            ),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -704,7 +801,8 @@ class _BannerFormState extends State<_BannerForm> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : Text(context.l10n.publishBanner),
           ),
         ],
@@ -719,7 +817,8 @@ class _BannerFormState extends State<_BannerForm> {
       showSnack(context, context.l10n.addATitleOrImageFirst, error: true);
       return;
     }
-    if (_type == BannerType.vendor && (_vendorId == null || _vendorId!.isEmpty)) {
+    if (_type == BannerType.vendor &&
+        (_vendorId == null || _vendorId!.isEmpty)) {
       showSnack(context, context.l10n.chooseVendorForBanner, error: true);
       return;
     }
@@ -730,15 +829,15 @@ class _BannerFormState extends State<_BannerForm> {
     }
     setState(() => _saving = true);
     final ok = await context.read<AdminOffersCubit>().create(
-          imageUrl: image.isEmpty
-              ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
-              : image,
-          type: _type,
-          title: title,
-          subtitle: _subtitle.text.trim(),
-          code: _type == BannerType.coupon ? _couponCode : null,
-          vendorId: _type == BannerType.vendor ? _vendorId : null,
-        );
+      imageUrl: image.isEmpty
+          ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
+          : image,
+      type: _type,
+      title: title,
+      subtitle: _subtitle.text.trim(),
+      code: _type == BannerType.coupon ? _couponCode : null,
+      vendorId: _type == BannerType.vendor ? _vendorId : null,
+    );
     if (!mounted) return;
     if (ok) {
       Navigator.pop(context);
@@ -754,7 +853,8 @@ void _showCouponForm(BuildContext context, AdminCouponsCubit cubit) {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => BlocProvider.value(value: cubit, child: const _CouponForm()),
+    builder: (_) =>
+        BlocProvider.value(value: cubit, child: const _CouponForm()),
   );
 }
 
@@ -767,25 +867,67 @@ class _CouponForm extends StatefulWidget {
 
 class _CouponFormState extends State<_CouponForm> {
   final _code = TextEditingController();
+  final _title = TextEditingController();
   final _value = TextEditingController();
   final _minOrder = TextEditingController();
   final _maxDiscount = TextEditingController();
   final _limit = TextEditingController();
-  bool _percentage = true;
+
+  /// Defaults to one use per customer. That is what an admin almost always
+  /// means by "promo code", and the old form had no way to say it at all —
+  /// which is why a single code could be spent on every order.
+  final _perUser = TextEditingController(text: '1');
+
+  _CouponKind _kind = _CouponKind.percentage;
+  DateTime? _startsAt;
+  DateTime? _expiresAt;
+  bool _firstOrderOnly = false;
+  bool _isPublic = false;
   bool _saving = false;
 
   @override
   void dispose() {
     _code.dispose();
+    _title.dispose();
     _value.dispose();
     _minOrder.dispose();
     _maxDiscount.dispose();
     _limit.dispose();
+    _perUser.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate({required bool start}) async {
+    final now = DateTime.now();
+    final initial = (start ? _startsAt : _expiresAt) ?? now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(now) ? now : initial,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 730)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      // End of day for an expiry: a code that dies at midnight-as-typed would
+      // stop working the moment the admin picked today.
+      if (start) {
+        _startsAt = picked;
+      } else {
+        _expiresAt = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          23,
+          59,
+          59,
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -793,67 +935,154 @@ class _CouponFormState extends State<_CouponForm> {
         top: 4,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(context.l10n.newCoupon, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _code,
-            textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(hintText: context.l10n.codeEgEaty40),
-          ),
-          const SizedBox(height: 12),
-          SegmentedButton<bool>(
-            segments: [
-              ButtonSegment(value: true, label: Text(context.l10n.percentage)),
-              ButtonSegment(value: false, label: Text(context.l10n.fixedEgp)),
-            ],
-            selected: {_percentage},
-            onSelectionChanged: (s) => setState(() => _percentage = s.first),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _value,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-                hintText: _percentage ? context.l10n.discountPercent : context.l10n.discountAmountEgp),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _minOrder,
-            keyboardType: TextInputType.number,
-            decoration:
-                InputDecoration(hintText: context.l10n.minOrderOptional),
-          ),
-          if (_percentage) ...[
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.newCoupon, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _code,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(hintText: l10n.codeEgEaty40),
+            ),
             const SizedBox(height: 10),
             TextField(
-              controller: _maxDiscount,
+              controller: _title,
+              decoration: InputDecoration(hintText: l10n.couponTitleLabel),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<_CouponKind>(
+              segments: [
+                ButtonSegment(
+                  value: _CouponKind.percentage,
+                  label: Text(l10n.percentage),
+                ),
+                ButtonSegment(
+                  value: _CouponKind.fixed,
+                  label: Text(l10n.fixedEgp),
+                ),
+                ButtonSegment(
+                  value: _CouponKind.freeDelivery,
+                  label: Text(l10n.couponTypeFreeDelivery),
+                ),
+              ],
+              selected: {_kind},
+              onSelectionChanged: (s) => setState(() => _kind = s.first),
+            ),
+            // Free delivery has no amount of its own: it is worth whatever the
+            // store charges, resolved when the code is applied.
+            if (_kind != _CouponKind.freeDelivery) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _value,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: _kind == _CouponKind.percentage
+                      ? l10n.discountPercent
+                      : l10n.discountAmountEgp,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            TextField(
+              controller: _minOrder,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                  hintText: context.l10n.maxDiscountCapOptional),
+              decoration: InputDecoration(hintText: l10n.minOrderOptional),
+            ),
+            if (_kind == _CouponKind.percentage) ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _maxDiscount,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: l10n.maxDiscountCapOptional,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _perUser,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l10n.perCustomerLimit,
+                      helperText: l10n.perCustomerUnlimited,
+                      helperMaxLines: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _limit,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l10n.totalUsageLimit,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _DateField(
+                    label: l10n.couponStartsAt,
+                    value: _startsAt,
+                    onTap: () => _pickDate(start: true),
+                    onClear: () => setState(() => _startsAt = null),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _DateField(
+                    label: l10n.couponExpiresAt,
+                    value: _expiresAt,
+                    onTap: () => _pickDate(start: false),
+                    onClear: () => setState(() => _expiresAt = null),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _firstOrderOnly,
+              onChanged: (v) => setState(() => _firstOrderOnly = v),
+              title: Text(l10n.couponFirstOrderOnly),
+              subtitle: Text(
+                l10n.couponFirstOrderOnlyDesc,
+                style: const TextStyle(fontSize: 11.5),
+              ),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _isPublic,
+              onChanged: (v) => setState(() => _isPublic = v),
+              title: Text(l10n.couponPublic),
+              subtitle: Text(
+                l10n.couponPublicDesc,
+                style: const TextStyle(fontSize: 11.5),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _saving ? null : _submit,
+              child: _saving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.createCoupon),
             ),
           ],
-          const SizedBox(height: 10),
-          TextField(
-            controller: _limit,
-            keyboardType: TextInputType.number,
-            decoration:
-                InputDecoration(hintText: context.l10n.usageLimitOptional),
-          ),
-          const SizedBox(height: 18),
-          FilledButton(
-            onPressed: _saving ? null : _submit,
-            child: _saving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(context.l10n.createCoupon),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -861,20 +1090,29 @@ class _CouponFormState extends State<_CouponForm> {
   Future<void> _submit() async {
     final code = _code.text.trim();
     final value = double.tryParse(_value.text.trim());
-    if (code.isEmpty || value == null || value <= 0) {
+    final needsValue = _kind != _CouponKind.freeDelivery;
+    if (code.isEmpty || (needsValue && (value == null || value <= 0))) {
       showSnack(context, context.l10n.enterACodeAndAValidDiscount, error: true);
       return;
     }
     setState(() => _saving = true);
     final ok = await context.read<AdminCouponsCubit>().create(
-          code: code,
-          discountType: _percentage ? 'percentage' : 'fixed',
-          value: value,
-          minOrderAmount: double.tryParse(_minOrder.text.trim()) ?? 0,
-          maxDiscount:
-              _percentage ? double.tryParse(_maxDiscount.text.trim()) : null,
-          usageLimit: int.tryParse(_limit.text.trim()),
-        );
+      code: code,
+      discountType: _kind.wire,
+      value: value ?? 0,
+      minOrderAmount: double.tryParse(_minOrder.text.trim()) ?? 0,
+      maxDiscount: _kind == _CouponKind.percentage
+          ? double.tryParse(_maxDiscount.text.trim())
+          : null,
+      usageLimit: int.tryParse(_limit.text.trim()),
+      // Blank means unlimited, which the server reads as a null column.
+      perUserLimit: int.tryParse(_perUser.text.trim()),
+      startsAt: _startsAt,
+      expiresAt: _expiresAt,
+      firstOrderOnly: _firstOrderOnly,
+      isPublic: _isPublic,
+      title: _title.text.trim().isEmpty ? null : _title.text.trim(),
+    );
     if (!mounted) return;
     if (ok) {
       Navigator.pop(context);
@@ -882,5 +1120,59 @@ class _CouponFormState extends State<_CouponForm> {
     } else {
       setState(() => _saving = false);
     }
+  }
+}
+
+/// The three shapes a discount can take.
+enum _CouponKind {
+  percentage('percentage'),
+  fixed('fixed'),
+  freeDelivery('free_delivery');
+
+  const _CouponKind(this.wire);
+
+  final String wire;
+}
+
+/// A date the admin may set or leave empty — an unset start means "live now",
+/// an unset expiry means "until switched off".
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final String label;
+  final DateTime? value;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          isDense: true,
+          suffixIcon: value == null
+              ? const Icon(Icons.event_outlined, size: 18)
+              : IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  onPressed: onClear,
+                  tooltip: context.l10n.clearDate,
+                ),
+        ),
+        child: Text(
+          value == null
+              ? context.l10n.notSet
+              : DateFormat.yMMMd().format(value!),
+          style: const TextStyle(fontSize: 13),
+        ),
+      ),
+    );
   }
 }

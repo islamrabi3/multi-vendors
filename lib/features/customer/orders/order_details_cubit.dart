@@ -42,40 +42,35 @@ class OrderDetailsState extends Equatable {
     String? error,
     bool? busy,
     bool clearError = false,
-  }) =>
-      OrderDetailsState(
-        loading: loading ?? this.loading,
-        order: order ?? this.order,
-        items: items ?? this.items,
-        driverLocation: driverLocation ?? this.driverLocation,
-        driverContact: driverContact ?? this.driverContact,
-        hasReview: hasReview ?? this.hasReview,
-        error: clearError ? null : (error ?? this.error),
-        busy: busy ?? this.busy,
-      );
+  }) => OrderDetailsState(
+    loading: loading ?? this.loading,
+    order: order ?? this.order,
+    items: items ?? this.items,
+    driverLocation: driverLocation ?? this.driverLocation,
+    driverContact: driverContact ?? this.driverContact,
+    hasReview: hasReview ?? this.hasReview,
+    error: clearError ? null : (error ?? this.error),
+    busy: busy ?? this.busy,
+  );
 
   @override
   List<Object?> get props => [
-        loading,
-        order,
-        items,
-        driverLocation,
-        driverContact,
-        hasReview,
-        error,
-        busy,
-      ];
+    loading,
+    order,
+    items,
+    driverLocation,
+    driverContact,
+    hasReview,
+    error,
+    busy,
+  ];
 }
 
 /// Streams a single order in realtime and, while it is out for delivery,
 /// listens to the driver's GPS broadcasts on `order-tracking:{orderId}`.
 class OrderDetailsCubit extends Cubit<OrderDetailsState> {
-  OrderDetailsCubit(
-    this._orders,
-    this._reviews,
-    this._payments,
-    this.orderId,
-  ) : super(const OrderDetailsState()) {
+  OrderDetailsCubit(this._orders, this._reviews, this._payments, this.orderId)
+    : super(const OrderDetailsState()) {
     _load();
   }
 
@@ -87,6 +82,11 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   StreamSubscription<AppOrder?>? _orderSubscription;
   RealtimeChannel? _trackingChannel;
 
+  /// Re-reads the order. Used after an action that changes it outside the
+  /// realtime stream's view — a tip stamps `driver_tip`, which the stream does
+  /// carry, but the reload also refreshes the review flag in the same pass.
+  Future<void> reload() => _load();
+
   Future<void> _load() async {
     try {
       final results = await Future.wait<dynamic>([
@@ -94,18 +94,23 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         _reviews.hasReview(orderId),
       ]);
       final order = results[0] as AppOrder;
-      emit(state.copyWith(
-        loading: false,
-        order: order,
-        items: order.items,
-        hasReview: results[1] as bool,
-      ));
+      emit(
+        state.copyWith(
+          loading: false,
+          order: order,
+          items: order.items,
+          hasReview: results[1] as bool,
+        ),
+      );
       _maybeTrack(order);
     } catch (error) {
       emit(state.copyWith(loading: false, error: error.toString()));
       return;
     }
 
+    // Cancelled first: `reload()` runs this again, and without it every
+    // reload would leave another live subscription emitting into the cubit.
+    _orderSubscription?.cancel();
     _orderSubscription = _orders.orderStream(orderId).listen((order) {
       if (order == null) return;
       emit(state.copyWith(order: order));
@@ -148,8 +153,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       // A broadcast that arrived while this was in flight is newer than the
       // stored row by definition, so it wins.
       if (state.driverLocation != null) return;
-      emit(state.copyWith(
-          driverLocation: LatLng(position.lat, position.lng)));
+      emit(state.copyWith(driverLocation: LatLng(position.lat, position.lng)));
     } catch (_) {
       // Non-critical: the map falls back to the destination alone.
     }

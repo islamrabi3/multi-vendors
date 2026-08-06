@@ -25,7 +25,9 @@ class _MySupportScreenState extends State<MySupportScreen> {
   late Future<List<SupportThread>> _future = _repo.fetchMyThreads();
   bool _opening = false;
 
-  void _reload() => setState(() => _future = _repo.fetchMyThreads());
+  void _reload() => setState(() {
+    _future = _repo.fetchMyThreads();
+  });
 
   Future<void> _openThread([SupportThread? thread]) async {
     var target = thread;
@@ -76,12 +78,18 @@ class _MySupportScreenState extends State<MySupportScreen> {
             );
           }
           return ListView.separated(
-            padding: EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.md,
-                AppSpace.gutter, 96 + MediaQuery.paddingOf(context).bottom),
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.gutter,
+              AppSpace.md,
+              AppSpace.gutter,
+              96 + MediaQuery.paddingOf(context).bottom,
+            ),
             itemCount: threads.length,
             separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
-            itemBuilder: (context, i) =>
-                _ThreadTile(thread: threads[i], onTap: () => _openThread(threads[i])),
+            itemBuilder: (context, i) => _ThreadTile(
+              thread: threads[i],
+              onTap: () => _openThread(threads[i]),
+            ),
           );
         },
       ),
@@ -109,8 +117,9 @@ class _ThreadTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor:
-              thread.isOpen ? AppColors.warmFill : AppColors.neutralFill,
+          backgroundColor: thread.isOpen
+              ? AppColors.warmFill
+              : AppColors.neutralFill,
           child: Icon(
             thread.isOpen
                 ? Icons.mark_chat_unread_outlined
@@ -135,8 +144,9 @@ class _ThreadTile extends StatelessWidget {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color:
-                thread.isOpen ? AppColors.successFill : AppColors.neutralFill,
+            color: thread.isOpen
+                ? AppColors.successFill
+                : AppColors.neutralFill,
             borderRadius: BorderRadius.circular(AppRadii.xs),
           ),
           child: Text(
@@ -144,9 +154,7 @@ class _ThreadTile extends StatelessWidget {
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
-              color: thread.isOpen
-                  ? AppColors.successInk
-                  : AppColors.textMuted,
+              color: thread.isOpen ? AppColors.successInk : AppColors.textMuted,
             ),
           ),
         ),
@@ -169,8 +177,9 @@ class _AdminSupportScreenState extends State<AdminSupportScreen> {
   bool _openOnly = false;
   late Future<List<SupportThread>> _future = _repo.fetchAllThreads();
 
-  void _reload() =>
-      setState(() => _future = _repo.fetchAllThreads(openOnly: _openOnly));
+  void _reload() => setState(() {
+    _future = _repo.fetchAllThreads(openOnly: _openOnly);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -205,15 +214,20 @@ class _AdminSupportScreenState extends State<AdminSupportScreen> {
           final threads = snap.data ?? const <SupportThread>[];
           if (threads.isEmpty) {
             return EmptyView(
-                message: l10n.noSupportThreads,
-                icon: Icons.support_agent_outlined);
+              message: l10n.noSupportThreads,
+              icon: Icons.support_agent_outlined,
+            );
           }
           return RefreshIndicator(
             color: AppColors.primary,
             onRefresh: () async => _reload(),
             child: ListView.separated(
-              padding: EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.md,
-                  AppSpace.gutter, AppSpace.xxl + MediaQuery.paddingOf(context).bottom),
+              padding: EdgeInsets.fromLTRB(
+                AppSpace.gutter,
+                AppSpace.md,
+                AppSpace.gutter,
+                AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
+              ),
               itemCount: threads.length,
               separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
               itemBuilder: (context, i) {

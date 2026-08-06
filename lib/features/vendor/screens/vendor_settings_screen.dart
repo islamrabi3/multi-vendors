@@ -295,7 +295,9 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 color: vendor.isBusy ? AppColors.amberFill : Colors.white,
                 borderRadius: BorderRadius.circular(AppRadii.xl),
                 border: Border.all(
-                  color: vendor.isBusy ? AppColors.amberInk.withValues(alpha: 0.4) : AppColors.border,
+                  color: vendor.isBusy
+                      ? AppColors.amberInk.withValues(alpha: 0.4)
+                      : AppColors.border,
                 ),
                 boxShadow: AppShadows.card,
               ),
@@ -303,7 +305,9 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 children: [
                   Icon(
                     Icons.local_fire_department_rounded,
-                    color: vendor.isBusy ? AppColors.amberInk : AppColors.textMuted,
+                    color: vendor.isBusy
+                        ? AppColors.amberInk
+                        : AppColors.textMuted,
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -314,7 +318,9 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                         Text(
                           'Busy Mode (+15 mins prep)',
                           style: TextStyle(
-                            color: vendor.isBusy ? AppColors.amberInk : AppColors.ink,
+                            color: vendor.isBusy
+                                ? AppColors.amberInk
+                                : AppColors.ink,
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
                           ),
@@ -325,7 +331,9 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                               ? 'Customers see store as busy with +15 min extra prep'
                               : 'Toggle when orders overflow to add prep time buffer',
                           style: TextStyle(
-                            color: vendor.isBusy ? AppColors.amberInk.withValues(alpha: 0.8) : AppColors.textMuted,
+                            color: vendor.isBusy
+                                ? AppColors.amberInk.withValues(alpha: 0.8)
+                                : AppColors.textMuted,
                             fontSize: 12,
                           ),
                         ),
@@ -337,9 +345,9 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                     onChanged: _busy
                         ? null
                         : (v) => _patch({
-                              'is_busy': v,
-                              'extra_prep_minutes': v ? 15 : 0,
-                            }),
+                            'is_busy': v,
+                            'extra_prep_minutes': v ? 15 : 0,
+                          }),
                     activeTrackColor: AppColors.amberInk,
                   ),
                 ],
@@ -501,7 +509,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 vendor.lat == null || vendor.lng == null
                     ? context.l10n.pickOnMap
                     : '${vendor.lat!.toStringAsFixed(5)}, '
-                        '${vendor.lng!.toStringAsFixed(5)}',
+                          '${vendor.lng!.toStringAsFixed(5)}',
                 onTap: () async {
                   final picked = await showLocationPicker(
                     context,
@@ -528,7 +536,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 vendor.ratingCount == 0
                     ? '—'
                     : '${vendor.ratingAvg.toStringAsFixed(1)} · '
-                        '${vendor.ratingCount}',
+                          '${vendor.ratingCount}',
                 onTap: () => context.push('/vendor-app/reviews'),
               ),
             ]),
@@ -536,21 +544,26 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
 
             _sectionLabel(context.l10n.feesAndOrders),
             _card([
-              _navRow(
+              // Read-only: the delivery fee is the platform's price, not the
+              // store's. A database trigger refuses the write regardless, so
+              // an editable row here would only produce a failed save.
+              _readOnlyRow(
                 Icons.delivery_dining_rounded,
                 context.l10n.deliveryFee,
                 formatMoney(vendor.deliveryFee),
-                onTap: () => _editField(
-                  title: context.l10n.deliveryFee3,
-                  label: context.l10n.deliveryFee2,
-                  initial: vendor.deliveryFee.toStringAsFixed(2),
-                  keyboard: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  icon: Icons.delivery_dining_rounded,
-                  onSave: (v) =>
-                      _patch({'delivery_fee': double.tryParse(v) ?? 0}),
-                ),
+                context.l10n.setByPlatform,
+              ),
+              _readOnlyRow(
+                vendor.isSubscription
+                    ? Icons.card_membership_rounded
+                    : Icons.percent_rounded,
+                context.l10n.billingPlan,
+                vendor.isSubscription
+                    ? '${context.l10n.billingSubscription} · '
+                          '${formatMoney(vendor.subscriptionFee)}'
+                    : '${context.l10n.billingCommission} · '
+                          '${vendor.commissionRate.toStringAsFixed(0)}%',
+                context.l10n.setByPlatform,
               ),
               _navRow(
                 Icons.shopping_bag_outlined,
@@ -666,6 +679,59 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: children),
+    );
+  }
+
+  /// A setting the store can see but not change, with the reason why.
+  Widget _readOnlyRow(
+    IconData icon,
+    String label,
+    String value,
+    String reason,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.textMuted),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  reason,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.textFaint,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(
+            Icons.lock_outline_rounded,
+            size: 15,
+            color: AppColors.textFaint,
+          ),
+        ],
+      ),
     );
   }
 

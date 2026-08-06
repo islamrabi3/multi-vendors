@@ -165,6 +165,14 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
+        // How it leaves: a rider job, a bag held at the counter, or a slot
+        // later today. First thing on the page because it decides everything
+        // the store does next.
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: OrderTypeChip(order: order),
+        ),
+        const SizedBox(height: 12),
         // Customer card.
         Container(
           padding: const EdgeInsets.all(16),

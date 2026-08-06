@@ -23,6 +23,7 @@ class AdminVendorsState extends Equatable {
     this.loadingMore = false,
     this.hasMore = true,
     this.counts = const (all: 0, pending: 0, active: 0, suspended: 0),
+    this.search = '',
     this.error,
   });
 
@@ -37,6 +38,10 @@ class AdminVendorsState extends Equatable {
   /// Totals straight from the server — the list is paged, so loaded rows are
   /// not a count.
   final ({int all, int pending, int active, int suspended}) counts;
+
+  /// The active name/phone search. Applied server-side, so the tab counts
+  /// above the list still describe the whole platform, not the results.
+  final String search;
   final String? error;
 
   List<Vendor> get pending => vendors.where((v) => v.isPending).toList();
@@ -60,6 +65,7 @@ class AdminVendorsState extends Equatable {
     bool? loadingMore,
     bool? hasMore,
     ({int all, int pending, int active, int suspended})? counts,
+    String? search,
     String? error,
     bool clearError = false,
   }) =>
@@ -70,12 +76,21 @@ class AdminVendorsState extends Equatable {
         loadingMore: loadingMore ?? this.loadingMore,
         hasMore: hasMore ?? this.hasMore,
         counts: counts ?? this.counts,
+        search: search ?? this.search,
         error: clearError ? null : (error ?? this.error),
       );
 
   @override
-  List<Object?> get props =>
-      [loading, vendors, filter, loadingMore, hasMore, counts, error];
+  List<Object?> get props => [
+        loading,
+        vendors,
+        filter,
+        loadingMore,
+        hasMore,
+        counts,
+        search,
+        error,
+      ];
 }
 
 class AdminVendorsCubit extends Cubit<AdminVendorsState> {
@@ -93,6 +108,7 @@ class AdminVendorsCubit extends Cubit<AdminVendorsState> {
         limit: kPageSize,
         offset: 0,
         status: _filterStatus[state.filter],
+        search: state.search,
       );
       if (isClosed) return;
       emit(state.copyWith(
@@ -117,6 +133,7 @@ class AdminVendorsCubit extends Cubit<AdminVendorsState> {
         limit: kPageSize,
         offset: state.vendors.length,
         status: _filterStatus[state.filter],
+        search: state.search,
       );
       if (isClosed) return;
       final known = state.vendors.map((v) => v.id).toSet();
@@ -140,6 +157,18 @@ class AdminVendorsCubit extends Cubit<AdminVendorsState> {
       if (isClosed) return;
       emit(state.copyWith(counts: counts));
     } catch (_) {}
+  }
+
+  /// Debounced by the caller; this just reloads the first page.
+  Future<void> setSearch(String search) async {
+    if (search == state.search) return;
+    emit(state.copyWith(
+      search: search,
+      vendors: const [],
+      hasMore: true,
+      loadingMore: false,
+    ));
+    await load();
   }
 
   Future<void> setFilter(VendorFilter filter) async {

@@ -55,7 +55,9 @@ class _ContentPageScreenState extends State<ContentPageScreen> {
     return (content: content, links: links);
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() => setState(() {
+    _future = _load();
+  });
 
   Future<void> _open(String url) async {
     final uri = Uri.tryParse(url);
@@ -123,8 +125,10 @@ class _ContentPageScreenState extends State<ContentPageScreen> {
                           const SizedBox(height: AppSpace.xxl),
                           const Divider(color: AppColors.borderSoft),
                           const SizedBox(height: AppSpace.lg),
-                          Text(context.l10n.followUs,
-                              style: AppType.heading(15)),
+                          Text(
+                            context.l10n.followUs,
+                            style: AppType.heading(15),
+                          ),
                           const SizedBox(height: AppSpace.md),
                           Wrap(
                             spacing: AppSpace.sm,
@@ -132,7 +136,9 @@ class _ContentPageScreenState extends State<ContentPageScreen> {
                             children: [
                               for (final link in snap.data!.links)
                                 _LinkChip(
-                                    link: link, onTap: () => _open(link.url)),
+                                  link: link,
+                                  onTap: () => _open(link.url),
+                                ),
                             ],
                           ),
                         ],
@@ -142,7 +148,9 @@ class _ContentPageScreenState extends State<ContentPageScreen> {
                             '${context.l10n.lastUpdated}: '
                             '${content.updatedAt!.toLocal().toString().split(' ').first}',
                             style: const TextStyle(
-                                fontSize: 11.5, color: AppColors.textFaint),
+                              fontSize: 11.5,
+                              color: AppColors.textFaint,
+                            ),
                           ),
                         ],
                       ],
@@ -159,17 +167,17 @@ class _ContentPageScreenState extends State<ContentPageScreen> {
 
 /// Icon per known platform; anything the admin invents still renders.
 IconData iconForPlatform(String platform) => switch (platform) {
-      'facebook' => Icons.facebook,
-      'instagram' => Icons.camera_alt_outlined,
-      'x' || 'twitter' => Icons.alternate_email,
-      'tiktok' => Icons.music_note_outlined,
-      'youtube' => Icons.play_circle_outline,
-      'whatsapp' => Icons.chat_outlined,
-      'linkedin' => Icons.work_outline,
-      'email' => Icons.mail_outline,
-      'phone' => Icons.phone_outlined,
-      _ => Icons.link,
-    };
+  'facebook' => Icons.facebook,
+  'instagram' => Icons.camera_alt_outlined,
+  'x' || 'twitter' => Icons.alternate_email,
+  'tiktok' => Icons.music_note_outlined,
+  'youtube' => Icons.play_circle_outline,
+  'whatsapp' => Icons.chat_outlined,
+  'linkedin' => Icons.work_outline,
+  'email' => Icons.mail_outline,
+  'phone' => Icons.phone_outlined,
+  _ => Icons.link,
+};
 
 class _LinkChip extends StatelessWidget {
   const _LinkChip({required this.link, required this.onTap});
@@ -187,7 +195,9 @@ class _LinkChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         child: Container(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.lg, vertical: AppSpace.md - 2),
+            horizontal: AppSpace.lg,
+            vertical: AppSpace.md - 2,
+          ),
           decoration: BoxDecoration(
             border: Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -195,19 +205,23 @@ class _LinkChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(iconForPlatform(link.platform),
-                  size: 17, color: AppColors.primary),
+              Icon(
+                iconForPlatform(link.platform),
+                size: 17,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: AppSpace.sm),
               Text(
                 // The platform name is the label; the URL is the payload.
                 link.platform.isEmpty
                     ? link.url
                     : link.platform[0].toUpperCase() +
-                        link.platform.substring(1),
+                          link.platform.substring(1),
                 style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
               ),
             ],
           ),

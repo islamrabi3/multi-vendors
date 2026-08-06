@@ -24,14 +24,23 @@ abstract final class AppConfig {
   /// Needs "Places API" and "Geocoding API" enabled, and the key restricted to
   /// this app's bundle id / package name. When empty the search box hides
   /// itself and picking on the map still works.
-  static const googleMapsApiKey = String.fromEnvironment(
-    'GOOGLE_MAPS_API_KEY',
-    defaultValue: 'AIzaSyBQjMj30LvXkmSO9zcQhc688L6pXxB2zGk',
-  );
+  /// No default on purpose.
+  ///
+  /// A web build ships this in readable JavaScript, so a baked-in default is
+  /// a key anyone can lift and bill to the project. Supply it at build time:
+  ///
+  ///   flutter build web --dart-define=GOOGLE_MAPS_API_KEY=AIza...
+  ///
+  /// Left empty the search box hides itself and picking on the map still
+  /// works, so a build without it is degraded rather than broken.
+  ///
+  /// Restrict the key by HTTP referrer (web) and bundle id / package name
+  /// (native) in the Google Cloud console regardless — shipping it at all
+  /// means it is public.
+  static const googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
 
   static bool get hasPlacesSearch => googleMapsApiKey.isNotEmpty;
 }
-
 
 // flutter pub get
 // flutter run --dart-define=SUPABASE_ANON_KEY=sb_publishable_vDEZfX6SkbQlTmjscrYkvA_aa0Zr3Mo

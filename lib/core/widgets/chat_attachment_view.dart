@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app/tokens.dart';
 import '../services/attachment_service.dart';
 import '../utils/l10n_extension.dart';
-import 'common.dart' show showSnack;
+import 'common.dart' show showFailure, showSnack;
 
 /// The three ways to attach something, shared by both chats.
 enum _AttachChoice {
@@ -58,9 +58,11 @@ Future<ChatAttachment?> pickChatAttachment(BuildContext context) async {
   try {
     return await choice.pick();
   } catch (error) {
-    if (context.mounted) {
-      showSnack(context, context.l10n.attachmentUploadFailed, error: true);
-    }
+    // The real failure, not a generic line: a refused permission, a file too
+    // large and a storage rejection need different answers from the user, and
+    // the flat "upload failed" message named none of them. showFailure also
+    // logs the cause, which is what makes a report actionable.
+    if (context.mounted) showFailure(context, error);
     return null;
   }
 }

@@ -34,7 +34,7 @@ class VendorAdminRepository {
         .from('vendors')
         .update(values)
         .eq('id', vendorId)
-        .select()
+        .select('*, vendor_schedules(*)')
         .single();
     return Vendor.fromMap(data);
   }
@@ -203,24 +203,104 @@ class VendorAdminRepository {
     }, onConflict: 'vendor_id,day_of_week');
   }
 
-  Future<Map<String, dynamic>> fetchAnalytics(String vendorId) async {
-    final orders = await supabase
-        .from('orders')
-        .select('id, total, created_at, status')
-        .eq('vendor_id', vendorId)
-        .eq('status', 'delivered');
-
-    double totalRevenue = 0.0;
-    int totalDelivered = (orders as List).length;
-
-    for (final row in orders) {
-      totalRevenue += ((row['total'] as num?) ?? 0).toDouble();
-    }
-
-    return {
-      'total_revenue': totalRevenue,
-      'total_delivered': totalDelivered,
-    };
+  /// What this store sold and what it is owed for the period.
+  ///
+  /// Server-side and settlement-accurate: the old version pulled every
+  /// delivered order the store had ever had and summed `orders.total`, which
+  /// includes the delivery fee the store never receives and ignores commission
+  /// entirely. The RPC shares `order_commission` with the admin's report, so
+  /// the two views of the same store cannot drift apart.
+  Future<VendorSettlement> fetchSettlement(
+    String vendorId, {
+    DateTime? start,
+    DateTime? end,
+  }) async {
+    final data = await supabase.rpc(
+      'vendor_settlement',
+      params: {
+        'p_vendor_id': vendorId,
+        'p_start': start?.toUtc().toIso8601String(),
+        'p_end': end?.toUtc().toIso8601String(),
+      },
+    );
+    return VendorSettlement.fromMap((data as Map).cast<String, dynamic>());
   }
 }
 
+
+/// One store's commercial position for a period.
+class VendorSettlement {
+  const VendorSettlement({
+    this.deliveredOrders = 0,
+    this.itemSales = 0,
+    this.vendorDiscounts = 0,
+    this.deliveryFeesCollected = 0,
+    this.averageOrder = 0,
+    this.billingModel = 'commission',
+    this.commissionRate = 0,
+    this.subscriptionFee = 0,
+    this.commission = 0,
+    this.netPayout = 0,
+    this.ratingAvg = 0,
+    this.ratingCount = 0,
+    this.avgPrepMinutes = 0,
+  });
+
+  final int deliveredOrders;
+
+  /// What the store sold, before anything is taken off. Not the order total —
+  /// the delivery fee in there was never the store's money.
+  final double itemSales;
+
+  /// Discounts from this store's own coupons, which it funds.
+  final double vendorDiscounts;
+
+  /// Collected from the customer and passed on to the driver and platform.
+  /// Shown only so the store can reconcile against what the customer paid.
+  final double deliveryFeesCollected;
+
+  final double averageOrder;
+
+  /// `commission` or `subscription`.
+  final String billingModel;
+  bool get isSubscription => billingModel == 'subscription';
+
+  /// Zero on the subscription plan, so it always matches [commission].
+  final double commissionRate;
+  final double subscriptionFee;
+
+  /// The platform's per-order cut. Always zero on the subscription plan.
+  final double commission;
+
+  /// What the store is actually owed.
+  final double netPayout;
+
+  final double ratingAvg;
+  final int ratingCount;
+  final int avgPrepMinutes;
+
+  factory VendorSettlement.fromMap(Map<String, dynamic> map) =>
+      VendorSettlement(
+        deliveredOrders: _num(map['delivered_orders']).toInt(),
+        itemSales: _num(map['item_sales']),
+        vendorDiscounts: _num(map['vendor_discounts']),
+        deliveryFeesCollected: _num(map['delivery_fees_collected']),
+        averageOrder: _num(map['average_order']),
+        billingModel: (map['billing_model'] as String?) ?? 'commission',
+        commissionRate: _num(map['commission_rate']),
+        subscriptionFee: _num(map['subscription_fee']),
+        commission: _num(map['commission']),
+        netPayout: _num(map['net_payout']),
+        ratingAvg: _num(map['rating_avg']),
+        ratingCount: _num(map['rating_count']).toInt(),
+        avgPrepMinutes: _num(map['avg_prep_minutes']).toInt(),
+      );
+}
+
+/// Postgres `numeric` arrives as a number over PostgREST but as a string from
+/// some transports, so neither is assumed.
+double _num(Object? value) => switch (value) {
+  num n => n.toDouble(),
+  String s => double.tryParse(s) ?? 0,
+  _ => 0,
+};

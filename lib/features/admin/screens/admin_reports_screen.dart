@@ -169,16 +169,49 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
               value: -_platform.discounts,
               subtle: true),
           const Divider(height: AppSpace.xl, color: AppColors.borderSoft),
+          // What the platform earns, line by line, so the net below can be
+          // checked by adding up the rows above it.
           _Row(label: l10n.platformCommission, value: _platform.commission),
           _Row(
-              label: l10n.driverCost,
-              value: -_platform.driverCost,
+              label: l10n.deliveryMargin(_percent(100 - _platform.driverShare)),
+              value: _platform.deliveryMargin),
+          _Row(
+              label: l10n.platformFundedDiscounts,
+              value: -_platform.platformDiscounts,
               subtle: true),
           _Row(
             label: l10n.netMargin,
             value: _platform.netMargin,
             emphasis: true,
           ),
+          const SizedBox(height: AppSpace.lg),
+          // Owed out. Kept apart from the platform's own P&L above: these are
+          // other people's money passing through, not platform costs.
+          _sectionLabel(l10n.owedOut),
+          _Row(label: l10n.vendorPayouts, value: _platform.vendorPayout),
+          _Row(label: l10n.driverCost, value: _platform.driverCost),
+          if (_platform.driverTips > 0)
+            _Row(
+                label: l10n.tipsPassedThrough,
+                value: _platform.driverTips,
+                subtle: true),
+          if (_platform.subscriptionStores > 0) ...[
+            const SizedBox(height: AppSpace.lg),
+            _sectionLabel(l10n.subscriptions),
+            _Row(
+              label: l10n.subscriptionFeesMonthly(
+                  _platform.subscriptionStores),
+              value: _platform.subscriptionFeesMonthly,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xs),
+              child: Text(
+                l10n.subscriptionNotInNet,
+                style: const TextStyle(
+                    fontSize: 11.5, color: AppColors.textMuted, height: 1.35),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpace.lg),
           // The number that decides who owes whom at the end of a shift.
           _sectionLabel(l10n.cashCollected),
@@ -220,9 +253,18 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
               lines: [
                 '${l10n.orders}: ${item.totalOrders}',
                 '${l10n.itemSales}: ${formatMoney(item.grossSales)}',
-                '${l10n.platformCommission} '
-                    '(${_percent(item.commissionRate)}): '
-                    '${formatMoney(item.commissionFee)}',
+                if (item.vendorDiscounts > 0)
+                  '${l10n.storeFundedDiscounts}: '
+                      '-${formatMoney(item.vendorDiscounts)}',
+                // A subscription store pays a flat fee and no per-order cut,
+                // so quoting a percentage on its card would be a lie.
+                if (item.isSubscription)
+                  '${l10n.subscriptionPlan}: '
+                      '${formatMoney(item.subscriptionFee)}${l10n.perMonthSuffix}'
+                else
+                  '${l10n.platformCommission} '
+                      '(${_percent(item.commissionRate)}): '
+                      '${formatMoney(item.commissionFee)}',
               ],
               payout: item.netPayout,
               payoutColor: AppColors.successInk,
@@ -253,8 +295,15 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
               lines: [
                 '${l10n.deliveredOrders}: ${item.deliveredOrders}',
                 '${l10n.deliveryFeesTotal}: '
-                    '${formatMoney(item.deliveryFeesEarned)}',
-                '${l10n.tips}: ${formatMoney(item.tipsEarned)}',
+                    '${formatMoney(item.deliveryFeesCollected)}',
+                '${l10n.driverShareLabel}: '
+                    '${formatMoney(item.driverFeeShare)}',
+                // The other side of the same fee. Its absence is what made a
+                // 20 fee look like a flat 18 cost with no platform income.
+                '${l10n.platformShareLabel}: '
+                    '${formatMoney(item.platformFeeShare)}',
+                if (item.tipsEarned > 0)
+                  '${l10n.tips}: ${formatMoney(item.tipsEarned)}',
               ],
               payout: item.netDriverPayout,
               payoutColor: AppColors.primary,

@@ -8,9 +8,12 @@ import '../../../core/models/vendor.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/favorites_repository.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/models/banner_item.dart' show AdPlacement;
+import '../../../core/widgets/ad_slot.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../cart/cart_cubit.dart';
+import 'product_quantity_control.dart';
 import 'product_sheet.dart';
 import 'vendor_details_cubit.dart';
 import 'vendor_reviews_preview.dart';
@@ -25,7 +28,10 @@ class VendorDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => VendorDetailsCubit(
-          CatalogRepository(), FavoritesRepository(), vendorId),
+        CatalogRepository(),
+        FavoritesRepository(),
+        vendorId,
+      ),
       child: const _VendorDetailsView(),
     );
   }
@@ -70,8 +76,9 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
           final vendor = state.vendor;
           if (vendor == null) {
             return ErrorView(
-                message: context.l10n.couldNotLoadThisStore,
-                onRetry: context.read<VendorDetailsCubit>().load);
+              message: context.l10n.couldNotLoadThisStore,
+              onRetry: context.read<VendorDetailsCubit>().load,
+            );
           }
           return CustomScrollView(
             slivers: [
@@ -91,22 +98,33 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
                 ),
                 flexibleSpace: FlexibleSpaceBar(
                   background: AppNetworkImage(
-                      url: vendor.coverUrl, width: double.infinity),
+                    url: vendor.coverUrl,
+                    width: double.infinity,
+                  ),
                 ),
                 actions: [
                   _CircleButton(
                     icon: state.isFavorite
                         ? Icons.favorite
                         : Icons.favorite_border,
-                    iconColor:
-                        state.isFavorite ? AppColors.dangerInk : AppColors.ink,
-                    onPressed:
-                        context.read<VendorDetailsCubit>().toggleFavorite,
+                    iconColor: state.isFavorite
+                        ? AppColors.dangerInk
+                        : AppColors.ink,
+                    onPressed: context
+                        .read<VendorDetailsCubit>()
+                        .toggleFavorite,
                   ),
                   const SizedBox(width: 8),
                 ],
               ),
               SliverToBoxAdapter(child: _VendorHeader(vendor: vendor)),
+              const SliverToBoxAdapter(
+                child: AdSlot(
+                  placement: AdPlacement.vendorTop,
+                  height: 110,
+                  margin: EdgeInsets.fromLTRB(16, 4, 16, 0),
+                ),
+              ),
               ..._menuSlivers(context, state, vendor),
               const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
             ],
@@ -118,7 +136,10 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
   }
 
   List<Widget> _menuSlivers(
-      BuildContext context, VendorDetailsState state, Vendor vendor) {
+    BuildContext context,
+    VendorDetailsState state,
+    Vendor vendor,
+  ) {
     final language = Localizations.localeOf(context).languageCode;
     final sections = <_MenuSection>[
       for (final category in state.menuCategories)
@@ -141,8 +162,9 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
         SliverFillRemaining(
           hasScrollBody: false,
           child: EmptyView(
-              message: context.l10n.menuComingSoon,
-              icon: Icons.menu_book_outlined),
+            message: context.l10n.menuComingSoon,
+            icon: Icons.menu_book_outlined,
+          ),
         ),
       ];
     }
@@ -151,9 +173,11 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
     // leave a chip pointing at a heading that no longer exists.
     _sectionKeys
       ..removeWhere((id, _) => !sections.any((s) => s.id == id))
-      ..addEntries(sections
-          .where((s) => !_sectionKeys.containsKey(s.id))
-          .map((s) => MapEntry(s.id, GlobalKey())));
+      ..addEntries(
+        sections
+            .where((s) => !_sectionKeys.containsKey(s.id))
+            .map((s) => MapEntry(s.id, GlobalKey())),
+      );
 
     return [
       // A pinned rail so a long menu is always one tap from any section.
@@ -170,21 +194,27 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
           ),
         ),
       for (final section in sections)
-        SliverMainAxisGroup(slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              key: _sectionKeys[section.id],
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(section.title,
-                  style: Theme.of(context).textTheme.titleLarge),
+        SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                key: _sectionKeys[section.id],
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text(
+                  section.title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
             ),
-          ),
-          SliverList.builder(
-            itemCount: section.products.length,
-            itemBuilder: (context, index) => _ProductTile(
-                vendor: vendor, product: section.products[index]),
-          ),
-        ]),
+            SliverList.builder(
+              itemCount: section.products.length,
+              itemBuilder: (context, index) => _ProductTile(
+                vendor: vendor,
+                product: section.products[index],
+              ),
+            ),
+          ],
+        ),
       // Under the menu rather than above it: the customer came to order, and
       // what other people said is what they read while deciding.
       SliverToBoxAdapter(
@@ -239,7 +269,9 @@ class _SectionChips extends StatelessWidget {
               onTap: () => onTap(section.id),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   border: Border.all(color: AppColors.border),
@@ -248,9 +280,10 @@ class _SectionChips extends StatelessWidget {
                 child: Text(
                   '${section.title}  ${section.products.length}',
                   style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
             ),
@@ -343,24 +376,49 @@ class _VendorHeader extends StatelessWidget {
                   borderRadius: BorderRadius.all(Radius.circular(18)),
                 ),
                 child: AppNetworkImage(
-                    url: vendor.logoUrl,
-                    height: 58,
-                    width: 58,
-                    borderRadius: BorderRadius.circular(16)),
+                  url: vendor.logoUrl,
+                  height: 58,
+                  width: 58,
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(vendor.name,
-                        style: Theme.of(context).textTheme.headlineMedium),
+                    Text(
+                      vendor.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    // The store's real state, which is the switch *and* today's
+                    // hours. Nothing on this page said either, so a customer
+                    // built a whole basket before checkout refused it.
+                    const SizedBox(height: 4),
+                    if (!vendor.isOpenNow())
+                      SoftBadge(
+                        label: context.l10n.closedNow,
+                        fill: AppColors.neutralFill,
+                        ink: AppColors.textMuted,
+                        icon: Icons.schedule_rounded,
+                      )
+                    else if (vendor.closingTime() != null)
+                      SoftBadge(
+                        label: context.l10n.openUntil(vendor.closingTime()!),
+                        fill: AppColors.successFill,
+                        ink: AppColors.successInk,
+                        icon: Icons.schedule_rounded,
+                      ),
                     if (vendor.description?.isNotEmpty ?? false) ...[
                       const SizedBox(height: 2),
-                      Text(vendor.description!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        vendor.description!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ],
                 ),
@@ -384,7 +442,9 @@ class _VendorHeader extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: _StatTile(
-                    value: '${vendor.totalPrepMinutes}′', label: 'delivery'),
+                  value: '${vendor.totalPrepMinutes}′',
+                  label: 'delivery',
+                ),
               ),
               const SizedBox(width: 9),
               Expanded(
@@ -404,11 +464,17 @@ class _VendorHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.amberFill,
                 borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: AppColors.amberInk.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.amberInk.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: AppColors.amberInk, size: 18),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: AppColors.amberInk,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -431,7 +497,11 @@ class _VendorHeader extends StatelessWidget {
 }
 
 class _StatTile extends StatelessWidget {
-  const _StatTile({required this.value, required this.label, this.star = false});
+  const _StatTile({
+    required this.value,
+    required this.label,
+    this.star = false,
+  });
 
   final String value;
   final String label;
@@ -452,22 +522,30 @@ class _StatTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (star) ...[
-                const Icon(Icons.star_rounded,
-                    size: 15, color: AppColors.rating),
+                const Icon(
+                  Icons.star_rounded,
+                  size: 15,
+                  color: AppColors.rating,
+                ),
                 const SizedBox(width: 3),
               ],
-              Text(value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.ink)),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.ink,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 1),
-          Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: AppColors.textFaint)),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppColors.textFaint),
+          ),
         ],
       ),
     );
@@ -485,7 +563,7 @@ class _ProductTile extends StatelessWidget {
     final language = Localizations.localeOf(context).languageCode;
     final description = product.displayDescription(language);
     return InkWell(
-      onTap: vendor.isOpen
+      onTap: vendor.isOpenNow()
           ? () => showProductSheet(context, vendor, product)
           : () => showSnack(context, context.l10n.thisStoreIsCurrentlyClosed),
       child: Padding(
@@ -497,17 +575,22 @@ class _ProductTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.displayName(language),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: AppColors.ink)),
+                  Text(
+                    product.displayName(language),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.ink,
+                    ),
+                  ),
                   if (description != null) ...[
                     const SizedBox(height: 3),
-                    Text(description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                   const SizedBox(height: 7),
                   PriceText(formatMoney(product.price)),
@@ -519,24 +602,21 @@ class _ProductTile extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 AppNetworkImage(
-                    url: product.imageUrl,
-                    height: 84,
-                    width: 84,
-                    borderRadius: BorderRadius.circular(15)),
-                if (vendor.isOpen)
+                  url: product.imageUrl,
+                  height: 84,
+                  width: 84,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                if (vendor.isOpenNow())
                   PositionedDirectional(
                     bottom: -9,
                     end: -6,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: AppShadows.primaryGlow,
-                      ),
-                      child: const Icon(Icons.add,
-                          size: 18, color: Colors.white),
+                    // Its own tap target, separate from the row. The row means
+                    // "show me this item"; this means "I want it", and once it
+                    // is in the cart it turns into the stepper for that line.
+                    child: ProductQuantityControl(
+                      vendor: vendor,
+                      product: product,
                     ),
                   ),
               ],
@@ -583,22 +663,31 @@ class _CartBar extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(9),
                           ),
-                          child: Text('${cart.itemCount}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13)),
+                          child: Text(
+                            '${cart.itemCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 10),
-                        Text(context.l10n.viewCart,
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15)),
+                        Text(
+                          context.l10n.viewCart,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
                       ],
                     ),
-                    PriceText(formatMoney(cart.subtotal),
-                        size: 15, color: Colors.white),
+                    PriceText(
+                      formatMoney(cart.subtotal),
+                      size: 15,
+                      color: Colors.white,
+                    ),
                   ],
                 ),
               ),
@@ -628,10 +717,15 @@ class _VendorDetailsSkeleton extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: AppColors.canvas,
                 borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(AppRadii.xxl)),
+                  top: Radius.circular(AppRadii.xxl),
+                ),
               ),
               padding: const EdgeInsets.fromLTRB(
-                  AppSpace.lg, 28, AppSpace.lg, 0),
+                AppSpace.lg,
+                28,
+                AppSpace.lg,
+                0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -655,13 +749,16 @@ class _VendorDetailsSkeleton extends StatelessWidget {
                   Row(
                     children: const [
                       Expanded(
-                          child: Skeleton(height: 56, radius: AppRadii.md)),
+                        child: Skeleton(height: 56, radius: AppRadii.md),
+                      ),
                       SizedBox(width: 9),
                       Expanded(
-                          child: Skeleton(height: 56, radius: AppRadii.md)),
+                        child: Skeleton(height: 56, radius: AppRadii.md),
+                      ),
                       SizedBox(width: 9),
                       Expanded(
-                          child: Skeleton(height: 56, radius: AppRadii.md)),
+                        child: Skeleton(height: 56, radius: AppRadii.md),
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpace.xxl),

@@ -263,23 +263,35 @@ class _StatGrid extends StatelessWidget {
         const SizedBox(width: 11),
         Expanded(
           child: _AttentionCard(
-            count: stats.vendorsOpen,
-            label: context.l10n.vendors,
-            icon: Icons.store_mall_directory_outlined,
-            fill: AppColors.surface,
-            border: AppColors.border,
-            ink: AppColors.ink,
-          ),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: _AttentionCard(
-            count: stats.driversOnline,
-            label: context.l10n.drivers,
+            count: stats.driversPending,
+            label: context.l10n.driversToApprove,
             icon: Icons.delivery_dining_outlined,
             fill: AppColors.surface,
             border: AppColors.border,
             ink: AppColors.ink,
+            onTap: () => context.push('/admin-app/drivers'),
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          // Support was two taps behind the Manage tab, so a waiting customer
+          // was only found by someone who went looking. An unanswered thread
+          // is the same kind of debt as an order nobody has moved, so it sits
+          // with them — and turns amber once there is one.
+          child: _AttentionCard(
+            count: stats.supportOpen,
+            label: context.l10n.openSupportThreads,
+            icon: Icons.support_agent_rounded,
+            fill: stats.supportOpen > 0
+                ? AppColors.warmFill
+                : AppColors.surface,
+            border: stats.supportOpen > 0
+                ? const Color(0xFFFAD9CC)
+                : AppColors.border,
+            ink: stats.supportOpen > 0
+                ? AppColors.primaryDark
+                : AppColors.ink,
+            onTap: () => context.push('/admin-app/support'),
           ),
         ),
       ],

@@ -15,6 +15,8 @@ class AdminStats {
     this.vendorsOpen = 0,
     this.vendorsPending = 0,
     this.driversOnline = 0,
+    this.driversPending = 0,
+    this.supportOpen = 0,
     this.ordersAttention = 0,
   });
 
@@ -24,17 +26,25 @@ class AdminStats {
   final int vendorsOpen;
   final int vendorsPending;
   final int driversOnline;
+
+  /// Driver applications waiting on a decision.
+  final int driversPending;
+
+  /// Support threads nobody has closed.
+  final int supportOpen;
   final int ordersAttention;
 
   factory AdminStats.fromMap(Map<String, dynamic> m) => AdminStats(
-        gmvToday: ((m['gmv_today'] as num?) ?? 0).toDouble(),
-        ordersToday: ((m['orders_today'] as num?) ?? 0).toInt(),
-        vendorsActive: ((m['vendors_active'] as num?) ?? 0).toInt(),
-        vendorsOpen: ((m['vendors_open'] as num?) ?? 0).toInt(),
-        vendorsPending: ((m['vendors_pending'] as num?) ?? 0).toInt(),
-        driversOnline: ((m['drivers_online'] as num?) ?? 0).toInt(),
-        ordersAttention: ((m['orders_attention'] as num?) ?? 0).toInt(),
-      );
+    gmvToday: ((m['gmv_today'] as num?) ?? 0).toDouble(),
+    ordersToday: ((m['orders_today'] as num?) ?? 0).toInt(),
+    vendorsActive: ((m['vendors_active'] as num?) ?? 0).toInt(),
+    vendorsOpen: ((m['vendors_open'] as num?) ?? 0).toInt(),
+    vendorsPending: ((m['vendors_pending'] as num?) ?? 0).toInt(),
+    driversOnline: ((m['drivers_online'] as num?) ?? 0).toInt(),
+    driversPending: ((m['drivers_pending'] as num?) ?? 0).toInt(),
+    supportOpen: ((m['support_open'] as num?) ?? 0).toInt(),
+    ordersAttention: ((m['orders_attention'] as num?) ?? 0).toInt(),
+  );
 }
 
 /// A store owner's contact details, shown on the approval detail screen.
@@ -64,7 +74,9 @@ class DriverAccount {
     this.phone,
     this.vehicleType,
     this.idCardUrl,
+    this.idCardBackUrl,
     this.licenseUrl,
+    this.licenseBackUrl,
   });
 
   final String id;
@@ -74,24 +86,42 @@ class DriverAccount {
   final String? phone;
   final String? vehicleType;
   final String? idCardUrl;
+  final String? idCardBackUrl;
   final String? licenseUrl;
+  final String? licenseBackUrl;
+
+  /// Both sides of both documents, in the order a reviewer reads them.
+  List<({String column, String? url})> get documents => [
+    (column: 'id_card_url', url: idCardUrl),
+    (column: 'id_card_back_url', url: idCardBackUrl),
+    (column: 'license_url', url: licenseUrl),
+    (column: 'license_back_url', url: licenseBackUrl),
+  ];
+
+  bool get hasAnyDocument => documents.any((d) => d.url != null);
 
   bool get isPending => approvalStatus == 'pending';
   bool get isApproved => approvalStatus == 'active';
   bool get isSuspended => approvalStatus == 'suspended';
 
   /// Only the document links are ever swapped — a stored path for a signed URL.
-  DriverAccount copyWith({String? idCardUrl, String? licenseUrl}) =>
-      DriverAccount(
-        id: id,
-        name: name,
-        approvalStatus: approvalStatus,
-        isOnline: isOnline,
-        phone: phone,
-        vehicleType: vehicleType,
-        idCardUrl: idCardUrl,
-        licenseUrl: licenseUrl,
-      );
+  DriverAccount copyWith({
+    String? idCardUrl,
+    String? idCardBackUrl,
+    String? licenseUrl,
+    String? licenseBackUrl,
+  }) => DriverAccount(
+    id: id,
+    name: name,
+    approvalStatus: approvalStatus,
+    isOnline: isOnline,
+    phone: phone,
+    vehicleType: vehicleType,
+    idCardUrl: idCardUrl,
+    idCardBackUrl: idCardBackUrl,
+    licenseUrl: licenseUrl,
+    licenseBackUrl: licenseBackUrl,
+  );
 
   factory DriverAccount.fromMap(Map<String, dynamic> map) {
     final profile = map['profiles'];
@@ -99,15 +129,17 @@ class DriverAccount {
       id: map['id'] as String,
       name: profile is Map
           ? ((profile['full_name'] as String?)?.trim().isNotEmpty == true
-              ? profile['full_name'] as String
-              : 'Driver')
+                ? profile['full_name'] as String
+                : 'Driver')
           : 'Driver',
       phone: profile is Map ? profile['phone'] as String? : null,
       approvalStatus: (map['approval_status'] as String?) ?? 'pending',
       isOnline: (map['is_online'] as bool?) ?? false,
       vehicleType: map['vehicle_type'] as String?,
       idCardUrl: map['id_card_url'] as String?,
+      idCardBackUrl: map['id_card_back_url'] as String?,
       licenseUrl: map['license_url'] as String?,
+      licenseBackUrl: map['license_back_url'] as String?,
     );
   }
 }
@@ -136,9 +168,18 @@ class AdminRepository {
     required int limit,
     required int offset,
     String? status,
+    String? search,
   }) async {
     var query = supabase.from('vendors').select();
     if (status != null) query = query.eq('approval_status', status);
+    // Server-side, so it searches every store rather than the page already
+    // loaded — the point of a search is finding what is not on screen.
+    final term = search?.trim();
+    if (term != null && term.isNotEmpty) {
+      // Commas and parentheses would be read as PostgREST filter syntax.
+      final safe = term.replaceAll(RegExp(r'[,()]'), ' ');
+      query = query.or('name.ilike.%$safe%,phone.ilike.%$safe%');
+    }
     final data = await query
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
@@ -148,7 +189,7 @@ class AdminRepository {
   /// Exact store counts per approval state. The list is paged, so the filter
   /// chips cannot count loaded rows.
   Future<({int all, int pending, int active, int suspended})>
-      fetchVendorCounts() async {
+  fetchVendorCounts() async {
     final counts = await Future.wait([
       supabase.from('vendors').count(),
       supabase.from('vendors').count().eq('approval_status', 'pending'),
@@ -164,8 +205,11 @@ class AdminRepository {
   }
 
   Future<Vendor> fetchVendor(String vendorId) async {
-    final data =
-        await supabase.from('vendors').select().eq('id', vendorId).single();
+    final data = await supabase
+        .from('vendors')
+        .select()
+        .eq('id', vendorId)
+        .single();
     return Vendor.fromMap(data);
   }
 
@@ -184,19 +228,35 @@ class AdminRepository {
     );
   }
 
-  Future<void> setVendorStatus(String vendorId, String status) =>
-      supabase.rpc('admin_set_vendor_status', params: {
-        'p_vendor_id': vendorId,
-        'p_status': status,
-      });
+  Future<void> setVendorStatus(String vendorId, String status) => supabase.rpc(
+    'admin_set_vendor_status',
+    params: {'p_vendor_id': vendorId, 'p_status': status},
+  );
 
   /// Every account, newest first. Admin-only by RLS.
-  Future<List<AdminUser>> fetchUsers() async {
-    final data = await supabase
+  /// One page of accounts, newest first.
+  ///
+  /// Previously unbounded and filtered in the app, which meant every profile
+  /// on the platform crossed the wire so that a search box could hide most of
+  /// them. Both the search and the limit are now the database's job.
+  Future<List<AdminUser>> fetchUsers({
+    String? search,
+    int limit = 40,
+    int offset = 0,
+  }) async {
+    var query = supabase
         .from('profiles')
-        .select('id, full_name, phone, role, is_blocked, blocked_reason, '
-            'deleted_at, created_at')
-        .order('created_at', ascending: false);
+        .select(
+          'id, full_name, phone, role, is_blocked, blocked_reason, '
+          'deleted_at, created_at',
+        );
+    final needle = search?.trim() ?? '';
+    if (needle.isNotEmpty) {
+      query = query.or('full_name.ilike.%$needle%,phone.ilike.%$needle%');
+    }
+    final data = await query
+        .order('created_at', ascending: false)
+        .range(offset, offset + limit - 1);
     return (data as List)
         .map((e) => AdminUser.fromMap(e as Map<String, dynamic>))
         .toList();
@@ -205,25 +265,60 @@ class AdminRepository {
   /// Blocking is reversible and keeps the account; the server refuses to block
   /// an admin or the caller themselves.
   Future<void> setUserBlocked(String userId, bool blocked, {String? reason}) =>
-      supabase.rpc('admin_set_user_blocked', params: {
-        'p_user_id': userId,
-        'p_blocked': blocked,
-        'p_reason': reason,
-      });
+      supabase.rpc(
+        'admin_set_user_blocked',
+        params: {'p_user_id': userId, 'p_blocked': blocked, 'p_reason': reason},
+      );
 
-  /// Closes an account: scrubs the identity but keeps the row, because orders
-  /// reference it and a hard delete fails on the foreign key.
-  Future<void> deleteUser(String userId) =>
-      supabase.rpc('admin_delete_user', params: {'p_user_id': userId});
+  /// Credits (positive) or debits (negative) a customer's wallet.
+  ///
+  /// Goes through an RPC rather than writing the table: the balance and the
+  /// ledger row have to move together, under a lock, or a wallet history stops
+  /// adding up to its balance. Returns the new balance.
+  Future<double> adjustWallet({
+    required String userId,
+    required double amount,
+    required String reason,
+  }) async {
+    final result = await supabase.rpc(
+      'admin_adjust_wallet',
+      params: {
+        'p_user_id': userId,
+        'p_amount': amount,
+        'p_reason': reason,
+      },
+    );
+    return double.tryParse('$result') ?? 0;
+  }
+
+  /// Removes an account.
+  ///
+  /// Returns true when the row was really deleted. An account with order
+  /// history cannot be: `orders` references it with NO ACTION, and deleting it
+  /// anyway would take the order ledger with it. Those are anonymised and
+  /// locked out of sign-in instead, and the caller is told so rather than
+  /// being shown "deleted" over a row that is still there.
+  Future<bool> deleteUser(String userId) async {
+    final result = await supabase.rpc(
+      'admin_delete_user',
+      params: {'p_user_id': userId},
+    );
+    return result is Map && result['hard_deleted'] == true;
+  }
 
   /// Promotes or demotes a store on the customer home's recommended rail.
-  Future<void> setVendorRecommended(String vendorId, bool recommended,
-          {int rank = 0}) =>
-      supabase.rpc('admin_set_vendor_recommended', params: {
-        'p_vendor_id': vendorId,
-        'p_recommended': recommended,
-        'p_rank': rank,
-      });
+  Future<void> setVendorRecommended(
+    String vendorId,
+    bool recommended, {
+    int rank = 0,
+  }) => supabase.rpc(
+    'admin_set_vendor_recommended',
+    params: {
+      'p_vendor_id': vendorId,
+      'p_recommended': recommended,
+      'p_rank': rank,
+    },
+  );
 
   /// Statuses an order can sit in while it is still in flight.
   static const _liveStatuses = [
@@ -250,10 +345,12 @@ class AdminRepository {
       .stream(primaryKey: ['id'])
       .inFilter('status', _liveStatuses)
       .order('created_at')
-      .map((rows) => rows
-          .map(AppOrder.fromMap)
-          .where((order) => order.paymentMethod != 'paymob' || order.isPaid)
-          .toList());
+      .map(
+        (rows) => rows
+            .map(AppOrder.fromMap)
+            .where((order) => order.paymentMethod != 'paymob' || order.isPaid)
+            .toList(),
+      );
 
   /// One page of finished orders, newest first. The unpaid-Paymob-draft rule is
   /// applied server-side so a short page always means "no more results".
@@ -289,13 +386,18 @@ class AdminRepository {
     try {
       data = await supabase
           .from('drivers')
-          .select('id, approval_status, is_online, vehicle_type, id_card_url, license_url,'
-              ' profiles(full_name, phone)');
+          .select(
+            'id, approval_status, is_online, vehicle_type,'
+            ' id_card_url, id_card_back_url, license_url, license_back_url,'
+            ' profiles(full_name, phone)',
+          );
     } catch (_) {
       data = await supabase
           .from('drivers')
-          .select('id, approval_status, is_online, vehicle_type,'
-              ' profiles(full_name, phone)');
+          .select(
+            'id, approval_status, is_online, vehicle_type,'
+            ' profiles(full_name, phone)',
+          );
     }
     final drivers = (data)
         .map((e) => DriverAccount.fromMap(e as Map<String, dynamic>))
@@ -308,22 +410,32 @@ class AdminRepository {
     // The columns hold private storage paths; the screen needs something it
     // can put in an <img>. Signed here so the review queue works offline of
     // any per-tap round trip.
-    return Future.wait(drivers.map((d) async {
-      final signed = await Future.wait([
-        signedDriverDocumentUrl(d.idCardUrl),
-        signedDriverDocumentUrl(d.licenseUrl),
-      ]);
-      return d.copyWith(idCardUrl: signed[0], licenseUrl: signed[1]);
-    }));
+    return Future.wait(
+      drivers.map((d) async {
+        final signed = await Future.wait([
+          signedDriverDocumentUrl(d.idCardUrl),
+          signedDriverDocumentUrl(d.idCardBackUrl),
+          signedDriverDocumentUrl(d.licenseUrl),
+          signedDriverDocumentUrl(d.licenseBackUrl),
+        ]);
+        return d.copyWith(
+          idCardUrl: signed[0],
+          idCardBackUrl: signed[1],
+          licenseUrl: signed[2],
+          licenseBackUrl: signed[3],
+        );
+      }),
+    );
   }
 
-  Future<void> setDriverStatus(String driverId, String status,
-          {String? reason}) =>
-      supabase.rpc('admin_set_driver_status', params: {
-        'p_driver_id': driverId,
-        'p_status': status,
-        'p_reason': reason,
-      });
+  Future<void> setDriverStatus(
+    String driverId,
+    String status, {
+    String? reason,
+  }) => supabase.rpc(
+    'admin_set_driver_status',
+    params: {'p_driver_id': driverId, 'p_status': status, 'p_reason': reason},
+  );
 
   Future<List<DriverOption>> fetchOnlineDrivers() async {
     final data = await supabase
@@ -340,34 +452,38 @@ class AdminRepository {
     }).toList();
   }
 
-  Future<void> assignDriver(String orderId, String driverId) =>
-      supabase.rpc('admin_assign_driver', params: {
-        'p_order_id': orderId,
-        'p_driver_id': driverId,
-      });
+  Future<void> assignDriver(String orderId, String driverId) => supabase.rpc(
+    'admin_assign_driver',
+    params: {'p_order_id': orderId, 'p_driver_id': driverId},
+  );
 
   /// Credits a cancelled, paid card order's total back to the customer's
   /// wallet. Server-side the RPC is admin-only and idempotent (paid ->
   /// refunded exactly once). Returns the refunded amount.
   Future<double> refundOrderToWallet(String orderId) async {
-    final amount = await supabase.rpc('admin_refund_order_to_wallet',
-        params: {'p_order_id': orderId});
+    final amount = await supabase.rpc(
+      'admin_refund_order_to_wallet',
+      params: {'p_order_id': orderId},
+    );
     // The refund is committed once the RPC returns; never let a parse issue
     // on the returned amount surface as a failure.
     if (amount is num) return amount.toDouble();
     return num.tryParse('$amount')?.toDouble() ?? 0;
   }
 
-  Future<void> cancelOrder(String orderId, {String? reason}) =>
-      supabase.rpc('update_order_status', params: {
-        'p_order_id': orderId,
-        'p_new_status': 'cancelled',
-        'p_reason': reason,
-      });
+  Future<void> cancelOrder(String orderId, {String? reason}) => supabase.rpc(
+    'update_order_status',
+    params: {
+      'p_order_id': orderId,
+      'p_new_status': 'cancelled',
+      'p_reason': reason,
+    },
+  );
 
   /// Vendor name/logo lookup for orders arriving over realtime (no joins).
   Future<Map<String, ({String name, String? logoUrl})>> vendorLabels(
-      Set<String> vendorIds) async {
+    Set<String> vendorIds,
+  ) async {
     if (vendorIds.isEmpty) return {};
     final data = await supabase
         .from('vendors')
@@ -392,19 +508,161 @@ class AdminRepository {
   }
 
   /// Create a new vendor category.
-  Future<void> createVendorCategory({required String name, String? imageUrl}) async {
+  ///
+  /// [parentId] null makes it a top-level kind of shop; set it to file the
+  /// category under one. The database refuses a third level.
+  Future<void> createVendorCategory({
+    required String name,
+    String? nameAr,
+    String? imageUrl,
+    String? parentId,
+  }) async {
     await supabase.from('vendor_categories').insert({
       'name': name,
+      'name_ar': _blankToNull(nameAr),
       'image_url': imageUrl,
+      'parent_id': parentId,
     });
   }
 
   /// Update an existing vendor category.
-  Future<void> updateVendorCategory(String id, {required String name, String? imageUrl}) async {
-    await supabase.from('vendor_categories').update({
-      'name': name,
-      'image_url': imageUrl,
-    }).eq('id', id);
+  Future<void> updateVendorCategory(
+    String id, {
+    required String name,
+    String? nameAr,
+    String? imageUrl,
+    String? parentId,
+  }) async {
+    await supabase
+        .from('vendor_categories')
+        .update({
+          'name': name,
+          'name_ar': _blankToNull(nameAr),
+          'image_url': imageUrl,
+          'parent_id': parentId,
+        })
+        .eq('id', id);
+  }
+
+  /// An empty box means "no translation", not "translated to nothing" — the
+  /// UI falls back to the canonical name on null and would show a blank label
+  /// on an empty string.
+  static String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  // ===== Per-category promoted stores =====
+
+  /// The admin's picks for [categoryId], best rank first.
+  Future<List<({Vendor vendor, int rank})>> fetchCategoryRecommendations(
+    String categoryId,
+  ) async {
+    final rows = await supabase
+        .from('category_recommendations')
+        .select('rank, vendors!inner(*)')
+        .eq('category_id', categoryId)
+        .order('rank', ascending: true);
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .where((row) => row['vendors'] is Map)
+        .map(
+          (row) => (
+            vendor: Vendor.fromMap(
+              (row['vendors'] as Map).cast<String, dynamic>(),
+            ),
+            rank: ((row['rank'] as num?) ?? 0).toInt(),
+          ),
+        )
+        .toList();
+  }
+
+  /// Promotes [vendorId] in [categoryId], or moves it if it is already there.
+  Future<void> addCategoryRecommendation({
+    required String categoryId,
+    required String vendorId,
+    int rank = 0,
+  }) async {
+    await supabase.from('category_recommendations').upsert({
+      'category_id': categoryId,
+      'vendor_id': vendorId,
+      'rank': rank,
+    }, onConflict: 'category_id,vendor_id');
+  }
+
+  Future<void> removeCategoryRecommendation({
+    required String categoryId,
+    required String vendorId,
+  }) async {
+    await supabase
+        .from('category_recommendations')
+        .delete()
+        .eq('category_id', categoryId)
+        .eq('vendor_id', vendorId);
+  }
+
+  // ===== Bulk price control =====
+
+  /// How many items the given scope would touch. Shown before the button so
+  /// the blast radius is a decision rather than a discovery.
+  Future<int> priceScopeCount({
+    required String scope,
+    String? vendorId,
+    String? categoryId,
+  }) async {
+    final count = await supabase.rpc(
+      'admin_price_scope_count',
+      params: {
+        'p_scope': scope,
+        'p_vendor_id': vendorId,
+        'p_category_id': categoryId,
+      },
+    );
+    return ((count as num?) ?? 0).toInt();
+  }
+
+  /// Moves every price in scope by [value] — a percentage of each price when
+  /// [mode] is `percent`, a flat amount when it is `fixed`.
+  ///
+  /// Negative values are how a reduction is expressed. Nothing is allowed below
+  /// [minPrice], so a large cut floors rather than going negative. Returns the
+  /// number of products and option surcharges actually changed.
+  Future<({int products, int options})> adjustPrices({
+    required String mode,
+    required double value,
+    required String scope,
+    String? vendorId,
+    String? categoryId,
+    double minPrice = 1,
+  }) async {
+    final result = await supabase.rpc(
+      'admin_adjust_prices',
+      params: {
+        'p_mode': mode,
+        'p_value': value,
+        'p_scope': scope,
+        'p_vendor_id': vendorId,
+        'p_category_id': categoryId,
+        'p_min_price': minPrice,
+      },
+    );
+    final map = (result as Map).cast<String, dynamic>();
+    return (
+      products: ((map['products'] as num?) ?? 0).toInt(),
+      options: ((map['options'] as num?) ?? 0).toInt(),
+    );
+  }
+
+  /// Past runs, newest first — the record that makes a mistaken run reversible.
+  Future<List<Map<String, dynamic>>> fetchPriceAdjustments({
+    int limit = 20,
+  }) async {
+    final rows = await supabase
+        .from('price_adjustments')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return (rows as List).cast<Map<String, dynamic>>();
   }
 
   /// Delete a vendor category.
@@ -417,11 +675,18 @@ class AdminRepository {
     required String path,
     required List<int> bytes,
   }) async {
-    await supabase.storage.from('vendor-assets').uploadBinary(
-          path,
-          Uint8List.fromList(bytes),
-        );
+    await supabase.storage
+        .from('vendor-assets')
+        .uploadBinary(path, Uint8List.fromList(bytes));
     return supabase.storage.from('vendor-assets').getPublicUrl(path);
+  }
+
+  /// Ad artwork. Shares the public product-images bucket, under `ads/`, so
+  /// there is no second public bucket to keep policies in step with.
+  Future<String> uploadAdImage(Uint8List bytes, String filename) async {
+    final path = 'ads/${DateTime.now().microsecondsSinceEpoch}-$filename';
+    await supabase.storage.from('product-images').uploadBinary(path, bytes);
+    return supabase.storage.from('product-images').getPublicUrl(path);
   }
 
   /// What each store sold and what the platform keeps, for the settlement the
@@ -434,12 +699,17 @@ class AdminRepository {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    final data = await supabase.rpc('admin_vendor_sales_report', params: {
-      'p_start': startDate?.toUtc().toIso8601String(),
-      'p_end': endDate?.toUtc().toIso8601String(),
-    });
+    final data = await supabase.rpc(
+      'admin_vendor_sales_report',
+      params: {
+        'p_start': startDate?.toUtc().toIso8601String(),
+        'p_end': endDate?.toUtc().toIso8601String(),
+      },
+    );
     return (data as List)
-        .map((e) => VendorReportItem.fromMap((e as Map).cast<String, dynamic>()))
+        .map(
+          (e) => VendorReportItem.fromMap((e as Map).cast<String, dynamic>()),
+        )
         .toList();
   }
 
@@ -450,11 +720,14 @@ class AdminRepository {
     DateTime? endDate,
     double driverSharePercent = 90,
   }) async {
-    final data = await supabase.rpc('admin_platform_report', params: {
-      'p_start': startDate?.toUtc().toIso8601String(),
-      'p_end': endDate?.toUtc().toIso8601String(),
-      'p_driver_share': driverSharePercent,
-    });
+    final data = await supabase.rpc(
+      'admin_platform_report',
+      params: {
+        'p_start': startDate?.toUtc().toIso8601String(),
+        'p_end': endDate?.toUtc().toIso8601String(),
+        'p_driver_share': driverSharePercent,
+      },
+    );
     return PlatformReport.fromMap((data as Map).cast<String, dynamic>());
   }
 
@@ -467,13 +740,18 @@ class AdminRepository {
     DateTime? endDate,
     double driverSharePercent = 90,
   }) async {
-    final data = await supabase.rpc('admin_driver_payout_report', params: {
-      'p_start': startDate?.toUtc().toIso8601String(),
-      'p_end': endDate?.toUtc().toIso8601String(),
-      'p_driver_share': driverSharePercent,
-    });
+    final data = await supabase.rpc(
+      'admin_driver_payout_report',
+      params: {
+        'p_start': startDate?.toUtc().toIso8601String(),
+        'p_end': endDate?.toUtc().toIso8601String(),
+        'p_driver_share': driverSharePercent,
+      },
+    );
     return (data as List)
-        .map((e) => DriverReportItem.fromMap((e as Map).cast<String, dynamic>()))
+        .map(
+          (e) => DriverReportItem.fromMap((e as Map).cast<String, dynamic>()),
+        )
         .toList();
   }
 
@@ -492,9 +770,12 @@ class AdminRepository {
     final extension = dot == -1 ? 'jpg' : filename.substring(dot + 1);
     // The first path segment is the owner, which is what the storage policies
     // key off — so it must stay the bare driver id.
-    final path = '$driverId/$docType-'
+    final path =
+        '$driverId/$docType-'
         '${DateTime.now().millisecondsSinceEpoch}.$extension';
-    await supabase.storage.from(_driverDocsBucket).uploadBinary(
+    await supabase.storage
+        .from(_driverDocsBucket)
+        .uploadBinary(
           path,
           Uint8List.fromList(bytes),
           fileOptions: const FileOptions(upsert: true),
@@ -546,16 +827,16 @@ class AdminUser {
   bool get isAdmin => role == 'admin';
 
   factory AdminUser.fromMap(Map<String, dynamic> map) => AdminUser(
-        id: map['id'] as String,
-        name: (map['full_name'] as String?)?.trim().isNotEmpty == true
-            ? map['full_name'] as String
-            : 'User',
-        role: (map['role'] as String?) ?? 'customer',
-        isBlocked: (map['is_blocked'] as bool?) ?? false,
-        isDeleted: map['deleted_at'] != null,
-        phone: map['phone'] as String?,
-        blockedReason: map['blocked_reason'] as String?,
-      );
+    id: map['id'] as String,
+    name: (map['full_name'] as String?)?.trim().isNotEmpty == true
+        ? map['full_name'] as String
+        : 'User',
+    role: (map['role'] as String?) ?? 'customer',
+    isBlocked: (map['is_blocked'] as bool?) ?? false,
+    isDeleted: map['deleted_at'] != null,
+    phone: map['phone'] as String?,
+    blockedReason: map['blocked_reason'] as String?,
+  );
 }
 
 /// Headline settlement figures for the whole platform over a period.
@@ -567,11 +848,19 @@ class PlatformReport {
     this.itemSales = 0,
     this.deliveryFees = 0,
     this.discounts = 0,
+    this.vendorDiscounts = 0,
+    this.platformDiscounts = 0,
     this.commission = 0,
+    this.deliveryMargin = 0,
     this.driverCost = 0,
+    this.driverTips = 0,
+    this.vendorPayout = 0,
     this.cashCollected = 0,
     this.cardCollected = 0,
     this.averageOrder = 0,
+    this.subscriptionFeesMonthly = 0,
+    this.subscriptionStores = 0,
+    this.driverShare = 90,
   });
 
   final int deliveredOrders;
@@ -581,35 +870,78 @@ class PlatformReport {
   final double grossRevenue;
   final double itemSales;
   final double deliveryFees;
+
+  /// Every discount given, however it was funded.
   final double discounts;
 
-  /// The platform's cut, summed per store at that store's own rate.
+  /// The share of [discounts] carried by the stores — a coupon scoped to one
+  /// store is that store's own marketing spend.
+  final double vendorDiscounts;
+
+  /// The share of [discounts] the platform funded, which is the only part that
+  /// costs it anything.
+  final double platformDiscounts;
+
+  /// The platform's cut of item sales, at each store's own model and rate.
+  /// Subscription stores contribute nothing here — they pay a flat fee.
   final double commission;
+
+  /// The part of the delivery fee the platform keeps once the driver is paid.
+  final double deliveryMargin;
 
   /// Delivery-fee share plus tips owed to drivers.
   final double driverCost;
+
+  /// Tips, which pass straight through: the customer pays them on top of
+  /// `total` and the driver keeps all of them.
+  final double driverTips;
+
+  /// What the stores are owed, after their own discounts and commission.
+  final double vendorPayout;
 
   /// Cash the drivers physically hold and still owe the platform.
   final double cashCollected;
   final double cardCollected;
   final double averageOrder;
 
-  /// What the platform actually keeps once both parties are paid.
-  double get netMargin => commission - driverCost + deliveryFees;
+  /// Billed monthly rather than per order, so it is reported beside the order
+  /// P&L rather than inside it: prorating a monthly fee across an arbitrary
+  /// date range would put an invented number in a settlement.
+  final double subscriptionFeesMonthly;
+  final int subscriptionStores;
+
+  /// The percentage of the delivery fee the driver keeps.
+  final double driverShare;
+
+  /// What the platform actually keeps on the orders in this period.
+  ///
+  /// Commission plus its slice of the delivery fee, less the discounts it
+  /// funded itself. Tips are absent on purpose: the platform never earns them,
+  /// so booking them as a cost understated this by the whole tip. Subscription
+  /// fees are absent too — see [subscriptionFeesMonthly].
+  double get netMargin => commission + deliveryMargin - platformDiscounts;
 
   factory PlatformReport.fromMap(Map<String, dynamic> map) => PlatformReport(
-        deliveredOrders: _money(map['delivered_orders']).toInt(),
-        cancelledOrders: _money(map['cancelled_orders']).toInt(),
-        grossRevenue: _money(map['gross_revenue']),
-        itemSales: _money(map['item_sales']),
-        deliveryFees: _money(map['delivery_fees']),
-        discounts: _money(map['discounts']),
-        commission: _money(map['commission']),
-        driverCost: _money(map['driver_cost']),
-        cashCollected: _money(map['cash_collected']),
-        cardCollected: _money(map['card_collected']),
-        averageOrder: _money(map['average_order']),
-      );
+    deliveredOrders: _money(map['delivered_orders']).toInt(),
+    cancelledOrders: _money(map['cancelled_orders']).toInt(),
+    grossRevenue: _money(map['gross_revenue']),
+    itemSales: _money(map['item_sales']),
+    deliveryFees: _money(map['delivery_fees']),
+    discounts: _money(map['discounts']),
+    vendorDiscounts: _money(map['vendor_discounts']),
+    platformDiscounts: _money(map['platform_discounts']),
+    commission: _money(map['commission']),
+    deliveryMargin: _money(map['delivery_margin']),
+    driverCost: _money(map['driver_cost']),
+    driverTips: _money(map['driver_tips']),
+    vendorPayout: _money(map['vendor_payout']),
+    cashCollected: _money(map['cash_collected']),
+    cardCollected: _money(map['card_collected']),
+    averageOrder: _money(map['average_order']),
+    subscriptionFeesMonthly: _money(map['subscription_fees_monthly']),
+    subscriptionStores: _money(map['subscription_stores']).toInt(),
+    driverShare: map['driver_share'] == null ? 90 : _money(map['driver_share']),
+  );
 }
 
 class VendorReportItem {
@@ -618,7 +950,10 @@ class VendorReportItem {
     required this.vendorName,
     required this.totalOrders,
     required this.grossSales,
+    required this.vendorDiscounts,
+    required this.billingModel,
     required this.commissionRate,
+    required this.subscriptionFee,
     required this.commissionFee,
     required this.netPayout,
   });
@@ -628,8 +963,22 @@ class VendorReportItem {
   final int totalOrders;
   final double grossSales;
 
-  /// Platform cut as a percentage, e.g. `10` for 10%.
+  /// Discounts funded by this store's own coupons, deducted from its payout.
+  final double vendorDiscounts;
+
+  /// `commission` or `subscription`. Decides whether [commissionRate] or
+  /// [subscriptionFee] is the one that applies.
+  final String billingModel;
+  bool get isSubscription => billingModel == 'subscription';
+
+  /// Platform cut as a percentage, e.g. `10` for 10%. Reported as zero on a
+  /// subscription store so it always matches [commissionFee].
   final double commissionRate;
+
+  /// The flat monthly fee, on the subscription plan.
+  final double subscriptionFee;
+
+  /// Per-order commission for the period. Always zero on subscription.
   final double commissionFee;
   final double netPayout;
 
@@ -639,7 +988,10 @@ class VendorReportItem {
         vendorName: (map['vendor_name'] as String?) ?? 'Store',
         totalOrders: _money(map['total_orders']).toInt(),
         grossSales: _money(map['gross_sales']),
+        vendorDiscounts: _money(map['vendor_discounts']),
+        billingModel: (map['billing_model'] as String?) ?? 'commission',
         commissionRate: _money(map['commission_rate']),
+        subscriptionFee: _money(map['subscription_fee']),
         commissionFee: _money(map['commission_fee']),
         netPayout: _money(map['net_payout']),
       );
@@ -648,17 +1000,19 @@ class VendorReportItem {
 /// Postgres `numeric` arrives as a number over PostgREST but as a string from
 /// some transports, so neither is assumed.
 double _money(Object? value) => switch (value) {
-      num n => n.toDouble(),
-      String s => double.tryParse(s) ?? 0,
-      _ => 0,
-    };
+  num n => n.toDouble(),
+  String s => double.tryParse(s) ?? 0,
+  _ => 0,
+};
 
 class DriverReportItem {
   const DriverReportItem({
     required this.driverId,
     required this.driverName,
     required this.deliveredOrders,
-    required this.deliveryFeesEarned,
+    required this.deliveryFeesCollected,
+    required this.driverFeeShare,
+    required this.platformFeeShare,
     required this.tipsEarned,
     required this.netDriverPayout,
   });
@@ -666,8 +1020,20 @@ class DriverReportItem {
   final String driverId;
   final String driverName;
   final int deliveredOrders;
-  final double deliveryFeesEarned;
+
+  /// The whole delivery fee the customers paid, before it is split.
+  final double deliveryFeesCollected;
+
+  /// The driver's cut of [deliveryFeesCollected].
+  final double driverFeeShare;
+
+  /// What the platform keeps from the same fees. The report used to show only
+  /// the driver's side, so the platform's slice appeared nowhere.
+  final double platformFeeShare;
+
+  /// Passed through in full — the platform takes no cut of a tip.
   final double tipsEarned;
+
   final double netDriverPayout;
 
   factory DriverReportItem.fromMap(Map<String, dynamic> map) =>
@@ -675,7 +1041,9 @@ class DriverReportItem {
         driverId: map['driver_id'] as String,
         driverName: (map['driver_name'] as String?) ?? 'Driver',
         deliveredOrders: _money(map['delivered_orders']).toInt(),
-        deliveryFeesEarned: _money(map['delivery_fees']),
+        deliveryFeesCollected: _money(map['delivery_fees']),
+        driverFeeShare: _money(map['driver_fee_share']),
+        platformFeeShare: _money(map['platform_fee_share']),
         tipsEarned: _money(map['tips']),
         netDriverPayout: _money(map['net_payout']),
       );

@@ -27,7 +27,10 @@ class CheckoutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => CheckoutCubit(
-          AddressRepository(), OrderRepository(), PaymentRepository()),
+        AddressRepository(),
+        OrderRepository(),
+        PaymentRepository(),
+      ),
       child: const _CheckoutView(),
     );
   }
@@ -128,25 +131,37 @@ class _CheckoutViewState extends State<_CheckoutView> {
           if (state.loading) return const _CheckoutSkeleton();
           if (cart.isEmpty) {
             return EmptyView(
-                message: context.l10n.yourCartIsEmpty,
-                icon: Icons.shopping_cart_outlined);
+              message: context.l10n.yourCartIsEmpty,
+              icon: Icons.shopping_cart_outlined,
+            );
           }
           final cubit = context.read<CheckoutCubit>();
           final discount = state.couponDiscount ?? 0;
-          final total =
-              cart.subtotal - discount + cart.vendor!.deliveryFee;
+          // Collection has nothing to deliver, so nothing to charge for it.
+          // The server recomputes this; the screen must not promise otherwise.
+          final deliveryFee = state.chargesDelivery
+              ? cart.vendor!.deliveryFee
+              : 0.0;
+          final total = cart.subtotal - discount + deliveryFee;
           return ListView(
             // The place-order button is the last item, so the list has to
             // clear Android's gesture bar itself — this screen has no
             // bottomNavigationBar for Scaffold to inset.
             padding: EdgeInsets.fromLTRB(
-                16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
+              16,
+              16,
+              16,
+              16 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               // Address section with mini map
               if (state.addresses.isEmpty)
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.add_location_alt_outlined, color: AppColors.primary),
+                    leading: const Icon(
+                      Icons.add_location_alt_outlined,
+                      color: AppColors.primary,
+                    ),
                     title: Text(context.l10n.addADeliveryAddress),
                     onTap: () async {
                       await context.push('/addresses');
@@ -164,7 +179,17 @@ class _CheckoutViewState extends State<_CheckoutView> {
                 ),
 
               const SizedBox(height: AppSpace.md),
-              _EtaCard(prepMinutes: cart.vendor!.totalPrepMinutes),
+              _OrderTypePicker(
+                state: state,
+                storeName: cart.vendor!.name,
+                onChanged: cubit.setOrderType,
+                onSchedule: cubit.setScheduledAt,
+              ),
+              const SizedBox(height: AppSpace.md),
+              // A scheduled order has a slot rather than an estimate, so the
+              // estimate would only contradict it.
+              if (!state.isScheduled)
+                _EtaCard(prepMinutes: cart.vendor!.totalPrepMinutes),
 
               // Payment Section
               const SizedBox(height: 18),
@@ -215,7 +240,9 @@ class _CheckoutViewState extends State<_CheckoutView> {
                   attention: true,
                   radius: AppRadii.md,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 15, vertical: 13),
+                    horizontal: 15,
+                    vertical: 13,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -228,8 +255,11 @@ class _CheckoutViewState extends State<_CheckoutView> {
                         alignment: Alignment.center,
                         // Was `l10n.emptyString` — a literal "••••••••" glyph
                         // standing in for an icon that was never drawn.
-                        child: const Icon(Icons.local_offer_rounded,
-                            size: 16, color: AppColors.primaryDark),
+                        child: const Icon(
+                          Icons.local_offer_rounded,
+                          size: 16,
+                          color: AppColors.primaryDark,
+                        ),
                       ),
                       const SizedBox(width: 11),
                       Expanded(
@@ -238,10 +268,16 @@ class _CheckoutViewState extends State<_CheckoutView> {
                           children: [
                             Text(
                               context.l10n.couponApplied(state.couponCode),
-                              style: AppType.mono(13.5, color: AppColors.ink, weight: FontWeight.w700),
+                              style: AppType.mono(
+                                13.5,
+                                color: AppColors.ink,
+                                weight: FontWeight.w700,
+                              ),
                             ),
                             Text(
-                              context.l10n.youSavedAmount(formatMoney(state.couponDiscount!)),
+                              context.l10n.youSavedAmount(
+                                formatMoney(state.couponDiscount!),
+                              ),
                               style: const TextStyle(
                                 fontSize: 11.5,
                                 color: AppColors.successInk,
@@ -255,7 +291,11 @@ class _CheckoutViewState extends State<_CheckoutView> {
                         onPressed: cubit.clearCoupon,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.close, color: AppColors.textFaint, size: 18),
+                        icon: const Icon(
+                          Icons.close,
+                          color: AppColors.textFaint,
+                          size: 18,
+                        ),
                       ),
                     ],
                   ),
@@ -311,15 +351,21 @@ class _CheckoutViewState extends State<_CheckoutView> {
                 ),
                 child: Column(
                   children: [
-                    _SummaryRow(label: context.l10n.subtotal, value: cart.subtotal),
                     _SummaryRow(
+                      label: context.l10n.subtotal,
+                      value: cart.subtotal,
+                    ),
+                    if (state.chargesDelivery)
+                      _SummaryRow(
                         label: context.l10n.deliveryFee,
-                        value: cart.vendor!.deliveryFee),
+                        value: cart.vendor!.deliveryFee,
+                      ),
                     if (discount > 0)
                       _SummaryRow(
-                          label: context.l10n.discount,
-                          value: -discount,
-                          highlight: true),
+                        label: context.l10n.discount,
+                        value: -discount,
+                        highlight: true,
+                      ),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
                       child: Divider(),
@@ -327,8 +373,10 @@ class _CheckoutViewState extends State<_CheckoutView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(context.l10n.total,
-                            style: Theme.of(context).textTheme.titleLarge),
+                        Text(
+                          context.l10n.total,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                         PriceText(formatMoney(total), size: 18),
                       ],
                     ),
@@ -339,18 +387,22 @@ class _CheckoutViewState extends State<_CheckoutView> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: state.step == CheckoutStep.placing ||
+                  onPressed:
+                      state.step == CheckoutStep.placing ||
                           state.selectedAddressId == null
                       ? null
                       : () => context.read<CheckoutCubit>().placeOrder(
-                            notes: _notes.text.trim().isEmpty
-                                ? null
-                                : _notes.text.trim()),
+                          notes: _notes.text.trim().isEmpty
+                              ? null
+                              : _notes.text.trim(),
+                        ),
                   child: state.step == CheckoutStep.placing
                       ? const ButtonSpinner()
-                      : Text(state.paymentMethod == 'cod'
-                          ? context.l10n.placeOrder
-                          : context.l10n.placeOrderAndPay),
+                      : Text(
+                          state.paymentMethod == 'cod'
+                              ? context.l10n.placeOrder
+                              : context.l10n.placeOrderAndPay,
+                        ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -426,8 +478,9 @@ class _AddressCard extends StatelessWidget {
                 options: MapOptions(
                   initialCenter: point,
                   initialZoom: 15,
-                  interactionOptions:
-                      const InteractionOptions(flags: InteractiveFlag.none),
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
                 ),
                 children: [
                   TileLayer(
@@ -435,15 +488,20 @@ class _AddressCard extends StatelessWidget {
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.multi_vendor',
                   ),
-                  MarkerLayer(markers: [
-                    Marker(
-                      point: point,
-                      width: 34,
-                      height: 34,
-                      child: const Icon(Icons.location_on_rounded,
-                          color: AppColors.primary, size: 30),
-                    ),
-                  ]),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: point,
+                        width: 34,
+                        height: 34,
+                        child: const Icon(
+                          Icons.location_on_rounded,
+                          color: AppColors.primary,
+                          size: 30,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -451,8 +509,11 @@ class _AddressCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
             child: Row(
               children: [
-                const Icon(Icons.location_on,
-                    color: AppColors.primary, size: 18),
+                const Icon(
+                  Icons.location_on,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
                 const SizedBox(width: 11),
                 Expanded(
                   child: Column(
@@ -539,8 +600,11 @@ class _EtaCard extends StatelessWidget {
                 ),
                 Text(
                   DateFormat.jm().format(arrival),
-                  style: AppType.mono(12,
-                      color: AppColors.textMuted, weight: FontWeight.w500),
+                  style: AppType.mono(
+                    12,
+                    color: AppColors.textMuted,
+                    weight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -621,67 +685,205 @@ class _PaymentSelectorCard extends StatelessWidget {
               width: selected ? 2.0 : 1.0,
             ),
           ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: selected ? AppColors.warmFill : AppColors.neutralFill,
-                borderRadius: BorderRadius.circular(10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.warmFill : AppColors.neutralFill,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(emoji, style: const TextStyle(fontSize: 18)),
               ),
-              alignment: Alignment.center,
-              child: Text(emoji, style: const TextStyle(fontSize: 18)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.ink,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.ink,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.textMuted,
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? AppColors.primary : Colors.transparent,
-                border: Border.all(
-                  color: selected ? AppColors.primary : AppColors.borderStrong,
-                  width: 2,
+                  ],
                 ),
               ),
-              alignment: Alignment.center,
-              child: selected
-                  ? const Icon(
-                      Icons.check,
-                      size: 12,
-                      color: Colors.white,
-                    )
-                  : null,
-            ),
-          ],
+              const SizedBox(width: 12),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected ? AppColors.primary : Colors.transparent,
+                  border: Border.all(
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.borderStrong,
+                    width: 2,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: selected
+                    ? const Icon(Icons.check, size: 12, color: Colors.white)
+                    : null,
+              ),
+            ],
+          ),
         ),
       ),
-    ),
+    );
+  }
+}
+
+/// Delivery, collection, or a slot for later.
+///
+/// The screen previously carried a single always-checked radio next to a
+/// hardcoded estimate — a fake choice beside a fake number. These are the
+/// three the server actually supports, and each changes what the order costs
+/// or when it is made.
+class _OrderTypePicker extends StatelessWidget {
+  const _OrderTypePicker({
+    required this.state,
+    required this.storeName,
+    required this.onChanged,
+    required this.onSchedule,
+  });
+
+  final CheckoutState state;
+  final String storeName;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<DateTime?> onSchedule;
+
+  Future<void> _pickSlot(BuildContext context) async {
+    final now = DateTime.now();
+    // The server refuses anything sooner than 45 minutes, so the picker does
+    // not offer it — a rejection the customer could have been spared.
+    final earliest = now.add(const Duration(minutes: 45));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: earliest,
+      firstDate: earliest,
+      lastDate: now.add(const Duration(days: 7)),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(earliest),
+    );
+    if (time == null) return;
+
+    final slot = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    // Picking today plus an early hour would land before the floor.
+    onSchedule(slot.isBefore(earliest) ? earliest : slot);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<String>(
+          segments: [
+            ButtonSegment(
+              value: 'delivery',
+              icon: const Icon(Icons.delivery_dining_outlined, size: 18),
+              label: Text(l10n.orderTypeDelivery),
+            ),
+            ButtonSegment(
+              value: 'pickup',
+              icon: const Icon(Icons.storefront_outlined, size: 18),
+              label: Text(l10n.orderTypePickup),
+            ),
+            ButtonSegment(
+              value: 'scheduled',
+              icon: const Icon(Icons.schedule_rounded, size: 18),
+              label: Text(l10n.orderTypeScheduled),
+            ),
+          ],
+          selected: {state.orderType},
+          onSelectionChanged: (selection) {
+            final type = selection.first;
+            onChanged(type);
+            if (type == 'scheduled') _pickSlot(context);
+          },
+        ),
+        if (state.isPickup) ...[
+          const SizedBox(height: AppSpace.sm),
+          _Note(
+            icon: Icons.storefront_outlined,
+            text: '${l10n.pickupCollectAt(storeName)} · ${l10n.pickupNoFee}',
+          ),
+        ],
+        if (state.isScheduled) ...[
+          const SizedBox(height: AppSpace.sm),
+          InkWell(
+            onTap: () => _pickSlot(context),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            child: _Note(
+              icon: Icons.schedule_rounded,
+              text: state.scheduledAt == null
+                  ? '${l10n.scheduleForLater} · ${l10n.scheduleHint}'
+                  : l10n.scheduledFor(
+                      DateFormat.MMMEd().add_jm().format(state.scheduledAt!),
+                    ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _Note extends StatelessWidget {
+  const _Note({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: AppColors.warmFill,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: AppColors.primaryDark),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.35,
+                color: AppColors.primaryDark,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../errors/app_failure.dart';
 import '../models/order.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -56,9 +59,8 @@ class LoadingView extends StatelessWidget {
   const LoadingView({super.key});
 
   @override
-  Widget build(BuildContext context) => const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      );
+  Widget build(BuildContext context) =>
+      const Center(child: CircularProgressIndicator(color: AppColors.primary));
 }
 
 class ErrorView extends StatelessWidget {
@@ -75,8 +77,11 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline,
-                size: 48, color: AppColors.textFaint),
+            const Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.textFaint,
+            ),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             if (onRetry != null) ...[
@@ -169,7 +174,12 @@ class SelectableId extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!selectable) {
-      return Text(text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+      return Text(
+        text,
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
     }
     return SelectableText(text, style: style, maxLines: 1);
   }
@@ -193,7 +203,9 @@ class PagingFooter extends StatelessWidget {
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: AppColors.primary),
+              strokeWidth: 2,
+              color: AppColors.primary,
+            ),
           ),
         ),
       );
@@ -334,7 +346,10 @@ class SoftBadge extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-                color: ink, fontWeight: FontWeight.w700, fontSize: 12),
+              color: ink,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -356,7 +371,11 @@ class RatingChip extends StatelessWidget {
       label: isNew ? 'New' : rating.toStringAsFixed(1),
       fill: AppColors.amberFill,
       ink: AppColors.amberInk,
-      leading: const Icon(Icons.star_rounded, size: 15, color: AppColors.rating),
+      leading: const Icon(
+        Icons.star_rounded,
+        size: 15,
+        color: AppColors.rating,
+      ),
     );
   }
 }
@@ -377,8 +396,10 @@ class PriceText extends StatelessWidget {
   final FontWeight weight;
 
   @override
-  Widget build(BuildContext context) =>
-      Text(text, style: AppType.mono(size, color: color, weight: weight));
+  Widget build(BuildContext context) => Text(
+    text,
+    style: AppType.mono(size, color: color, weight: weight),
+  );
 }
 
 class OrderStatusChip extends StatelessWidget {
@@ -387,31 +408,168 @@ class OrderStatusChip extends StatelessWidget {
   final OrderStatus status;
 
   (Color, Color) get _palette => switch (status) {
-        OrderStatus.pending => (AppColors.amberFill, AppColors.amberInk),
-        OrderStatus.accepted ||
-        OrderStatus.preparing =>
-          (AppColors.warmFill, AppColors.primaryDark),
-        OrderStatus.readyForPickup ||
-        OrderStatus.outForDelivery =>
-          (AppColors.successFill, AppColors.successInk),
-        OrderStatus.delivered => (AppColors.successFill, AppColors.successInk),
-        OrderStatus.cancelled ||
-        OrderStatus.rejected =>
-          (const Color(0xFFFBE7E4), const Color(0xFFC0392B)),
-      };
+    OrderStatus.pending => (AppColors.amberFill, AppColors.amberInk),
+    OrderStatus.accepted ||
+    OrderStatus.preparing => (AppColors.warmFill, AppColors.primaryDark),
+    OrderStatus.readyForPickup ||
+    OrderStatus.outForDelivery => (AppColors.successFill, AppColors.successInk),
+    OrderStatus.delivered => (AppColors.successFill, AppColors.successInk),
+    OrderStatus.cancelled ||
+    OrderStatus.rejected => (const Color(0xFFFBE7E4), const Color(0xFFC0392B)),
+  };
 
   @override
   Widget build(BuildContext context) {
     final (fill, ink) = _palette;
-    return SoftBadge(label: status.localizedLabel(context), fill: fill, ink: ink);
+    return SoftBadge(
+      label: status.localizedLabel(context),
+      fill: fill,
+      ink: ink,
+    );
+  }
+}
+
+/// How the order leaves the kitchen: handed to a driver, collected at the
+/// counter, or cooked for a slot later today.
+///
+/// The store used to be told none of this. Three orders that need three
+/// different things — a driver called, a bag held at the front, a start time
+/// deferred — looked identical on the dashboard, so a collection order sat
+/// waiting for a rider who was never coming.
+class OrderTypeChip extends StatelessWidget {
+  const OrderTypeChip({super.key, required this.order, this.compact = false});
+
+  final AppOrder order;
+
+  /// Drops the scheduled slot from the label, for a row that is already tight.
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (order.isPickup) {
+      return SoftBadge(
+        label: l10n.pickupFromBranch,
+        fill: AppColors.warmFill,
+        ink: AppColors.primaryDark,
+        icon: Icons.storefront_rounded,
+      );
+    }
+    if (order.isScheduled) {
+      final at = order.scheduledAt;
+      return SoftBadge(
+        label: at == null || compact
+            ? l10n.orderTypeScheduled
+            : l10n.scheduledFor(_slot(context, at)),
+        fill: AppColors.amberFill,
+        ink: AppColors.amberInk,
+        icon: Icons.event_rounded,
+      );
+    }
+    return SoftBadge(
+      label: l10n.orderTypeDelivery,
+      fill: AppColors.neutralFill,
+      ink: AppColors.textSecondary,
+      icon: Icons.delivery_dining_rounded,
+    );
+  }
+
+  /// A slot today needs the time only; anything further out needs the day too,
+  /// or "18:30" is ambiguous by exactly the amount that matters.
+  String _slot(BuildContext context, DateTime at) {
+    final now = DateTime.now();
+    final sameDay =
+        at.year == now.year && at.month == now.month && at.day == now.day;
+    final time = TimeOfDay.fromDateTime(at).format(context);
+    return sameDay ? time : '${at.day}/${at.month} $time';
   }
 }
 
 void showSnack(BuildContext context, String message, {bool error = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(message),
-    backgroundColor: error ? Theme.of(context).colorScheme.error : null,
-  ));
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: error ? Theme.of(context).colorScheme.error : null,
+    ),
+  );
+}
+
+/// [showSnack] for work that outlives the widget that started it.
+///
+/// A bottom sheet that closes itself and then keeps working has no context to
+/// show anything with: the element is gone by the time the future completes.
+/// Capture the messenger before the gap and report through it.
+void showSnackOn(
+  ScaffoldMessengerState messenger,
+  String message, {
+  bool error = false,
+}) {
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: error ? AppColors.dangerInk : null,
+    ),
+  );
+}
+
+/// [showFailure] for the same situation. The localisations have to be captured
+/// before the gap too, for the same reason.
+void showFailureOn(
+  ScaffoldMessengerState messenger,
+  AppLocalizations l10n,
+  Object error,
+) {
+  final failure = AppFailure.from(error);
+  debugPrint('Failure: $failure');
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(failure.message(l10n)),
+      backgroundColor: AppColors.dangerInk,
+      duration: const Duration(seconds: 5),
+    ),
+  );
+}
+
+/// Runs [work] behind a modal spinner, and reports a failure the usual way.
+///
+/// For an action that has to finish before the next screen makes sense — a
+/// reorder rebuilding a cart, say. Returns null when the work failed, so the
+/// caller can simply stop: the user has already been told why.
+Future<T?> showBlockingProgress<T>(
+  BuildContext context,
+  Future<T> Function() work,
+) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  var open = true;
+  // Neither the barrier nor the back button may close this: the work would
+  // carry on with nothing waiting on it, and the `finally` below would then
+  // pop the caller's own screen instead.
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(strokeWidth: 3),
+          ),
+        ),
+      ),
+    ).whenComplete(() => open = false),
+  );
+  try {
+    return await work();
+  } catch (error) {
+    if (context.mounted) showFailure(context, error);
+    return null;
+  } finally {
+    if (open && navigator.mounted) navigator.pop();
+  }
 }
 
 /// The localized sentence for anything that went wrong.
@@ -427,28 +585,26 @@ String errorText(BuildContext context, Object error) =>
 /// Every screen used to write `showSnack(context, readableError(e),
 /// error: true)` by hand, which meant an English string, no retry, and a
 /// silent drop wherever somebody forgot. This is the one way to surface one.
-void showFailure(
-  BuildContext context,
-  Object error, {
-  VoidCallback? onRetry,
-}) {
+void showFailure(BuildContext context, Object error, {VoidCallback? onRetry}) {
   final failure = AppFailure.from(error);
   // Worth seeing in a debug console even when the user gets a short sentence.
   debugPrint('Failure: $failure');
   final messenger = ScaffoldMessenger.of(context);
   messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(SnackBar(
-    content: Text(failure.message(context.l10n)),
-    backgroundColor: Theme.of(context).colorScheme.error,
-    duration: const Duration(seconds: 5),
-    action: onRetry != null && failure.isRetryable
-        ? SnackBarAction(
-            label: context.l10n.retry,
-            textColor: Colors.white,
-            onPressed: onRetry,
-          )
-        : null,
-  ));
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(failure.message(context.l10n)),
+      backgroundColor: Theme.of(context).colorScheme.error,
+      duration: const Duration(seconds: 5),
+      action: onRetry != null && failure.isRetryable
+          ? SnackBarAction(
+              label: context.l10n.retry,
+              textColor: Colors.white,
+              onPressed: onRetry,
+            )
+          : null,
+    ),
+  );
 }
 
 /// Full-screen version of [showFailure]: for a page that has nothing to show

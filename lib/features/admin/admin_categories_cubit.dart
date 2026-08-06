@@ -32,6 +32,19 @@ class AdminCategoriesState extends Equatable {
         successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
       );
 
+  /// The kinds of shop — what the customer home page shows.
+  List<VendorCategory> get topLevel {
+    final tops = categories.where((c) => c.isTopLevel).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return tops;
+  }
+
+  List<VendorCategory> childrenOf(String parentId) {
+    final children = categories.where((c) => c.parentId == parentId).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return children;
+  }
+
   @override
   List<Object?> get props => [loading, categories, error, successMessage];
 }
@@ -53,7 +66,16 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
     }
   }
 
-  Future<bool> createCategory({required String name, List<int>? imageBytes, String? fileExtension}) async {
+  /// Top-level categories are the ones with no [parentId]. The database
+  /// refuses a third level, so a category filed under a child comes back as an
+  /// error rather than silently creating a depth the UI cannot navigate.
+  Future<bool> createCategory({
+    required String name,
+    String? nameAr,
+    String? parentId,
+    List<int>? imageBytes,
+    String? fileExtension,
+  }) async {
     emit(state.copyWith(loading: true, clearError: true, clearSuccess: true));
     try {
       String? imageUrl;
@@ -61,7 +83,12 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
         final path = 'categories/${name.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
         imageUrl = await _repository.uploadCategoryImage(path: path, bytes: imageBytes);
       }
-      await _repository.createVendorCategory(name: name, imageUrl: imageUrl);
+      await _repository.createVendorCategory(
+        name: name,
+        nameAr: nameAr,
+        imageUrl: imageUrl,
+        parentId: parentId,
+      );
       emit(state.copyWith(successMessage: 'Category "$name" created successfully!'));
       await load();
       return true;
@@ -74,6 +101,8 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
   Future<bool> updateCategory({
     required String id,
     required String name,
+    String? nameAr,
+    String? parentId,
     List<int>? imageBytes,
     String? fileExtension,
     String? existingImageUrl,
@@ -85,7 +114,13 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
         final path = 'categories/${name.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
         imageUrl = await _repository.uploadCategoryImage(path: path, bytes: imageBytes);
       }
-      await _repository.updateVendorCategory(id, name: name, imageUrl: imageUrl);
+      await _repository.updateVendorCategory(
+        id,
+        name: name,
+        nameAr: nameAr,
+        imageUrl: imageUrl,
+        parentId: parentId,
+      );
       emit(state.copyWith(successMessage: 'Category updated successfully!'));
       await load();
       return true;

@@ -19,6 +19,8 @@ class AdminManageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final auth = context.watch<AuthCubit>().state;
+    bool can(_ManageItem item) => auth.can(item.permission);
 
     final groups = <(String, List<_ManageItem>)>[
       (
@@ -28,31 +30,49 @@ class AdminManageScreen extends StatelessWidget {
             icon: Icons.report_problem_outlined,
             label: l10n.customerReports,
             route: '/admin-app/complaints',
+            permission: 'support.handle',
           ),
           _ManageItem(
             icon: Icons.support_agent_outlined,
             label: l10n.supportChat,
             route: '/admin-app/support',
+            permission: 'support.handle',
           ),
           _ManageItem(
             icon: Icons.people_outline,
             label: l10n.users,
             route: '/admin-app/users',
+            permission: 'users.block',
+          ),
+          _ManageItem(
+            icon: Icons.admin_panel_settings_outlined,
+            label: l10n.managementRoles,
+            route: '/admin-app/roles',
+            permission: 'staff.manage',
+          ),
+          _ManageItem(
+            icon: Icons.campaign_outlined,
+            label: l10n.announcements,
+            route: '/admin-app/announcements',
+            permission: 'notifications.send',
           ),
           _ManageItem(
             icon: Icons.payments_outlined,
-            label: 'Sales & Financial Reports',
+            label: l10n.salesAndFinancialReports,
             route: '/admin-app/sales-reports',
+            permission: 'reports.view',
           ),
           _ManageItem(
             icon: Icons.delivery_dining_outlined,
-            label: 'Driver Approvals & Accounts',
+            label: l10n.driverApprovals,
             route: '/admin-app/drivers',
+            permission: 'drivers.view',
           ),
           _ManageItem(
             icon: Icons.map_outlined,
             label: l10n.serviceAreas,
             route: '/admin-app/service-areas',
+            permission: 'content.manage',
           ),
         ],
       ),
@@ -63,11 +83,19 @@ class AdminManageScreen extends StatelessWidget {
             icon: Icons.category_outlined,
             label: l10n.categoriesTab,
             route: '/admin-app/categories',
+            permission: 'catalog.manage',
           ),
           _ManageItem(
             icon: Icons.document_scanner_outlined,
             label: l10n.importMenuFromPhotos,
             route: '/admin-app/menu-import',
+            permission: 'catalog.manage',
+          ),
+          _ManageItem(
+            icon: Icons.price_change_outlined,
+            label: l10n.priceAdjustment,
+            route: '/admin-app/price-adjustment',
+            permission: 'catalog.manage',
           ),
         ],
       ),
@@ -78,11 +106,19 @@ class AdminManageScreen extends StatelessWidget {
             icon: Icons.local_offer_outlined,
             label: l10n.promos,
             route: '/admin-app/promos',
+            permission: 'promos.manage',
+          ),
+          _ManageItem(
+            icon: Icons.ad_units_outlined,
+            label: l10n.adManager,
+            route: '/admin-app/ads',
+            permission: 'ads.manage',
           ),
           _ManageItem(
             icon: Icons.article_outlined,
             label: l10n.content,
             route: '/admin-app/content',
+            permission: 'content.manage',
           ),
         ],
       ),
@@ -101,47 +137,49 @@ class AdminManageScreen extends StatelessWidget {
             AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
           ),
           children: [
-            for (final (title, items) in groups) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpace.xs,
-                  AppSpace.sm,
-                  AppSpace.xs,
-                  AppSpace.sm,
-                ),
-                child: Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                    color: AppColors.textMuted,
+            for (final (title, allItems) in groups)
+              if (allItems.where(can).toList() case final items
+                  when items.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.xs,
+                    AppSpace.sm,
+                    AppSpace.xs,
+                    AppSpace.sm,
+                  ),
+                  child: Text(
+                    title.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < items.length; i++) ...[
-                      if (i > 0)
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: AppColors.borderSoft,
-                        ),
-                      _ManageRow(item: items[i]),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < items.length; i++) ...[
+                        if (i > 0)
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.borderSoft,
+                          ),
+                        _ManageRow(item: items[i]),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpace.lg),
-            ],
+                const SizedBox(height: AppSpace.lg),
+              ],
             const SizedBox(height: AppSpace.sm),
             Center(
               child: TextButton.icon(
@@ -160,16 +198,23 @@ class AdminManageScreen extends StatelessWidget {
   }
 }
 
+/// One row in the Manage grid.
 class _ManageItem {
   const _ManageItem({
     required this.icon,
     required this.label,
     required this.route,
+    required this.permission,
   });
 
   final IconData icon;
   final String label;
   final String route;
+
+  /// What a member of staff needs to hold for this row to be worth showing.
+  /// Hiding is courtesy — the screen behind it and every RPC it calls check
+  /// again — but a console full of buttons that refuse is not a console.
+  final String permission;
 }
 
 class _ManageRow extends StatelessWidget {

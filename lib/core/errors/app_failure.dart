@@ -44,11 +44,7 @@ enum FailureKind {
 /// Failures now carry their kind and code, and the text is resolved against
 /// the active locale at render time.
 class AppFailure implements Exception {
-  const AppFailure({
-    required this.kind,
-    this.code,
-    this.cause,
-  });
+  const AppFailure({required this.kind, this.code, this.cause});
 
   final FailureKind kind;
 
@@ -159,6 +155,31 @@ class AppFailure implements Exception {
         'ROLE_ALREADY_SET' => l10n.errRoleAlreadySet,
         'ROLE_CHANGE_NOT_ALLOWED' => l10n.errRoleChangeNotAllowed,
         'COUPON_INVALID' => l10n.errCouponInvalid,
+        // One code per rule, so the customer is told which rule they hit —
+        // "not valid" for a code that simply has not started yet is what
+        // generates support tickets.
+        'COUPON_NOT_STARTED' => l10n.errCouponNotStarted,
+        'COUPON_EXPIRED' => l10n.errCouponExpired,
+        'COUPON_EXHAUSTED' => l10n.errCouponExhausted,
+        'COUPON_ALREADY_USED' => l10n.errCouponAlreadyUsed,
+        'COUPON_FIRST_ORDER_ONLY' => l10n.errCouponFirstOrderOnly,
+        'COUPON_WRONG_VENDOR' => l10n.errCouponWrongVendor,
+        'PLATFORM_TERMS_ADMIN_ONLY' => l10n.errPlatformTermsAdminOnly,
+        'BILLING_MODEL_LOCKED' => l10n.errBillingModelLocked,
+        'CANNOT_CHANGE_OWN_ROLE' => l10n.errCannotChangeOwnRole,
+        'ROLE_IN_USE' => l10n.errRoleInUse,
+        'NOT_AN_ADMIN' => l10n.errNotAnAdmin,
+        'CREATE_FAILED' => l10n.errCreateFailed,
+        'CANNOT_PROMOTE_VENDOR' => l10n.errCannotPromoteVendor,
+        'CANNOT_PROMOTE_DRIVER' => l10n.errCannotPromoteDriver,
+        'TIP_TOO_LARGE' => l10n.errTipTooLarge,
+        'ALREADY_TIPPED' => l10n.errAlreadyTipped,
+        'NO_DRIVER' => l10n.errNoDriver,
+        'ORDER_NOT_DELIVERED' => l10n.errOrderNotDelivered,
+        'INVALID_AMOUNT' => l10n.errInvalidAmount,
+        'SCHEDULE_REQUIRED' => l10n.errScheduleRequired,
+        'SCHEDULE_TOO_SOON' => l10n.errScheduleTooSoon,
+        'SCHEDULE_TOO_FAR' => l10n.errScheduleTooFar,
         'COUPON_MIN_ORDER' => l10n.errCouponMinOrder,
         'MIN_ORDER_NOT_MET' => l10n.errMinOrderNotMet,
         'NOT_AN_ONLINE_DRIVER' => l10n.errNotAnOnlineDriver,
@@ -238,7 +259,9 @@ class AppFailure implements Exception {
     for (final entry in _pgPhrases.entries) {
       if (text.contains(entry.key)) return entry.value;
     }
-    final match = RegExp(r'\b([A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+)\b').firstMatch(text);
+    final match = RegExp(
+      r'\b([A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+)\b',
+    ).firstMatch(text);
     return match?.group(1);
   }
 

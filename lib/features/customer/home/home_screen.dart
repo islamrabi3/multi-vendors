@@ -2,23 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/banner_item.dart';
-import '../../../core/models/product.dart' show ProductHit;
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/favorites_repository.dart';
+import '../../../core/repositories/offers_repository.dart';
 import '../../../core/supabase_client.dart';
+import '../../../core/utils/category_emoji.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/ad_slot.dart'; 
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
-import '../../../core/widgets/ui_kit.dart';
+import '../../../core/widgets/vendor_card.dart';
 import 'home_cubit.dart';
 import 'vendor_filters_sheet.dart';
-import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -26,8 +28,11 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          HomeCubit(CatalogRepository(), AddressRepository(), FavoritesRepository()),
+      create: (_) => HomeCubit(
+        CatalogRepository(),
+        AddressRepository(),
+        FavoritesRepository(),
+      ),
       child: const _HomeView(),
     );
   }
@@ -48,36 +53,38 @@ class _HomeView extends StatelessWidget {
             if (state.loading) return _HomeSkeleton(state: state);
             if (state.error != null && state.vendors.isEmpty) {
               return ErrorView(
-                  message: context.l10n.couldNotLoadStores, onRetry: cubit.load);
+                message: context.l10n.couldNotLoadStores,
+                onRetry: cubit.load,
+              );
             }
             final vendors = state.visibleVendors;
             return RefreshIndicator(
               color: AppColors.primary,
               onRefresh: cubit.load,
               child: ListView(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: 28),
                 children: [
-                  _Header(state: state),
+                  _Header(key: const ValueKey('home_header'), state: state),
                   _SearchBar(
-                      onSubmit: cubit.setSearch, filters: state.filters),
+                    key: const ValueKey('home_search_bar'),
+                    filters: state.filters,
+                  ),
                   _Offers(offers: state.banners),
-                  _CategoryChips(state: state),
+                  // A second surface, between the rails rather than at the
+                  // top: empty until somebody buys it, so it costs nothing.
+                  const AdSlot(placement: AdPlacement.homeInline),
+                  _CategoryRail(state: state),
                   _VendorRail(
                     title: context.l10n.recommended,
-                    icon: Icons.auto_awesome,
+                    icon: Icons.auto_awesome_rounded,
                     vendors: cubit.state.recommendedVendors,
                   ),
                   _VendorRail(
                     title: context.l10n.nearbyRestaurants,
-                    icon: Icons.near_me_outlined,
+                    icon: Icons.near_me_rounded,
                     vendors: cubit.state.nearbyVendors,
                     showDistance: true,
                   ),
-                  // Dishes first while searching: somebody typing "kofta"
-                  // is looking for the food, and the shops that sell it are
-                  // the answer underneath.
-                  if (state.productHits.isNotEmpty)
-                    _DishResults(hits: state.productHits),
                   _StoresHeader(count: vendors.length),
                   if (vendors.isEmpty)
                     Padding(
@@ -97,8 +104,10 @@ class _HomeView extends StatelessWidget {
                             const SizedBox(height: AppSpace.lg),
                             OutlinedButton.icon(
                               onPressed: cubit.clearFilters,
-                              icon: const Icon(Icons.filter_alt_off_outlined,
-                                  size: 18),
+                              icon: const Icon(
+                                Icons.filter_alt_off_outlined,
+                                size: 18,
+                              ),
                               label: Text(context.l10n.clearAll),
                             ),
                           ],
@@ -108,13 +117,8 @@ class _HomeView extends StatelessWidget {
                   else
                     for (final vendor in vendors)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
-                        child: _VendorCard(
-                          vendor: vendor,
-                          // Explains a store whose own name has nothing to do
-                          // with what was typed.
-                          menuMatches: state.menuMatches[vendor.id],
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 22),
+                        child: _HomeVendorCard(vendor: vendor),
                       ),
                 ],
               ),
@@ -128,7 +132,7 @@ class _HomeView extends StatelessWidget {
 
 // ===== Header: deliver-to + notification bell =====
 class _Header extends StatelessWidget {
-  const _Header({required this.state});
+  const _Header({super.key, required this.state});
 
   final HomeState state;
 
@@ -136,39 +140,68 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpace.gutter, AppSpace.sm, AppSpace.gutter, 6),
+        AppSpace.gutter,
+        AppSpace.sm,
+        AppSpace.gutter,
+        8,
+      ),
       child: Row(
         children: [
           Expanded(
             child: InkWell(
               onTap: () => context.push('/addresses'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(context.l10n.deliverTo,
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                              color: AppColors.primary)),
-                      Icon(Icons.keyboard_arrow_down,
-                          size: 16, color: AppColors.primary),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpace.xs),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, size: 18, color: AppColors.ink),
-                      const SizedBox(width: 6),
-                      Expanded(child: _DeliverToLabel(state: state)),
-                    ],
-                  ),
-                ],
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: AppColors.warmFill,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.location_on_rounded,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                context.l10n.deliverTo,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.4,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 1),
+                          _DeliverToLabel(state: state),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
+          const SizedBox(width: 12),
           _BellButton(),
         ],
       ),
@@ -185,22 +218,26 @@ class _BellButton extends StatelessWidget {
       child: Stack(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: AppColors.surface,
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.border),
+              boxShadow: AppShadows.card,
             ),
-            child: const Icon(Icons.notifications_none_rounded,
-                size: 20, color: AppColors.ink),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              size: 21,
+              color: AppColors.ink,
+            ),
           ),
           PositionedDirectional(
             top: 9,
             end: 10,
             child: Container(
-              width: 8,
-              height: 8,
+              width: 9,
+              height: 9,
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
@@ -215,51 +252,59 @@ class _BellButton extends StatelessWidget {
 }
 
 // ===== Search bar =====
+/// Not a field — a button that opens the search page.
+///
+/// Typing here used to search the home page in place, which put the answers
+/// below the banners, the category rail and two promoted rails: the customer
+/// typed, saw nothing change, and had to scroll to find out whether it had
+/// worked. It also rebuilt the entire page on every keystroke. The bar keeps
+/// its exact look so the tap reads as it growing into a screen.
 class _SearchBar extends StatelessWidget {
-  const _SearchBar({required this.onSubmit, this.filters});
+  const _SearchBar({super.key, this.filters});
 
-  final ValueChanged<String> onSubmit;
-
-  /// Null while the page is still on its skeleton — the button is inert then,
-  /// because there is nothing to filter yet.
+  /// Null while the page is still on its skeleton — the filter button is inert
+  /// then, because there is nothing to filter yet.
   final VendorFilters? filters;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 6, 22, 4),
+      padding: const EdgeInsets.fromLTRB(22, 6, 22, 6),
       child: Container(
         height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsetsDirectional.only(start: 16, end: 16),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderSoft),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
           boxShadow: AppShadows.card,
         ),
         child: Row(
           children: [
-            const Icon(Icons.search, size: 22, color: AppColors.textFaint),
-            const SizedBox(width: 12),
             Expanded(
-              child: TextField(
-                // Live, not just on submit: the cubit debounces, and a search
-                // that only ran on the keyboard's search key meant most
-                // customers never saw a result at all.
-                onChanged: onSubmit,
-                onSubmitted: onSubmit,
-                textInputAction: TextInputAction.search,
-                style: const TextStyle(fontSize: 15, color: AppColors.ink, fontWeight: FontWeight.w500),
-                decoration: InputDecoration(
-                  isCollapsed: true,
-                  filled: false,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                  hintText: context.l10n.searchStoresDishes,
-                  hintStyle:
-                      TextStyle(fontSize: 15, color: AppColors.textFaint),
+              child: InkWell(
+                onTap: () => context.push('/search'),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.search_rounded,
+                      size: 22,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.l10n.searchStoresDishes,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          color: AppColors.textFaint,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -298,17 +343,19 @@ class _FilterButton extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Container(
-            height: 36,
-            width: 36,
+            height: 38,
+            width: 38,
             decoration: BoxDecoration(
               color: active > 0
                   ? AppColors.primary
-                  : AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadii.xs + 2),
+                  : AppColors.warmFill,
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.tune,
-                size: 20,
-                color: active > 0 ? Colors.white : AppColors.primary),
+            child: Icon(
+              Icons.tune_rounded,
+              size: 20,
+              color: active > 0 ? Colors.white : AppColors.primary,
+            ),
           ),
           if (active > 0)
             PositionedDirectional(
@@ -321,11 +368,14 @@ class _FilterButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                   border: Border.all(color: AppColors.surface, width: 1.5),
                 ),
-                child: Text('$active',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800)),
+                child: Text(
+                  '$active',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
         ],
@@ -362,7 +412,7 @@ class _OffersState extends State<_Offers> {
       child: Column(
         children: [
           SizedBox(
-            height: 128,
+            height: 136,
             child: PageView.builder(
               controller: _pageController,
               itemCount: widget.offers.length,
@@ -370,7 +420,7 @@ class _OffersState extends State<_Offers> {
               itemBuilder: (_, i) => _OfferCard(offer: widget.offers[i]),
             ),
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 10),
           if (widget.offers.length > 1)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -380,8 +430,8 @@ class _OffersState extends State<_Offers> {
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOutCubic,
-                    width: i == _currentPage ? 18 : 5,
-                    height: 5,
+                    width: i == _currentPage ? 20 : 6,
+                    height: 6,
                     decoration: BoxDecoration(
                       color: i == _currentPage
                           ? AppColors.primary
@@ -406,6 +456,9 @@ class _OfferCard extends StatelessWidget {
   bool get _hasImage => offer.imageUrl.trim().isNotEmpty;
 
   void _handleTap(BuildContext context) {
+    // Counted server-side: these numbers are what the slot is sold on, so a
+    // client that could write them directly could inflate them.
+    OffersRepository().recordEvent(offer.id, click: true);
     switch (offer.type) {
       case BannerType.vendor:
         if (offer.vendorId?.isNotEmpty ?? false) {
@@ -432,7 +485,9 @@ class _OfferCard extends StatelessWidget {
     try {
       coupon = await supabase
           .from('coupons')
-          .select('discount_type, value, min_order_amount, max_discount, expires_at')
+          .select(
+            'discount_type, value, min_order_amount, max_discount, expires_at',
+          )
           .eq('code', code)
           .maybeSingle();
     } catch (_) {
@@ -446,9 +501,11 @@ class _OfferCard extends StatelessWidget {
       final value = ((coupon['value'] as num?) ?? 0).toDouble();
       final minOrder = ((coupon['min_order_amount'] as num?) ?? 0).toDouble();
       final maxDiscount = (coupon['max_discount'] as num?)?.toDouble();
-      lines.add(isPercent
-          ? '${value.toStringAsFixed(0)}% ${context.l10n.off}'
-          : '${formatMoney(value)} ${context.l10n.off}');
+      lines.add(
+        isPercent
+            ? '${value.toStringAsFixed(0)}% ${context.l10n.off}'
+            : '${formatMoney(value)} ${context.l10n.off}',
+      );
       if (maxDiscount != null) {
         lines.add('${context.l10n.max} ${formatMoney(maxDiscount)}');
       }
@@ -479,7 +536,10 @@ class _OfferCard extends StatelessWidget {
           ? ClipRRect(
               borderRadius: BorderRadius.circular(AppRadii.md),
               child: AppNetworkImage(
-                  url: offer.imageUrl, height: 120, width: double.infinity),
+                url: offer.imageUrl,
+                height: 120,
+                width: double.infinity,
+              ),
             )
           : null,
       message: (offer.subtitle?.isNotEmpty ?? false) ? offer.subtitle : null,
@@ -494,16 +554,16 @@ class _OfferCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Container(
-          height: 128,
+          height: 136,
           width: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: AppShadows.card,
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.primaryLight, AppColors.primaryDark],
+              colors: [Color(0xFFFF7A45), Color(0xFFE8410F)],
             ),
           ),
           child: Stack(
@@ -512,31 +572,34 @@ class _OfferCard extends StatelessWidget {
               // The admin's artwork is always the backdrop when present.
               if (_hasImage)
                 AppNetworkImage(
-                    url: offer.imageUrl,
-                    height: 128,
-                    width: double.infinity)
+                  url: offer.imageUrl,
+                  height: 136,
+                  width: double.infinity,
+                )
               else
                 Positioned(
                   right: -30,
                   top: -30,
                   child: Container(
-                    width: 130,
-                    height: 130,
+                    width: 140,
+                    height: 140,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.12),
+                      color: Colors.white.withValues(alpha: 0.14),
                     ),
                   ),
                 ),
               // Readability scrim + promo copy over the image.
               if (offer.title?.isNotEmpty ?? false)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 16,
+                  ),
                   decoration: _hasImage
                       ? const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Color(0xCC1A1714), Color(0x331A1714)],
+                            colors: [Color(0xDD1A1714), Color(0x331A1714)],
                           ),
                         )
                       : null,
@@ -544,35 +607,49 @@ class _OfferCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(offer.title!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppType.display(22, color: Colors.white)
-                              .copyWith(height: 1.05)),
+                      Text(
+                        offer.title!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.display(
+                          22,
+                          color: Colors.white,
+                        ).copyWith(height: 1.05),
+                      ),
                       if (offer.subtitle?.isNotEmpty ?? false) ...[
                         const SizedBox(height: 4),
-                        Text(offer.subtitle!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w500)),
+                        Text(
+                          offer.subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                       if (offer.type == BannerType.coupon &&
                           (offer.code?.isNotEmpty ?? false)) ...[
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(9),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: AppShadows.card,
                           ),
-                          child: Text('CODE · ${offer.code!}',
-                              style: AppType.mono(12,
-                                  color: AppColors.primaryDark,
-                                  weight: FontWeight.w700)),
+                          child: Text(
+                            '${context.l10n.promoCodeLabel} · ${offer.code!}',
+                            style: AppType.mono(
+                              12,
+                              color: AppColors.primaryDark,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -603,80 +680,90 @@ class _PromoBanner extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(22, 10, 22, 4),
         child: Column(
-        children: [
-          Container(
-            height: 128,
-            width: double.infinity,
-            clipBehavior: Clip.antiAlias,
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: AppShadows.card,
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primaryLight, AppColors.primaryDark],
+          children: [
+            Container(
+              height: 136,
+              width: double.infinity,
+              clipBehavior: Clip.antiAlias,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: AppShadows.card,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFF7A45), Color(0xFFE8410F)],
+                ),
               ),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -30,
-                  top: -30,
-                  child: Container(
-                    width: 130,
-                    height: 130,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.12),
+              child: Stack(
+                children: [
+                  Positioned(
+                    right: -30,
+                    top: -30,
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.14),
+                      ),
                     ),
                   ),
-                ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.l10n.s40OffYournfirstOrder,
-                        style: AppType.display(23, color: Colors.white)
-                            .copyWith(letterSpacing: -0.24, height: 1.05)),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(9),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.s40OffYournfirstOrder,
+                        style: AppType.display(
+                          23,
+                          color: Colors.white,
+                        ).copyWith(letterSpacing: -0.24, height: 1.05),
                       ),
-                      child: Text(context.l10n.codeEaty40,
-                          style: AppType.mono(12,
-                              color: AppColors.primaryDark,
-                              weight: FontWeight.w700)),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          context.l10n.codeEaty40,
+                          style: AppType.mono(
+                            12,
+                            color: AppColors.primaryDark,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _dot(true),
+                const SizedBox(width: 5),
+                _dot(false),
+                const SizedBox(width: 5),
+                _dot(false),
               ],
             ),
-          ),
-          const SizedBox(height: 9),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _dot(true),
-              const SizedBox(width: 5),
-              _dot(false),
-              const SizedBox(width: 5),
-              _dot(false),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
   Widget _dot(bool active) => Container(
-        width: active ? 18 : 5,
-        height: 5,
+        width: active ? 20 : 6,
+        height: 6,
         decoration: BoxDecoration(
           color: active ? AppColors.primary : AppColors.borderStrong,
           borderRadius: BorderRadius.circular(3),
@@ -685,29 +772,104 @@ class _PromoBanner extends StatelessWidget {
 }
 
 // ===== Category chips =====
-class _CategoryChips extends StatelessWidget {
-  const _CategoryChips({required this.state});
+/// The kinds of shop the marketplace sells — Food, Groceries, Pharmacies,
+/// Stores — as a horizontal strip of artwork.
+///
+/// Tapping one opens its own page rather than filtering this one in place. The
+/// chips it replaces could only ever narrow the single list underneath them,
+/// which is the wrong shape once "Groceries" and "Food" are different shops
+/// with different sub-categories: a customer picking Food wants the cuisines
+/// inside it, not a shorter version of the page they were already on.
+class _CategoryRail extends StatelessWidget {
+  const _CategoryRail({required this.state});
 
   final HomeState state;
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<HomeCubit>();
-    return AppFilterBar(
+    final categories = state.topCategories;
+    if (categories.isEmpty) return const SizedBox.shrink();
+    final language = Localizations.localeOf(context).languageCode;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppFilterChip(
-          label: context.l10n.all,
-          selected: state.selectedCategoryId == null,
-          onTap: () => cubit.selectCategory(null),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 10),
+          child: Text(context.l10n.shopByCategory, style: AppType.heading(17)),
         ),
-        for (final category in state.categories)
-          AppFilterChip(
-            label: '${_emojiFor(category.name)}${category.name}',
-            selected: state.selectedCategoryId == category.id,
-            onTap: () => cubit.selectCategory(
-                state.selectedCategoryId == category.id ? null : category.id),
+        SizedBox(
+          height: 108,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            itemCount: categories.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (context, i) => _CategoryTile(
+              category: categories[i],
+              language: language,
+            ),
           ),
+        ),
       ],
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({required this.category, required this.language});
+
+  final VendorCategory category;
+  final String language;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = category.imageUrl;
+    return SizedBox(
+      width: 78,
+      // GestureDetector, not InkWell: a rectangular ripple around rounded
+      // artwork read as a glitch, and the page transition is the feedback.
+      child: GestureDetector(
+        onTap: () => context.push('/categories/${category.id}'),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              child: image != null && image.isNotEmpty
+                  ? AppNetworkImage(url: image, height: 72, width: 78)
+                  : Container(
+                      width: 78,
+                      height: 72,
+                      alignment: Alignment.center,
+                      color: AppColors.warmFill,
+                      child: Text(
+                        emojiFor(category.name).trim(),
+                        style: const TextStyle(fontSize: 30),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 6),
+            // Flexible so the label can never push this Column past the rail's
+            // fixed height: its line box depends on the font, the locale and
+            // the text scale, and a point over budget would overflow.
+            Flexible(
+              child: Text(
+                category.label(language),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.2,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -724,19 +886,27 @@ class _StoresHeader extends StatelessWidget {
     // header carries the result count instead — it is the one thing that
     // changes as filters are applied.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpace.gutter, AppSpace.md + 2, AppSpace.gutter, AppSpace.sm),
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
       child: Row(
         children: [
           Expanded(
-            child:
-                Text(context.l10n.storesNearYou, style: AppType.display(19)),
+            child: Text(context.l10n.storesNearYou, style: AppType.display(19)),
           ),
-          Text(context.l10n.storesCount(count),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.neutralFill,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              context.l10n.storesCount(count),
               style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted)),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -744,13 +914,13 @@ class _StoresHeader extends StatelessWidget {
 }
 
 // ===== Vendor card =====
-/// A horizontal shortcut rail above the full store list.
+/// A shortcut section above the full store list.
 ///
-/// Used for both the admin's promoted picks and the nearest open stores. A rail
-/// rather than pinned rows in the main list: neither promotion nor proximity
-/// should quietly reorder a list the customer believes is ranked on merit.
-/// Renders nothing when its section is empty, so an ungeofenced platform or one
-/// with no promoted stores simply shows the plain list.
+/// Used for both the admin's promoted picks and the nearest open stores. A
+/// separate section rather than pinned rows in the main list: neither promotion
+/// nor proximity should quietly reorder a list the customer believes is ranked
+/// on merit. Renders nothing when its section is empty, so an ungeofenced
+/// platform or one with no promoted stores simply shows the plain list.
 class _VendorRail extends StatelessWidget {
   const _VendorRail({
     required this.title,
@@ -773,210 +943,77 @@ class _VendorRail extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 10),
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
           child: Row(
             children: [
-              Icon(icon, size: 17, color: AppColors.primary),
-              const SizedBox(width: 7),
-              Text(title, style: AppType.heading(17)),
-              const Spacer(),
+              Icon(icon, size: 19, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.heading(17),
+                ),
+              ),
               if (showDistance)
-                Builder(builder: (context) {
-                  final km = context
-                      .read<HomeCubit>()
-                      .state
-                      .distanceToVendor(vendors.first);
-                  if (km == null) return const SizedBox.shrink();
-                  return Text(
-                    '${km < 10 ? km.toStringAsFixed(1) : km.round()} '
-                    '${context.l10n.kmUnit}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textMuted,
-                    ),
-                  );
-                }),
+                Builder(
+                  builder: (context) {
+                    final km = context.read<HomeCubit>().state.distanceToVendor(
+                      vendors.first,
+                    );
+                    if (km == null) return const SizedBox.shrink();
+                    return Text(
+                      '${km < 10 ? km.toStringAsFixed(1) : km.round()} '
+                      '${context.l10n.kmUnit}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textMuted,
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
-        SizedBox(
-          height: 196,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
+        for (final vendor in vendors)
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
-            itemCount: vendors.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) => SizedBox(
-              width: 260,
-              child: _VendorCard(vendor: vendors[i]),
-            ),
+            child: _HomeVendorCard(vendor: vendor),
           ),
-        ),
       ],
     );
   }
 }
 
-class _VendorCard extends StatelessWidget {
-  const _VendorCard({required this.vendor, this.menuMatches});
-
-  final Vendor vendor;
-
-  /// Item names that put this store in a search result. Null outside a
-  /// search, and null for a store matched by its own name — where the reason
-  /// it is here needs no explaining.
-  final List<String>? menuMatches;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppShadows.card,
-      ),
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: () => context.push('/vendors/${vendor.id}'),
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.borderSoft),
-            ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  AppNetworkImage(
-                      url: vendor.coverUrl,
-                      height: 118,
-                      width: double.infinity),
-                  PositionedDirectional(
-                    top: 11,
-                    start: 11,
-                    child: !vendor.isOpen
-                          ? SoftBadge(
-                              label: context.l10n.closed1,
-                              fill: AppColors.neutralFill,
-                              ink: AppColors.textMuted)
-                          : vendor.isBusy
-                              ? SoftBadge(
-                                  label: context.l10n.busyStore,
-                                  fill: AppColors.amberFill,
-                                  ink: AppColors.amberInk)
-                              : SoftBadge(
-                                  label: context.l10n.openNow,
-                                  fill: AppColors.successFill,
-                                  ink: AppColors.successInk),
-                  ),
-                  PositionedDirectional(
-                    top: 11,
-                    end: 11,
-                    child: _FavoriteButton(vendorId: vendor.id),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Row(
-                  children: [
-                    _LogoTile(vendor: vendor),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(vendor.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.ink)),
-                          const SizedBox(height: 2),
-                          Builder(builder: (context) {
-                            // Distance only appears once it is real: the
-                            // customer has a pinned address and the store has
-                            // coordinates. Otherwise the line reads as before.
-                            final km = context
-                                .read<HomeCubit>()
-                                .state
-                                .distanceToVendor(vendor);
-                            return Text(
-                              [
-                                if (km != null)
-                                  '${km < 10 ? km.toStringAsFixed(1) : km.round()} '
-                                      '${context.l10n.kmUnit}',
-                                '${vendor.totalPrepMinutes}–${vendor.totalPrepMinutes + 10} min',
-                                '${formatMoney(vendor.deliveryFee)} delivery',
-                              ].join(' · '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 12.5, color: AppColors.textMuted),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                    RatingChip(
-                        rating: vendor.ratingAvg, count: vendor.ratingCount),
-                  ],
-                ),
-              ),
-              if (menuMatches != null && menuMatches!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                  child: Text(
-                    context.l10n.matchesOnMenu(menuMatches!.join(' · ')),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    ),
-    );
-  }
-}
-
-class _LogoTile extends StatelessWidget {
-  const _LogoTile({required this.vendor});
+/// The shared store row, wired to the home page's own favourites state.
+///
+/// The card itself takes the heart as a value and a callback so it can be
+/// reused by the category pages, which own that state through a different
+/// cubit; this wrapper is the only place that knows about [HomeCubit].
+class _HomeVendorCard extends StatelessWidget {
+  const _HomeVendorCard({required this.vendor});
 
   final Vendor vendor;
 
   @override
   Widget build(BuildContext context) {
-    final url = vendor.logoUrl;
-    if (url != null && url.isNotEmpty) {
-      return AppNetworkImage(
-          url: url, height: 46, width: 46, borderRadius: BorderRadius.circular(12));
-    }
-    return Container(
-      width: 46,
-      height: 46,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.warmFill,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(_emojiFor(vendor.name).trim(),
-          style: const TextStyle(fontSize: 22)),
+    final cubit = context.read<HomeCubit>();
+    final isFavorite = context.select<HomeCubit, bool>(
+      (c) => c.state.favoriteVendorIds.contains(vendor.id),
+    );
+    return VendorCard(
+      vendor: vendor,
+      isFavorite: isFavorite,
+      onToggleFavorite: () => cubit.toggleFavorite(vendor.id),
+      // Only real once the customer has a pinned address and the store has
+      // coordinates; null otherwise, and the card leaves the distance out.
+      distanceKm: cubit.state.distanceToVendor(vendor),
     );
   }
 }
+
 
 /// The real address this order would go to.
 ///
@@ -1001,49 +1038,14 @@ class _DeliverToLabel extends StatelessWidget {
         context.l10n.addADeliveryAddress,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AppType.heading(16, color: AppColors.primaryDark),
+        style: AppType.heading(15, color: AppColors.primaryDark),
       );
     }
     return Text(
       '${address.label} · ${address.summary}',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: AppType.heading(16),
-    );
-  }
-}
-
-/// Favourite toggle on a store cover.
-///
-/// Wrapped in its own `Material` + `InkWell` so the tap lands here rather than
-/// falling through to the card and opening the store — which is what the
-/// gesture-less version used to do.
-class _FavoriteButton extends StatelessWidget {
-  const _FavoriteButton({required this.vendorId});
-
-  final String vendorId;
-
-  @override
-  Widget build(BuildContext context) {
-    final isFavorite = context.select<HomeCubit, bool>(
-        (cubit) => cubit.state.favoriteVendorIds.contains(vendorId));
-    return Material(
-      color: Colors.white.withValues(alpha: 0.95),
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      child: InkWell(
-        onTap: () => context.read<HomeCubit>().toggleFavorite(vendorId),
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            size: 18,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
+      style: AppType.heading(15),
     );
   }
 }
@@ -1073,13 +1075,18 @@ class _CouponArtwork extends StatelessWidget {
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.md + 2, vertical: AppSpace.md - 2),
+                horizontal: AppSpace.md + 2,
+                vertical: AppSpace.md - 2,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(code, style: AppType.mono(16, color: AppColors.ink)),
-                  const Icon(Icons.copy_rounded,
-                      size: 18, color: AppColors.amberInk),
+                  const Icon(
+                    Icons.copy_rounded,
+                    size: 18,
+                    color: AppColors.amberInk,
+                  ),
                 ],
               ),
             ),
@@ -1091,7 +1098,9 @@ class _CouponArtwork extends StatelessWidget {
             line,
             textAlign: TextAlign.center,
             style: const TextStyle(
-                fontSize: 13, color: AppColors.textSecondary),
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ],
@@ -1115,16 +1124,19 @@ class _HomeSkeleton extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.only(bottom: AppSpace.xxl),
         children: [
-          _Header(state: state),
-          _SearchBar(onSubmit: context.read<HomeCubit>().setSearch),
+          _Header(key: const ValueKey('home_header'), state: state),
+          const _SearchBar(key: ValueKey('home_search_bar')),
           const Padding(
-            padding: EdgeInsets.fromLTRB(
-                AppSpace.gutter, 10, AppSpace.gutter, AppSpace.xs),
-            child: Skeleton.box(height: 128),
+            padding: EdgeInsets.fromLTRB(22, 10, 22, 6),
+            child: Skeleton.box(height: 136, radius: 22),
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(
-                AppSpace.gutter, AppSpace.sm, AppSpace.gutter, AppSpace.xs),
+              AppSpace.gutter,
+              AppSpace.sm,
+              AppSpace.gutter,
+              AppSpace.xs,
+            ),
             child: SizedBox(
               height: 38,
               child: Row(
@@ -1140,15 +1152,19 @@ class _HomeSkeleton extends StatelessWidget {
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(
-                AppSpace.gutter, AppSpace.md + 2, AppSpace.gutter, AppSpace.sm),
+              AppSpace.gutter,
+              AppSpace.md + 2,
+              AppSpace.gutter,
+              AppSpace.sm,
+            ),
             child: Skeleton.line(widthFactor: 0.45, height: 20),
           ),
           SkeletonList(
             scrollable: false,
             itemCount: 3,
-            separator: const SizedBox(height: AppSpace.md),
+            separator: const SizedBox(height: 14),
             itemBuilder: (_) => const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+              padding: EdgeInsets.symmetric(horizontal: 22),
               child: _VendorCardSkeleton(),
             ),
           ),
@@ -1158,170 +1174,33 @@ class _HomeSkeleton extends StatelessWidget {
   }
 }
 
-/// Mirrors `_VendorCard`: 118px cover, 46px logo tile, two text lines, chip.
+/// Mirrors [VendorCard]: 92px thumbnail, title line, meta line.
 class _VendorCardSkeleton extends StatelessWidget {
   const _VendorCardSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Column(
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Skeleton.box(height: 118, radius: AppRadii.xl),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.md + 2, vertical: AppSpace.md),
-            child: Row(
+          Skeleton(width: 92, height: 92, radius: AppRadii.md),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Skeleton(width: 46, height: 46, radius: AppRadii.md),
-                const SizedBox(width: AppSpace.md),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Skeleton.line(widthFactor: 0.55, height: 15),
-                      SizedBox(height: 6),
-                      Skeleton.line(widthFactor: 0.8, height: 11),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpace.sm),
-                Skeleton(
-                    width: 52, height: 26, radius: AppRadii.pill),
+                Skeleton.line(widthFactor: 0.55, height: 16),
+                SizedBox(height: 8),
+                Skeleton.line(widthFactor: 0.85, height: 12),
+                SizedBox(height: 8),
+                Skeleton.line(widthFactor: 0.35, height: 12),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-// Maps a cuisine/category/vendor name to a leading emoji (with trailing space).
-String _emojiFor(String name) {
-  final n = name.toLowerCase();
-  if (n.contains('burger')) return '🍔 ';
-  if (n.contains('pizza')) return '🍕 ';
-  if (n.contains('sushi') || n.contains('japan')) return '🍣 ';
-  if (n.contains('salad') || n.contains('green') || n.contains('healthy')) {
-    return '🥗 ';
-  }
-  if (n.contains('coffee') || n.contains('cafe')) return '☕ ';
-  if (n.contains('dessert') || n.contains('sweet') || n.contains('bakery')) {
-    return '🍰 ';
-  }
-  if (n.contains('chicken')) return '🍗 ';
-  if (n.contains('drink') || n.contains('juice')) return '🥤 ';
-  return '🍽️ ';
-}
-
-/// The dishes half of a search result.
-///
-/// A horizontal strip rather than a second vertical list: the stores below are
-/// the main answer, and dishes are how a customer picks between them.
-class _DishResults extends StatelessWidget {
-  const _DishResults({required this.hits});
-
-  final List<ProductHit> hits;
-
-  @override
-  Widget build(BuildContext context) {
-    final language = Localizations.localeOf(context).languageCode;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 8, 22, 10),
-          child: Row(
-            children: [
-              const Icon(Icons.restaurant_menu_rounded,
-                  size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(context.l10n.dishes, style: AppType.heading(16)),
-              const SizedBox(width: 6),
-              Text('${hits.length}',
-                  style: AppType.mono(12, color: AppColors.textFaint)),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 178,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            itemCount: hits.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) {
-              final hit = hits[i];
-              return SizedBox(
-                width: 148,
-                child: Material(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadii.xl),
-                  child: InkWell(
-                    // Straight to the store: the dish is the reason to go
-                    // there, and adding it to a cart needs its options, which
-                    // a search result does not carry.
-                    onTap: () => context.push('/vendors/${hit.vendorId}'),
-                    borderRadius: BorderRadius.circular(AppRadii.xl),
-                    child: Container(
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(AppRadii.xl),
-                        border: Border.all(color: AppColors.borderSoft),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AppNetworkImage(
-                              url: hit.imageUrl,
-                              height: 92,
-                              width: double.infinity),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  hit.displayName(language),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.ink),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  hit.vendorName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textMuted),
-                                ),
-                                const SizedBox(height: 4),
-                                PriceText(formatMoney(hit.price), size: 13),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
     );
   }
 }

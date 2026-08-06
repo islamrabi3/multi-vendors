@@ -30,24 +30,25 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
   late Stream<List<ServiceArea>> _stream = _repo.serviceAreasStream();
   String? _busyId;
 
-  void _reload() => setState(() => _stream = _repo.serviceAreasStream());
+  void _reload() => setState(() {
+    _stream = _repo.serviceAreasStream();
+  });
 
   Future<void> _edit([ServiceArea? area]) async {
     LatLng? centre = area == null ? null : LatLng(area.lat, area.lng);
     if (centre == null) {
-      final picked = await showLocationPicker(context,
-          title: context.l10n.addServiceArea);
+      final picked = await showLocationPicker(
+        context,
+        title: context.l10n.addServiceArea,
+      );
       if (picked == null || !mounted) return;
       centre = picked.point;
     }
 
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => _ServiceAreaEditor(
-          repository: _repo,
-          area: area,
-          centre: centre!,
-        ),
+        builder: (_) =>
+            _ServiceAreaEditor(repository: _repo, area: area, centre: centre!),
       ),
     );
   }
@@ -109,10 +110,11 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
-                    AppSpace.gutter,
-                    AppSpace.md,
-                    AppSpace.gutter,
-                    96 + MediaQuery.paddingOf(context).bottom),
+                  AppSpace.gutter,
+                  AppSpace.md,
+                  AppSpace.gutter,
+                  96 + MediaQuery.paddingOf(context).bottom,
+                ),
                 children: [
                   if (!areas.any((a) => a.isActive)) const _CoverageNotice(),
                   for (final area in areas) ...[
@@ -158,17 +160,23 @@ class _CoverageNotice extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(context.l10n.noServiceAreasYet,
-                    style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.amberInk)),
+                Text(
+                  context.l10n.noServiceAreasYet,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.amberInk,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(context.l10n.coverageEverywhereNote,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        height: 1.4,
-                        color: AppColors.amberInk)),
+                Text(
+                  context.l10n.coverageEverywhereNote,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: AppColors.amberInk,
+                  ),
+                ),
               ],
             ),
           ),
@@ -217,8 +225,9 @@ class _AreaCard extends StatelessWidget {
                   options: MapOptions(
                     initialCenter: LatLng(area.lat, area.lng),
                     initialZoom: _zoomForRadius(area.radiusKm),
-                    interactionOptions:
-                        const InteractionOptions(flags: InteractiveFlag.none),
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.none,
+                    ),
                   ),
                   children: [
                     TileLayer(
@@ -226,16 +235,18 @@ class _AreaCard extends StatelessWidget {
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.multiVendors.app',
                     ),
-                    CircleLayer(circles: [
-                      CircleMarker(
-                        point: LatLng(area.lat, area.lng),
-                        radius: area.radiusKm * 1000,
-                        useRadiusInMeter: true,
-                        color: AppColors.primary.withValues(alpha: 0.14),
-                        borderColor: AppColors.primary,
-                        borderStrokeWidth: 1.5,
-                      ),
-                    ]),
+                    CircleLayer(
+                      circles: [
+                        CircleMarker(
+                          point: LatLng(area.lat, area.lng),
+                          radius: area.radiusKm * 1000,
+                          useRadiusInMeter: true,
+                          color: AppColors.primary.withValues(alpha: 0.14),
+                          borderColor: AppColors.primary,
+                          borderStrokeWidth: 1.5,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -249,17 +260,22 @@ class _AreaCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(area.displayName(languageCode),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink)),
+                      child: Text(
+                        area.displayName(languageCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpace.sm + 2, vertical: 4),
+                        horizontal: AppSpace.sm + 2,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: area.isActive
                             ? AppColors.successFill
@@ -267,13 +283,15 @@ class _AreaCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(AppRadii.xs),
                       ),
                       child: Text(
-                          area.isActive ? l10n.active : l10n.suspended,
-                          style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: area.isActive
-                                  ? AppColors.successInk
-                                  : AppColors.textMuted)),
+                        area.isActive ? l10n.active : l10n.suspended,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: area.isActive
+                              ? AppColors.successInk
+                              : AppColors.textMuted,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -283,15 +301,17 @@ class _AreaCard extends StatelessWidget {
                   '${area.radiusKm.toStringAsFixed(area.radiusKm % 1 == 0 ? 0 : 1)} '
                   '${l10n.kmUnit}',
                   style: const TextStyle(
-                      fontSize: 12.5, color: AppColors.textMuted),
+                    fontSize: 12.5,
+                    color: AppColors.textMuted,
+                  ),
                 ),
                 const SizedBox(height: AppSpace.md),
                 if (busy)
                   const SizedBox(
                     height: 40,
                     child: Center(
-                        child:
-                            ButtonSpinner(size: 18, color: AppColors.primary)),
+                      child: ButtonSpinner(size: 18, color: AppColors.primary),
+                    ),
                   )
                 else
                   Row(
@@ -307,9 +327,11 @@ class _AreaCard extends StatelessWidget {
                       IconButton(
                         onPressed: onToggle,
                         tooltip: area.isActive ? l10n.suspended : l10n.active,
-                        icon: Icon(area.isActive
-                            ? Icons.pause_circle_outline
-                            : Icons.play_circle_outline),
+                        icon: Icon(
+                          area.isActive
+                              ? Icons.pause_circle_outline
+                              : Icons.play_circle_outline,
+                        ),
                       ),
                       IconButton(
                         onPressed: onDelete,
@@ -372,8 +394,7 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
   }
 
   Future<void> _moveCentre() async {
-    final picked =
-        await showLocationPicker(context, initial: _centre);
+    final picked = await showLocationPicker(context, initial: _centre);
     if (picked == null || !mounted) return;
     setState(() => _centre = picked.point);
     _mapController.move(_centre, _zoomForRadius(_radiusKm));
@@ -407,15 +428,19 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(widget.area == null
-            ? l10n.addServiceArea
-            : l10n.editServiceArea),
+        title: Text(
+          widget.area == null ? l10n.addServiceArea : l10n.editServiceArea,
+        ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.md,
-              AppSpace.gutter, AppSpace.md + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.gutter,
+            AppSpace.md,
+            AppSpace.gutter,
+            AppSpace.md + MediaQuery.paddingOf(context).bottom,
+          ),
           children: [
             // Live preview: the slider below redraws this circle as it moves,
             // so the radius is judged against the actual city, not a number.
@@ -435,8 +460,8 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
                       initialCenter: _centre,
                       initialZoom: _zoomForRadius(_radiusKm),
                       interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.pinchZoom |
-                              InteractiveFlag.drag),
+                        flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                      ),
                     ),
                     children: [
                       TileLayer(
@@ -444,25 +469,32 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.multiVendors.app',
                       ),
-                      CircleLayer(circles: [
-                        CircleMarker(
-                          point: _centre,
-                          radius: _radiusKm * 1000,
-                          useRadiusInMeter: true,
-                          color: AppColors.primary.withValues(alpha: 0.14),
-                          borderColor: AppColors.primary,
-                          borderStrokeWidth: 2,
-                        ),
-                      ]),
-                      MarkerLayer(markers: [
-                        Marker(
-                          point: _centre,
-                          width: 36,
-                          height: 36,
-                          child: const Icon(Icons.my_location,
-                              size: 20, color: AppColors.primary),
-                        ),
-                      ]),
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: _centre,
+                            radius: _radiusKm * 1000,
+                            useRadiusInMeter: true,
+                            color: AppColors.primary.withValues(alpha: 0.14),
+                            borderColor: AppColors.primary,
+                            borderStrokeWidth: 2,
+                          ),
+                        ],
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: _centre,
+                            width: 36,
+                            height: 36,
+                            child: const Icon(
+                              Icons.my_location,
+                              size: 20,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                   PositionedDirectional(
@@ -485,19 +517,23 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
             Row(
               children: [
                 Expanded(
-                  child: Text(l10n.deliveryRadius,
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink)),
+                  child: Text(
+                    l10n.deliveryRadius,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
                 ),
                 Text(
                   '${_radiusKm.toStringAsFixed(_radiusKm % 1 == 0 ? 0 : 1)} '
                   '${l10n.kmUnit}',
                   style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
                 ),
               ],
             ),
@@ -531,14 +567,21 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
                 border: Border.all(color: AppColors.border),
               ),
               child: SwitchListTile(
-                title: Text(l10n.areaActive,
-                    style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink)),
-                subtitle: Text(l10n.areaActiveDesc,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textMuted)),
+                title: Text(
+                  l10n.areaActive,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                ),
+                subtitle: Text(
+                  l10n.areaActiveDesc,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
               ),
@@ -546,8 +589,9 @@ class _ServiceAreaEditorState extends State<_ServiceAreaEditor> {
             const SizedBox(height: AppSpace.xl),
 
             FilledButton(
-              style:
-                  FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
               onPressed: _saving ? null : _save,
               child: _saving ? const ButtonSpinner() : Text(l10n.save),
             ),
@@ -563,12 +607,16 @@ class _AreasSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SkeletonTheme(
-        child: SkeletonList(
-          itemCount: 3,
-          padding: const EdgeInsets.fromLTRB(
-              AppSpace.gutter, AppSpace.md, AppSpace.gutter, AppSpace.xxl),
-          separator: const SizedBox(height: AppSpace.sm),
-          itemBuilder: (_) => const Skeleton(height: 220, radius: AppRadii.lg),
-        ),
-      );
+    child: SkeletonList(
+      itemCount: 3,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.gutter,
+        AppSpace.md,
+        AppSpace.gutter,
+        AppSpace.xxl,
+      ),
+      separator: const SizedBox(height: AppSpace.sm),
+      itemBuilder: (_) => const Skeleton(height: 220, radius: AppRadii.lg),
+    ),
+  );
 }

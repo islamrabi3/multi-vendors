@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/profile.dart';
@@ -23,6 +24,36 @@ class AccountDeletionBlockers {
   bool get hasBalance => walletBalance > 0;
 }
 
+/// The identity documents a driver applicant uploads.
+///
+/// Keyed by the column each one lands in, so the upload loop and the review
+/// queue cannot disagree about which photo is which.
+class DriverDocuments {
+  const DriverDocuments({
+    this.idCardFront,
+    this.idCardBack,
+    this.licenseFront,
+    this.licenseBack,
+  });
+
+  final XFile? idCardFront;
+  final XFile? idCardBack;
+  final XFile? licenseFront;
+  final XFile? licenseBack;
+
+  Map<String, XFile?> get byColumn => {
+    'id_card_url': idCardFront,
+    'id_card_back_url': idCardBack,
+    'license_url': licenseFront,
+    'license_back_url': licenseBack,
+  };
+
+  bool get isNotEmpty => byColumn.values.any((f) => f != null);
+
+  /// Every document present. What a complete application looks like.
+  bool get isComplete => byColumn.values.every((f) => f != null);
+}
+
 class AuthRepository {
   Stream<AuthState> get onAuthStateChange => supabase.auth.onAuthStateChange;
 
@@ -40,13 +71,64 @@ class AuthRepository {
     required String fullName,
     required String phone,
     required UserRole role,
+    DriverDocuments? documents,
   }) async {
     final response = await supabase.auth.signUp(
       email: email,
       password: password,
       data: {'full_name': fullName, 'phone': phone, 'role': role.name},
     );
-    return response.session != null;
+    final session = response.session;
+
+    // The driver row is created by the handle_new_user trigger, so the
+    // documents have somewhere to attach the moment the session exists.
+    //
+    // With email confirmation on there is no session yet and nothing can be
+    // uploaded under the applicant's own id, so the driver is asked for them
+    // again after the first sign-in — rather than them being dropped on the
+    // floor, which is what happened to every applicant before this.
+    if (session != null && documents != null && documents.isNotEmpty) {
+      await uploadDriverDocuments(session.user.id, documents);
+    }
+    return session != null;
+  }
+
+  /// Stores an applicant's documents in the private bucket and records their
+  /// paths on the driver row, which is what the admin review queue reads.
+  ///
+  /// A failed upload must not fail the signup: the account already exists by
+  /// this point, so throwing would leave someone who cannot sign in and cannot
+  /// retry. Whatever lands is kept and the rest is asked for again.
+  Future<void> uploadDriverDocuments(
+    String driverId,
+    DriverDocuments documents,
+  ) async {
+    final updates = <String, String>{};
+    for (final entry in documents.byColumn.entries) {
+      final file = entry.value;
+      if (file == null) continue;
+      try {
+        final bytes = await file.readAsBytes();
+        final dot = file.name.lastIndexOf('.');
+        final extension = dot == -1 ? 'jpg' : file.name.substring(dot + 1);
+        // First path segment is the owner: the storage policies key off it.
+        final path =
+            '$driverId/${entry.key}-'
+            '${DateTime.now().millisecondsSinceEpoch}.$extension';
+        await supabase.storage
+            .from('driver-documents')
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: const FileOptions(upsert: true),
+            );
+        updates[entry.key] = path;
+      } catch (_) {
+        // Keep going: three documents that arrive beat none.
+      }
+    }
+    if (updates.isEmpty) return;
+    await supabase.from('drivers').update(updates).eq('id', driverId);
   }
 
   Future<void> signOut() => supabase.auth.signOut();
@@ -68,15 +150,32 @@ class AuthRepository {
   /// refuses without it while a balance remains, so the money is never taken
   /// silently.
   Future<void> deleteOwnAccount({bool forfeitBalance = false}) async {
-    await supabase.rpc('delete_own_account',
-        params: {'p_forfeit_balance': forfeitBalance});
+    await supabase.rpc(
+      'delete_own_account',
+      params: {'p_forfeit_balance': forfeitBalance},
+    );
     await supabase.auth.signOut();
   }
+
+  /// Where the provider sends the user back to.
+  ///
+  /// On web this has to be the origin they actually started from. Passing null
+  /// made Supabase fall back to the project's single configured Site URL — so
+  /// a sign-in started on the deployed site came back to `localhost:3000` and
+  /// died there. `Uri.base` is the page currently open, so a dev build and the
+  /// hosted one each return to themselves.
+  ///
+  /// Every origin used here must also be listed under Auth > URL Configuration
+  /// > Redirect URLs in the Supabase dashboard, or the provider refuses it.
+  ///
+  /// Native keeps the deep link; there is no origin to speak of.
+  static String get _oauthRedirect =>
+      kIsWeb ? Uri.base.origin : 'io.supabase.multivendor://login-callback';
 
   /// Browser-based OAuth. The provider must be enabled in the Supabase
   /// dashboard (Auth > Providers) and the redirect scheme registered in
   /// AndroidManifest.xml / Info.plist. supabase_flutter completes the
-  /// session from the deep-link callback automatically.
+  /// session from the callback automatically.
   ///
   /// inAppBrowserView = Chrome Custom Tabs / SFSafariViewController: renders
   /// inside the app but stays a real system browser surface. A plain WebView
@@ -85,18 +184,21 @@ class AuthRepository {
   Future<void> signInWithGoogle() async {
     await supabase.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: kIsWeb ? null : 'io.supabase.multivendor://login-callback',
-      authScreenLaunchMode:
-          kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppBrowserView,
+      redirectTo: _oauthRedirect,
+      authScreenLaunchMode: kIsWeb
+          ? LaunchMode.platformDefault
+          : LaunchMode.inAppBrowserView,
     );
   }
 
+  /// Only offered where it belongs — see `supportsAppleSignIn`.
   Future<void> signInWithApple() async {
     await supabase.auth.signInWithOAuth(
       OAuthProvider.apple,
-      redirectTo: kIsWeb ? null : 'io.supabase.multivendor://login-callback',
-      authScreenLaunchMode:
-          kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppBrowserView,
+      redirectTo: _oauthRedirect,
+      authScreenLaunchMode: kIsWeb
+          ? LaunchMode.platformDefault
+          : LaunchMode.inAppBrowserView,
     );
   }
 
@@ -179,12 +281,31 @@ class AuthRepository {
         .map((rows) => rows.isEmpty ? null : Profile.fromMap(rows.first));
   }
 
+  /// Watches the signed-in owner's store row.
+  ///
+  /// Same reason as [watchMyProfile]: approval and suspension are decided on
+  /// an admin's screen, and the store was only read at sign-in — so a vendor
+  /// approved while the app was open kept seeing "waiting for verification"
+  /// and kept being refused, until they signed out and back in.
+  Stream<Vendor?> watchMyVendor() {
+    final userId = currentUser?.id;
+    if (userId == null) return Stream.value(null);
+    return supabase
+        .from('vendors')
+        .stream(primaryKey: ['id'])
+        .eq('owner_id', userId)
+        .map((rows) => rows.isEmpty ? null : Vendor.fromMap(rows.first));
+  }
+
   Future<Vendor?> fetchMyVendor() async {
     final userId = currentUser?.id;
     if (userId == null) return null;
     final data = await supabase
+        // The opening hours ride along: the dashboard has to tell the owner
+        // "your switch is on but you are outside today's hours", which needs
+        // the timetable, not just `is_open`.
         .from('vendors')
-        .select()
+        .select('*, vendor_schedules(*)')
         .eq('owner_id', userId)
         .maybeSingle();
     return data == null ? null : Vendor.fromMap(data);

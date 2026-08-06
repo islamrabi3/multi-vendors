@@ -1,1 +1,74 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"multi-rest-app","appId":"1:696253376957:android:bc98b2619307ebca49cad4","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"multi-rest-app","appId":"1:696253376957:ios:29c4866df93de75549cad4","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"multi-rest-app","configurations":{"android":"1:696253376957:android:bc98b2619307ebca49cad4","ios":"1:696253376957:ios:29c4866df93de75549cad4","web":"1:696253376957:web:235cb92f52c4c0f649cad4"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "multi-rest-app",
+          "appId": "1:696253376957:android:bc98b2619307ebca49cad4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "multi-rest-app",
+          "appId": "1:696253376957:ios:29c4866df93de75549cad4",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "multi-rest-app",
+          "configurations": {
+            "android": "1:696253376957:android:bc98b2619307ebca49cad4",
+            "ios": "1:696253376957:ios:29c4866df93de75549cad4",
+            "web": "1:696253376957:web:235cb92f52c4c0f649cad4"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/canvaskit/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=604800"
+          }
+        ]
+      },
+      {
+        "source": "/@(index.html|flutter_bootstrap.js|main.dart.js|flutter.js|flutter_service_worker.js|version.json|manifest.json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      }
+    ]
+  }
+}
