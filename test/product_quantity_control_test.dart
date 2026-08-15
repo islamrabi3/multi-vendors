@@ -169,7 +169,10 @@ void main() {
     final cart = CartCubit()
       ..addItem(
         _vendor(id: 'other'),
-        CartItem(product: _product(id: 'p1', vendorId: 'other'), quantity: 3),
+        CartItem(
+          product: _product(id: 'p1', vendorId: 'other'),
+          quantity: 3,
+        ),
       );
 
     await _pump(tester, product: _product(), cubit: cart);

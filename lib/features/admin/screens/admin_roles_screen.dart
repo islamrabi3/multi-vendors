@@ -3,13 +3,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/web_table.dart';
 import '../../../core/models/admin_role.dart';
 import '../../../core/repositories/admin_roles_repository.dart';
 import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/responsive_list.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../auth/auth_cubit.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 /// Management roles, who holds them, and what has been done.
 ///
@@ -18,7 +22,12 @@ import '../../auth/auth_cubit.dart';
 /// gets narrowed — and the audit tab is the other half, because a permission
 /// system nobody can review is only half a control.
 class AdminRolesScreen extends StatefulWidget {
-  const AdminRolesScreen({super.key});
+  const AdminRolesScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   State<AdminRolesScreen> createState() => _AdminRolesScreenState();
@@ -43,7 +52,7 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
   });
 
   Future<void> _editRole(AdminRole? role) async {
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showAdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -79,7 +88,7 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
   Future<void> _addStaff() async {
     final roles = await _repo.fetchRoles().catchError((_) => <AdminRole>[]);
     if (!mounted) return;
-    final added = await showModalBottomSheet<bool>(
+    final added = await showAdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -118,7 +127,7 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
   /// null [roleId] hands somebody full access, so it is offered last and
   /// labelled as what it is.
   Future<void> _assign(String userId, List<AdminRole> roles) async {
-    final chosen = await showModalBottomSheet<({String? id, bool ok})>(
+    final chosen = await showAdaptiveSheet<({String? id, bool ok})>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
@@ -171,11 +180,119 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final webWide = AppBreakpoints.isWebWide(context);
     // The screen is itself behind a permission: an admin who cannot manage
     // staff has no business seeing who else holds what.
     final canManage = context.select(
       (AuthCubit c) => c.state.can('staff.manage'),
     );
+
+    final tabs = TabBar(
+      tabs: [
+        Tab(text: l10n.managementRoles),
+        Tab(text: l10n.staff),
+        Tab(text: l10n.auditTrail),
+      ],
+    );
+
+    final body = FutureBuilder(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const LoadingView();
+        }
+        if (snap.hasError) {
+          return FailureView(error: snap.error!, onRetry: _reload);
+        }
+        final data = snap.data!;
+        return TabBarView(
+          children: [
+            _RolesTab(
+              roles: data.roles,
+              canManage: canManage,
+              onEdit: _editRole,
+              onDelete: _deleteRole,
+            ),
+            _StaffTab(
+              staff: data.staff,
+              roles: data.roles,
+              canManage: canManage,
+              onAssign: (userId) => _assign(userId, data.roles),
+              onRevoke: _revoke,
+            ),
+            const _AuditTab(),
+          ],
+        );
+      },
+    );
+
+    // Wide/embedded layouts have no app bar or FAB to hang these off, so
+    // they surface as a button row above the tabs instead.
+    final header = ColoredBox(
+      color: AppColors.surface,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (canManage)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.lg,
+                AppSpace.md,
+                AppSpace.lg,
+                0,
+              ),
+              child: Row(
+                children: [
+                  const Spacer(),
+                  OutlinedButton.icon(
+                    onPressed: () => _editRole(null),
+                    icon: const Icon(Icons.add_moderator_outlined, size: 18),
+                    label: Text(l10n.newRole),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  FilledButton.icon(
+                    onPressed: _addStaff,
+                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+                    label: Text(l10n.addStaff),
+                  ),
+                ],
+              ),
+            ),
+          tabs,
+        ],
+      ),
+    );
+
+    if (widget.embedded) {
+      return DefaultTabController(
+        length: 3,
+        child: Column(
+          children: [
+            header,
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+
+    if (webWide) {
+      return DefaultTabController(
+        length: 3,
+        child: WebPageChrome(
+          activeId: 'manage:/admin-app/roles',
+          sections: adminManageWebSections(context),
+          pageTitle: l10n.managementRoles,
+          child: Column(
+            children: [
+              header,
+              const Divider(height: 1, thickness: 1, color: AppColors.border),
+              Expanded(child: body),
+            ],
+          ),
+        ),
+      );
+    }
 
     return DefaultTabController(
       length: 3,
@@ -191,13 +308,7 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
                 icon: const Icon(Icons.add_moderator_outlined),
               ),
           ],
-          bottom: TabBar(
-            tabs: [
-              Tab(text: l10n.managementRoles),
-              Tab(text: l10n.staff),
-              Tab(text: l10n.auditTrail),
-            ],
-          ),
+          bottom: tabs,
         ),
         floatingActionButton: canManage
             ? FloatingActionButton.extended(
@@ -206,36 +317,7 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
                 label: Text(l10n.addStaff),
               )
             : null,
-        body: FutureBuilder(
-          future: _future,
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const LoadingView();
-            }
-            if (snap.hasError) {
-              return FailureView(error: snap.error!, onRetry: _reload);
-            }
-            final data = snap.data!;
-            return TabBarView(
-              children: [
-                _RolesTab(
-                  roles: data.roles,
-                  canManage: canManage,
-                  onEdit: _editRole,
-                  onDelete: _deleteRole,
-                ),
-                _StaffTab(
-                  staff: data.staff,
-                  roles: data.roles,
-                  canManage: canManage,
-                  onAssign: (userId) => _assign(userId, data.roles),
-                  onRevoke: _revoke,
-                ),
-                const _AuditTab(),
-              ],
-            );
-          },
-        ),
+        body: body,
       ),
     );
   }
@@ -261,6 +343,65 @@ class _RolesTab extends StatelessWidget {
       return EmptyView(
         message: context.l10n.noStaffYet,
         icon: Icons.shield_outlined,
+      );
+    }
+    if (AppBreakpoints.isWebWide(context)) {
+      final columns = [
+        WebTableColumn(label: context.l10n.roleLabel, flex: 3),
+        WebTableColumn(label: context.l10n.permissions, width: 160),
+      ];
+      return SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: AppSpace.xl),
+        child: WebTable(
+          columns: columns,
+          trailingWidth: canManage ? 84 : 20,
+          rows: [
+            for (final role in roles)
+              WebTableRow.aligned(
+                columns: columns,
+                trailingWidth: canManage ? 84 : 20,
+                cells: [
+                  Text(
+                    role.displayName(language),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  Text(
+                    context.l10n.permissionsCount(role.permissions.length),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+                trailing: canManage
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          _RowIcon(
+                            icon: Icons.edit_outlined,
+                            tooltip: context.l10n.edit,
+                            onTap: () => onEdit(role),
+                          ),
+                          _RowIcon(
+                            icon: Icons.delete_outline_rounded,
+                            tooltip: context.l10n.delete,
+                            tone: AppColors.dangerInk,
+                            onTap: () => onDelete(role),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+          ],
+        ),
       );
     }
     return ResponsiveCardList(
@@ -336,6 +477,34 @@ class _StaffTab extends StatelessWidget {
       return EmptyView(
         message: context.l10n.noStaffYet,
         icon: Icons.badge_outlined,
+      );
+    }
+    if (AppBreakpoints.isWebWide(context)) {
+      final columns = [
+        WebTableColumn(label: context.l10n.userLabel, flex: 3),
+        WebTableColumn(label: context.l10n.email, flex: 3),
+        WebTableColumn(label: context.l10n.roleLabel, flex: 2),
+      ];
+      return SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: AppSpace.xl),
+        child: WebTable(
+          columns: columns,
+          trailingWidth: canManage ? 150 : 20,
+          rows: [
+            for (final member in staff)
+              _staffRow(
+                context,
+                columns: columns,
+                member: member,
+                role: roles.where((r) => r.id == member.roleId).firstOrNull,
+                language: language,
+                isMe: member.id == me,
+                canManage: canManage,
+                onAssign: onAssign,
+                onRevoke: onRevoke,
+              ),
+          ],
+        ),
       );
     }
     return ResponsiveCardList(
@@ -482,9 +651,18 @@ class _AuditTabState extends State<_AuditTab> {
           );
         }
         return RefreshIndicator(
-          onRefresh: () async => setState(() {
-            _future = _repo.fetchAuditLog();
-          }),
+          // Awaits the new fetch rather than just swapping it in: a plain
+          // setState ends the pull on the same frame it began, so the spinner
+          // vanished while the log was still loading.
+          onRefresh: () {
+            final future = _repo.fetchAuditLog();
+            // Block body: an arrow closure returns the assigned value, and
+            // a closure returning a Future makes setState throw.
+            setState(() {
+              _future = future;
+            });
+            return future;
+          },
           child: ListView.separated(
             padding: const EdgeInsets.all(AppSpace.lg),
             itemCount: entries.length,
@@ -987,4 +1165,125 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
       ),
     );
   }
+}
+
+/// A compact icon button sized for a table row rather than a ListTile.
+class _RowIcon extends StatelessWidget {
+  const _RowIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.tone,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final Color? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        color: tone ?? AppColors.textMuted,
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+        padding: EdgeInsets.zero,
+      ),
+    );
+  }
+}
+
+/// One staff member as a table row.
+///
+/// The conflict warning stays visible here rather than being dropped for
+/// space: a store owner or driver holding admin rights can approve, price or
+/// promote themselves, and a row that hides that is worse than no row.
+WebTableRow _staffRow(
+  BuildContext context, {
+  required List<WebTableColumn> columns,
+  required StaffMember member,
+  required AdminRole? role,
+  required String language,
+  required bool isMe,
+  required bool canManage,
+  required ValueChanged<String> onAssign,
+  required ValueChanged<StaffMember> onRevoke,
+}) {
+  final l10n = context.l10n;
+  return WebTableRow.aligned(
+    columns: columns,
+    trailingWidth: canManage ? 150 : 20,
+    cells: [
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              member.name.isEmpty ? '—' : member.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
+            ),
+          ),
+          if (member.hasConflict) ...[
+            const SizedBox(width: 6),
+            Tooltip(
+              message: l10n.conflictWarning,
+              child: SoftBadge(
+                label: member.ownsVendor
+                    ? l10n.ownsStore
+                    : l10n.isDriverAccount,
+                fill: AppColors.dangerFill,
+                ink: AppColors.dangerInk,
+              ),
+            ),
+          ],
+        ],
+      ),
+      Text(
+        member.email ?? '—',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppType.mono(11.5, color: AppColors.textFaint),
+      ),
+      Text(
+        role?.displayName(language) ?? l10n.unrestricted,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: role == null ? FontWeight.w700 : FontWeight.w500,
+          color: role == null ? AppColors.dangerInk : AppColors.textMuted,
+        ),
+      ),
+    ],
+    // Changing your own role is refused by the server too — it is how a
+    // restricted admin would promote themselves, and how the last
+    // unrestricted one would lock everybody out.
+    trailing: canManage && !isMe
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _RowIcon(
+                icon: Icons.manage_accounts_outlined,
+                tooltip: l10n.assignRole,
+                onTap: () => onAssign(member.id),
+              ),
+              _RowIcon(
+                icon: Icons.person_remove_outlined,
+                tooltip: l10n.removeFromStaff,
+                tone: AppColors.dangerInk,
+                onTap: () => onRevoke(member),
+              ),
+            ],
+          )
+        : const SizedBox.shrink(),
+  );
 }

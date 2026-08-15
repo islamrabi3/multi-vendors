@@ -5,14 +5,13 @@ ServiceArea _area({
   double lat = 30.0444,
   double lng = 31.2357,
   double radiusKm = 5,
-}) =>
-    ServiceArea(
-      id: 'a1',
-      name: 'Cairo',
-      lat: lat,
-      lng: lng,
-      radiusKm: radiusKm,
-    );
+}) => ServiceArea(
+  id: 'a1',
+  name: 'Cairo',
+  lat: lat,
+  lng: lng,
+  radiusKm: radiusKm,
+);
 
 void main() {
   group('distanceKm', () {

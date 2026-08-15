@@ -39,8 +39,9 @@ Future<PaymobFlowResult> runPaymobCheckout(
     return PaymobFlowResult.cancelled;
   }
 
-  final outcome =
-      await (payments ?? PaymentRepository()).awaitSettlement(checkout.reference);
+  final outcome = await (payments ?? PaymentRepository()).awaitSettlement(
+    checkout.reference,
+  );
 
   switch (outcome) {
     case PaymentOutcome.paid:

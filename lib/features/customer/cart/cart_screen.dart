@@ -254,9 +254,7 @@ class _CartScreenState extends State<CartScreen> {
               if (cart.vendor != null)
                 _CartSuggestions(
                   vendor: cart.vendor!,
-                  inCart: [
-                    for (final item in cart.items) item.product.id,
-                  ],
+                  inCart: [for (final item in cart.items) item.product.id],
                 ),
 
               // Summary & checkout footer

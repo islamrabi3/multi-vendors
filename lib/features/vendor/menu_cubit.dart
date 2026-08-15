@@ -51,14 +51,19 @@ class MenuState extends Equatable {
       products.where((p) => p.categoryId == categoryId).toList();
 
   List<Product> get uncategorized => products
-      .where((p) =>
-          p.categoryId == null || !categories.any((c) => c.id == p.categoryId))
+      .where(
+        (p) =>
+            p.categoryId == null ||
+            !categories.any((c) => c.id == p.categoryId),
+      )
       .toList();
 
   int get soldOutCount => products.where((p) => !p.isAvailable).length;
 
   bool get isFiltered =>
-      query.trim().isNotEmpty || selectedCategoryId != null || showUncategorized;
+      query.trim().isNotEmpty ||
+      selectedCategoryId != null ||
+      showUncategorized;
 
   /// What the list actually shows: the section filter, then the search, then
   /// the sort.
@@ -66,8 +71,8 @@ class MenuState extends Equatable {
     var items = showUncategorized
         ? uncategorized
         : selectedCategoryId == null
-            ? products
-            : productsIn(selectedCategoryId!);
+        ? products
+        : productsIn(selectedCategoryId!);
 
     final needle = query.trim().toLowerCase();
     if (needle.isNotEmpty) {
@@ -87,8 +92,11 @@ class MenuState extends Equatable {
       case MenuSort.manual:
         sorted.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       case MenuSort.nameAsc:
-        sorted.sort((a, b) =>
-            a.displayName(languageCode).compareTo(b.displayName(languageCode)));
+        sorted.sort(
+          (a, b) => a
+              .displayName(languageCode)
+              .compareTo(b.displayName(languageCode)),
+        );
       case MenuSort.priceAsc:
         sorted.sort((a, b) => a.price.compareTo(b.price));
       case MenuSort.priceDesc:
@@ -109,38 +117,37 @@ class MenuState extends Equatable {
     bool? busy,
     bool clearError = false,
     bool clearCategoryFilter = false,
-  }) =>
-      MenuState(
-        loading: loading ?? this.loading,
-        error: clearError ? null : (error ?? this.error),
-        categories: categories ?? this.categories,
-        products: products ?? this.products,
-        query: query ?? this.query,
-        selectedCategoryId: clearCategoryFilter
-            ? null
-            : (selectedCategoryId ?? this.selectedCategoryId),
-        showUncategorized: showUncategorized ?? this.showUncategorized,
-        sort: sort ?? this.sort,
-        busy: busy ?? this.busy,
-      );
+  }) => MenuState(
+    loading: loading ?? this.loading,
+    error: clearError ? null : (error ?? this.error),
+    categories: categories ?? this.categories,
+    products: products ?? this.products,
+    query: query ?? this.query,
+    selectedCategoryId: clearCategoryFilter
+        ? null
+        : (selectedCategoryId ?? this.selectedCategoryId),
+    showUncategorized: showUncategorized ?? this.showUncategorized,
+    sort: sort ?? this.sort,
+    busy: busy ?? this.busy,
+  );
 
   @override
   List<Object?> get props => [
-        loading,
-        error,
-        categories,
-        products,
-        query,
-        selectedCategoryId,
-        showUncategorized,
-        sort,
-        busy,
-      ];
+    loading,
+    error,
+    categories,
+    products,
+    query,
+    selectedCategoryId,
+    showUncategorized,
+    sort,
+    busy,
+  ];
 }
 
 class MenuCubit extends Cubit<MenuState> {
   MenuCubit(this._catalog, this._admin, this.vendorId)
-      : super(const MenuState()) {
+    : super(const MenuState()) {
     load();
   }
 
@@ -155,17 +162,20 @@ class MenuCubit extends Cubit<MenuState> {
         _catalog.fetchProducts(vendorId, includeUnavailable: true),
       ]);
       if (isClosed) return;
-      emit(state.copyWith(
-        loading: false,
-        busy: false,
-        clearError: true,
-        categories: results[0] as List<ProductCategory>,
-        products: results[1] as List<Product>,
-      ));
+      emit(
+        state.copyWith(
+          loading: false,
+          busy: false,
+          clearError: true,
+          categories: results[0] as List<ProductCategory>,
+          products: results[1] as List<Product>,
+        ),
+      );
     } catch (error) {
       if (isClosed) return;
-      emit(state.copyWith(
-          loading: false, busy: false, error: error.toString()));
+      emit(
+        state.copyWith(loading: false, busy: false, error: error.toString()),
+      );
     }
   }
 
@@ -175,24 +185,26 @@ class MenuCubit extends Cubit<MenuState> {
 
   void search(String query) => emit(state.copyWith(query: query));
 
-  void selectCategory(String? categoryId) => emit(state.copyWith(
-        selectedCategoryId: categoryId,
-        clearCategoryFilter: categoryId == null,
-        showUncategorized: false,
-      ));
+  void selectCategory(String? categoryId) => emit(
+    state.copyWith(
+      selectedCategoryId: categoryId,
+      clearCategoryFilter: categoryId == null,
+      showUncategorized: false,
+    ),
+  );
 
-  void selectUncategorized() => emit(state.copyWith(
-        clearCategoryFilter: true,
-        showUncategorized: true,
-      ));
+  void selectUncategorized() =>
+      emit(state.copyWith(clearCategoryFilter: true, showUncategorized: true));
 
   void setSort(MenuSort sort) => emit(state.copyWith(sort: sort));
 
-  void clearFilters() => emit(state.copyWith(
-        query: '',
-        clearCategoryFilter: true,
-        showUncategorized: false,
-      ));
+  void clearFilters() => emit(
+    state.copyWith(
+      query: '',
+      clearCategoryFilter: true,
+      showUncategorized: false,
+    ),
+  );
 
   // -------------------------------------------------------------------------
   // Writes.
@@ -215,15 +227,22 @@ class MenuCubit extends Cubit<MenuState> {
       if (isClosed) return false;
       // Keep the menu on screen: a failed write is not a reason to blank the
       // list the vendor is looking at.
-      emit(state.copyWith(
-          loading: false, busy: false, error: error.toString()));
+      emit(
+        state.copyWith(loading: false, busy: false, error: error.toString()),
+      );
       return false;
     }
   }
 
   Future<bool> saveCategory(String name, {String? nameAr, String? id}) =>
-      _mutate(() => _admin.saveCategory(
-          vendorId: vendorId, name: name, nameAr: nameAr, id: id));
+      _mutate(
+        () => _admin.saveCategory(
+          vendorId: vendorId,
+          name: name,
+          nameAr: nameAr,
+          id: id,
+        ),
+      );
 
   Future<bool> deleteCategory(String id) async {
     // The filter cannot outlive the section it points at, or the list comes
@@ -233,7 +252,8 @@ class MenuCubit extends Cubit<MenuState> {
   }
 
   Future<bool> toggleAvailability(Product product) => _mutate(
-      () => _admin.setProductAvailability(product.id, !product.isAvailable));
+    () => _admin.setProductAvailability(product.id, !product.isAvailable),
+  );
 
   Future<bool> deleteProduct(String id) =>
       _mutate(() => _admin.deleteProduct(id));
@@ -252,18 +272,21 @@ class MenuCubit extends Cubit<MenuState> {
   /// either confirms it or fails, at which point the reload puts it right.
   Future<bool> reorderProducts(List<Product> ordered) async {
     final renumbered = [
-      for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i)
+      for (var i = 0; i < ordered.length; i++)
+        ordered[i].copyWith(sortOrder: i),
     ];
     final byId = {for (final p in renumbered) p.id: p};
-    emit(state.copyWith(
-      clearError: true,
-      products: [
-        for (final p in state.products) byId[p.id] ?? p,
-      ],
-    ));
+    emit(
+      state.copyWith(
+        clearError: true,
+        products: [for (final p in state.products) byId[p.id] ?? p],
+      ),
+    );
     try {
       await _admin.reorderProducts(
-          vendorId, renumbered.map((p) => p.id).toList());
+        vendorId,
+        renumbered.map((p) => p.id).toList(),
+      );
       return true;
     } catch (error) {
       if (isClosed) return false;
@@ -277,7 +300,9 @@ class MenuCubit extends Cubit<MenuState> {
     emit(state.copyWith(clearError: true, categories: ordered));
     try {
       await _admin.reorderCategories(
-          vendorId, ordered.map((c) => c.id).toList());
+        vendorId,
+        ordered.map((c) => c.id).toList(),
+      );
       return true;
     } catch (error) {
       if (isClosed) return false;
@@ -292,10 +317,11 @@ class MenuCubit extends Cubit<MenuState> {
   Future<bool> setSectionAvailability({
     required String? categoryId,
     required bool available,
-  }) =>
-      _mutate(() => _admin.setSectionAvailability(
-            vendorId: vendorId,
-            categoryId: categoryId,
-            available: available,
-          ));
+  }) => _mutate(
+    () => _admin.setSectionAvailability(
+      vendorId: vendorId,
+      categoryId: categoryId,
+      available: available,
+    ),
+  );
 }

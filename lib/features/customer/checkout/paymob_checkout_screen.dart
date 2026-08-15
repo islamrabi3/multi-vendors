@@ -33,17 +33,19 @@ class _PaymobCheckoutScreenState extends State<PaymobCheckoutScreen> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) {
-          if (mounted) setState(() => _loading = false);
-        },
-        onNavigationRequest: (request) {
-          final result = _resultFor(request.url);
-          if (result == null) return NavigationDecision.navigate;
-          _finish(result);
-          return NavigationDecision.prevent;
-        },
-      ))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (mounted) setState(() => _loading = false);
+          },
+          onNavigationRequest: (request) {
+            final result = _resultFor(request.url);
+            if (result == null) return NavigationDecision.navigate;
+            _finish(result);
+            return NavigationDecision.prevent;
+          },
+        ),
+      )
       ..loadRequest(Uri.parse(widget.checkoutUrl));
   }
 

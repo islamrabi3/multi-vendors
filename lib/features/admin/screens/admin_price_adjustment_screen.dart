@@ -8,6 +8,8 @@ import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
 
 /// Moves menu prices across the marketplace in one action.
 ///
@@ -21,7 +23,12 @@ import '../../../core/widgets/common.dart';
 /// change in words, and the server floors every price so a large cut cannot
 /// take anything to zero.
 class AdminPriceAdjustmentScreen extends StatefulWidget {
-  const AdminPriceAdjustmentScreen({super.key});
+  const AdminPriceAdjustmentScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   State<AdminPriceAdjustmentScreen> createState() =>
@@ -168,10 +175,7 @@ class _AdminPriceAdjustmentScreenState
     final confirmed = await showConfirmDialog(
       context: context,
       title: l10n.priceAdjustment,
-      message: l10n.priceAdjustConfirm(
-        _summary(context),
-        _affected ?? 0,
-      ),
+      message: l10n.priceAdjustConfirm(_summary(context), _affected ?? 0),
       confirmLabel: l10n.apply,
       cancelLabel: l10n.cancel,
       tone: AppDialogTone.danger,
@@ -202,242 +206,258 @@ class _AdminPriceAdjustmentScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final webWide = AppBreakpoints.isWebWide(context);
+
+    final body = ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.gutter,
+        AppSpace.md,
+        AppSpace.gutter,
+        40,
+      ),
+      children: [
+        _Card(
+          title: l10n.adjustmentType,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SegmentedButton<_Mode>(
+                segments: [
+                  ButtonSegment(
+                    value: _Mode.percent,
+                    label: Text(
+                      l10n.percentage,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    icon: const Icon(Icons.percent_rounded),
+                  ),
+                  ButtonSegment(
+                    value: _Mode.fixed,
+                    label: Text(
+                      l10n.fixedAmount,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    icon: const Icon(Icons.attach_money_rounded),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (values) =>
+                    setState(() => _mode = values.first),
+              ),
+              const SizedBox(height: AppSpace.md),
+              SegmentedButton<bool>(
+                segments: [
+                  ButtonSegment(
+                    value: true,
+                    label: Text(
+                      l10n.increase,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    icon: const Icon(Icons.trending_up_rounded),
+                  ),
+                  ButtonSegment(
+                    value: false,
+                    label: Text(
+                      l10n.decrease,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    icon: const Icon(Icons.trending_down_rounded),
+                  ),
+                ],
+                selected: {_increase},
+                onSelectionChanged: (values) =>
+                    setState(() => _increase = values.first),
+              ),
+              const SizedBox(height: AppSpace.md),
+              TextField(
+                controller: _valueController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: _mode == _Mode.percent
+                      ? l10n.percentValue
+                      : l10n.amountValue,
+                  suffixText: _mode == _Mode.percent ? '%' : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpace.md),
+        _Card(
+          title: l10n.appliesTo,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              RadioGroup<_Scope>(
+                groupValue: _scope,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _scope = value);
+                  _refreshCount();
+                },
+                child: Column(
+                  children: [
+                    for (final scope in _Scope.values)
+                      RadioListTile<_Scope>(
+                        value: scope,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          switch (scope) {
+                            _Scope.all => l10n.scopeAllProducts,
+                            _Scope.vendor => l10n.scopeOneStore,
+                            _Scope.category => l10n.scopeOneCategory,
+                          },
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (_scope == _Scope.vendor)
+                DropdownButtonFormField<String>(
+                  initialValue: _vendorId,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: l10n.store),
+                  items: [
+                    for (final vendor in _vendors)
+                      DropdownMenuItem(
+                        value: vendor.id,
+                        child: Text(
+                          vendor.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _vendorId = value);
+                    _refreshCount();
+                  },
+                ),
+              if (_scope == _Scope.category)
+                DropdownButtonFormField<String>(
+                  initialValue: _categoryId,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: l10n.category),
+                  items: [
+                    for (final category in _categories)
+                      DropdownMenuItem(
+                        value: category.id,
+                        child: Text(
+                          category.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _categoryId = value);
+                    _refreshCount();
+                  },
+                ),
+              const SizedBox(height: AppSpace.sm),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _counting
+                          ? l10n.counting
+                          : l10n.productsInScope(_affected ?? 0),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpace.md),
+        Container(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          decoration: BoxDecoration(
+            color: AppColors.warmFill,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+          child: Text(
+            _summary(context),
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryDark,
+              height: 1.35,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpace.md),
+        FilledButton.icon(
+          onPressed: _applying || _signedValue == null || !_scopeChosen
+              ? null
+              : _apply,
+          icon: _applying
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.check_rounded),
+          label: Text(
+            l10n.applyToAllProducts,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (_history.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xxl),
+          Text(l10n.recentAdjustments, style: AppType.heading(17)),
+          const SizedBox(height: AppSpace.sm),
+          for (final row in _history) _HistoryRow(row: row),
+        ],
+      ],
+    );
+
+    if (widget.embedded) {
+      return Padding(padding: const EdgeInsets.all(AppSpace.xl), child: body);
+    }
+
+    if (webWide) {
+      return WebPageChrome(
+        activeId: 'manage:/admin-app/price-adjustment',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.priceAdjustment,
+        child: Padding(padding: const EdgeInsets.all(AppSpace.xl), child: body),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(l10n.priceAdjustment)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpace.gutter,
-          AppSpace.md,
-          AppSpace.gutter,
-          40,
-        ),
-        children: [
-          _Card(
-            title: l10n.adjustmentType,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SegmentedButton<_Mode>(
-                  segments: [
-                    ButtonSegment(
-                      value: _Mode.percent,
-                      label: Text(
-                        l10n.percentage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      icon: const Icon(Icons.percent_rounded),
-                    ),
-                    ButtonSegment(
-                      value: _Mode.fixed,
-                      label: Text(
-                        l10n.fixedAmount,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      icon: const Icon(Icons.attach_money_rounded),
-                    ),
-                  ],
-                  selected: {_mode},
-                  onSelectionChanged: (values) =>
-                      setState(() => _mode = values.first),
-                ),
-                const SizedBox(height: AppSpace.md),
-                SegmentedButton<bool>(
-                  segments: [
-                    ButtonSegment(
-                      value: true,
-                      label: Text(
-                        l10n.increase,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      icon: const Icon(Icons.trending_up_rounded),
-                    ),
-                    ButtonSegment(
-                      value: false,
-                      label: Text(
-                        l10n.decrease,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      icon: const Icon(Icons.trending_down_rounded),
-                    ),
-                  ],
-                  selected: {_increase},
-                  onSelectionChanged: (values) =>
-                      setState(() => _increase = values.first),
-                ),
-                const SizedBox(height: AppSpace.md),
-                TextField(
-                  controller: _valueController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: _mode == _Mode.percent
-                        ? l10n.percentValue
-                        : l10n.amountValue,
-                    suffixText: _mode == _Mode.percent ? '%' : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpace.md),
-          _Card(
-            title: l10n.appliesTo,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                RadioGroup<_Scope>(
-                  groupValue: _scope,
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _scope = value);
-                    _refreshCount();
-                  },
-                  child: Column(
-                    children: [
-                      for (final scope in _Scope.values)
-                        RadioListTile<_Scope>(
-                          value: scope,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            switch (scope) {
-                              _Scope.all => l10n.scopeAllProducts,
-                              _Scope.vendor => l10n.scopeOneStore,
-                              _Scope.category => l10n.scopeOneCategory,
-                            },
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (_scope == _Scope.vendor)
-                  DropdownButtonFormField<String>(
-                    initialValue: _vendorId,
-                    isExpanded: true,
-                    decoration: InputDecoration(labelText: l10n.store),
-                    items: [
-                      for (final vendor in _vendors)
-                        DropdownMenuItem(
-                          value: vendor.id,
-                          child: Text(
-                            vendor.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      setState(() => _vendorId = value);
-                      _refreshCount();
-                    },
-                  ),
-                if (_scope == _Scope.category)
-                  DropdownButtonFormField<String>(
-                    initialValue: _categoryId,
-                    isExpanded: true,
-                    decoration: InputDecoration(labelText: l10n.category),
-                    items: [
-                      for (final category in _categories)
-                        DropdownMenuItem(
-                          value: category.id,
-                          child: Text(
-                            category.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      setState(() => _categoryId = value);
-                      _refreshCount();
-                    },
-                  ),
-                const SizedBox(height: AppSpace.sm),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.inventory_2_outlined,
-                      size: 16,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        _counting
-                            ? l10n.counting
-                            : l10n.productsInScope(_affected ?? 0),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpace.md),
-          Container(
-            padding: const EdgeInsets.all(AppSpace.lg),
-            decoration: BoxDecoration(
-              color: AppColors.warmFill,
-              borderRadius: BorderRadius.circular(AppRadii.lg),
-            ),
-            child: Text(
-              _summary(context),
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryDark,
-                height: 1.35,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpace.md),
-          FilledButton.icon(
-            onPressed:
-                _applying || _signedValue == null || !_scopeChosen
-                ? null
-                : _apply,
-            icon: _applying
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.check_rounded),
-            label: Text(
-              l10n.applyToAllProducts,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (_history.isNotEmpty) ...[
-            const SizedBox(height: AppSpace.xxl),
-            Text(l10n.recentAdjustments, style: AppType.heading(17)),
-            const SizedBox(height: AppSpace.sm),
-            for (final row in _history) _HistoryRow(row: row),
-          ],
-        ],
-      ),
+      body: body,
     );
   }
 }
@@ -508,7 +528,10 @@ class _HistoryRow extends StatelessWidget {
           if (at != null)
             Text(
               '${at.day}/${at.month} ${TimeOfDay.fromDateTime(at).format(context)}',
-              style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: AppColors.textMuted,
+              ),
             ),
         ],
       ),

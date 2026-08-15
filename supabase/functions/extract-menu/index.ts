@@ -1,7 +1,14 @@
-// Reads photos of a restaurant menu with OpenAI vision and returns a
+// Reads photos or a PDF of a restaurant menu with OpenAI and returns a
 // structured, bilingual menu the app can bulk-import.
 //
+// CSV and Excel deliberately do not come here: the app parses those on the
+// device, because a spreadsheet is already structured and sending it to a
+// model would only add cost and transcription errors to numbers that are
+// already exact.
+//
 // Request (authenticated): { images: [{ data: <base64>, media_type: "image/jpeg" }] }
+// `media_type` may be "application/pdf", in which case the file is passed as a
+// document rather than an image.
 // Response: { categories: [{ name, name_ar, items: [{ name, name_ar,
 //             description, description_ar, price }] }] }
 //
@@ -13,7 +20,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const MAX_IMAGES = 5;
-const MODEL = "gpt-4o-mini";
+// gpt-4o-mini reads images; document input needs the full model, so the
+// choice follows the payload rather than being fixed.
+const IMAGE_MODEL = "gpt-4o-mini";
+const DOCUMENT_MODEL = "gpt-4o";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,19 +62,33 @@ Deno.serve(async (req) => {
     if (images.length === 0) return json({ error: "NO_IMAGES" }, 400);
     if (images.length > MAX_IMAGES) return json({ error: "TOO_MANY_IMAGES" }, 400);
 
+    // A PDF is sent as a file part; anything else is treated as an image.
+    // Same limit for both, because they cost roughly the same to read.
     const content: unknown[] = images.map(
-      (img: { data: string; media_type?: string }) => ({
-        type: "image_url",
-        image_url: {
-          url: `data:${img.media_type ?? "image/jpeg"};base64,${img.data}`,
-          detail: "high",
-        },
-      }),
+      (img: { data: string; media_type?: string }, index: number) => {
+        const mediaType = img.media_type ?? "image/jpeg";
+        if (mediaType === "application/pdf") {
+          return {
+            type: "file",
+            file: {
+              filename: `menu-${index + 1}.pdf`,
+              file_data: `data:application/pdf;base64,${img.data}`,
+            },
+          };
+        }
+        return {
+          type: "image_url",
+          image_url: {
+            url: `data:${mediaType};base64,${img.data}`,
+            detail: "high",
+          },
+        };
+      },
     );
     content.push({
       type: "text",
       text:
-        "These are photos of a restaurant/store menu (may be in Arabic, " +
+        "These are photos or a PDF of a restaurant/store menu (may be in Arabic, " +
         "English, or both). Extract EVERY item you can read.\n" +
         "Return ONLY a JSON object, exactly this shape:\n" +
         '{"categories":[{"name":"...","name_ar":"...","items":' +
@@ -92,7 +116,12 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: images.some(
+            (img: { media_type?: string }) =>
+              img.media_type === "application/pdf",
+          )
+          ? DOCUMENT_MODEL
+          : IMAGE_MODEL,
         max_tokens: 8192,
         response_format: { type: "json_object" },
         messages: [{ role: "user", content }],

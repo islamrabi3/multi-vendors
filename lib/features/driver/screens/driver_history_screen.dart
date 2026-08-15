@@ -44,7 +44,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       _loadNextPage();
     }
   }
@@ -65,7 +66,10 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     if (_loading || !_hasMore) return;
     setState(() => _loading = true);
     try {
-      final newTrips = await _repository.fetchDriverHistory(limit: _limit, offset: _offset);
+      final newTrips = await _repository.fetchDriverHistory(
+        limit: _limit,
+        offset: _offset,
+      );
       _ensureLabels(newTrips);
       setState(() {
         _trips.addAll(newTrips);
@@ -84,10 +88,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       _offset = 0;
       _hasMore = true;
     });
-    await Future.wait([
-      _loadWeekOrders(),
-      _loadNextPage(),
-    ]);
+    await Future.wait([_loadWeekOrders(), _loadNextPage()]);
   }
 
   void _ensureLabels(List<AppOrder> orders) {
@@ -97,9 +98,12 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         .toSet();
     if (missing.isEmpty) return;
     _pendingLabels.addAll(missing);
-    _repository.vendorLabels(missing).then((labels) {
-      if (mounted) setState(() => _labels = {..._labels, ...labels});
-    }).catchError((_) {});
+    _repository
+        .vendorLabels(missing)
+        .then((labels) {
+          if (mounted) setState(() => _labels = {..._labels, ...labels});
+        })
+        .catchError((_) {});
   }
 
   @override
@@ -126,12 +130,18 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               Row(
                 children: [
                   Expanded(
-                    child:
-                        Text(context.l10n.recentTrips, style: AppType.display(18)),
+                    child: Text(
+                      context.l10n.recentTrips,
+                      style: AppType.display(18),
+                    ),
                   ),
-                  Text('${_trips.length} ${context.l10n.delivered}',
-                      style: const TextStyle(
-                          fontSize: 12.5, color: AppColors.textMuted)),
+                  Text(
+                    '${_trips.length} ${context.l10n.delivered}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -139,7 +149,9 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 40),
                   child: EmptyView(
-                      message: context.l10n.noDeliveriesYet, icon: Icons.history),
+                    message: context.l10n.noDeliveriesYet,
+                    icon: Icons.history,
+                  ),
                 )
               else ...[
                 for (final order in _trips) ...[
@@ -165,20 +177,25 @@ class _WeekHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final monday = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: now.weekday - 1));
+    final monday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
 
     // Payout (delivery fee) per weekday, Monday-first.
     final perDay = List<double>.filled(7, 0);
     for (final order in delivered) {
-      final day = DateTime(order.createdAt.year, order.createdAt.month,
-          order.createdAt.day);
+      final day = DateTime(
+        order.createdAt.year,
+        order.createdAt.month,
+        order.createdAt.day,
+      );
       final index = day.difference(monday).inDays;
       if (index >= 0 && index < 7) perDay[index] += order.deliveryFee;
     }
     final weekTotal = perDay.fold<double>(0, (sum, v) => sum + v);
-    final maxDay =
-        perDay.fold<double>(0, (max, v) => v > max ? v : max);
+    final maxDay = perDay.fold<double>(0, (max, v) => v > max ? v : max);
     final todayIndex = now.weekday - 1;
     final dayLetters = [
       context.l10n.mondayInitial,
@@ -199,14 +216,19 @@ class _WeekHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(context.l10n.thisWeek,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.6))),
+          Text(
+            context.l10n.thisWeek,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('${context.l10n.egp} ${weekTotal.toStringAsFixed(0)}',
-              style: AppType.display(34, color: Colors.white)),
+          Text(
+            '${context.l10n.egp} ${weekTotal.toStringAsFixed(0)}',
+            style: AppType.display(34, color: Colors.white),
+          ),
           const SizedBox(height: 14),
           SizedBox(
             height: 74,
@@ -230,23 +252,25 @@ class _WeekHero extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: i == todayIndex
                                     ? AppColors.success
-                                    : const Color(0xFF3A4A40),
+                                    : AppColors.onDarkTrack,
                                 borderRadius: BorderRadius.circular(5),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 5),
-                        Text(dayLetters[i],
-                            style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: i == todayIndex
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                                color: i == todayIndex
-                                    ? AppColors.onDarkSuccess
-                                    : Colors.white
-                                        .withValues(alpha: 0.5))),
+                        Text(
+                          dayLetters[i],
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: i == todayIndex
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                            color: i == todayIndex
+                                ? AppColors.onDarkSuccess
+                                : Colors.white.withValues(alpha: 0.5),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -292,21 +316,27 @@ class _TripTile extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: label?.logoUrl != null
                 ? AppNetworkImage(url: label!.logoUrl, width: 38, height: 38)
-                : const Icon(Icons.storefront,
-                    size: 19, color: AppColors.primary),
+                : const Icon(
+                    Icons.storefront,
+                    size: 19,
+                    color: AppColors.primary,
+                  ),
           ),
           const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13.5,
-                        color: AppColors.ink)),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: AppColors.ink,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 PriceText(
                   '${order.orderNumber} · '
@@ -319,11 +349,14 @@ class _TripTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Text('+${order.deliveryFee.toStringAsFixed(0)}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: AppColors.success)),
+          Text(
+            '+${order.deliveryFee.toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: AppColors.success,
+            ),
+          ),
         ],
       ),
     );
@@ -344,7 +377,11 @@ class _EarningsSkeleton extends StatelessWidget {
         child: SkeletonTheme(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
-                AppSpace.xl, AppSpace.sm, AppSpace.xl, AppSpace.xxl),
+              AppSpace.xl,
+              AppSpace.sm,
+              AppSpace.xl,
+              AppSpace.xxl,
+            ),
             children: [
               const Skeleton(width: 150, height: 30, radius: AppRadii.sm),
               const SizedBox(height: AppSpace.md),

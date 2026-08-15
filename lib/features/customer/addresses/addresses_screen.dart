@@ -131,208 +131,210 @@ class _AddressesScreenState extends State<AddressesScreen> {
       body: addresses == null
           ? const _AddressesSkeleton()
           : addresses.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  itemCount: addresses.length,
-                  itemBuilder: (context, index) {
-                    final address = addresses[index];
-                    final icon = _getIconForLabel(address.label);
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppRadii.xl),
-                        border: Border.all(
-                          color: address.isDefault
-                              ? AppColors.primary.withValues(alpha: 0.3)
-                              : AppColors.border,
-                          width: address.isDefault ? 1.5 : 1.0,
-                        ),
-                        boxShadow: AppShadows.card,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadii.xl),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _edit(address),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Icon
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: address.isDefault
-                                          ? AppColors.warmFill
-                                          : AppColors.canvas,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      icon,
-                                      color: address.isDefault
-                                          ? AppColors.primary
-                                          : AppColors.textSecondary,
-                                      size: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
+          ? _buildEmptyState()
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              itemCount: addresses.length,
+              itemBuilder: (context, index) {
+                final address = addresses[index];
+                final icon = _getIconForLabel(address.label);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
+                    border: Border.all(
+                      color: address.isDefault
+                          ? AppColors.primary.withValues(alpha: 0.3)
+                          : AppColors.border,
+                      width: address.isDefault ? 1.5 : 1.0,
+                    ),
+                    boxShadow: AppShadows.card,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _edit(address),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Icon
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: address.isDefault
+                                      ? AppColors.warmFill
+                                      : AppColors.canvas,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  icon,
+                                  color: address.isDefault
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
 
-                                  // Text Content
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                              // Text Content
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              address.label,
-                                              style: AppType.heading(16,
-                                                  color: AppColors.ink),
-                                            ),
-                                            if (address.isDefault) ...[
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 3,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.successFill,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          AppRadii.pill),
-                                                ),
-                                                child: Text(
-                                                  context.l10n.defaultAddress,
-                                                  style: const TextStyle(
-                                                    color: AppColors.successInk,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
                                         Text(
-                                          address.summary,
-                                          style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 13.5,
-                                            height: 1.3,
+                                          address.label,
+                                          style: AppType.heading(
+                                            16,
+                                            color: AppColors.ink,
                                           ),
                                         ),
-                                        if (address.notes != null &&
-                                            address.notes!.isNotEmpty) ...[
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons
-                                                    .chat_bubble_outline_rounded,
-                                                size: 14,
-                                                color: AppColors.textMuted,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Text(
-                                                  address.notes!,
-                                                  style: const TextStyle(
-                                                    color: AppColors.textMuted,
-                                                    fontSize: 12,
-                                                    fontStyle: FontStyle.italic,
+                                        if (address.isDefault) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.successFill,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppRadii.pill,
                                                   ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
+                                            ),
+                                            child: Text(
+                                              context.l10n.defaultAddress,
+                                              style: const TextStyle(
+                                                color: AppColors.successInk,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ],
                                       ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-
-                                  // Actions
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      // Edit Button
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.canvas,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                              color: AppColors.borderSoft),
-                                        ),
-                                        child: IconButton(
-                                          padding: EdgeInsets.zero,
-                                          icon: const Icon(Icons.edit_outlined,
-                                              size: 16),
-                                          color: AppColors.textSecondary,
-                                          onPressed: () => _edit(address),
-                                        ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      address.summary,
+                                      style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13.5,
+                                        height: 1.3,
                                       ),
+                                    ),
+                                    if (address.notes != null &&
+                                        address.notes!.isNotEmpty) ...[
                                       const SizedBox(height: 8),
-                                      // Delete Button
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.canvas,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                              color: AppColors.borderSoft),
-                                        ),
-                                        child: IconButton(
-                                          padding: EdgeInsets.zero,
-                                          icon: const Icon(
-                                              Icons.delete_outline_rounded,
-                                              size: 16),
-                                          color: AppColors.dangerInk,
-                                          onPressed: () async {
-                                            final deleted =
-                                                await showConfirmDialog(
-                                              context: context,
-                                              title:
-                                                  context.l10n.deleteAddress,
-                                              message: context.l10n
-                                                  .areYouSureYouWantToDeleteThisAddress,
-                                              confirmLabel:
-                                                  context.l10n.delete,
-                                              cancelLabel:
-                                                  context.l10n.cancel,
-                                              tone: AppDialogTone.danger,
-                                              icon: Icons.location_off_rounded,
-                                              onConfirm: () => _repository
-                                                  .deleteAddress(address.id),
-                                            );
-                                            if (deleted) _load();
-                                          },
-                                        ),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.chat_bubble_outline_rounded,
+                                            size: 14,
+                                            color: AppColors.textMuted,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              address.notes!,
+                                              style: const TextStyle(
+                                                color: AppColors.textMuted,
+                                                fontSize: 12,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+
+                              // Actions
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  // Edit Button
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.canvas,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppColors.borderSoft,
+                                      ),
+                                    ),
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 16,
+                                      ),
+                                      color: AppColors.textSecondary,
+                                      onPressed: () => _edit(address),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Delete Button
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.canvas,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppColors.borderSoft,
+                                      ),
+                                    ),
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 16,
+                                      ),
+                                      color: AppColors.dangerInk,
+                                      onPressed: () async {
+                                        final deleted = await showConfirmDialog(
+                                          context: context,
+                                          title: context.l10n.deleteAddress,
+                                          message: context
+                                              .l10n
+                                              .areYouSureYouWantToDeleteThisAddress,
+                                          confirmLabel: context.l10n.delete,
+                                          cancelLabel: context.l10n.cancel,
+                                          tone: AppDialogTone.danger,
+                                          icon: Icons.location_off_rounded,
+                                          onConfirm: () => _repository
+                                              .deleteAddress(address.id),
+                                        );
+                                        if (deleted) _load();
+                                      },
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -364,7 +366,9 @@ class _AddressesScreenState extends State<AddressesScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              context.l10n.addYourDeliveryAddressesToOrderDeliciousFoodAndTrackItStraightToYourDoorstep,
+              context
+                  .l10n
+                  .addYourDeliveryAddressesToOrderDeliciousFoodAndTrackItStraightToYourDoorstep,
               style: const TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 14,
@@ -380,8 +384,10 @@ class _AddressesScreenState extends State<AddressesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadii.lg),
                 ),
@@ -416,17 +422,21 @@ class _AddressEditor extends StatefulWidget {
 
 class _AddressEditorState extends State<_AddressEditor> {
   final _formKey = GlobalKey<FormState>();
-  late final _label =
-      TextEditingController(text: widget.address?.label ?? 'Home');
+  late final _label = TextEditingController(
+    text: widget.address?.label ?? 'Home',
+  );
   late final _street = TextEditingController(
-      text: widget.address?.street ?? widget.picked?.address);
+    text: widget.address?.street ?? widget.picked?.address,
+  );
   late final _building = TextEditingController(text: widget.address?.building);
   late final _floor = TextEditingController(text: widget.address?.floor);
-  late final _apartment =
-      TextEditingController(text: widget.address?.apartment);
+  late final _apartment = TextEditingController(
+    text: widget.address?.apartment,
+  );
   late final _notes = TextEditingController(text: widget.address?.notes);
   late bool _isDefault = widget.address?.isDefault ?? false;
-  late LatLng _pin = widget.picked?.point ??
+  late LatLng _pin =
+      widget.picked?.point ??
       (widget.address?.lat != null
           ? LatLng(widget.address!.lat!, widget.address!.lng!)
           : const LatLng(30.0444, 31.2357)); // Cairo default
@@ -492,7 +502,9 @@ class _AddressEditorState extends State<_AddressEditor> {
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
         title: Text(
-          widget.address == null ? context.l10n.addAddress : context.l10n.editAddress,
+          widget.address == null
+              ? context.l10n.addAddress
+              : context.l10n.editAddress,
           style: AppType.heading(20, color: AppColors.ink),
         ),
         leading: IconButton(
@@ -506,7 +518,11 @@ class _AddressEditorState extends State<_AddressEditor> {
           // Save sits at the end of the list, so the list clears Android's
           // gesture bar itself.
           padding: EdgeInsets.fromLTRB(
-              16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
+            16,
+            12,
+            16,
+            12 + MediaQuery.paddingOf(context).bottom,
+          ),
           children: [
             // The pin is chosen on a dedicated full-screen map; here it is a
             // read-only preview with one way back to it. A small inline map
@@ -524,22 +540,28 @@ class _AddressEditorState extends State<_AddressEditor> {
               controller: _street,
               decoration: InputDecoration(
                 labelText: context.l10n.street,
-                prefixIcon:
-                    const Icon(Icons.route_outlined, color: AppColors.textFaint),
+                prefixIcon: const Icon(
+                  Icons.route_outlined,
+                  color: AppColors.textFaint,
+                ),
               ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? context.l10n.required : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? context.l10n.required
+                  : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _label,
               decoration: InputDecoration(
                 labelText: context.l10n.labelHomeWork,
-                prefixIcon:
-                    const Icon(Icons.tag_rounded, color: AppColors.textFaint),
+                prefixIcon: const Icon(
+                  Icons.tag_rounded,
+                  color: AppColors.textFaint,
+                ),
               ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? context.l10n.required : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? context.l10n.required
+                  : null,
             ),
             const SizedBox(height: 24),
 
@@ -586,8 +608,10 @@ class _AddressEditorState extends State<_AddressEditor> {
               controller: _notes,
               decoration: InputDecoration(
                 labelText: context.l10n.deliveryNotes,
-                prefixIcon: const Icon(Icons.note_alt_outlined,
-                    color: AppColors.textFaint),
+                prefixIcon: const Icon(
+                  Icons.note_alt_outlined,
+                  color: AppColors.textFaint,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -609,7 +633,10 @@ class _AddressEditorState extends State<_AddressEditor> {
                 ),
                 subtitle: Text(
                   context.l10n.useThisAsPrimaryDeliveryOption,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
                 ),
                 value: _isDefault,
                 activeThumbColor: Colors.white,
@@ -662,7 +689,8 @@ class _LocationCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.xl),
         border: Border.all(
-            color: covered ? AppColors.border : AppColors.dangerInk),
+          color: covered ? AppColors.border : AppColors.dangerInk,
+        ),
         boxShadow: AppShadows.card,
       ),
       clipBehavior: Clip.antiAlias,
@@ -675,8 +703,9 @@ class _LocationCard extends StatelessWidget {
                 options: MapOptions(
                   initialCenter: pin,
                   initialZoom: 15,
-                  interactionOptions:
-                      const InteractionOptions(flags: InteractiveFlag.none),
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
                 ),
                 children: [
                   TileLayer(
@@ -684,18 +713,22 @@ class _LocationCard extends StatelessWidget {
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.multiVendors.app',
                   ),
-                  MarkerLayer(markers: [
-                    Marker(
-                      point: pin,
-                      width: 44,
-                      height: 44,
-                      child: Icon(Icons.location_on_rounded,
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: pin,
+                        width: 44,
+                        height: 44,
+                        child: Icon(
+                          Icons.location_on_rounded,
                           size: 36,
                           color: covered
                               ? AppColors.primary
-                              : AppColors.dangerInk),
-                    ),
-                  ]),
+                              : AppColors.dangerInk,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -705,18 +738,26 @@ class _LocationCard extends StatelessWidget {
               width: double.infinity,
               color: AppColors.dangerFill,
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.md, vertical: AppSpace.sm),
+                horizontal: AppSpace.md,
+                vertical: AppSpace.sm,
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.block_rounded,
-                      size: 16, color: AppColors.dangerInk),
+                  const Icon(
+                    Icons.block_rounded,
+                    size: 16,
+                    color: AppColors.dangerInk,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(context.l10n.outsideServiceArea,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.dangerInk)),
+                    child: Text(
+                      context.l10n.outsideServiceArea,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.dangerInk,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -739,14 +780,14 @@ class _LocationCard extends StatelessWidget {
 }
 
 Widget _sectionHeaderText(String title) => Text(
-      title.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.2,
-        color: AppColors.textMuted,
-      ),
-    );
+  title.toUpperCase(),
+  style: const TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 1.2,
+    color: AppColors.textMuted,
+  ),
+);
 
 /// Saved addresses while they load. Same 16/12 padding and 12px bottom margin
 /// as the real cards, and the same 44px icon well.
@@ -759,7 +800,9 @@ class _AddressesSkeleton extends StatelessWidget {
       child: SkeletonList(
         itemCount: 4,
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.lg, vertical: AppSpace.md),
+          horizontal: AppSpace.lg,
+          vertical: AppSpace.md,
+        ),
         separator: const SizedBox(height: AppSpace.md),
         itemBuilder: (_) => DecoratedBox(
           decoration: BoxDecoration(

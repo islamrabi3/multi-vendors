@@ -1,11 +1,11 @@
 {
-    "name": "Eaty",
-    "short_name": "Eaty",
+    "name": "KichenIN",
+    "short_name": "App",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#FBF8F5",
-    "theme_color": "#FF5A2C",
-    "description": "Order food from local restaurants.",
+    "background_color": "#hexcode",
+    "theme_color": "#hexcode",
+    "description": "Best App",
     "orientation": "any",
     "prefer_related_applications": false,
     "icons": [

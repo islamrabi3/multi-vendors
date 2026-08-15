@@ -29,11 +29,8 @@ class CategoryScreen extends StatelessWidget {
       // Keyed by id: pushing Pizza on top of Food must build a second cubit,
       // not reuse the parent's.
       key: ValueKey(categoryId),
-      create: (_) => CategoryCubit(
-        CatalogRepository(),
-        FavoritesRepository(),
-        categoryId,
-      ),
+      create: (_) =>
+          CategoryCubit(CatalogRepository(), FavoritesRepository(), categoryId),
       child: const _CategoryView(),
     );
   }
@@ -105,9 +102,8 @@ class _CategoryView extends StatelessWidget {
                           isFavorite: state.favoriteVendorIds.contains(
                             vendor.id,
                           ),
-                          onToggleFavorite: () => cubit.toggleFavorite(
-                            vendor.id,
-                          ),
+                          onToggleFavorite: () =>
+                              cubit.toggleFavorite(vendor.id),
                         ),
                       ),
                 ],

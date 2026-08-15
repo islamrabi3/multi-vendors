@@ -24,13 +24,14 @@ class AdminCategoriesState extends Equatable {
     String? successMessage,
     bool clearError = false,
     bool clearSuccess = false,
-  }) =>
-      AdminCategoriesState(
-        loading: loading ?? this.loading,
-        categories: categories ?? this.categories,
-        error: clearError ? null : (error ?? this.error),
-        successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
-      );
+  }) => AdminCategoriesState(
+    loading: loading ?? this.loading,
+    categories: categories ?? this.categories,
+    error: clearError ? null : (error ?? this.error),
+    successMessage: clearSuccess
+        ? null
+        : (successMessage ?? this.successMessage),
+  );
 
   /// The kinds of shop — what the customer home page shows.
   List<VendorCategory> get topLevel {
@@ -80,8 +81,12 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
     try {
       String? imageUrl;
       if (imageBytes != null && fileExtension != null) {
-        final path = 'categories/${name.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-        imageUrl = await _repository.uploadCategoryImage(path: path, bytes: imageBytes);
+        final path =
+            'categories/${name.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+        imageUrl = await _repository.uploadCategoryImage(
+          path: path,
+          bytes: imageBytes,
+        );
       }
       await _repository.createVendorCategory(
         name: name,
@@ -89,7 +94,11 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
         imageUrl: imageUrl,
         parentId: parentId,
       );
-      emit(state.copyWith(successMessage: 'Category "$name" created successfully!'));
+      emit(
+        state.copyWith(
+          successMessage: 'Category "$name" created successfully!',
+        ),
+      );
       await load();
       return true;
     } catch (e) {
@@ -111,8 +120,12 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
     try {
       String? imageUrl = existingImageUrl;
       if (imageBytes != null && fileExtension != null) {
-        final path = 'categories/${name.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-        imageUrl = await _repository.uploadCategoryImage(path: path, bytes: imageBytes);
+        final path =
+            'categories/${name.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+        imageUrl = await _repository.uploadCategoryImage(
+          path: path,
+          bytes: imageBytes,
+        );
       }
       await _repository.updateVendorCategory(
         id,

@@ -10,6 +10,7 @@ import 'app/app.dart';
 import 'app/theme.dart' show appOverlayStyle;
 import 'firebase_options.dart';
 import 'core/config/app_config.dart';
+import 'app/locale_cubit.dart' show AppLanguage;
 import 'features/auth/screens/app_onboarding_screen.dart';
 import 'core/services/notification_service.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -58,6 +59,7 @@ Future<void> main() async {
   NotificationService.instance.initialize();
 
   await AppOnboarding.load();
+  await AppLanguage.load();
 
   runApp(const MultiVendorApp());
 }

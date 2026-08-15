@@ -19,6 +19,17 @@ class PaymobCheckout {
 /// How a payment ended, as recorded server-side by the Paymob webhook.
 enum PaymentOutcome { paid, failed, pending }
 
+/// Which Paymob integration to open the checkout against.
+///
+/// Both settle identically — same unified-checkout page, same webhook, same
+/// `payment_intents` row — so this only decides which methods Paymob offers
+/// once the customer is there.
+///
+/// [wallet] is an Egyptian *mobile* wallet (Vodafone Cash, Etisalat, Orange).
+/// It is not this app's own stored balance: paying from that is a ledger
+/// debit that never reaches the gateway and never comes through here.
+enum PaymobChannel { card, wallet }
+
 class PaymentException implements Exception {
   const PaymentException(this.code);
   final String code;
@@ -35,12 +46,24 @@ class PaymentRepository {
 
   /// Unified checkout for an existing order. The amount is taken from the
   /// order row server-side.
-  Future<PaymobCheckout> createOrderCheckout(String orderId) =>
-      _createIntention({'kind': 'order', 'order_id': orderId});
+  Future<PaymobCheckout> createOrderCheckout(
+    String orderId, {
+    PaymobChannel channel = PaymobChannel.card,
+  }) => _createIntention({
+    'kind': 'order',
+    'order_id': orderId,
+    'channel': channel.name,
+  });
 
   /// Unified checkout for a wallet top-up.
-  Future<PaymobCheckout> createTopUpCheckout(double amount) =>
-      _createIntention({'kind': 'topup', 'amount': amount});
+  Future<PaymobCheckout> createTopUpCheckout(
+    double amount, {
+    PaymobChannel channel = PaymobChannel.card,
+  }) => _createIntention({
+    'kind': 'topup',
+    'amount': amount,
+    'channel': channel.name,
+  });
 
   Future<PaymobCheckout> _createIntention(Map<String, dynamic> body) async {
     final response = await supabase.functions.invoke(

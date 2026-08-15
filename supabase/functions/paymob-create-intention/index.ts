@@ -9,8 +9,20 @@
 // The returned `reference` is Paymob's special_reference; the app watches the
 // matching payment_intents row to learn whether the payment settled.
 //
+// Either kind may also carry { channel: "card" | "wallet" }. Both produce the
+// same unified-checkout URL and settle through the same webhook — the only
+// difference is which Paymob integration the intention is opened against, and
+// so which methods Paymob offers on its hosted page. "wallet" here means an
+// Egyptian mobile wallet (Vodafone Cash, Etisalat, Orange); it is not this
+// app's own stored balance, which is paid from the ledger and never reaches
+// the gateway at all.
+//
 // Secrets required:
 //   PAYMOB_SECRET_KEY, PAYMOB_PUBLIC_KEY, PAYMOB_INTEGRATION_ID
+// Optional:
+//   PAYMOB_WALLET_INTEGRATION_ID — without it a wallet request falls back to
+//   the card integration rather than failing, so a customer is never left
+//   unable to pay because a secret has not been set yet.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const PAYMOB_BASE = "https://accept.paymob.com";
@@ -43,6 +55,7 @@ Deno.serve(async (req) => {
     const secretKey = Deno.env.get("PAYMOB_SECRET_KEY");
     const publicKey = Deno.env.get("PAYMOB_PUBLIC_KEY");
     const integrationId = Deno.env.get("PAYMOB_INTEGRATION_ID");
+    const walletIntegrationId = Deno.env.get("PAYMOB_WALLET_INTEGRATION_ID");
 
     if (!secretKey || !publicKey || !integrationId) {
       return json({ error: "PAYMOB_NOT_CONFIGURED" }, 503);
@@ -59,6 +72,13 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const kind = body.kind === "topup" ? "topup" : "order";
+
+    // Anything other than an explicit "wallet" is a card, so an old client
+    // that sends no channel at all keeps its current behaviour exactly.
+    const channel = body.channel === "wallet" ? "wallet" : "card";
+    const chosenIntegrationId = channel === "wallet"
+      ? (walletIntegrationId ?? integrationId)
+      : integrationId;
 
     // amountEgp drives the intent row; amountCents is what Paymob is told.
     let amountEgp = 0;
@@ -119,7 +139,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         amount: amountCents,
         currency: "EGP",
-        payment_methods: [Number(integrationId)],
+        payment_methods: [Number(chosenIntegrationId)],
         special_reference: reference,
         notification_url: `${supabaseUrl}/functions/v1/paymob-webhook`,
         redirection_url: REDIRECT_URL,
@@ -136,7 +156,7 @@ Deno.serve(async (req) => {
           state: "NA",
           country: "EG",
         },
-        extras: { kind, order_id: orderId, user_id: user.id },
+        extras: { kind, channel, order_id: orderId, user_id: user.id },
       }),
     });
 
@@ -160,6 +180,10 @@ Deno.serve(async (req) => {
       p_reference: reference,
       p_amount: amountEgp,
       p_order_id: orderId,
+      // The order row cannot carry this — card and mobile wallet are both
+      // payment_method 'paymob' there, and correctly so. Recording it on the
+      // intent is what lets the admin money screen tell the two apart.
+      p_channel: channel,
     });
 
     if (intentError) {

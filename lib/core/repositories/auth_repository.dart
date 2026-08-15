@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/pending_policy.dart';
 import '../models/profile.dart';
 import '../models/vendor.dart';
 import '../supabase_client.dart';
@@ -263,6 +264,27 @@ class AuthRepository {
         .maybeSingle();
     return data == null ? null : Profile.fromMap(data);
   }
+
+  /// The one policy document this partner still owes, or null.
+  ///
+  /// The server decides — it knows the role, the current version, and what
+  /// has already been signed. Asking the client to work that out would mean
+  /// trusting the client to enforce its own gate.
+  Future<PendingPolicy?> fetchPendingPolicy() async {
+    try {
+      final data = await supabase.rpc('pending_policy');
+      return PendingPolicy.fromMap(
+        data == null ? null : Map<String, dynamic>.from(data as Map),
+      );
+    } catch (_) {
+      // A failure here must not block sign-in. Worst case the gate is missed
+      // for this session and applies on the next one.
+      return null;
+    }
+  }
+
+  Future<void> acceptPolicy(String key) =>
+      supabase.rpc('accept_policy', params: {'p_key': key});
 
   /// The caller's own profile row, live.
   ///

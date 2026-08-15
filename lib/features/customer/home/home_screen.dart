@@ -14,9 +14,10 @@ import '../../../core/repositories/offers_repository.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/utils/category_emoji.dart';
 import '../../../core/utils/money.dart';
-import '../../../core/widgets/ad_slot.dart'; 
+import '../../../core/widgets/ad_slot.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/interstitial_ad.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/vendor_card.dart';
 import 'home_cubit.dart';
@@ -38,8 +39,25 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _HomeView extends StatelessWidget {
+class _HomeView extends StatefulWidget {
   const _HomeView();
+
+  @override
+  State<_HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<_HomeView> {
+  @override
+  void initState() {
+    super.initState();
+    // After the first frame, so the takeover lands on a drawn home page rather
+    // than on a blank one — and only once per launch, which
+    // `InterstitialAds.maybeShow` enforces for every campaign at once.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      InterstitialAds.maybeShow(context, repository: OffersRepository());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -346,9 +364,7 @@ class _FilterButton extends StatelessWidget {
             height: 38,
             width: 38,
             decoration: BoxDecoration(
-              color: active > 0
-                  ? AppColors.primary
-                  : AppColors.warmFill,
+              color: active > 0 ? AppColors.primary : AppColors.warmFill,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -406,7 +422,7 @@ class _OffersState extends State<_Offers> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.offers.isEmpty) return const _PromoBanner();
+    if (widget.offers.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 4),
       child: Column(
@@ -563,7 +579,7 @@ class _OfferCard extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFFF7A45), Color(0xFFE8410F)],
+              colors: [AppColors.primaryLight, AppColors.primaryDark],
             ),
           ),
           child: Stack(
@@ -599,7 +615,7 @@ class _OfferCard extends StatelessWidget {
                   decoration: _hasImage
                       ? const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Color(0xDD1A1714), Color(0x331A1714)],
+                            colors: [Color(0xDD1E1519), Color(0x331E1519)],
                           ),
                         )
                       : null,
@@ -663,114 +679,6 @@ class _OfferCard extends StatelessWidget {
   }
 }
 
-// ===== Promo banner (40% off) =====
-class _PromoBanner extends StatelessWidget {
-  const _PromoBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showInfoDialog(
-        context: context,
-        title: context.l10n.s40OffYournfirstOrder,
-        message: context.l10n.useCodeEaty40ToGetThisOffer,
-        icon: Icons.local_offer_rounded,
-        dismissLabel: context.l10n.back,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 10, 22, 4),
-        child: Column(
-          children: [
-            Container(
-              height: 136,
-              width: double.infinity,
-              clipBehavior: Clip.antiAlias,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: AppShadows.card,
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFFF7A45), Color(0xFFE8410F)],
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    right: -30,
-                    top: -30,
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.14),
-                      ),
-                    ),
-                  ),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.s40OffYournfirstOrder,
-                        style: AppType.display(
-                          23,
-                          color: Colors.white,
-                        ).copyWith(letterSpacing: -0.24, height: 1.05),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          context.l10n.codeEaty40,
-                          style: AppType.mono(
-                            12,
-                            color: AppColors.primaryDark,
-                            weight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _dot(true),
-                const SizedBox(width: 5),
-                _dot(false),
-                const SizedBox(width: 5),
-                _dot(false),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _dot(bool active) => Container(
-        width: active ? 20 : 6,
-        height: 6,
-        decoration: BoxDecoration(
-          color: active ? AppColors.primary : AppColors.borderStrong,
-          borderRadius: BorderRadius.circular(3),
-        ),
-      );
-}
-
 // ===== Category chips =====
 /// The kinds of shop the marketplace sells — Food, Groceries, Pharmacies,
 /// Stores — as a horizontal strip of artwork.
@@ -805,10 +713,8 @@ class _CategoryRail extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 22),
             itemCount: categories.length,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, i) => _CategoryTile(
-              category: categories[i],
-              language: language,
-            ),
+            itemBuilder: (context, i) =>
+                _CategoryTile(category: categories[i], language: language),
           ),
         ),
       ],
@@ -1013,7 +919,6 @@ class _HomeVendorCard extends StatelessWidget {
     );
   }
 }
-
 
 /// The real address this order would go to.
 ///

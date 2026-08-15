@@ -70,11 +70,11 @@ class _OrdersViewState extends State<_OrdersView> {
                   children: [
                     Expanded(flex: 4, child: list),
                     const VerticalDivider(
-                        width: 1, thickness: 1, color: AppColors.border),
-                    Expanded(
-                      flex: 5,
-                      child: _DetailPane(orderId: _selectedId),
+                      width: 1,
+                      thickness: 1,
+                      color: AppColors.border,
                     ),
+                    Expanded(flex: 5, child: _DetailPane(orderId: _selectedId)),
                   ],
                 );
               },
@@ -106,14 +106,19 @@ class _Title extends StatelessWidget {
                 width: 7,
                 height: 7,
                 decoration: const BoxDecoration(
-                    color: AppColors.success, shape: BoxShape.circle),
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
               ),
               const SizedBox(width: 6),
-              Text('${state.liveCount} ${context.l10n.live}',
-                  style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted)),
+              Text(
+                '${state.liveCount} ${context.l10n.live}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                ),
+              ),
             ],
           ),
         ],
@@ -167,8 +172,9 @@ class _OrderList extends StatelessWidget {
     final orders = state.visible;
     if (orders.isEmpty) {
       return EmptyView(
-          message: context.l10n.noOrdersInThisView,
-          icon: Icons.receipt_long_outlined);
+        message: context.l10n.noOrdersInThisView,
+        icon: Icons.receipt_long_outlined,
+      );
     }
     return InfiniteScroll(
       onLoadMore: () {
@@ -181,7 +187,9 @@ class _OrderList extends StatelessWidget {
         itemBuilder: (_, i) {
           if (i == orders.length) {
             return PagingFooter(
-                loading: state.loadingMore, hasMore: state.canLoadMore);
+              loading: state.loadingMore,
+              hasMore: state.canLoadMore,
+            );
           }
           final o = orders[i];
           return _OrderCard(
@@ -211,8 +219,11 @@ class _FilterBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 22),
         children: [
           _chip(context.l10n.all, OrderMonitorFilter.all),
-          _chip('${context.l10n.flagged} ${state.flaggedCount}', OrderMonitorFilter.flagged,
-              danger: true),
+          _chip(
+            '${context.l10n.flagged} ${state.flaggedCount}',
+            OrderMonitorFilter.flagged,
+            danger: true,
+          ),
           _chip(context.l10n.preparing, OrderMonitorFilter.preparing),
           _chip(context.l10n.onTheWay, OrderMonitorFilter.onTheWay),
         ],
@@ -236,16 +247,22 @@ class _FilterBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: bg,
               border: Border.all(
-                  color: selected
-                      ? Colors.transparent
-                      : hovered
-                          ? AppColors.primary
-                          : AppColors.border),
+                color: selected
+                    ? Colors.transparent
+                    : hovered
+                    ? AppColors.primary
+                    : AppColors.border,
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(label,
-                style: TextStyle(
-                    color: fg, fontWeight: FontWeight.w700, fontSize: 12.5)),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
           ),
         ),
       ),
@@ -285,14 +302,15 @@ class _OrderCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border.all(
-                color: selected
-                    ? AppColors.primary
-                    : hovered
-                        ? AppColors.primaryLight
-                        : flagged
-                            ? const Color(0xFFF0B9A6)
-                            : AppColors.border,
-                width: selected || flagged ? 1.5 : 1),
+              color: selected
+                  ? AppColors.primary
+                  : hovered
+                  ? AppColors.primaryLight
+                  : flagged
+                  ? AppColors.attentionBorder
+                  : AppColors.border,
+              width: selected || flagged ? 1.5 : 1,
+            ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: flagged || hovered || selected ? AppShadows.card : null,
           ),
@@ -304,16 +322,22 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _flaggedBody(BuildContext context, String storeName,
-      {required bool selectable}) {
+  Widget _flaggedBody(
+    BuildContext context,
+    String storeName, {
+    required bool selectable,
+  }) {
     final mins = DateTime.now().difference(order.createdAt).inMinutes;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            SelectableId(order.orderNumber,
-                style: AppType.mono(13), selectable: selectable),
+            SelectableId(
+              order.orderNumber,
+              style: AppType.mono(13),
+              selectable: selectable,
+            ),
             const SizedBox(width: 9),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -321,11 +345,14 @@ class _OrderCard extends StatelessWidget {
                 color: AppColors.primaryDark,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text('${context.l10n.stuck.toUpperCase()} $mins${context.l10n.mShort}',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 10)),
+              child: Text(
+                '${context.l10n.stuck.toUpperCase()} $mins${context.l10n.mShort}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
             ),
             const Spacer(),
             PriceText(formatMoney(order.total), size: 13.5),
@@ -338,18 +365,26 @@ class _OrderCard extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text.rich(
-                TextSpan(children: [
-                  TextSpan(
+                TextSpan(
+                  children: [
+                    TextSpan(
                       text: storeName,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink)),
-                  TextSpan(text: ' → ${order.customerName ?? context.l10n.customer}'),
-                ]),
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' → ${order.customerName ?? context.l10n.customer}',
+                    ),
+                  ],
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                    fontSize: 12.5, color: AppColors.textSecondary),
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
           ],
@@ -358,13 +393,16 @@ class _OrderCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF6F2),
+            color: AppColors.warmFill,
             borderRadius: BorderRadius.circular(11),
           ),
           child: Row(
             children: [
-              const Icon(Icons.schedule,
-                  size: 15, color: AppColors.primaryDark),
+              const Icon(
+                Icons.schedule,
+                size: 15,
+                color: AppColors.primaryDark,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -372,9 +410,10 @@ class _OrderCard extends StatelessWidget {
                       ? context.l10n.noDriverAssignedPastSla
                       : context.l10n.runningLatePastSla,
                   style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFB4462B)),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ],
@@ -384,8 +423,11 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _normalBody(BuildContext context, String storeName,
-      {required bool selectable}) {
+  Widget _normalBody(
+    BuildContext context,
+    String storeName, {
+    required bool selectable,
+  }) {
     return Row(
       children: [
         _logo(),
@@ -396,24 +438,31 @@ class _OrderCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  SelectableId(order.orderNumber,
-                      style: AppType.mono(11, color: AppColors.textFaint),
-                      selectable: selectable),
+                  SelectableId(
+                    order.orderNumber,
+                    style: AppType.mono(11, color: AppColors.textFaint),
+                    selectable: selectable,
+                  ),
                   Flexible(
-                    child: Text(' · ${_ago(order.createdAt, context)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.mono(11, color: AppColors.textFaint)),
+                    child: Text(
+                      ' · ${_ago(order.createdAt, context)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.mono(11, color: AppColors.textFaint),
+                    ),
                   ),
                 ],
               ),
-              Text('$storeName → ${order.customerName ?? context.l10n.customer}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
-                      color: AppColors.ink)),
+              Text(
+                '$storeName → ${order.customerName ?? context.l10n.customer}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: AppColors.ink,
+                ),
+              ),
             ],
           ),
         ),
@@ -431,15 +480,15 @@ class _OrderCard extends StatelessWidget {
   }
 
   Widget _logo() => Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: AppColors.warmFill,
-          borderRadius: BorderRadius.circular(11),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: AppNetworkImage(url: order.vendorLogoUrl, width: 38, height: 38),
-      );
+    width: 38,
+    height: 38,
+    decoration: BoxDecoration(
+      color: AppColors.warmFill,
+      borderRadius: BorderRadius.circular(11),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: AppNetworkImage(url: order.vendorLogoUrl, width: 38, height: 38),
+  );
 
   String _ago(DateTime t, BuildContext context) {
     final d = DateTime.now().difference(t);

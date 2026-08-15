@@ -57,15 +57,19 @@ class AdminOrdersState extends Equatable {
     final list = switch (filter) {
       OrderMonitorFilter.all => orders,
       OrderMonitorFilter.flagged => liveOrders.where(isFlagged).toList(),
-      OrderMonitorFilter.preparing => liveOrders
-          .where((o) =>
-              o.status == OrderStatus.accepted ||
-              o.status == OrderStatus.preparing ||
-              o.status == OrderStatus.readyForPickup)
-          .toList(),
-      OrderMonitorFilter.onTheWay => liveOrders
-          .where((o) => o.status == OrderStatus.outForDelivery)
-          .toList(),
+      OrderMonitorFilter.preparing =>
+        liveOrders
+            .where(
+              (o) =>
+                  o.status == OrderStatus.accepted ||
+                  o.status == OrderStatus.preparing ||
+                  o.status == OrderStatus.readyForPickup,
+            )
+            .toList(),
+      OrderMonitorFilter.onTheWay =>
+        liveOrders
+            .where((o) => o.status == OrderStatus.outForDelivery)
+            .toList(),
     };
     return list..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
@@ -80,37 +84,38 @@ class AdminOrdersState extends Equatable {
     bool? hasMore,
     String? error,
     bool clearError = false,
-  }) =>
-      AdminOrdersState(
-        loading: loading ?? this.loading,
-        liveOrders: liveOrders ?? this.liveOrders,
-        history: history ?? this.history,
-        vendorLabels: vendorLabels ?? this.vendorLabels,
-        filter: filter ?? this.filter,
-        loadingMore: loadingMore ?? this.loadingMore,
-        hasMore: hasMore ?? this.hasMore,
-        error: clearError ? null : (error ?? this.error),
-      );
+  }) => AdminOrdersState(
+    loading: loading ?? this.loading,
+    liveOrders: liveOrders ?? this.liveOrders,
+    history: history ?? this.history,
+    vendorLabels: vendorLabels ?? this.vendorLabels,
+    filter: filter ?? this.filter,
+    loadingMore: loadingMore ?? this.loadingMore,
+    hasMore: hasMore ?? this.hasMore,
+    error: clearError ? null : (error ?? this.error),
+  );
 
   @override
   List<Object?> get props => [
-        loading,
-        liveOrders,
-        history,
-        vendorLabels,
-        filter,
-        loadingMore,
-        hasMore,
-        error,
-      ];
+    loading,
+    liveOrders,
+    history,
+    vendorLabels,
+    filter,
+    loadingMore,
+    hasMore,
+    error,
+  ];
 }
 
 /// Realtime monitor of the orders in flight, backed by a paged history.
 class AdminOrdersCubit extends Cubit<AdminOrdersState> {
   AdminOrdersCubit(this._repository) : super(const AdminOrdersState()) {
-    _subscription = _repository.liveOrdersStream().listen(_onLiveOrders,
-        onError: (Object e) =>
-            emit(state.copyWith(loading: false, error: e.toString())));
+    _subscription = _repository.liveOrdersStream().listen(
+      _onLiveOrders,
+      onError: (Object e) =>
+          emit(state.copyWith(loading: false, error: e.toString())),
+    );
     loadMore();
   }
 
@@ -124,11 +129,13 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState> {
     final finished = _liveIds.difference(ids);
     _liveIds = ids;
 
-    emit(state.copyWith(
-      loading: false,
-      liveOrders: orders,
-      vendorLabels: await _withLabels(orders),
-    ));
+    emit(
+      state.copyWith(
+        loading: false,
+        liveOrders: orders,
+        vendorLabels: await _withLabels(orders),
+      ),
+    );
 
     // An order that just left the live stream became terminal: pull the head of
     // the history so it does not vanish from the unfiltered view.
@@ -136,7 +143,8 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState> {
   }
 
   Future<Map<String, ({String name, String? logoUrl})>> _withLabels(
-      List<AppOrder> orders) async {
+    List<AppOrder> orders,
+  ) async {
     var labels = state.vendorLabels;
     final missing = orders
         .map((o) => o.vendorId)
@@ -163,38 +171,45 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState> {
       final labels = await _withLabels(page);
       if (isClosed) return;
       final known = state.history.map((o) => o.id).toSet();
-      emit(state.copyWith(
-        loading: false,
-        loadingMore: false,
-        hasMore: page.length == kPageSize,
-        history: [
-          ...state.history,
-          ...page.where((o) => !known.contains(o.id)),
-        ],
-        vendorLabels: labels,
-      ));
+      emit(
+        state.copyWith(
+          loading: false,
+          loadingMore: false,
+          hasMore: page.length == kPageSize,
+          history: [
+            ...state.history,
+            ...page.where((o) => !known.contains(o.id)),
+          ],
+          vendorLabels: labels,
+        ),
+      );
     } catch (e) {
       if (isClosed) return;
-      emit(state.copyWith(
-          loading: false, loadingMore: false, error: e.toString()));
+      emit(
+        state.copyWith(loading: false, loadingMore: false, error: e.toString()),
+      );
     }
   }
 
   /// Re-reads the newest page and prepends rows not held yet.
   Future<void> _refreshHistoryHead() async {
     try {
-      final page =
-          await _repository.fetchOrdersHistoryPage(limit: kPageSize, offset: 0);
+      final page = await _repository.fetchOrdersHistoryPage(
+        limit: kPageSize,
+        offset: 0,
+      );
       if (isClosed) return;
       final known = state.history.map((o) => o.id).toSet();
       final fresh = page.where((o) => !known.contains(o.id)).toList();
       if (fresh.isEmpty) return;
       final labels = await _withLabels(fresh);
       if (isClosed) return;
-      emit(state.copyWith(
-        history: [...fresh, ...state.history],
-        vendorLabels: labels,
-      ));
+      emit(
+        state.copyWith(
+          history: [...fresh, ...state.history],
+          vendorLabels: labels,
+        ),
+      );
     } catch (_) {}
   }
 

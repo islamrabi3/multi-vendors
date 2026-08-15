@@ -53,8 +53,7 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
 
   void _onScroll() {
     if (!_hasMore || _loadingMore || _loading) return;
-    if (_scroll.position.pixels >
-        _scroll.position.maxScrollExtent - 400) {
+    if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
       _loadMore();
     }
   }
@@ -119,38 +118,38 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
       body: _loading
           ? const LoadingView()
           : _error != null
-              ? FailureView(error: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    controller: _scroll,
-                    padding: const EdgeInsets.all(AppSpace.lg),
-                    children: [
-                      Text(widget.vendorName, style: AppType.heading(17)),
-                      const SizedBox(height: AppSpace.lg),
-                      RatingSummary(breakdown: _breakdown),
-                      const SizedBox(height: AppSpace.xl),
-                      if (_reviews.isEmpty)
-                        EmptyView(
-                          message: l10n.noReviewsYet,
-                          icon: Icons.reviews_outlined,
-                        )
-                      else
-                        for (final review in _reviews)
-                          ReviewTile(review: review),
-                      if (_loadingMore)
-                        const Padding(
-                          padding: EdgeInsets.all(AppSpace.lg),
-                          child: Center(
-                              child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )),
+          ? FailureView(error: _error!, onRetry: _load)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                controller: _scroll,
+                padding: const EdgeInsets.all(AppSpace.lg),
+                children: [
+                  Text(widget.vendorName, style: AppType.heading(17)),
+                  const SizedBox(height: AppSpace.lg),
+                  RatingSummary(breakdown: _breakdown),
+                  const SizedBox(height: AppSpace.xl),
+                  if (_reviews.isEmpty)
+                    EmptyView(
+                      message: l10n.noReviewsYet,
+                      icon: Icons.reviews_outlined,
+                    )
+                  else
+                    for (final review in _reviews) ReviewTile(review: review),
+                  if (_loadingMore)
+                    const Padding(
+                      padding: EdgeInsets.all(AppSpace.lg),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }

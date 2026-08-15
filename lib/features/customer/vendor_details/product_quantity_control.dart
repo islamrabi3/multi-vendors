@@ -63,8 +63,7 @@ class ProductQuantityControl extends StatelessWidget {
 
         void onPlus() {
           if (needsSheet) {
-            (onConfigure ??
-                () => showProductSheet(context, vendor, product))();
+            (onConfigure ?? () => showProductSheet(context, vendor, product))();
             return;
           }
           if (canStep) {

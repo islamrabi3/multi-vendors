@@ -239,8 +239,17 @@ class AdminRepository {
   /// Previously unbounded and filtered in the app, which meant every profile
   /// on the platform crossed the wire so that a search box could hide most of
   /// them. Both the search and the limit are now the database's job.
+  /// [role] is one of the `user_role` enum values, or null for every role.
+  /// [status] is 'active', 'blocked' or 'closed', or null for all.
+  ///
+  /// Both are applied in the query rather than over the returned page. The
+  /// list is paged, so filtering client-side would filter one page of 40 and
+  /// silently hide every match further down — the more users exist, the more
+  /// wrong it gets.
   Future<List<AdminUser>> fetchUsers({
     String? search,
+    String? role,
+    String? status,
     int limit = 40,
     int offset = 0,
   }) async {
@@ -253,6 +262,15 @@ class AdminRepository {
     final needle = search?.trim() ?? '';
     if (needle.isNotEmpty) {
       query = query.or('full_name.ilike.%$needle%,phone.ilike.%$needle%');
+    }
+    if (role != null) query = query.eq('role', role);
+    switch (status) {
+      case 'active':
+        query = query.eq('is_blocked', false).isFilter('deleted_at', null);
+      case 'blocked':
+        query = query.eq('is_blocked', true).isFilter('deleted_at', null);
+      case 'closed':
+        query = query.not('deleted_at', 'is', null);
     }
     final data = await query
         .order('created_at', ascending: false)
@@ -282,11 +300,7 @@ class AdminRepository {
   }) async {
     final result = await supabase.rpc(
       'admin_adjust_wallet',
-      params: {
-        'p_user_id': userId,
-        'p_amount': amount,
-        'p_reason': reason,
-      },
+      params: {'p_user_id': userId, 'p_amount': amount, 'p_reason': reason},
     );
     return double.tryParse('$result') ?? 0;
   }
@@ -811,6 +825,7 @@ class AdminUser {
     required this.isDeleted,
     this.phone,
     this.blockedReason,
+    this.createdAt,
   });
 
   final String id;
@@ -822,6 +837,10 @@ class AdminUser {
   final bool isDeleted;
   final String? phone;
   final String? blockedReason;
+
+  /// When the account was opened. Null only for rows written before the
+  /// column existed.
+  final DateTime? createdAt;
 
   /// Admins are exempt from both levers, matching the server-side guards.
   bool get isAdmin => role == 'admin';
@@ -836,6 +855,9 @@ class AdminUser {
     isDeleted: map['deleted_at'] != null,
     phone: map['phone'] as String?,
     blockedReason: map['blocked_reason'] as String?,
+    createdAt: DateTime.tryParse(
+      (map['created_at'] as String?) ?? '',
+    )?.toLocal(),
   );
 }
 

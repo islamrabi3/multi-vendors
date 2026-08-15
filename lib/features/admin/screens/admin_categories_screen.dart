@@ -9,23 +9,33 @@ import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
 import '../admin_categories_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 class AdminCategoriesScreen extends StatelessWidget {
-  const AdminCategoriesScreen({super.key});
+  const AdminCategoriesScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => AdminCategoriesCubit(AdminRepository()),
-      child: const _CategoriesView(),
+      child: _CategoriesView(embedded: embedded),
     );
   }
 }
 
 class _CategoriesView extends StatefulWidget {
-  const _CategoriesView();
+  const _CategoriesView({required this.embedded});
+
+  final bool embedded;
 
   @override
   State<_CategoriesView> createState() => _CategoriesViewState();
@@ -34,6 +44,96 @@ class _CategoriesView extends StatefulWidget {
 class _CategoriesViewState extends State<_CategoriesView> {
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final webWide = AppBreakpoints.isWebWide(context);
+
+    final content = BlocConsumer<AdminCategoriesCubit, AdminCategoriesState>(
+      listener: (context, state) {
+        if (state.error != null) {
+          showFailure(context, state.error!);
+        } else if (state.successMessage != null) {
+          showSnack(context, state.successMessage!);
+        }
+      },
+      builder: (context, state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
+              child: Row(
+                children: [
+                  Text(l10n.categoriesTab, style: AppType.display(26)),
+                  const Spacer(),
+                  IconButton.filled(
+                    onPressed: () => _showEditor(context),
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.add_rounded),
+                  ),
+                ],
+              ),
+            ),
+            if (state.loading && state.categories.isEmpty)
+              const Expanded(child: LoadingView())
+            else if (state.categories.isEmpty)
+              Expanded(
+                child: EmptyView(
+                  message: l10n.noCategoriesYet,
+                  icon: Icons.grid_view_rounded,
+                ),
+              )
+            else
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () => context.read<AdminCategoriesCubit>().load(),
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    // Fixed at 2 columns this stretched every card to half a
+                    // 1200px web shell — a portrait tile meant to be glanced
+                    // at, filling most of the screen. More columns on wide
+                    // web is the same fix `_moneyGrid` uses in
+                    // admin_finance_screen.dart.
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: webWide ? 5 : 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.85,
+                    ),
+                    itemCount: state.categories.length,
+                    itemBuilder: (context, index) {
+                      final category = state.categories[index];
+                      return _CategoryCard(
+                        category: category,
+                        onEdit: () => _showEditor(context, category: category),
+                        onDelete: () => _confirmDelete(context, category),
+                        onRecommendations: () =>
+                            _showRecommendations(context, category),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+
+    if (widget.embedded) return content;
+
+    if (webWide) {
+      return WebPageChrome(
+        activeId: 'manage:/admin-app/categories',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.categoriesTab,
+        child: content,
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
@@ -41,94 +141,15 @@ class _CategoriesViewState extends State<_CategoriesView> {
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(context.l10n.categoriesTab),
+        title: Text(l10n.categoriesTab),
       ),
-      body: SafeArea(
-        top: false,
-        bottom: false,
-        child: BlocConsumer<AdminCategoriesCubit, AdminCategoriesState>(
-          listener: (context, state) {
-            if (state.error != null) {
-              showFailure(context, state.error!);
-            } else if (state.successMessage != null) {
-              showSnack(context, state.successMessage!);
-            }
-          },
-          builder: (context, state) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
-                  child: Row(
-                    children: [
-                      Text(
-                        context.l10n.categoriesTab,
-                        style: AppType.display(26),
-                      ),
-                      const Spacer(),
-                      IconButton.filled(
-                        onPressed: () => _showEditor(context),
-                        style: IconButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                        ),
-                        icon: const Icon(Icons.add_rounded),
-                      ),
-                    ],
-                  ),
-                ),
-                if (state.loading && state.categories.isEmpty)
-                  const Expanded(child: LoadingView())
-                else if (state.categories.isEmpty)
-                  Expanded(
-                    child: EmptyView(
-                      message: context.l10n.noCategoriesYet,
-                      icon: Icons.grid_view_rounded,
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh: () =>
-                          context.read<AdminCategoriesCubit>().load(),
-                      child: GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 0.85,
-                            ),
-                        itemCount: state.categories.length,
-                        itemBuilder: (context, index) {
-                          final category = state.categories[index];
-                          return _CategoryCard(
-                            category: category,
-                            onEdit: () =>
-                                _showEditor(context, category: category),
-                            onDelete: () => _confirmDelete(context, category),
-                            onRecommendations: () =>
-                                _showRecommendations(context, category),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
+      body: SafeArea(top: false, bottom: false, child: content),
     );
   }
 
   void _showEditor(BuildContext context, {VendorCategory? category}) {
     final cubit = context.read<AdminCategoriesCubit>();
-    showModalBottomSheet(
+    showAdaptiveSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.canvas,
@@ -146,7 +167,7 @@ class _CategoriesViewState extends State<_CategoriesView> {
   /// home page's single promoted rail: "our pick for Pizza" is a different
   /// answer from "our pick overall", and both are the admin's to set.
   void _showRecommendations(BuildContext context, VendorCategory category) {
-    showModalBottomSheet(
+    showAdaptiveSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.canvas,
@@ -192,9 +213,12 @@ class _CategoryCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        // A 1px border and a soft drop shadow on the same element is the
+        // "ghost card" look — pick one. The border reads better against the
+        // canvas here, and 16 is the radius the rest of the console uses;
+        // 20 made these tiles noticeably rounder than everything beside them.
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -215,93 +239,118 @@ class _CategoryCard extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                   ),
-                Positioned(
+                // The sort order decides where this sits on the customer's
+                // home screen and is editable, but was invisible here — so
+                // reordering meant opening each card to find out where it
+                // already was.
+                PositionedDirectional(
                   top: 8,
-                  right: 8,
-                  child: Row(
-                    children: [
-                      _actionButton(
-                        icon: Icons.auto_awesome_rounded,
-                        color: AppColors.primary,
-                        onTap: onRecommendations,
+                  start: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink.withValues(alpha: 0.62),
+                      borderRadius: BorderRadius.circular(AppRadii.xs),
+                    ),
+                    child: Text(
+                      '#${category.sortOrder}',
+                      style: AppType.mono(
+                        10.5,
+                        weight: FontWeight.w800,
+                        color: Colors.white,
                       ),
-                      const SizedBox(width: 6),
-                      _actionButton(
-                        icon: Icons.edit_rounded,
-                        color: AppColors.ink,
-                        onTap: onEdit,
-                      ),
-                      const SizedBox(width: 6),
-                      _actionButton(
-                        icon: Icons.delete_outline_rounded,
-                        color: Colors.redAccent,
-                        onTap: onDelete,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Column(
+              // Start-aligned like every other list in the console. Centred
+              // text reads as a tile in a picker rather than a row in an
+              // editor, and the names are ragged lengths anyway.
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   category.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14.5,
                     color: AppColors.ink,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
+                // The Arabic name is what half the customers actually see, so
+                // an admin checking a category should not have to open the
+                // editor to find out whether it has one.
                 Text(
-                  category.isTopLevel
-                      ? context.l10n.noParentTopLevel
-                      : context.l10n.subCategory,
+                  (category.nameAr?.trim().isNotEmpty ?? false)
+                      ? category.nameAr!
+                      : context.l10n.noArabicName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: (category.nameAr?.trim().isNotEmpty ?? false)
+                        ? AppColors.textSecondary
+                        : AppColors.textFaint,
+                    fontStyle: (category.nameAr?.trim().isNotEmpty ?? false)
+                        ? FontStyle.normal
+                        : FontStyle.italic,
                   ),
                 ),
               ],
             ),
+          ),
+          const Divider(height: 1, color: AppColors.borderSoft),
+          // Off the artwork. Three translucent circles sitting on the image
+          // obscured the one thing the card exists to show, and a hit target
+          // floating over a photo is guesswork on a trackpad.
+          Row(
+            children: [
+              _footerAction(
+                icon: Icons.auto_awesome_rounded,
+                color: AppColors.primary,
+                onTap: onRecommendations,
+              ),
+              _footerAction(
+                icon: Icons.edit_outlined,
+                color: AppColors.textMuted,
+                onTap: onEdit,
+              ),
+              const Spacer(),
+              _footerAction(
+                icon: Icons.delete_outline_rounded,
+                color: AppColors.dangerInk,
+                onTap: onDelete,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _actionButton({
+  Widget _footerAction({
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.9),
-          shape: BoxShape.circle,
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 4,
-              offset: Offset(0, 1.5),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 16, color: color),
-      ),
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, size: 17),
+      color: color,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints.tightFor(width: 36, height: 34),
+      padding: EdgeInsets.zero,
     );
   }
 }
@@ -661,12 +710,10 @@ class _CategoryRecommendationsSheetState
 
   Future<void> _add() async {
     final promoted = _picks.map((p) => p.vendor.id).toSet();
-    final available = _vendors
-        .where((v) => !promoted.contains(v.id))
-        .toList();
+    final available = _vendors.where((v) => !promoted.contains(v.id)).toList();
     if (available.isEmpty) return;
 
-    final chosen = await showModalBottomSheet<Vendor>(
+    final chosen = await showAdaptiveSheet<Vendor>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.canvas,

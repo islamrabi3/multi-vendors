@@ -4,6 +4,8 @@ import '../../../app/tokens.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// `10` and `12.5` both read better without trailing zeros.
@@ -17,7 +19,12 @@ String _percent(double rate) =>
 /// "what is left, and how much of it is still cash in a driver's pocket",
 /// which is the question a cash-heavy market actually settles on.
 class AdminReportsScreen extends StatefulWidget {
-  const AdminReportsScreen({super.key});
+  const AdminReportsScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   State<AdminReportsScreen> createState() => _AdminReportsScreenState();
@@ -25,8 +32,10 @@ class AdminReportsScreen extends StatefulWidget {
 
 class _AdminReportsScreenState extends State<AdminReportsScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController =
-      TabController(length: 3, vsync: this);
+  late final TabController _tabController = TabController(
+    length: 3,
+    vsync: this,
+  );
   final _repo = AdminRepository();
 
   bool _loading = true;
@@ -96,46 +105,80 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        title: Text(l10n.financialReports),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: [
-            Tab(text: l10n.platformTab),
-            Tab(text: l10n.vendorSalesTab),
-            Tab(text: l10n.driverPayoutsTab),
+    final webWide = AppBreakpoints.isWebWide(context);
+
+    final tabBar = TabBar(
+      controller: _tabController,
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
+      tabs: [
+        Tab(text: l10n.platformTab),
+        Tab(text: l10n.vendorSalesTab),
+        Tab(text: l10n.driverPayoutsTab),
+      ],
+    );
+
+    final periodBar = _PeriodBar(
+      value: _dateFilter,
+      onChanged: (v) {
+        setState(() => _dateFilter = v);
+        _loadData();
+      },
+    );
+
+    final tabContent = _loading
+        ? const LoadingView()
+        : _error != null
+        ? FailureView(error: _error!, onRetry: _loadData)
+        : TabBarView(
+            controller: _tabController,
+            children: [_platformTab(), _vendorTab(), _driverTab()],
+          );
+
+    if (widget.embedded) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            tabBar,
+            const SizedBox(height: AppSpace.md),
+            periodBar,
+            Expanded(child: tabContent),
           ],
         ),
-      ),
+      );
+    }
+
+    if (webWide) {
+      return WebPageChrome(
+        activeId: 'manage:/admin-app/sales-reports',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.salesAndFinancialReports,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              tabBar,
+              const SizedBox(height: AppSpace.md),
+              periodBar,
+              Expanded(child: tabContent),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      appBar: AppBar(title: Text(l10n.financialReports), bottom: tabBar),
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            _PeriodBar(
-              value: _dateFilter,
-              onChanged: (v) {
-                setState(() => _dateFilter = v);
-                _loadData();
-              },
-            ),
-            Expanded(
-              child: _loading
-                  ? const LoadingView()
-                  : _error != null
-                      ? FailureView(error: _error!, onRetry: _loadData)
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _platformTab(),
-                            _vendorTab(),
-                            _driverTab(),
-                          ],
-                        ),
-            ),
+            periodBar,
+            Expanded(child: tabContent),
           ],
         ),
       ),
@@ -154,31 +197,36 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
         padding: _listPadding,
         children: [
           _sectionLabel(l10n.volume),
-          _StatGrid(items: [
-            (l10n.deliveredOrders, '${_platform.deliveredOrders}', null),
-            (l10n.cancelledOrders, '${_platform.cancelledOrders}', null),
-            (l10n.averageOrder, formatMoney(_platform.averageOrder), null),
-            (l10n.grossRevenue, formatMoney(_platform.grossRevenue), null),
-          ]),
+          _StatGrid(
+            items: [
+              (l10n.deliveredOrders, '${_platform.deliveredOrders}', null),
+              (l10n.cancelledOrders, '${_platform.cancelledOrders}', null),
+              (l10n.averageOrder, formatMoney(_platform.averageOrder), null),
+              (l10n.grossRevenue, formatMoney(_platform.grossRevenue), null),
+            ],
+          ),
           const SizedBox(height: AppSpace.lg),
           _sectionLabel(l10n.settlement),
           _Row(label: l10n.itemSales, value: _platform.itemSales),
           _Row(label: l10n.deliveryFeesTotal, value: _platform.deliveryFees),
           _Row(
-              label: l10n.discountsGiven,
-              value: -_platform.discounts,
-              subtle: true),
+            label: l10n.discountsGiven,
+            value: -_platform.discounts,
+            subtle: true,
+          ),
           const Divider(height: AppSpace.xl, color: AppColors.borderSoft),
           // What the platform earns, line by line, so the net below can be
           // checked by adding up the rows above it.
           _Row(label: l10n.platformCommission, value: _platform.commission),
           _Row(
-              label: l10n.deliveryMargin(_percent(100 - _platform.driverShare)),
-              value: _platform.deliveryMargin),
+            label: l10n.deliveryMargin(_percent(100 - _platform.driverShare)),
+            value: _platform.deliveryMargin,
+          ),
           _Row(
-              label: l10n.platformFundedDiscounts,
-              value: -_platform.platformDiscounts,
-              subtle: true),
+            label: l10n.platformFundedDiscounts,
+            value: -_platform.platformDiscounts,
+            subtle: true,
+          ),
           _Row(
             label: l10n.netMargin,
             value: _platform.netMargin,
@@ -192,15 +240,15 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
           _Row(label: l10n.driverCost, value: _platform.driverCost),
           if (_platform.driverTips > 0)
             _Row(
-                label: l10n.tipsPassedThrough,
-                value: _platform.driverTips,
-                subtle: true),
+              label: l10n.tipsPassedThrough,
+              value: _platform.driverTips,
+              subtle: true,
+            ),
           if (_platform.subscriptionStores > 0) ...[
             const SizedBox(height: AppSpace.lg),
             _sectionLabel(l10n.subscriptions),
             _Row(
-              label: l10n.subscriptionFeesMonthly(
-                  _platform.subscriptionStores),
+              label: l10n.subscriptionFeesMonthly(_platform.subscriptionStores),
               value: _platform.subscriptionFeesMonthly,
             ),
             Padding(
@@ -208,25 +256,30 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
               child: Text(
                 l10n.subscriptionNotInNet,
                 style: const TextStyle(
-                    fontSize: 11.5, color: AppColors.textMuted, height: 1.35),
+                  fontSize: 11.5,
+                  color: AppColors.textMuted,
+                  height: 1.35,
+                ),
               ),
             ),
           ],
           const SizedBox(height: AppSpace.lg),
           // The number that decides who owes whom at the end of a shift.
           _sectionLabel(l10n.cashCollected),
-          _StatGrid(items: [
-            (
-              l10n.cashCollected,
-              formatMoney(_platform.cashCollected),
-              AppColors.amberInk
-            ),
-            (
-              l10n.cardCollected,
-              formatMoney(_platform.cardCollected),
-              AppColors.successInk
-            ),
-          ]),
+          _StatGrid(
+            items: [
+              (
+                l10n.cashCollected,
+                formatMoney(_platform.cashCollected),
+                AppColors.amberInk,
+              ),
+              (
+                l10n.cardCollected,
+                formatMoney(_platform.cardCollected),
+                AppColors.successInk,
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -237,8 +290,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
     if (_vendorReports.isEmpty) {
       return _empty(l10n.noReportData, Icons.storefront_outlined);
     }
-    final payouts =
-        _vendorReports.fold<double>(0, (sum, i) => sum + i.netPayout);
+    final payouts = _vendorReports.fold<double>(
+      0,
+      (sum, i) => sum + i.netPayout,
+    );
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: _loadData,
@@ -279,8 +334,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
     if (_driverReports.isEmpty) {
       return _empty(l10n.noReportData, Icons.two_wheeler_outlined);
     }
-    final payouts =
-        _driverReports.fold<double>(0, (sum, i) => sum + i.netDriverPayout);
+    final payouts = _driverReports.fold<double>(
+      0,
+      (sum, i) => sum + i.netDriverPayout,
+    );
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: _loadData,
@@ -314,33 +371,37 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
   }
 
   EdgeInsets get _listPadding => EdgeInsets.fromLTRB(
-        AppSpace.gutter,
-        AppSpace.md,
-        AppSpace.gutter,
-        AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
-      );
+    AppSpace.gutter,
+    AppSpace.md,
+    AppSpace.gutter,
+    AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
+  );
 
   Widget _empty(String message, IconData icon) => ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 100),
-          EmptyView(message: message, icon: icon),
-        ],
-      );
+    physics: const AlwaysScrollableScrollPhysics(),
+    children: [
+      const SizedBox(height: 100),
+      EmptyView(message: message, icon: icon),
+    ],
+  );
 
   Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpace.xs, AppSpace.sm, AppSpace.xs, AppSpace.sm),
-        child: Text(
-          text.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: AppColors.textMuted,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(
+      AppSpace.xs,
+      AppSpace.sm,
+      AppSpace.xs,
+      AppSpace.sm,
+    ),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
+        color: AppColors.textMuted,
+      ),
+    ),
+  );
 }
 
 class _PeriodBar extends StatelessWidget {
@@ -354,7 +415,11 @@ class _PeriodBar extends StatelessWidget {
     final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpace.gutter, AppSpace.md, AppSpace.gutter, AppSpace.xs),
+        AppSpace.gutter,
+        AppSpace.md,
+        AppSpace.gutter,
+        AppSpace.xs,
+      ),
       child: SizedBox(
         height: 36,
         child: ListView(
@@ -396,7 +461,8 @@ class _StatGrid extends StatelessWidget {
       children: [
         for (final (label, value, accent) in items)
           SizedBox(
-            width: (MediaQuery.sizeOf(context).width -
+            width:
+                (MediaQuery.sizeOf(context).width -
                     AppSpace.gutter * 2 -
                     AppSpace.sm) /
                 2,
@@ -413,18 +479,25 @@ class _StatGrid extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: AlignmentDirectional.centerStart,
-                    child: Text(value,
-                        style: AppType.mono(17,
-                            color: accent ?? AppColors.ink,
-                            weight: FontWeight.w800)),
+                    child: Text(
+                      value,
+                      style: AppType.mono(
+                        17,
+                        color: accent ?? AppColors.ink,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 3),
-                  Text(label,
-                      maxLines: 2,
-                      style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textMuted)),
+                  Text(
+                    label,
+                    maxLines: 2,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -473,8 +546,8 @@ class _Row extends StatelessWidget {
               color: emphasis
                   ? AppColors.successInk
                   : subtle
-                      ? AppColors.textMuted
-                      : AppColors.ink,
+                  ? AppColors.textMuted
+                  : AppColors.ink,
               weight: emphasis ? FontWeight.w800 : FontWeight.w600,
             ),
           ),
@@ -502,17 +575,24 @@ class _TotalBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label.toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-                color: Colors.white.withValues(alpha: 0.6),
-              )),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(formatMoney(value),
-              style: AppType.mono(22,
-                  color: Colors.white, weight: FontWeight.w800)),
+          Text(
+            formatMoney(value),
+            style: AppType.mono(
+              22,
+              color: Colors.white,
+              weight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -550,18 +630,26 @@ class _PartyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 15)),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
                 const SizedBox(height: 5),
                 for (final line in lines)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
-                    child: Text(line,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textMuted)),
+                    child: Text(
+                      line,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -570,13 +658,22 @@ class _PartyCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(formatMoney(payout),
-                  style: AppType.mono(15,
-                      color: payoutColor, weight: FontWeight.w800)),
+              Text(
+                formatMoney(payout),
+                style: AppType.mono(
+                  15,
+                  color: payoutColor,
+                  weight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(context.l10n.netMargin,
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.textFaint)),
+              Text(
+                context.l10n.netMargin,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textFaint,
+                ),
+              ),
             ],
           ),
         ],

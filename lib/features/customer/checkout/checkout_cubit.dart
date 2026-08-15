@@ -17,6 +17,7 @@ class CheckoutState extends Equatable {
     this.addresses = const [],
     this.selectedAddressId,
     this.paymentMethod = 'cod',
+    this.paymobChannel = PaymobChannel.card,
     this.couponCode = '',
     this.couponDiscount,
     this.couponError,
@@ -35,6 +36,16 @@ class CheckoutState extends Equatable {
   final List<Address> addresses;
   final String? selectedAddressId;
   final String paymentMethod; // 'cod' | 'paymob' | 'wallet'
+
+  /// Which Paymob integration to open when [paymentMethod] is 'paymob'.
+  ///
+  /// Card and mobile wallet are one payment method as far as the order row
+  /// and the webhook are concerned — both are 'paymob', both settle the same
+  /// way — so this is kept beside the method rather than encoded into it. A
+  /// third enum value would have meant a database migration and a new case in
+  /// every switch that reads an order's payment method, to record something
+  /// only the checkout page cares about.
+  final PaymobChannel paymobChannel;
   final String couponCode;
   final double? couponDiscount;
   final String? couponError;
@@ -71,6 +82,7 @@ class CheckoutState extends Equatable {
     List<Address>? addresses,
     String? selectedAddressId,
     String? paymentMethod,
+    PaymobChannel? paymobChannel,
     String? couponCode,
     double? couponDiscount,
     String? couponError,
@@ -92,6 +104,7 @@ class CheckoutState extends Equatable {
     addresses: addresses ?? this.addresses,
     selectedAddressId: selectedAddressId ?? this.selectedAddressId,
     paymentMethod: paymentMethod ?? this.paymentMethod,
+    paymobChannel: paymobChannel ?? this.paymobChannel,
     couponCode: clearCoupon ? '' : (couponCode ?? this.couponCode),
     couponDiscount: clearCoupon
         ? null
@@ -120,6 +133,7 @@ class CheckoutState extends Equatable {
     addresses,
     selectedAddressId,
     paymentMethod,
+    paymobChannel,
     couponCode,
     couponDiscount,
     couponError,
@@ -174,8 +188,11 @@ class CheckoutCubit extends Cubit<CheckoutState> {
   void selectAddress(String addressId) =>
       emit(state.copyWith(selectedAddressId: addressId));
 
-  void selectPaymentMethod(String method) =>
-      emit(state.copyWith(paymentMethod: method));
+  /// [channel] only means anything for 'paymob'; the other methods ignore
+  /// it, and it is left at its previous value rather than reset so switching
+  /// away to cash and back keeps the customer's earlier choice.
+  void selectPaymentMethod(String method, {PaymobChannel? channel}) =>
+      emit(state.copyWith(paymentMethod: method, paymobChannel: channel));
 
   void clearCoupon() => emit(state.copyWith(clearCoupon: true));
 

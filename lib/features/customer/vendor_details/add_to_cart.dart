@@ -29,11 +29,7 @@ Future<void> quickAddOrConfigure(
   if (product.optionGroups.isNotEmpty) {
     return showProductSheet(context, vendor, product);
   }
-  await addCartItem(
-    context,
-    vendor,
-    CartItem(product: product, quantity: 1),
-  );
+  await addCartItem(context, vendor, CartItem(product: product, quantity: 1));
 }
 
 /// Puts one line into the cart, asking first when it belongs to another store.

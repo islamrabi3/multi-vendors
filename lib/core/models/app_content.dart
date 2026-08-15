@@ -13,6 +13,9 @@ class AppContent extends Equatable {
     this.bodyAr,
     this.isPublished = true,
     this.updatedAt,
+    this.version = 1,
+    this.requiresAcceptance = false,
+    this.audience,
   });
 
   /// Slug: `terms`, `privacy`, `about`.
@@ -26,6 +29,18 @@ class AppContent extends Equatable {
   /// so a page can be drafted before it goes live.
   final bool isPublished;
   final DateTime? updatedAt;
+
+  /// Bumped only when a change is material enough to re-ask every partner.
+  /// Fixing a typo must not invalidate signatures already collected.
+  final int version;
+
+  /// True for the partner agreements, which gate the app rather than merely
+  /// being readable.
+  final bool requiresAcceptance;
+
+  /// Which role is gated: 'vendor' or 'driver'. Null for pages everyone
+  /// simply reads.
+  final String? audience;
 
   String title(String languageCode) =>
       localizedText(titleEn, titleAr, languageCode);
@@ -46,11 +61,14 @@ class AppContent extends Equatable {
         updatedAt: map['updated_at'] == null
             ? null
             : DateTime.parse(map['updated_at'] as String),
+        version: ((map['version'] as num?) ?? 1).toInt(),
+        requiresAcceptance: (map['requires_acceptance'] as bool?) ?? false,
+        audience: map['audience'] as String?,
       );
 
   @override
   List<Object?> get props =>
-      [key, titleEn, titleAr, bodyEn, bodyAr, isPublished, updatedAt];
+      [key, titleEn, titleAr, bodyEn, bodyAr, isPublished, updatedAt, version];
 }
 
 /// One social or contact link in the about page footer.

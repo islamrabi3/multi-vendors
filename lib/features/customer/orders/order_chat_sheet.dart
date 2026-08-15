@@ -89,12 +89,17 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.chat_bubble_outline,
-                        color: AppColors.primary),
+                    const Icon(
+                      Icons.chat_bubble_outline,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       context.l10n.liveChat,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -121,7 +126,10 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
                 }
                 final currentUserId = _chatRepo.currentUserId;
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
@@ -139,11 +147,11 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
                         ),
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
-                          color: isMe
-                              ? AppColors.primary
-                              : AppColors.warmFill,
+                          color: isMe ? AppColors.primary : AppColors.warmFill,
                           borderRadius: BorderRadiusDirectional.only(
                             topStart: const Radius.circular(16),
                             topEnd: const Radius.circular(16),
@@ -228,11 +236,13 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
                       controller: _msgController,
                       decoration: InputDecoration(
                         hintText: context.l10n.typeYourMessage,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadii.xxl),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                       ),
                     ),
@@ -241,8 +251,10 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
                   CircleAvatar(
                     backgroundColor: AppColors.primary,
                     child: IconButton(
-                      icon: const DirectionalIcon(Icons.send,
-                          color: Colors.white),
+                      icon: const DirectionalIcon(
+                        Icons.send,
+                        color: Colors.white,
+                      ),
                       onPressed: _busy ? null : () => _sendMessage(),
                     ),
                   ),
@@ -268,7 +280,9 @@ class _ChatSkeleton extends StatelessWidget {
     return SkeletonTheme(
       child: ListView(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.lg, vertical: AppSpace.md),
+          horizontal: AppSpace.lg,
+          vertical: AppSpace.md,
+        ),
         children: [
           for (var i = 0; i < _widths.length; i++)
             Align(

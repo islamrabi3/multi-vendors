@@ -392,6 +392,24 @@ class OrderRepository {
         .toList();
   }
 
+  /// Active (non-terminal) customer orders, read once.
+  ///
+  /// The live list comes from [myActiveOrdersStream]; this is what pull-to-
+  /// refresh calls, because a socket that has quietly died looks exactly like
+  /// having no active orders and the customer has no other way to find out.
+  Future<List<AppOrder>> fetchMyActiveOrders() async {
+    final userId = supabase.auth.currentUser!.id;
+    final data = await supabase
+        .from('orders')
+        .select('*, order_items(*), vendors(name, logo_url)')
+        .eq('customer_id', userId)
+        .order('created_at', ascending: false);
+    return (data as List)
+        .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .where((o) => !o.status.isTerminal)
+        .toList();
+  }
+
   /// Stream of active (non-terminal) customer orders.
   Stream<List<AppOrder>> myActiveOrdersStream() {
     final userId = supabase.auth.currentUser!.id;

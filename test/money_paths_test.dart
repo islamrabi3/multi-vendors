@@ -18,14 +18,13 @@ Product _product({
   String id = 'p1',
   double price = 10,
   bool available = true,
-}) =>
-    Product(
-      id: id,
-      vendorId: 'v1',
-      name: 'Item $id',
-      price: price,
-      isAvailable: available,
-    );
+}) => Product(
+  id: id,
+  vendorId: 'v1',
+  name: 'Item $id',
+  price: price,
+  isAvailable: available,
+);
 
 Coupon _coupon({
   String type = 'percentage',
@@ -37,21 +36,20 @@ Coupon _coupon({
   bool isActive = true,
   DateTime? startsAt,
   DateTime? expiresAt,
-}) =>
-    Coupon(
-      id: 'c1',
-      code: 'SAVE',
-      discountType: type,
-      value: value,
-      minOrderAmount: 0,
-      usedCount: usedCount,
-      isActive: isActive,
-      maxDiscount: maxDiscount,
-      usageLimit: usageLimit,
-      perUserLimit: perUserLimit,
-      startsAt: startsAt,
-      expiresAt: expiresAt,
-    );
+}) => Coupon(
+  id: 'c1',
+  code: 'SAVE',
+  discountType: type,
+  value: value,
+  minOrderAmount: 0,
+  usedCount: usedCount,
+  isActive: isActive,
+  maxDiscount: maxDiscount,
+  usageLimit: usageLimit,
+  perUserLimit: perUserLimit,
+  startsAt: startsAt,
+  expiresAt: expiresAt,
+);
 
 void main() {
   group('cart totals', () {
@@ -88,8 +86,11 @@ void main() {
 
     test('identical items merge only when options and notes match', () {
       final base = CartItem(product: _product(), quantity: 1);
-      final withNote =
-          CartItem(product: _product(), quantity: 1, notes: 'no onions');
+      final withNote = CartItem(
+        product: _product(),
+        quantity: 1,
+        notes: 'no onions',
+      );
       final withOption = CartItem(
         product: _product(),
         quantity: 1,
@@ -100,21 +101,26 @@ void main() {
 
       expect(base.signature, isNot(withNote.signature));
       expect(base.signature, isNot(withOption.signature));
-      expect(base.signature, CartItem(product: _product(), quantity: 9).signature);
+      expect(
+        base.signature,
+        CartItem(product: _product(), quantity: 9).signature,
+      );
     });
   });
 
   group('coupon rules', () {
     test('a code past its expiry is not live', () {
       final coupon = _coupon(
-          expiresAt: DateTime.now().subtract(const Duration(days: 1)));
+        expiresAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
       expect(coupon.isExpired, isTrue);
       expect(coupon.isLive, isFalse);
     });
 
     test('a code before its start date is scheduled, not live', () {
-      final coupon =
-          _coupon(startsAt: DateTime.now().add(const Duration(days: 1)));
+      final coupon = _coupon(
+        startsAt: DateTime.now().add(const Duration(days: 1)),
+      );
       expect(coupon.isScheduled, isTrue);
       expect(coupon.isLive, isFalse);
     });
@@ -160,26 +166,25 @@ void main() {
       String? driverId,
       double tip = 0,
       DateTime? releasedAt,
-    }) =>
-        AppOrder(
-          id: 'o1',
-          orderNumber: '#1',
-          customerId: 'c1',
-          vendorId: 'v1',
-          driverId: driverId,
-          status: OrderStatus.delivered,
-          subtotal: 100,
-          deliveryFee: 15,
-          discount: 0,
-          total: 115,
-          paymentMethod: 'cod',
-          paymentStatus: 'paid',
-          createdAt: DateTime.now(),
-          deliveryAddress: const {},
-          orderType: type,
-          driverTip: tip,
-          releasedAt: releasedAt,
-        );
+    }) => AppOrder(
+      id: 'o1',
+      orderNumber: '#1',
+      customerId: 'c1',
+      vendorId: 'v1',
+      driverId: driverId,
+      status: OrderStatus.delivered,
+      subtotal: 100,
+      deliveryFee: 15,
+      discount: 0,
+      total: 115,
+      paymentMethod: 'cod',
+      paymentStatus: 'paid',
+      createdAt: DateTime.now(),
+      deliveryAddress: const {},
+      orderType: type,
+      driverTip: tip,
+      releasedAt: releasedAt,
+    );
 
     test('a pickup order is recognised as one', () {
       expect(order(type: 'pickup').isPickup, isTrue);
@@ -200,8 +205,10 @@ void main() {
   });
 
   group('admin permissions', () {
-    AppAuthState withPermissions(List<String> permissions) =>
-        AppAuthState(status: AuthStatus.authenticated, permissions: permissions);
+    AppAuthState withPermissions(List<String> permissions) => AppAuthState(
+      status: AuthStatus.authenticated,
+      permissions: permissions,
+    );
 
     test('an unrestricted admin holds everything', () {
       final owner = withPermissions(['*']);

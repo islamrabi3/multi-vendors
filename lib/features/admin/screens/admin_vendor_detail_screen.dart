@@ -162,7 +162,7 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
           ],
         ),
       ),
-      onSubmit: () async {
+      onSubmit: (_) async {
         await VendorAdminRepository().updateVendor(vendor.id, {
           'delivery_fee': double.tryParse(fee.text.trim()) ?? 0,
           'billing_model': model,
@@ -760,8 +760,8 @@ class _StatusChip extends StatelessWidget {
     if (vendor.isSuspended) {
       return SoftBadge(
         label: context.l10n.suspended1,
-        fill: Color(0xFFFBE7E4),
-        ink: Color(0xFFC0392B),
+        fill: AppColors.dangerFill,
+        ink: AppColors.dangerInk,
       );
     }
     return SoftBadge(

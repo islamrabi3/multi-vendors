@@ -142,8 +142,9 @@ class CategoryCubit extends Cubit<CategoryState> {
       for (final c in categories) {
         if (c.id == categoryId) category = c;
       }
-      final children = categories.where((c) => c.parentId == categoryId).toList()
-        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final children =
+          categories.where((c) => c.parentId == categoryId).toList()
+            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
       emit(
         state.copyWith(

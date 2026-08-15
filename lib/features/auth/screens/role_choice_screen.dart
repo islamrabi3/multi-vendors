@@ -52,8 +52,7 @@ class _RoleChoiceScreenState extends State<RoleChoiceScreen> {
 
     return BlocListener<AuthCubit, AppAuthState>(
       listenWhen: (a, b) => b.error != null && a.error != b.error,
-      listener: (context, state) =>
-          showFailure(context, state.error!),
+      listener: (context, state) => showFailure(context, state.error!),
       child: Scaffold(
         backgroundColor: AppColors.canvas,
         body: SafeArea(
@@ -68,9 +67,10 @@ class _RoleChoiceScreenState extends State<RoleChoiceScreen> {
                     Text(
                       l10n.chooseYourRoleSubtitle,
                       style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.5,
-                          color: AppColors.textSecondary),
+                        fontSize: 14,
+                        height: 1.5,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     for (final (role, icon, title, body) in options) ...[
@@ -91,16 +91,20 @@ class _RoleChoiceScreenState extends State<RoleChoiceScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.info_outline,
-                            size: 16, color: AppColors.textFaint),
+                        const Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: AppColors.textFaint,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             l10n.roleChoiceIsPermanent,
                             style: const TextStyle(
-                                fontSize: 12,
-                                height: 1.4,
-                                color: AppColors.textFaint),
+                              fontSize: 12,
+                              height: 1.4,
+                              color: AppColors.textFaint,
+                            ),
                           ),
                         ),
                       ],
@@ -110,16 +114,19 @@ class _RoleChoiceScreenState extends State<RoleChoiceScreen> {
               ),
               Padding(
                 padding: EdgeInsets.fromLTRB(
-                    24, 8, 24, 16 + MediaQuery.paddingOf(context).bottom),
+                  24,
+                  8,
+                  24,
+                  16 + MediaQuery.paddingOf(context).bottom,
+                ),
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54)),
+                    minimumSize: const Size.fromHeight(54),
+                  ),
                   onPressed: busy
                       ? null
                       : () => context.read<AuthCubit>().chooseRole(_selected),
-                  child: busy
-                      ? const ButtonSpinner()
-                      : Text(l10n.continueText),
+                  child: busy ? const ButtonSpinner() : Text(l10n.continueText),
                 ),
               ),
             ],
@@ -171,26 +178,34 @@ class _RoleCard extends StatelessWidget {
                 color: selected ? AppColors.primary : AppColors.warmFill,
                 borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
-              child: Icon(icon,
-                  size: 22,
-                  color: selected ? Colors.white : AppColors.primary),
+              child: Icon(
+                icon,
+                size: 22,
+                color: selected ? Colors.white : AppColors.primary,
+              ),
             ),
             const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(body,
-                      style: const TextStyle(
-                          fontSize: 12.5,
-                          height: 1.35,
-                          color: AppColors.textMuted)),
+                  Text(
+                    body,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
             ),

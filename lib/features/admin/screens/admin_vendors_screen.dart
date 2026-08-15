@@ -66,8 +66,7 @@ class _VendorsViewState extends State<_VendorsView> {
             final split = AppBreakpoints.isSplit(constraints.maxWidth);
             return BlocConsumer<AdminVendorsCubit, AdminVendorsState>(
               listenWhen: (p, c) => p.error != c.error && c.error != null,
-              listener: (context, state) =>
-                  showFailure(context, state.error!),
+              listener: (context, state) => showFailure(context, state.error!),
               builder: (context, state) {
                 final cubit = context.read<AdminVendorsCubit>();
                 final list = Column(
@@ -82,7 +81,10 @@ class _VendorsViewState extends State<_VendorsView> {
                               icon: const Icon(Icons.arrow_back),
                               onPressed: () => Navigator.of(context).pop(),
                             ),
-                          Text(context.l10n.vendors, style: AppType.display(26)),
+                          Text(
+                            context.l10n.vendors,
+                            style: AppType.display(26),
+                          ),
                         ],
                       ),
                     ),
@@ -123,7 +125,10 @@ class _VendorsViewState extends State<_VendorsView> {
                   children: [
                     Expanded(flex: 4, child: list),
                     const VerticalDivider(
-                        width: 1, thickness: 1, color: AppColors.border),
+                      width: 1,
+                      thickness: 1,
+                      color: AppColors.border,
+                    ),
                     Expanded(
                       flex: 5,
                       child: _DetailPane(
@@ -184,12 +189,15 @@ class _FilterBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 22),
         children: [
-          _chip('${context.l10n.all} ${state.countFor(VendorFilter.all)}',
-              VendorFilter.all),
           _chip(
-              '${context.l10n.pending} ${state.countFor(VendorFilter.pending)}',
-              VendorFilter.pending,
-              highlight: true),
+            '${context.l10n.all} ${state.countFor(VendorFilter.all)}',
+            VendorFilter.all,
+          ),
+          _chip(
+            '${context.l10n.pending} ${state.countFor(VendorFilter.pending)}',
+            VendorFilter.pending,
+            highlight: true,
+          ),
           _chip(context.l10n.active, VendorFilter.active),
           _chip(context.l10n.suspended, VendorFilter.suspended),
         ],
@@ -202,13 +210,13 @@ class _FilterBar extends StatelessWidget {
     final bg = selected
         ? AppColors.ink
         : highlight
-            ? AppColors.warmFill
-            : AppColors.surface;
+        ? AppColors.warmFill
+        : AppColors.surface;
     final fg = selected
         ? Colors.white
         : highlight
-            ? AppColors.primaryDark
-            : AppColors.textSecondary;
+        ? AppColors.primaryDark
+        : AppColors.textSecondary;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: HoverBuilder(
@@ -219,16 +227,22 @@ class _FilterBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: bg,
               border: Border.all(
-                  color: hovered && !selected
-                      ? AppColors.primary
-                      : selected || highlight
-                          ? Colors.transparent
-                          : AppColors.border),
+                color: hovered && !selected
+                    ? AppColors.primary
+                    : selected || highlight
+                    ? Colors.transparent
+                    : AppColors.border,
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(label,
-                style: TextStyle(
-                    color: fg, fontWeight: FontWeight.w700, fontSize: 12.5)),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
           ),
         ),
       ),
@@ -258,7 +272,9 @@ class _VendorList extends StatelessWidget {
         children: [
           SizedBox(height: 120),
           EmptyView(
-              message: context.l10n.noVendorsHere, icon: Icons.storefront_outlined),
+            message: context.l10n.noVendorsHere,
+            icon: Icons.storefront_outlined,
+          ),
         ],
       );
     }
@@ -268,44 +284,56 @@ class _VendorList extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
         children: [
           if (showSections && state.pending.isNotEmpty) ...[
-            _sectionLabel('${context.l10n.awaitingApproval} · ${state.counts.pending}'),
-            ...state.pending.map((v) => _PendingCard(
-                  vendor: v,
-                  cubit: cubit,
-                  selected: v.id == selectedId,
-                  onSelect: onSelect,
-                )),
+            _sectionLabel(
+              '${context.l10n.awaitingApproval} · ${state.counts.pending}',
+            ),
+            ...state.pending.map(
+              (v) => _PendingCard(
+                vendor: v,
+                cubit: cubit,
+                selected: v.id == selectedId,
+                onSelect: onSelect,
+              ),
+            ),
             const SizedBox(height: 8),
           ],
           if (showSections) ...[
             if (state.active.isNotEmpty)
               _sectionLabel('${context.l10n.active} · ${state.counts.active}'),
-            ...state.active.map((v) => _VendorRow(
+            ...state.active.map(
+              (v) => _VendorRow(
+                vendor: v,
+                selected: v.id == selectedId,
+                onSelect: onSelect,
+              ),
+            ),
+            if (state.suspended.isNotEmpty) ...[
+              _sectionLabel(
+                '${context.l10n.suspended} · ${state.counts.suspended}',
+              ),
+              ...state.suspended.map(
+                (v) => _VendorRow(
                   vendor: v,
                   selected: v.id == selectedId,
                   onSelect: onSelect,
-                )),
-            if (state.suspended.isNotEmpty) ...[
-              _sectionLabel('${context.l10n.suspended} · ${state.counts.suspended}'),
-              ...state.suspended.map((v) => _VendorRow(
-                    vendor: v,
-                    selected: v.id == selectedId,
-                    onSelect: onSelect,
-                  )),
+                ),
+              ),
             ],
           ] else
-            ...vendors.map((v) => v.isPending
-                ? _PendingCard(
-                    vendor: v,
-                    cubit: cubit,
-                    selected: v.id == selectedId,
-                    onSelect: onSelect,
-                  )
-                : _VendorRow(
-                    vendor: v,
-                    selected: v.id == selectedId,
-                    onSelect: onSelect,
-                  )),
+            ...vendors.map(
+              (v) => v.isPending
+                  ? _PendingCard(
+                      vendor: v,
+                      cubit: cubit,
+                      selected: v.id == selectedId,
+                      onSelect: onSelect,
+                    )
+                  : _VendorRow(
+                      vendor: v,
+                      selected: v.id == selectedId,
+                      onSelect: onSelect,
+                    ),
+            ),
           PagingFooter(loading: state.loadingMore, hasMore: state.hasMore),
         ],
       ),
@@ -313,14 +341,17 @@ class _VendorList extends StatelessWidget {
   }
 
   Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(0, 12, 0, 10),
-        child: Text(text.toUpperCase(),
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: AppColors.textFaint)),
-      );
+    padding: const EdgeInsets.fromLTRB(0, 12, 0, 10),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1,
+        color: AppColors.textFaint,
+      ),
+    ),
+  );
 }
 
 /// Store avatar tile (logo or fallback icon).
@@ -373,12 +404,13 @@ class _PendingCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border.all(
-              color: selected
-                  ? AppColors.primary
-                  : hovered
-                      ? AppColors.primaryLight
-                      : const Color(0xFFFAD9CC),
-              width: 1.5),
+            color: selected
+                ? AppColors.primary
+                : hovered
+                ? AppColors.primaryLight
+                : AppColors.attentionBorder,
+            width: 1.5,
+          ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppShadows.card,
         ),
@@ -392,26 +424,34 @@ class _PendingCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(vendor.name,
+                      Text(
+                        vendor.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      if (vendor.addressText != null)
+                        Text(
+                          vendor.addressText!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14.5,
-                              color: AppColors.ink)),
-                      if (vendor.addressText != null)
-                        Text(vendor.addressText!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 11.5, color: AppColors.textMuted)),
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     ],
                   ),
                 ),
                 SoftBadge(
-                    label: context.l10n.newText,
-                    fill: AppColors.warmFill,
-                    ink: AppColors.primaryDark),
+                  label: context.l10n.newText,
+                  fill: AppColors.warmFill,
+                  ink: AppColors.primaryDark,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -420,9 +460,10 @@ class _PendingCard extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(40),
-                        side: const BorderSide(color: AppColors.border),
-                        foregroundColor: AppColors.textMuted),
+                      minimumSize: const Size.fromHeight(40),
+                      side: const BorderSide(color: AppColors.border),
+                      foregroundColor: AppColors.textMuted,
+                    ),
                     onPressed: () => _reject(context),
                     child: Text(context.l10n.reject),
                   ),
@@ -431,7 +472,8 @@ class _PendingCard extends StatelessWidget {
                 Expanded(
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(40)),
+                      minimumSize: const Size.fromHeight(40),
+                    ),
                     onPressed: () => _review(context),
                     child: Text(context.l10n.review),
                   ),
@@ -448,7 +490,8 @@ class _PendingCard extends StatelessWidget {
     final ok = await AppDialogs.showConfirmDialog(
       context: context,
       title: context.l10n.rejectVendor,
-      message: '"${vendor.name}" ${context.l10n.willBeSuspendedAndHiddenFromCustomers}',
+      message:
+          '"${vendor.name}" ${context.l10n.willBeSuspendedAndHiddenFromCustomers}',
       confirmText: context.l10n.reject,
       cancelText: context.l10n.cancel,
       isDestructive: true,
@@ -483,12 +526,13 @@ class _VendorRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border.all(
-                color: selected
-                    ? AppColors.primary
-                    : hovered
-                        ? AppColors.primaryLight
-                        : AppColors.border,
-                width: selected ? 1.5 : 1),
+              color: selected
+                  ? AppColors.primary
+                  : hovered
+                  ? AppColors.primaryLight
+                  : AppColors.border,
+              width: selected ? 1.5 : 1,
+            ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: hovered || selected ? AppShadows.card : null,
           ),
@@ -500,24 +544,32 @@ class _VendorRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(vendor.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.ink)),
+                    Text(
+                      vendor.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.ink,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.star_rounded,
-                            size: 13, color: AppColors.rating),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 13,
+                          color: AppColors.rating,
+                        ),
                         const SizedBox(width: 3),
                         Text(
                           '${vendor.ratingAvg.toStringAsFixed(1)} · '
                           '${vendor.ratingCount} ${context.l10n.ratings}',
                           style: const TextStyle(
-                              fontSize: 11.5, color: AppColors.textMuted),
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -543,9 +595,10 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     if (vendor.isSuspended) {
       return SoftBadge(
-          label: context.l10n.suspended,
-          fill: Color(0xFFFBE7E4),
-          ink: Color(0xFFC0392B));
+        label: context.l10n.suspended,
+        fill: AppColors.dangerFill,
+        ink: AppColors.dangerInk,
+      );
     }
     if (vendor.isOpen) {
       return SoftBadge(
@@ -556,11 +609,16 @@ class _StatusPill extends StatelessWidget {
           width: 6,
           height: 6,
           decoration: const BoxDecoration(
-              color: AppColors.success, shape: BoxShape.circle),
+            color: AppColors.success,
+            shape: BoxShape.circle,
+          ),
         ),
       );
     }
     return SoftBadge(
-        label: context.l10n.closed, fill: Color(0xFFF1ECE6), ink: AppColors.textMuted);
+      label: context.l10n.closed,
+      fill: AppColors.neutralFill,
+      ink: AppColors.textMuted,
+    );
   }
 }

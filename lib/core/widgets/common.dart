@@ -30,8 +30,8 @@ class AppNetworkImage extends StatelessWidget {
     final placeholder = Container(
       width: width,
       height: height,
-      color: const Color(0xFFF3E7DE),
-      child: const Icon(Icons.restaurant, color: Color(0xFFB9A492)),
+      color: AppColors.imagePlaceholder,
+      child: const Icon(Icons.restaurant, color: AppColors.imagePlaceholderInk),
     );
     final child = url == null || url!.isEmpty
         ? placeholder
@@ -41,7 +41,17 @@ class AppNetworkImage extends StatelessWidget {
             height: height,
             fit: fit,
             placeholder: (_, _) => placeholder,
-            errorWidget: (_, _, _) => placeholder,
+            // The placeholder is the right thing to *show* — a broken-image
+            // glyph helps nobody — but swallowing the reason is not. Every
+            // image in the app failing at once looked identical to every image
+            // having no URL, with nothing in the log to tell the two apart.
+            errorWidget: (_, failedUrl, error) {
+              assert(() {
+                debugPrint('AppNetworkImage failed: $failedUrl\n  $error');
+                return true;
+              }());
+              return placeholder;
+            },
           );
     if (borderRadius == null) return child;
     return ClipRRect(borderRadius: borderRadius!, child: child);
@@ -415,7 +425,7 @@ class OrderStatusChip extends StatelessWidget {
     OrderStatus.outForDelivery => (AppColors.successFill, AppColors.successInk),
     OrderStatus.delivered => (AppColors.successFill, AppColors.successInk),
     OrderStatus.cancelled ||
-    OrderStatus.rejected => (const Color(0xFFFBE7E4), const Color(0xFFC0392B)),
+    OrderStatus.rejected => (AppColors.dangerFill, AppColors.dangerInk),
   };
 
   @override

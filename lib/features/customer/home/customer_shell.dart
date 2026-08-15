@@ -13,8 +13,9 @@ class CustomerShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cartCount =
-        context.select((CartCubit cubit) => cubit.state.itemCount);
+    final cartCount = context.select(
+      (CartCubit cubit) => cubit.state.itemCount,
+    );
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: shell,
@@ -32,7 +33,10 @@ class CustomerShell extends StatelessWidget {
                 icon: const Icon(Icons.shopping_cart_outlined, size: 20),
                 label: Text(
                   '$cartCount',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             )
@@ -57,11 +61,19 @@ class CustomerShell extends StatelessWidget {
             selectedItemColor: AppColors.primary,
             unselectedItemColor: AppColors.textFaint,
             selectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 12, height: 1.5),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              height: 1.5,
+            ),
             unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w500, fontSize: 12, height: 1.5),
-            onTap: (index) => shell.goBranch(index,
-                initialLocation: index == shell.currentIndex),
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              height: 1.5,
+            ),
+            onTap: (index) => shell.goBranch(
+              index,
+              initialLocation: index == shell.currentIndex,
+            ),
             items: [
               BottomNavigationBarItem(
                 icon: Icon(Icons.home_outlined),

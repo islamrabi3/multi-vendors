@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/web_auth_frame.dart';
 import '../../../core/utils/platform_capabilities.dart';
 import '../../../core/models/profile.dart';
 import '../../../core/repositories/auth_repository.dart';
@@ -86,6 +87,356 @@ class _SignupFormState extends State<SignupForm> {
 
   @override
   Widget build(BuildContext context) {
+    final webWide = AppBreakpoints.isWebWide(context);
+    final body = BlocListener<AuthCubit, AppAuthState>(
+      listenWhen: (previous, current) =>
+          previous.error != current.error || previous.info != current.info,
+      listener: (context, state) {
+        if (state.error != null) {
+          showFailure(context, state.error!);
+        } else if (state.info != null) {
+          showSnack(context, state.info!);
+          context.go('/login');
+        }
+      },
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 8),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.l10n.createYournaccount,
+                  style: AppType.display(30, color: AppColors.ink),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.l10n.howWillYouUseKitchenIn,
+                  style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 22),
+
+                // Role selector cards
+                _RoleCard(
+                  emoji: '🍔',
+                  title: context.l10n.orderFood,
+                  subtitle: context.l10n.roleCustomerDesc,
+                  selected: _role == UserRole.customer,
+                  onTap: () => setState(() => _role = UserRole.customer),
+                ),
+                const SizedBox(height: 12),
+                _RoleCard(
+                  emoji: '🏪',
+                  title: context.l10n.sellAsAVendor,
+                  subtitle: context.l10n.roleVendorDesc,
+                  selected: _role == UserRole.vendor,
+                  onTap: () => setState(() => _role = UserRole.vendor),
+                ),
+                const SizedBox(height: 12),
+                _RoleCard(
+                  emoji: '🛵',
+                  title: context.l10n.deliverOrders,
+                  subtitle: context.l10n.roleDriverDesc,
+                  selected: _role == UserRole.driver,
+                  onTap: () => setState(() => _role = UserRole.driver),
+                ),
+
+                const SizedBox(height: 22),
+
+                // Inputs
+                TextFormField(
+                  controller: _name,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.fullName,
+                    fillColor: Colors.white,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? context.l10n.required
+                      : null,
+                ),
+                const SizedBox(height: 11),
+                TextFormField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.phoneNumber,
+                    fillColor: Colors.white,
+                  ),
+                  validator: (v) => (v == null || v.trim().length < 8)
+                      ? context.l10n.enterAValidPhone
+                      : null,
+                ),
+                const SizedBox(height: 11),
+                TextFormField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.nameemailcom,
+                    fillColor: Colors.white,
+                  ),
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? context.l10n.enterAValidEmail
+                      : null,
+                ),
+                const SizedBox(height: 11),
+                TextFormField(
+                  controller: _password,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.passwordMin6Chars,
+                    fillColor: Colors.white,
+                  ),
+                  validator: (v) => (v == null || v.length < 6)
+                      ? context.l10n.passwordMinSixChars
+                      : null,
+                ),
+                if (_role == UserRole.driver) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppRadii.xl),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.badge_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                context.l10n.driverDocumentsTitle,
+                                style: AppType.heading(
+                                  15,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          context.l10n.driverDocumentsSubtitle,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11.5,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        Text(
+                          '🪪 ${context.l10n.nationalIdSection}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DocUploadButton(
+                                label: context.l10n.idFront,
+                                file: _idFront,
+                                onTap: () => _pickDocument(
+                                  (f) => setState(() => _idFront = f),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _DocUploadButton(
+                                label: context.l10n.idBack,
+                                file: _idBack,
+                                onTap: () => _pickDocument(
+                                  (f) => setState(() => _idBack = f),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          '📜 ${context.l10n.vehicleLicenseSection}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DocUploadButton(
+                                label: context.l10n.licenseFront,
+                                file: _licenseFront,
+                                onTap: () => _pickDocument(
+                                  (f) => setState(() => _licenseFront = f),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _DocUploadButton(
+                                label: context.l10n.licenseBack,
+                                file: _licenseBack,
+                                onTap: () => _pickDocument(
+                                  (f) => setState(() => _licenseBack = f),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 30),
+
+                BlocBuilder<AuthCubit, AppAuthState>(
+                  builder: (context, state) => InkWell(
+                    onTap: state.busy ? null : _submit,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      height: 54,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: AppShadows.primaryGlow,
+                      ),
+                      child: state.busy
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              context.l10n.continueText,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                // Identity providers carry no role, so the picked role is
+                // claimed server-side on the first session.
+                ...[
+                  const SizedBox(height: 26),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: AppColors.border)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Text(
+                          context.l10n.or,
+                          style: const TextStyle(
+                            color: AppColors.textFaint,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const Expanded(child: Divider(color: AppColors.border)),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  BlocBuilder<AuthCubit, AppAuthState>(
+                    builder: (context, state) => Row(
+                      children: [
+                        // Apple only where it means something; see the
+                        // login screen.
+                        if (supportsAppleSignIn) ...[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: state.busy
+                                  ? null
+                                  : () => context
+                                        .read<AuthCubit>()
+                                        .signInWithApple(signupRole: _role),
+                              icon: const Icon(Icons.apple, size: 20),
+                              label: Text(context.l10n.apple),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                side: const BorderSide(color: AppColors.border),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: state.busy
+                                ? null
+                                : () => context
+                                      .read<AuthCubit>()
+                                      .signInWithGoogle(signupRole: _role),
+                            icon: Text(
+                              'G',
+                              style: AppType.display(
+                                18,
+                                color: AppColors.primaryDark,
+                              ),
+                            ),
+                            label: Text(context.l10n.google),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(color: AppColors.border),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                const _TermsNotice(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (webWide) {
+      // No AppBar on web — a lone back chevron floating over a 1400px window
+      // is a phone affordance. The "already have an account" link at the foot
+      // of the form is the way back, and the browser's own back button still
+      // works.
+      return WebAuthFrame(
+        headline: context.l10n.createAccount,
+        subhead: context.l10n.signupWebSubhead,
+        child: body,
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
@@ -100,346 +451,7 @@ class _SignupFormState extends State<SignupForm> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: BlocListener<AuthCubit, AppAuthState>(
-        listenWhen: (previous, current) =>
-            previous.error != current.error || previous.info != current.info,
-        listener: (context, state) {
-          if (state.error != null) {
-            showFailure(context, state.error!);
-          } else if (state.info != null) {
-            showSnack(context, state.info!);
-            context.go('/login');
-          }
-        },
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 8),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    context.l10n.createYournaccount,
-                    style: AppType.display(30, color: AppColors.ink),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    context.l10n.howWillYouUseEaty,
-                    style: TextStyle(fontSize: 14, color: AppColors.textMuted),
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Role selector cards
-                  _RoleCard(
-                    emoji: '🍔',
-                    title: context.l10n.orderFood,
-                    subtitle: context.l10n.roleCustomerDesc,
-                    selected: _role == UserRole.customer,
-                    onTap: () => setState(() => _role = UserRole.customer),
-                  ),
-                  const SizedBox(height: 12),
-                  _RoleCard(
-                    emoji: '🏪',
-                    title: context.l10n.sellAsAVendor,
-                    subtitle: context.l10n.roleVendorDesc,
-                    selected: _role == UserRole.vendor,
-                    onTap: () => setState(() => _role = UserRole.vendor),
-                  ),
-                  const SizedBox(height: 12),
-                  _RoleCard(
-                    emoji: '🛵',
-                    title: context.l10n.deliverOrders,
-                    subtitle: context.l10n.roleDriverDesc,
-                    selected: _role == UserRole.driver,
-                    onTap: () => setState(() => _role = UserRole.driver),
-                  ),
-
-                  const SizedBox(height: 22),
-
-                  // Inputs
-                  TextFormField(
-                    controller: _name,
-                    decoration: InputDecoration(
-                      hintText: context.l10n.fullName,
-                      fillColor: Colors.white,
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? context.l10n.required
-                        : null,
-                  ),
-                  const SizedBox(height: 11),
-                  TextFormField(
-                    controller: _phone,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      hintText: context.l10n.phoneNumber,
-                      fillColor: Colors.white,
-                    ),
-                    validator: (v) => (v == null || v.trim().length < 8)
-                        ? context.l10n.enterAValidPhone
-                        : null,
-                  ),
-                  const SizedBox(height: 11),
-                  TextFormField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      hintText: context.l10n.nameemailcom,
-                      fillColor: Colors.white,
-                    ),
-                    validator: (v) => (v == null || !v.contains('@'))
-                        ? context.l10n.enterAValidEmail
-                        : null,
-                  ),
-                  const SizedBox(height: 11),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      hintText: context.l10n.passwordMin6Chars,
-                      fillColor: Colors.white,
-                    ),
-                    validator: (v) => (v == null || v.length < 6)
-                        ? context.l10n.passwordMinSixChars
-                        : null,
-                  ),
-                  if (_role == UserRole.driver) ...[
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppRadii.xl),
-                        border: Border.all(color: AppColors.border),
-                        boxShadow: AppShadows.card,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.badge_rounded,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  context.l10n.driverDocumentsTitle,
-                                  style: AppType.heading(
-                                    15,
-                                    color: AppColors.ink,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            context.l10n.driverDocumentsSubtitle,
-                            style: const TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11.5,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-
-                          Text(
-                            '🪪 ${context.l10n.nationalIdSection}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _DocUploadButton(
-                                  label: context.l10n.idFront,
-                                  file: _idFront,
-                                  onTap: () => _pickDocument(
-                                    (f) => setState(() => _idFront = f),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _DocUploadButton(
-                                  label: context.l10n.idBack,
-                                  file: _idBack,
-                                  onTap: () => _pickDocument(
-                                    (f) => setState(() => _idBack = f),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          Text(
-                            '📜 ${context.l10n.vehicleLicenseSection}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _DocUploadButton(
-                                  label: context.l10n.licenseFront,
-                                  file: _licenseFront,
-                                  onTap: () => _pickDocument(
-                                    (f) => setState(() => _licenseFront = f),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _DocUploadButton(
-                                  label: context.l10n.licenseBack,
-                                  file: _licenseBack,
-                                  onTap: () => _pickDocument(
-                                    (f) => setState(() => _licenseBack = f),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 30),
-
-                  BlocBuilder<AuthCubit, AppAuthState>(
-                    builder: (context, state) => InkWell(
-                      onTap: state.busy ? null : _submit,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        height: 54,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: AppShadows.primaryGlow,
-                        ),
-                        child: state.busy
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                context.l10n.continueText,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                  // Identity providers carry no role, so the picked role is
-                  // claimed server-side on the first session.
-                  ...[
-                    const SizedBox(height: 26),
-                    Row(
-                      children: [
-                        const Expanded(child: Divider(color: AppColors.border)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            context.l10n.or,
-                            style: const TextStyle(
-                              color: AppColors.textFaint,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const Expanded(child: Divider(color: AppColors.border)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    BlocBuilder<AuthCubit, AppAuthState>(
-                      builder: (context, state) => Row(
-                        children: [
-                          // Apple only where it means something; see the
-                          // login screen.
-                          if (supportsAppleSignIn) ...[
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: state.busy
-                                    ? null
-                                    : () => context
-                                          .read<AuthCubit>()
-                                          .signInWithApple(signupRole: _role),
-                                icon: const Icon(Icons.apple, size: 20),
-                                label: Text(context.l10n.apple),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  side: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                          ],
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: state.busy
-                                  ? null
-                                  : () => context
-                                        .read<AuthCubit>()
-                                        .signInWithGoogle(signupRole: _role),
-                              icon: Text(
-                                'G',
-                                style: AppType.display(
-                                  18,
-                                  color: AppColors.primaryDark,
-                                ),
-                              ),
-                              label: Text(context.l10n.google),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                side: const BorderSide(color: AppColors.border),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  const _TermsNotice(),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      body: body,
     );
   }
 }
@@ -544,7 +556,7 @@ class _RoleCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: selected ? AppColors.warmFill : const Color(0xFFF3EEE8),
+                color: selected ? AppColors.warmFill : AppColors.neutralFill,
                 borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,
@@ -582,7 +594,7 @@ class _RoleCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: selected ? AppColors.primary : Colors.transparent,
                 border: Border.all(
-                  color: selected ? AppColors.primary : const Color(0xFFDDD4CB),
+                  color: selected ? AppColors.primary : AppColors.borderStrong,
                   width: 2,
                 ),
               ),

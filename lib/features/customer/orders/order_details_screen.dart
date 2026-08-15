@@ -79,7 +79,7 @@ class _OrderDetailsView extends StatelessWidget {
             ),
           ],
         ),
-        onSubmit: () async {
+        onSubmit: (_) async {
           final subj = subject.text.trim();
           final desc = description.text.trim();
           // Returning null keeps the dialog open — nothing to report yet.
@@ -228,9 +228,15 @@ class _OrderDetailsView extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               const SizedBox(height: 24),
-              if (order.status == OrderStatus.outForDelivery ||
-                  order.status == OrderStatus.preparing ||
-                  order.status == OrderStatus.accepted)
+              // Only once a driver is actually carrying the order.
+              //
+              // The thread is scoped to the order, so before a driver is
+              // assigned the messages went to the *store* while the button
+              // said "Driver / Support" — the customer was writing to someone
+              // other than who they thought. While the kitchen is still
+              // cooking there is nobody to chat to, and "Report an issue"
+              // below already reaches support.
+              if (order.driverId != null && !order.status.isTerminal)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: SizedBox(
@@ -242,7 +248,11 @@ class _OrderDetailsView extends StatelessWidget {
                         builder: (_) => OrderChatSheet(orderId: order.id),
                       ),
                       icon: const Icon(Icons.chat_bubble_outline),
-                      label: Text(context.l10n.liveChatWithDriverSupport),
+                      label: Text(
+                        context.l10n.chatWithDriver,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ),

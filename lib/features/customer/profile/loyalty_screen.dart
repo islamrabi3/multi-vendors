@@ -37,17 +37,18 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.loyaltyRewards),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(context.l10n.loyaltyRewards), elevation: 0),
       body: _isLoading
           ? const _LoyaltySkeleton()
           : RefreshIndicator(
               onRefresh: _loadLoyalty,
               child: ListView(
-                padding: EdgeInsets.fromLTRB(16, 16, 16,
-                    16 + MediaQuery.paddingOf(context).bottom),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  16 + MediaQuery.paddingOf(context).bottom,
+                ),
                 children: [
                   Container(
                     width: double.infinity,
@@ -75,7 +76,10 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
                         const SizedBox(height: 4),
                         Text(
                           context.l10n.earnPointsOnOrders,
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -83,7 +87,10 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
                   const SizedBox(height: 24),
                   Text(
                     context.l10n.pointsHistory,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (_history.isEmpty)
@@ -100,8 +107,13 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
                     ..._history.map((item) {
                       final pts = (item['points_change'] as num?) ?? 0;
                       return ListTile(
-                        leading: const Icon(Icons.card_giftcard, color: Colors.purple),
-                        title: Text(item['action'] as String? ?? 'Order reward'),
+                        leading: const Icon(
+                          Icons.card_giftcard,
+                          color: Colors.purple,
+                        ),
+                        title: Text(
+                          item['action'] as String? ?? 'Order reward',
+                        ),
                         trailing: Text(
                           '+$pts ${context.l10n.points}',
                           style: const TextStyle(

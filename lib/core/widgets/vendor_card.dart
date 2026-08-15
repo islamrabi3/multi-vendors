@@ -143,6 +143,9 @@ class _Thumbnail extends StatelessWidget {
 
   static const _size = 92.0;
 
+  static Widget _cover(String? url) =>
+      AppNetworkImage(url: url, height: _size, width: _size);
+
   @override
   Widget build(BuildContext context) {
     final logo = vendor.logoUrl;
@@ -153,25 +156,24 @@ class _Thumbnail extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.md),
-            child: ColorFiltered(
-              // A shut store is still recognisable, just visibly out of play.
-              colorFilter: open
-                  ? const ColorFilter.mode(
-                      Colors.transparent,
-                      BlendMode.multiply,
-                    )
-                  : const ColorFilter.matrix(<double>[
+            // A shut store is greyed out; an open one is left alone.
+            //
+            // There is no "identity" ColorFilter, so this branches on the
+            // widget rather than on the filter. Passing a transparent
+            // `BlendMode.multiply` as a no-op is not one: transparent is
+            // (0,0,0,0) once premultiplied, and multiplying by it zeroes every
+            // channel — which rendered every open store's photo invisible.
+            child: open
+                ? _cover(vendor.coverUrl)
+                : ColorFiltered(
+                    colorFilter: const ColorFilter.matrix(<double>[
                       0.2126, 0.7152, 0.0722, 0, 0, //
                       0.2126, 0.7152, 0.0722, 0, 0, //
                       0.2126, 0.7152, 0.0722, 0, 0, //
                       0, 0, 0, 1, 0, //
                     ]),
-              child: AppNetworkImage(
-                url: vendor.coverUrl,
-                height: _size,
-                width: _size,
-              ),
-            ),
+                    child: _cover(vendor.coverUrl),
+                  ),
           ),
           // The logo badge, as on the reference: the brand mark sits on the
           // dish photo rather than replacing it.

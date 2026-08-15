@@ -30,9 +30,11 @@ class VendorDetailsState extends Equatable {
 
   /// Products whose category was deleted still show under "Other".
   List<Product> get uncategorized => products
-      .where((p) =>
-          p.categoryId == null ||
-          !menuCategories.any((c) => c.id == p.categoryId))
+      .where(
+        (p) =>
+            p.categoryId == null ||
+            !menuCategories.any((c) => c.id == p.categoryId),
+      )
       .toList();
 
   VendorDetailsState copyWith({
@@ -42,24 +44,29 @@ class VendorDetailsState extends Equatable {
     List<ProductCategory>? menuCategories,
     List<Product>? products,
     bool? isFavorite,
-  }) =>
-      VendorDetailsState(
-        loading: loading ?? this.loading,
-        error: error,
-        vendor: vendor ?? this.vendor,
-        menuCategories: menuCategories ?? this.menuCategories,
-        products: products ?? this.products,
-        isFavorite: isFavorite ?? this.isFavorite,
-      );
+  }) => VendorDetailsState(
+    loading: loading ?? this.loading,
+    error: error,
+    vendor: vendor ?? this.vendor,
+    menuCategories: menuCategories ?? this.menuCategories,
+    products: products ?? this.products,
+    isFavorite: isFavorite ?? this.isFavorite,
+  );
 
   @override
-  List<Object?> get props =>
-      [loading, error, vendor, menuCategories, products, isFavorite];
+  List<Object?> get props => [
+    loading,
+    error,
+    vendor,
+    menuCategories,
+    products,
+    isFavorite,
+  ];
 }
 
 class VendorDetailsCubit extends Cubit<VendorDetailsState> {
   VendorDetailsCubit(this._catalog, this._favorites, this.vendorId)
-      : super(const VendorDetailsState()) {
+    : super(const VendorDetailsState()) {
     load();
     _watchCatalog();
   }
@@ -97,13 +104,15 @@ class VendorDetailsCubit extends Cubit<VendorDetailsState> {
         _catalog.fetchProducts(vendorId),
         _favorites.fetchFavoriteVendorIds(),
       ]);
-      emit(state.copyWith(
-        loading: false,
-        vendor: results[0] as Vendor,
-        menuCategories: results[1] as List<ProductCategory>,
-        products: results[2] as List<Product>,
-        isFavorite: (results[3] as Set<String>).contains(vendorId),
-      ));
+      emit(
+        state.copyWith(
+          loading: false,
+          vendor: results[0] as Vendor,
+          menuCategories: results[1] as List<ProductCategory>,
+          products: results[2] as List<Product>,
+          isFavorite: (results[3] as Set<String>).contains(vendorId),
+        ),
+      );
     } catch (error) {
       emit(state.copyWith(loading: false, error: error.toString()));
     }

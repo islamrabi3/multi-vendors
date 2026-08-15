@@ -9,7 +9,9 @@ import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/location_picker.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
 
 /// Where the platform delivers.
 ///
@@ -18,7 +20,12 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 /// area the platform is ungeofenced and accepts orders everywhere, which is
 /// stated on screen so an empty list is never mistaken for "nobody can order".
 class AdminServiceAreasScreen extends StatefulWidget {
-  const AdminServiceAreasScreen({super.key});
+  const AdminServiceAreasScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   State<AdminServiceAreasScreen> createState() =>
@@ -30,9 +37,18 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
   late Stream<List<ServiceArea>> _stream = _repo.serviceAreasStream();
   String? _busyId;
 
-  void _reload() => setState(() {
-    _stream = _repo.serviceAreasStream();
-  });
+  /// Resubscribes and resolves once the new stream has actually produced a
+  /// list, so pull-to-refresh holds its spinner until there is something to
+  /// show. Returning void ended the pull on the frame it started.
+  Future<void> _reload() {
+    final stream = _repo.serviceAreasStream();
+    // Block body: an arrow closure returns the assigned value, and a closure
+    // returning a Stream or Future makes setState throw.
+    setState(() {
+      _stream = stream;
+    });
+    return stream.first;
+  }
 
   Future<void> _edit([ServiceArea? area]) async {
     LatLng? centre = area == null ? null : LatLng(area.lat, area.lng);
@@ -84,55 +100,90 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final webWide = AppBreakpoints.isWebWide(context);
+
+    final list = StreamBuilder<List<ServiceArea>>(
+      stream: _stream,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const _AreasSkeleton();
+        }
+        if (snap.hasError) {
+          return FailureView(error: snap.error!, onRetry: _reload);
+        }
+        final areas = snap.data ?? const <ServiceArea>[];
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async => _reload(),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.gutter,
+              AppSpace.md,
+              AppSpace.gutter,
+              96 + MediaQuery.paddingOf(context).bottom,
+            ),
+            children: [
+              if (!areas.any((a) => a.isActive)) const _CoverageNotice(),
+              for (final area in areas) ...[
+                _AreaCard(
+                  area: area,
+                  busy: _busyId == area.id,
+                  onEdit: () => _edit(area),
+                  onToggle: () => _toggle(area),
+                  onDelete: () => _delete(area),
+                ),
+                const SizedBox(height: AppSpace.sm),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+
+    // WebPageChrome has no floating-action-button slot of its own, so
+    // embedded/wide both get their own small inner Scaffold just to keep the
+    // "add area" affordance — the map/list content itself (`list`) is the
+    // exact same widget in every branch.
+    if (widget.embedded) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _edit(),
+          icon: const Icon(Icons.add_location_alt_outlined),
+          label: Text(l10n.addServiceArea),
+        ),
+        body: list,
+      );
+    }
+
+    if (webWide) {
+      return WebPageChrome(
+        activeId: 'manage:/admin-app/service-areas',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.serviceAreas,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _edit(),
+            icon: const Icon(Icons.add_location_alt_outlined),
+            label: Text(l10n.addServiceArea),
+          ),
+          body: list,
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(title: Text(context.l10n.serviceAreas)),
+      appBar: AppBar(title: Text(l10n.serviceAreas)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add_location_alt_outlined),
-        label: Text(context.l10n.addServiceArea),
+        label: Text(l10n.addServiceArea),
       ),
-      body: SafeArea(
-        top: false,
-        child: StreamBuilder<List<ServiceArea>>(
-          stream: _stream,
-          builder: (context, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const _AreasSkeleton();
-            }
-            if (snap.hasError) {
-              return FailureView(error: snap.error!, onRetry: _reload);
-            }
-            final areas = snap.data ?? const <ServiceArea>[];
-            return RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: () async => _reload(),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  AppSpace.gutter,
-                  AppSpace.md,
-                  AppSpace.gutter,
-                  96 + MediaQuery.paddingOf(context).bottom,
-                ),
-                children: [
-                  if (!areas.any((a) => a.isActive)) const _CoverageNotice(),
-                  for (final area in areas) ...[
-                    _AreaCard(
-                      area: area,
-                      busy: _busyId == area.id,
-                      onEdit: () => _edit(area),
-                      onToggle: () => _toggle(area),
-                      onDelete: () => _delete(area),
-                    ),
-                    const SizedBox(height: AppSpace.sm),
-                  ],
-                ],
-              ),
-            );
-          },
-        ),
-      ),
+      body: SafeArea(top: false, child: list),
     );
   }
 }

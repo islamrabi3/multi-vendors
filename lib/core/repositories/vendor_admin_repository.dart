@@ -107,6 +107,40 @@ class VendorAdminRepository {
           .from('products')
           .update({'category_id': categoryId}).eq('id', productId);
 
+  /// Sets a product's stock to an exact count, or moves it by a delta.
+  ///
+  /// Goes through the RPC rather than an update, because every movement has to
+  /// leave a row in `stock_movements` saying why — a stock number nobody can
+  /// explain is a stock number nobody trusts.
+  Future<int> adjustStock({
+    required String productId,
+    int? delta,
+    int? setTo,
+    String reason = 'correction',
+    String? note,
+  }) async {
+    final result = await supabase.rpc(
+      'vendor_adjust_stock',
+      params: {
+        'p_product_id': productId,
+        'p_delta': delta,
+        'p_set_to': setTo,
+        'p_reason': reason,
+        'p_note': note,
+      },
+    );
+    return (result as num?)?.toInt() ?? 0;
+  }
+
+  /// Products that are out, or close to it.
+  Future<List<Map<String, dynamic>>> stockAlerts(String vendorId) async {
+    final rows = await supabase.rpc(
+      'vendor_stock_alerts',
+      params: {'p_vendor_id': vendorId},
+    );
+    return (rows as List).cast<Map<String, dynamic>>();
+  }
+
   Future<Product> saveProduct(Map<String, dynamic> values, {String? id}) async {
     final query = id == null
         ? supabase.from('products').insert(values)

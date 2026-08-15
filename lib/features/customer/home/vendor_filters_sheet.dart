@@ -50,12 +50,12 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
   static const _ratingSteps = <double?>[null, 3, 4, 4.5];
 
   String _sortLabel(BuildContext context, VendorSort sort) => switch (sort) {
-        VendorSort.recommended => context.l10n.sortRecommended,
-        VendorSort.nearest => context.l10n.sortNearest,
-        VendorSort.rating => context.l10n.sortRating,
-        VendorSort.deliveryFee => context.l10n.sortDeliveryFee,
-        VendorSort.prepTime => context.l10n.sortPrepTime,
-      };
+    VendorSort.recommended => context.l10n.sortRecommended,
+    VendorSort.nearest => context.l10n.sortNearest,
+    VendorSort.rating => context.l10n.sortRating,
+    VendorSort.deliveryFee => context.l10n.sortDeliveryFee,
+    VendorSort.prepTime => context.l10n.sortPrepTime,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +75,10 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(context.l10n.filters, style: AppType.heading(19)),
+                    child: Text(
+                      context.l10n.filters,
+                      style: AppType.heading(19),
+                    ),
                   ),
                   if (_draft.activeCount > 0)
                     TextButton(
@@ -92,13 +95,14 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
                 spacing: AppSpace.sm,
                 runSpacing: AppSpace.sm,
                 children: [
-                  for (final sort in VendorSort.values.where((s) =>
-                      s != VendorSort.nearest || widget.canSortByDistance))
+                  for (final sort in VendorSort.values.where(
+                    (s) => s != VendorSort.nearest || widget.canSortByDistance,
+                  ))
                     _Chip(
                       label: _sortLabel(context, sort),
                       selected: _draft.sort == sort,
-                      onTap: () => setState(
-                          () => _draft = _draft.copyWith(sort: sort)),
+                      onTap: () =>
+                          setState(() => _draft = _draft.copyWith(sort: sort)),
                     ),
                 ],
               ),
@@ -113,22 +117,30 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
                     label: context.l10n.openStoresOnly,
                     icon: Icons.storefront_outlined,
                     selected: _draft.openOnly,
-                    onTap: () => setState(() =>
-                        _draft = _draft.copyWith(openOnly: !_draft.openOnly)),
+                    onTap: () => setState(
+                      () =>
+                          _draft = _draft.copyWith(openOnly: !_draft.openOnly),
+                    ),
                   ),
                   _Chip(
                     label: context.l10n.freeDeliveryOnly,
                     icon: Icons.delivery_dining_outlined,
                     selected: _draft.freeDeliveryOnly,
-                    onTap: () => setState(() => _draft = _draft.copyWith(
-                        freeDeliveryOnly: !_draft.freeDeliveryOnly)),
+                    onTap: () => setState(
+                      () => _draft = _draft.copyWith(
+                        freeDeliveryOnly: !_draft.freeDeliveryOnly,
+                      ),
+                    ),
                   ),
                   _Chip(
                     label: context.l10n.favoritesOnly,
                     icon: Icons.favorite_border,
                     selected: _draft.favoritesOnly,
-                    onTap: () => setState(() => _draft = _draft.copyWith(
-                        favoritesOnly: !_draft.favoritesOnly)),
+                    onTap: () => setState(
+                      () => _draft = _draft.copyWith(
+                        favoritesOnly: !_draft.favoritesOnly,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -145,9 +157,11 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
                           ? context.l10n.any
                           : '≤ ${formatMoney(fee)}',
                       selected: _draft.maxDeliveryFee == fee,
-                      onTap: () => setState(() => _draft = fee == null
-                          ? _draft.copyWith(clearMaxDeliveryFee: true)
-                          : _draft.copyWith(maxDeliveryFee: fee)),
+                      onTap: () => setState(
+                        () => _draft = fee == null
+                            ? _draft.copyWith(clearMaxDeliveryFee: true)
+                            : _draft.copyWith(maxDeliveryFee: fee),
+                      ),
                     ),
                 ],
               ),
@@ -165,9 +179,11 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
                           : '${rating.toStringAsFixed(rating % 1 == 0 ? 0 : 1)}+',
                       icon: rating == null ? null : Icons.star_rounded,
                       selected: _draft.minRating == rating,
-                      onTap: () => setState(() => _draft = rating == null
-                          ? _draft.copyWith(clearMinRating: true)
-                          : _draft.copyWith(minRating: rating)),
+                      onTap: () => setState(
+                        () => _draft = rating == null
+                            ? _draft.copyWith(clearMinRating: true)
+                            : _draft.copyWith(minRating: rating),
+                      ),
                     ),
                 ],
               ),
@@ -175,7 +191,8 @@ class _VendorFiltersSheetState extends State<_VendorFiltersSheet> {
 
               FilledButton(
                 style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52)),
+                  minimumSize: const Size.fromHeight(52),
+                ),
                 onPressed: () => Navigator.pop(context, _draft),
                 child: Text(context.l10n.showResults),
               ),
@@ -194,14 +211,17 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpace.sm),
-        child: Text(text.toUpperCase(),
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: AppColors.textFaint)),
-      );
+    padding: const EdgeInsets.only(bottom: AppSpace.sm),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1,
+        color: AppColors.textFaint,
+      ),
+    ),
+  );
 }
 
 class _Chip extends StatelessWidget {
@@ -224,27 +244,35 @@ class _Chip extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.md + 2, vertical: 9),
+          horizontal: AppSpace.md + 2,
+          vertical: 9,
+        ),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : AppColors.surface,
           border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border),
+            color: selected ? AppColors.primary : AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon,
-                  size: 15,
-                  color: selected ? Colors.white : AppColors.textSecondary),
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? Colors.white : AppColors.textSecondary,
+              ),
               const SizedBox(width: 5),
             ],
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : AppColors.ink)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : AppColors.ink,
+              ),
+            ),
           ],
         ),
       ),

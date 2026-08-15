@@ -10,7 +10,10 @@ enum AdPlacement {
   homeInline('home_inline'),
   vendorTop('vendor_top'),
   cart('cart'),
-  orderTracking('order_tracking');
+  orderTracking('order_tracking'),
+
+  /// Full screen, over everything, with its own close control.
+  interstitial('interstitial');
 
   const AdPlacement(this.wire);
 
@@ -48,6 +51,11 @@ class BannerItem extends Equatable {
     this.linkUrl,
     this.impressions = 0,
     this.clicks = 0,
+    this.ctaLabel,
+    this.dismissible = true,
+    this.dismissAfterSeconds = 0,
+    this.frequency = 'once',
+    this.dismissals = 0,
   });
 
   final String id;
@@ -81,8 +89,28 @@ class BannerItem extends Equatable {
 
   final int impressions;
   final int clicks;
+  final int dismissals;
+
+  /// Interstitials only. Null means the whole surface is the tap target and no
+  /// button is drawn — right for artwork that carries its own call to action.
+  final String? ctaLabel;
+
+  /// A full-screen ad the user cannot leave is a trap, so this is true by
+  /// default. False is for the rare notice that must be acknowledged.
+  final bool dismissible;
+
+  /// Seconds before the close control appears. Zero for an advert.
+  final int dismissAfterSeconds;
+
+  /// `once` | `daily` | `every_session`. Enforced on this side, because "has
+  /// this person seen it" is per-install state.
+  final String frequency;
 
   bool get isVideo => (videoUrl?.isNotEmpty ?? false);
+
+  /// SVG artwork is rendered by a different widget from a raster image, and
+  /// the URL is the only signal the database carries.
+  bool get isSvg => imageUrl.toLowerCase().split('?').first.endsWith('.svg');
 
   /// Live right now, as the server would judge it. The server applies the
   /// same rule; this is only so the admin list can explain itself.
@@ -131,6 +159,11 @@ class BannerItem extends Equatable {
     linkUrl: map['link_url'] as String?,
     impressions: ((map['impressions'] as num?) ?? 0).toInt(),
     clicks: ((map['clicks'] as num?) ?? 0).toInt(),
+    ctaLabel: map['cta_label'] as String?,
+    dismissible: (map['dismissible'] as bool?) ?? true,
+    dismissAfterSeconds: ((map['dismiss_after_seconds'] as num?) ?? 0).toInt(),
+    frequency: (map['frequency'] as String?) ?? 'once',
+    dismissals: ((map['dismissals'] as num?) ?? 0).toInt(),
   );
 
   @override

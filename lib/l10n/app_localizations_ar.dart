@@ -18,7 +18,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createYournaccount => 'إنشاء حسابك';
 
   @override
-  String get howWillYouUseEaty => 'كيف ستستخدم Eaty؟';
+  String get howWillYouUseKitchenIn => 'كيف ستستخدم Kitchen IN؟';
 
   @override
   String get continueText => 'متابعة';
@@ -34,9 +34,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get passwordMin6Chars => 'كلمة المرور (6 أحرف على الأقل)';
-
-  @override
-  String get eaty => 'eaty';
 
   @override
   String get welcomeBack => 'مرحباً بعودتك';
@@ -109,7 +106,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get averagePrepTimeMinutes => 'متوسط وقت التحضير (دقائق)';
 
   @override
-  String get cravingsDelivered => 'رغباتك، تصلك.';
+  String get goodFoodFromTheInside => 'طعام جيد، من الداخل.';
 
   @override
   String get getStarted => 'البدء';
@@ -244,7 +241,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get liveOrders => 'الطلبات المباشرة';
 
   @override
-  String get eatyPlatformToday => 'منصة EATY · اليوم';
+  String get platformToday => 'المنصة · اليوم';
 
   @override
   String get liveOverview => 'نظرة عامة مباشرة';
@@ -521,10 +518,149 @@ class AppLocalizationsAr extends AppLocalizations {
   String get changeLanguage => 'تغيير اللغة';
 
   @override
+  String get collectedFromCustomers => 'المحصّل من العملاء';
+
+  @override
+  String get appWalletLabel => 'رصيد المحفظة';
+
+  @override
+  String get whereItGoes => 'أين تذهب';
+
+  @override
+  String ordersCount(int count) {
+    return '$count طلب';
+  }
+
+  @override
+  String get platformNetLedger => 'صافي المنصة (الدفتر)';
+
+  @override
+  String get signupWebSubhead =>
+      'أنشئ حسابًا لتطلب من المطاعم القريبة منك، وتتابع كل طلب، وتحفظ مفضلاتك في مكان واحد.';
+
+  @override
+  String get allRoles => 'كل الأدوار';
+
+  @override
+  String get roleCustomer => 'العملاء';
+
+  @override
+  String get roleVendor => 'البائعون';
+
+  @override
+  String get roleDriver => 'السائقون';
+
+  @override
+  String get roleAdmin => 'المديرون';
+
+  @override
+  String get statusActive => 'نشط';
+
+  @override
+  String get statusBlocked => 'محظور';
+
+  @override
+  String get statusClosed => 'مغلق';
+
+  @override
+  String get allStatuses => 'أي حالة';
+
+  @override
+  String get joinedLabel => 'تاريخ الانضمام';
+
+  @override
+  String get userLabel => 'المستخدم';
+
+  @override
+  String get roleLabel => 'الدور';
+
+  @override
+  String get noUsersMatch => 'لا يوجد مستخدمون مطابقون لهذه الفلاتر.';
+
+  @override
+  String get clearFilters => 'مسح الفلاتر';
+
+  @override
+  String get addYourPhoneTitle => 'أضف رقم هاتفك';
+
+  @override
+  String get addYourPhoneBody =>
+      'نحتاج رقمًا للتواصل معك بخصوص طلباتك — سائق عند الباب، أو متجر يؤكد العنوان.';
+
+  @override
+  String get pageLabel => 'الصفحة';
+
+  @override
+  String get visibilityLabel => 'الظهور';
+
+  @override
+  String get linkLabel => 'الرابط';
+
+  @override
+  String get scrollToReadAll => 'مرّر إلى نهاية النص للمتابعة';
+
+  @override
+  String get iAgreeToTerms => 'قرأت هذه الشروط وأوافق عليها';
+
+  @override
+  String get acceptAndContinue => 'أوافق وأتابع';
+
+  @override
+  String policyVersionLabel(int version) {
+    return 'الإصدار $version';
+  }
+
+  @override
+  String get requireReacceptance => 'مطالبة الشركاء بالموافقة مجددًا';
+
+  @override
+  String requireReacceptanceOn(int version) {
+    return 'سيُنشر بوصفه الإصدار $version. وسيتوقف كل بائع أو سائق حتى يوافق عليه.';
+  }
+
+  @override
+  String requireReacceptanceOff(int version) {
+    return 'سيبقى على الإصدار $version. وتظل الموافقات الحالية سارية.';
+  }
+
+  @override
+  String get expiresLabel => 'ينتهي في';
+
+  @override
+  String get pausedLabel => 'موقوف';
+
+  @override
+  String get titleLabel => 'العنوان';
+
+  @override
+  String get adViews => 'مشاهدات';
+
+  @override
+  String get adTaps => 'نقرات';
+
+  @override
+  String get adTapRate => 'معدل النقر';
+
+  @override
+  String get statusSettled => 'تمت التسوية';
+
+  @override
+  String get noArabicName => 'لا يوجد اسم عربي';
+
+  @override
+  String get mobileWallet => 'محفظة إلكترونية';
+
+  @override
+  String get mobileWalletProviders => 'فودافون كاش، اتصالات، أورنج';
+
+  @override
+  String get languageChangeLaterHint => 'يمكنك تغييرها في أي وقت من الإعدادات.';
+
+  @override
   String get missingSupabaseConfigurationnn1 => 'إعدادات Supabase مفقودة.';
 
   @override
-  String get multiVendor => 'متعدد البائعين';
+  String get multiVendor => 'KitchenIN';
 
   @override
   String get orderFood => 'اطلب طعاماً';
@@ -783,7 +919,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noDriverApplications => 'لا توجد طلبات سائقين في هذه الفئة.';
 
   @override
-  String get approve => 'موافقة';
+  String get approve => 'اعتماد';
 
   @override
   String get statusApproved => 'مُعتمد';
@@ -2545,9 +2681,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sortPriceDesc => 'السعر من الأعلى';
 
   @override
-  String get clearFilters => 'مسح الفلاتر';
-
-  @override
   String get noMatchingItems => 'لا توجد أصناف مطابقة لبحثك.';
 
   @override
@@ -3610,4 +3743,446 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get subscriptionNotDeductedNote =>
       'اشتراكك الشهري يُحصّل بشكل منفصل ولا يُخصم من المستحق أعلاه.';
+
+  @override
+  String get onboardingTitle4 => 'الآن، أو لاحقاً، أو استلمه بنفسك';
+
+  @override
+  String get onboardingBody4 =>
+      'اطلب الآن، أو حدد موعداً يناسبك، أو استلم طلبك من الفرع.';
+
+  @override
+  String get cashDue => 'نقدية مستحقة عليك';
+
+  @override
+  String get owedToYou => 'مستحق لك';
+
+  @override
+  String get availableBalance => 'الرصيد المتاح';
+
+  @override
+  String get cashCollectedLabel => 'النقدية المحصّلة';
+
+  @override
+  String get totalEarningsLabel => 'إجمالي الأرباح';
+
+  @override
+  String get totalSettlementsLabel => 'المُسوّى';
+
+  @override
+  String get lastSettlement => 'آخر تسوية';
+
+  @override
+  String get statement => 'كشف الحساب';
+
+  @override
+  String get noTransactionsYet => 'لا توجد حركات بعد.';
+
+  @override
+  String get youOweExplainer =>
+      'نقدية حصّلتها من العملاء وما زالت مستحقة للمنصة.';
+
+  @override
+  String get owedToYouExplainer => 'أموال المنصة مدينة لك بها.';
+
+  @override
+  String get requestDeposit => 'إيداع مبلغ';
+
+  @override
+  String get depositAmount => 'المبلغ';
+
+  @override
+  String get depositMethod => 'طريقة الدفع';
+
+  @override
+  String get referenceOptional => 'رقم مرجعي (اختياري)';
+
+  @override
+  String get submitRequest => 'إرسال الطلب';
+
+  @override
+  String get depositRequested =>
+      'تم إرسال الطلب. يُضاف الرصيد بعد تأكيد الإدارة للدفع.';
+
+  @override
+  String get depositsAwaitingReview => 'الإيداعات';
+
+  @override
+  String get noDepositsPending => 'لا توجد إيداعات في الانتظار.';
+
+  @override
+  String get depositApproved => 'تم اعتماد الإيداع.';
+
+  @override
+  String get depositRejected => 'تم رفض الإيداع.';
+
+  @override
+  String get financeTitle => 'الحسابات';
+
+  @override
+  String get cashReconciliation => 'مطابقة النقدية';
+
+  @override
+  String get settlementsTitle => 'التسويات';
+
+  @override
+  String get expectedCash => 'المتوقَّع';
+
+  @override
+  String get collectedCash => 'المحصَّل';
+
+  @override
+  String get settledCash => 'المُسوّى';
+
+  @override
+  String get outstandingCash => 'المتبقّي';
+
+  @override
+  String get cashDifference => 'الفرق';
+
+  @override
+  String get reconciliationClean => 'كل طلب نقدي له عملية تحصيل مقابلة.';
+
+  @override
+  String get reconciliationException =>
+      'طلب نقدي سُلِّم دون تسجيل تحصيل. تسويته لم تُنفَّذ.';
+
+  @override
+  String get recordSettlement => 'تسجيل تسوية';
+
+  @override
+  String get settlementRecorded => 'تم تسجيل التسوية.';
+
+  @override
+  String get settlementMethodCash => 'نقداً';
+
+  @override
+  String get settlementMethodBank => 'تحويل بنكي';
+
+  @override
+  String get settlementDetails => 'تفاصيل التسوية';
+
+  @override
+  String get settlementHistory => 'السجل';
+
+  @override
+  String get settlementMethod => 'الطريقة';
+
+  @override
+  String get settlementReference => 'الرقم المرجعي';
+
+  @override
+  String get settlementNotes => 'ملاحظات';
+
+  @override
+  String get settlementStatus => 'الحالة';
+
+  @override
+  String get settlementRecordedOn => 'تم التسجيل في';
+
+  @override
+  String get settlementCompletedOn => 'تم الإكمال في';
+
+  @override
+  String get settlementId => 'رقم التسوية';
+
+  @override
+  String get settlementCompleted => 'مكتملة';
+
+  @override
+  String get driversTab => 'السائقون';
+
+  @override
+  String get booksBalanced => 'الدفاتر متوازنة';
+
+  @override
+  String booksNotBalanced(String net) {
+    return 'الدفاتر غير متوازنة — $net غير مفسَّرة.';
+  }
+
+  @override
+  String unsettledOrdersWarning(int count) {
+    return '$count طلب مُسلَّم لم تُقسَّم أمواله.';
+  }
+
+  @override
+  String get runBackfill => 'قسّمها الآن';
+
+  @override
+  String get driverCashDueTotal => 'نقدية على السائقين';
+
+  @override
+  String get vendorPayableTotal => 'مستحقات المتاجر';
+
+  @override
+  String get platformNet => 'صافي المنصة';
+
+  @override
+  String get amountRequired => 'أدخل المبلغ.';
+
+  @override
+  String get refunds => 'المبالغ المستردة';
+
+  @override
+  String get bonus => 'مكافأة';
+
+  @override
+  String get penalty => 'خصم';
+
+  @override
+  String get adjustments => 'تعديل';
+
+  @override
+  String get reversal => 'عكس قيد';
+
+  @override
+  String get opensAt => 'يفتح';
+
+  @override
+  String get closesAt => 'يغلق';
+
+  @override
+  String get openAllDay => 'مفتوح ٢٤ ساعة';
+
+  @override
+  String get closesNextDay => 'يغلق بعد منتصف الليل';
+
+  @override
+  String get hoursCloseTheStoreNotice =>
+      'لا يستطيع العملاء الطلب خارج هذه المواعيد، حتى لو كان مفتاح المتجر مفعّلاً.';
+
+  @override
+  String get ordersHistory => 'سجل الطلبات';
+
+  @override
+  String get noOrdersOnDay => 'لا توجد طلبات في هذا اليوم.';
+
+  @override
+  String get dayTotal => 'إجمالي اليوم';
+
+  @override
+  String get payouts => 'المستحقات';
+
+  @override
+  String get nextPayout => 'التسوية القادمة';
+
+  @override
+  String get earlyPayout => 'طلب صرف مبكر';
+
+  @override
+  String earlyPayoutFee(String percent) {
+    return 'رسوم ($percent%)';
+  }
+
+  @override
+  String get youReceive => 'ستستلم';
+
+  @override
+  String get earlyPayoutExplainer =>
+      'أموالك تصل عادةً في تسوية الأسبوع. اطلبها الآن مقابل رسوم، ويراجعها الأدمن أسرع.';
+
+  @override
+  String get earlyPayoutUnavailable => 'لا توجد مستحقات بعد.';
+
+  @override
+  String earlyPayoutDone(String amount) {
+    return 'تم الصرف. $amount في الطريق إليك.';
+  }
+
+  @override
+  String confirmEarlyPayout(String net, String gross, String date) {
+    return 'تطلب $net الآن بدلاً من $gross يوم $date، مقابل رسوم؟';
+  }
+
+  @override
+  String get chatWithDriver => 'محادثة السائق';
+
+  @override
+  String get trackStock => 'تتبّع المخزون';
+
+  @override
+  String get trackStockOn => 'يُباع من رصيد معدود. ينفد عند الصفر.';
+
+  @override
+  String get trackStockOff =>
+      'متاح للطلب دائماً ما دام مفعّلاً. مناسب للمطاعم.';
+
+  @override
+  String get stockQuantity => 'الكمية المتاحة';
+
+  @override
+  String get lowStockThreshold => 'نبّهني عند أو أقل من';
+
+  @override
+  String get lowStockThresholdHint => 'الصفر يوقف التنبيه.';
+
+  @override
+  String get outOfStock => 'نفد المخزون';
+
+  @override
+  String get lowStock => 'المخزون منخفض';
+
+  @override
+  String get stockAlerts => 'المخزون';
+
+  @override
+  String outOfStockCount(int count) {
+    return '$count صنف نفد';
+  }
+
+  @override
+  String lowStockCount(int count) {
+    return '$count صنف على وشك النفاد';
+  }
+
+  @override
+  String get reviewStock => 'مراجعة';
+
+  @override
+  String unitsLeft(int count) {
+    return 'متبقٍ $count';
+  }
+
+  @override
+  String get setStock => 'تحديد المخزون';
+
+  @override
+  String get stockUpdated => 'تم تحديث المخزون.';
+
+  @override
+  String get contactSupport => 'تواصل مع الدعم';
+
+  @override
+  String get helpAndSupport => 'المساعدة والدعم';
+
+  @override
+  String get importFromFile => 'استيراد ملف';
+
+  @override
+  String get importFileHint =>
+      'ملفات CSV وExcel تُقرأ مباشرة وبدقة. ملفات PDF والصور تمر عبر الذكاء الاصطناعي.';
+
+  @override
+  String get spreadsheetNoNameColumn =>
+      'لم يُعثر على عمود اسم الصنف. الملف يحتاج عموداً باسم Name أو Item أو الصنف.';
+
+  @override
+  String get spreadsheetEmpty => 'لا توجد صفوف لقراءتها في هذا الملف.';
+
+  @override
+  String get readingFile => 'جارٍ قراءة الملف…';
+
+  @override
+  String itemsFound(int count) {
+    return 'تم العثور على $count صنف';
+  }
+
+  @override
+  String get placementInterstitial => 'ملء الشاشة';
+
+  @override
+  String get busyModeHint => 'فعّله عند ازدحام الطلبات لإضافة وقت تحضير إضافي';
+
+  @override
+  String get photoUpdated => 'تم تحديث الصورة';
+
+  @override
+  String get autoAcceptOrdersHint =>
+      'الطلبات الجديدة تُقبل تلقائياً دون تأكيد يدوي';
+
+  @override
+  String get newOrderSoundHint => 'تشغيل صوت عند وصول طلب جديد';
+
+  @override
+  String get storeStatus => 'حالة المتجر';
+
+  @override
+  String get locationMissingHint =>
+      'أضف موقعك ليتمكن العملاء القريبون من إيجادك';
+
+  @override
+  String get requestSettlement => 'طلب تسوية';
+
+  @override
+  String get requestSettlementHint =>
+      'مجانية — الأدمن يراجع الطلب ويدفع المبلغ. لو عايز الفلوس فوراً استخدم الدفعة المبكرة بدلاً منها.';
+
+  @override
+  String get requestPayout => 'طلب صرف';
+
+  @override
+  String get requestPayoutHint => 'مجاني — الأدمن يراجع الطلب ويصرفلك المستحق.';
+
+  @override
+  String get settlementRequested =>
+      'تم إرسال الطلب. هتوصلك إشعار بعد ما الأدمن يراجعه.';
+
+  @override
+  String get settlementRequestPending => 'بانتظار موافقة الأدمن';
+
+  @override
+  String get settlementApproved => 'تمت الموافقة على التسوية.';
+
+  @override
+  String get settlementRejected => 'تم رفض التسوية.';
+
+  @override
+  String get settlementRequestsTab => 'الطلبات';
+
+  @override
+  String get noSettlementRequests => 'لا يوجد طلبات في الانتظار.';
+
+  @override
+  String get totalEarned => 'إجمالي المكتسب';
+
+  @override
+  String get alreadySettled => 'تم تسويته بالفعل';
+
+  @override
+  String get outstandingNow => 'المتبقي الآن';
+
+  @override
+  String get shareReceipt => 'مشاركة الإيصال';
+
+  @override
+  String pendingApprovalsBanner(int count) {
+    return '$count طلب تسوية بانتظار موافقتك';
+  }
+
+  @override
+  String get searchByName => 'بحث بالاسم';
+
+  @override
+  String get settlementApprovalExternalNotice =>
+      'ده بس تسجيل إنك بعتّ الفلوس بالفعل خارج التطبيق — مفيش أي تحويل تلقائي هيحصل.';
+
+  @override
+  String get feeLabel => 'الرسوم';
+
+  @override
+  String get grossAmount => 'قبل الرسوم';
+
+  @override
+  String get earlySettlementTag => 'مبكرة';
+
+  @override
+  String get statusLabel => 'الحالة';
+
+  @override
+  String get lastMessageLabel => 'آخر رسالة';
+
+  @override
+  String get storeLabel => 'المتجر';
+
+  @override
+  String get dateLabel => 'التاريخ';
+
+  @override
+  String get complaintResolvedAndNotified => 'تم حل الشكوى وتم إبلاغ العميل.';
+
+  @override
+  String get replyAndResolve => 'الرد والحل';
+
+  @override
+  String get resolutionReply => 'رد الحل';
 }

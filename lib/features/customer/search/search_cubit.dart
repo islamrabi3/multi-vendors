@@ -212,7 +212,8 @@ class SearchCubit extends Cubit<SearchState> {
       if (isClosed || id != _requestId) return;
 
       final vendorResult =
-          results[0] as ({List<Vendor> vendors, Map<String, List<String>> matches});
+          results[0]
+              as ({List<Vendor> vendors, Map<String, List<String>> matches});
       final products = results[1] as List<ProductHit>;
       final found = vendorResult.vendors.isNotEmpty || products.isNotEmpty;
 

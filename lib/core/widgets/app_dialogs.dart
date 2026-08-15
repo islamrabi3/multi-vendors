@@ -13,23 +13,22 @@ enum AppDialogTone { neutral, primary, danger }
 
 const _kMaxWidth = 420.0;
 const _kActionHeight = 48.0;
-const _kInsetPadding =
-    EdgeInsets.symmetric(horizontal: AppSpace.xxl, vertical: 40);
+const _kInsetPadding = EdgeInsets.symmetric(
+  horizontal: AppSpace.xxl,
+  vertical: 40,
+);
 
 ({Color fill, Color ink}) _palette(AppDialogTone tone) => switch (tone) {
-      AppDialogTone.primary => (
-          fill: AppColors.warmFill,
-          ink: AppColors.primary
-        ),
-      AppDialogTone.danger => (
-          fill: AppColors.dangerFill,
-          ink: AppColors.dangerInk
-        ),
-      AppDialogTone.neutral => (
-          fill: AppColors.neutralFill,
-          ink: AppColors.textSecondary
-        ),
-    };
+  AppDialogTone.primary => (fill: AppColors.warmFill, ink: AppColors.primary),
+  AppDialogTone.danger => (
+    fill: AppColors.dangerFill,
+    ink: AppColors.dangerInk,
+  ),
+  AppDialogTone.neutral => (
+    fill: AppColors.neutralFill,
+    ink: AppColors.textSecondary,
+  ),
+};
 
 // ===========================================================================
 // Confirm
@@ -54,17 +53,16 @@ Future<bool> showConfirmDialog({
   AppDialogTone tone = AppDialogTone.primary,
   IconData? icon,
   Future<void> Function()? onConfirm,
-}) =>
-    _confirm(
-      context: context,
-      title: title,
-      message: message,
-      confirmLabel: confirmLabel,
-      cancelLabel: cancelLabel,
-      tone: tone,
-      icon: icon,
-      onConfirm: onConfirm,
-    );
+}) => _confirm(
+  context: context,
+  title: title,
+  message: message,
+  confirmLabel: confirmLabel,
+  cancelLabel: cancelLabel,
+  tone: tone,
+  icon: icon,
+  onConfirm: onConfirm,
+);
 
 /// The implementation both [showConfirmDialog] and the legacy
 /// `AppDialogs.showConfirmDialog` call. Private because inside that class the
@@ -153,7 +151,9 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (widget.icon != null) ...[
-            Center(child: _Medallion(icon: widget.icon!, tone: widget.tone)),
+            Center(
+              child: _Medallion(icon: widget.icon!, tone: widget.tone),
+            ),
             const SizedBox(height: AppSpace.lg),
           ],
           Text(
@@ -206,24 +206,23 @@ Future<T?> showFormDialog<T>({
   AppDialogTone tone = AppDialogTone.primary,
   required Widget Function(void Function() rebuild) contentBuilder,
   required String submitLabel,
-  required Future<T?> Function() onSubmit,
+  required Future<T?> Function(BuildContext dialogContext) onSubmit,
   String? cancelLabel,
   String? destructiveLabel,
   Future<void> Function()? onDestructive,
-}) =>
-    _form<T>(
-      context: context,
-      title: title,
-      subtitle: subtitle,
-      icon: icon,
-      tone: tone,
-      contentBuilder: contentBuilder,
-      submitLabel: submitLabel,
-      onSubmit: onSubmit,
-      cancelLabel: cancelLabel,
-      destructiveLabel: destructiveLabel,
-      onDestructive: onDestructive,
-    );
+}) => _form<T>(
+  context: context,
+  title: title,
+  subtitle: subtitle,
+  icon: icon,
+  tone: tone,
+  contentBuilder: contentBuilder,
+  submitLabel: submitLabel,
+  onSubmit: onSubmit,
+  cancelLabel: cancelLabel,
+  destructiveLabel: destructiveLabel,
+  onDestructive: onDestructive,
+);
 
 /// Shared implementation — see [_confirm] for why this is not the public name.
 Future<T?> _form<T>({
@@ -234,7 +233,7 @@ Future<T?> _form<T>({
   AppDialogTone tone = AppDialogTone.primary,
   required Widget Function(void Function() rebuild) contentBuilder,
   required String submitLabel,
-  required Future<T?> Function() onSubmit,
+  required Future<T?> Function(BuildContext dialogContext) onSubmit,
   String? cancelLabel,
   String? destructiveLabel,
   Future<void> Function()? onDestructive,
@@ -269,7 +268,7 @@ Future<T?> showFormSheet<T>({
   AppDialogTone tone = AppDialogTone.primary,
   required Widget Function(void Function() rebuild) contentBuilder,
   required String submitLabel,
-  required Future<T?> Function() onSubmit,
+  required Future<T?> Function(BuildContext dialogContext) onSubmit,
   String? cancelLabel,
   String? destructiveLabel,
   Future<void> Function()? onDestructive,
@@ -317,7 +316,7 @@ class _FormBody<T> extends StatefulWidget {
   final AppDialogTone tone;
   final Widget Function(void Function() rebuild) contentBuilder;
   final String submitLabel;
-  final Future<T?> Function() onSubmit;
+  final Future<T?> Function(BuildContext dialogContext) onSubmit;
   final String? cancelLabel;
   final String? destructiveLabel;
   final Future<void> Function()? onDestructive;
@@ -342,7 +341,7 @@ class _FormBodyState<T> extends State<_FormBody<T>> {
       _error = null;
     });
     try {
-      final value = await widget.onSubmit();
+      final value = await widget.onSubmit(context);
       if (!mounted) return;
       if (value == null) {
         if (ModalRoute.of(context)?.isCurrent == true) {
@@ -436,9 +435,7 @@ class _FormBodyState<T> extends State<_FormBody<T>> {
             height: _kActionHeight,
             child: TextButton(
               onPressed: _busy ? null : _destruct,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.dangerInk,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.dangerInk),
               child: Text(widget.destructiveLabel!),
             ),
           ),
@@ -496,7 +493,9 @@ Future<void> showInfoDialog({
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (icon != null) ...[
-            Center(child: _Medallion(icon: icon, tone: tone)),
+            Center(
+              child: _Medallion(icon: icon, tone: tone),
+            ),
             const SizedBox(height: AppSpace.lg),
           ],
           Text(title, textAlign: TextAlign.center, style: AppType.heading(19)),
@@ -667,21 +666,21 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-      );
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+  );
 }
 
 ButtonStyle _submitStyle(AppDialogTone tone) => FilledButton.styleFrom(
-      minimumSize: const Size.fromHeight(_kActionHeight),
-      backgroundColor: tone == AppDialogTone.danger
-          ? AppColors.dangerInk
-          : AppColors.primary,
-      foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-    );
+  minimumSize: const Size.fromHeight(_kActionHeight),
+  backgroundColor: tone == AppDialogTone.danger
+      ? AppColors.dangerInk
+      : AppColors.primary,
+  foregroundColor: Colors.white,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(AppRadii.lg),
+  ),
+);
 
 class _InlineError extends StatelessWidget {
   const _InlineError(this.message);
@@ -694,7 +693,9 @@ class _InlineError extends StatelessWidget {
       padding: const EdgeInsets.only(top: AppSpace.lg),
       child: Container(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.md, vertical: AppSpace.sm + 2),
+          horizontal: AppSpace.md,
+          vertical: AppSpace.sm + 2,
+        ),
         decoration: BoxDecoration(
           color: AppColors.dangerFill,
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -702,8 +703,11 @@ class _InlineError extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 17, color: AppColors.dangerInk),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 17,
+              color: AppColors.dangerInk,
+            ),
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Text(
@@ -757,8 +761,17 @@ class AppDialogs {
   }
 
   /// The old form dialog: content is a plain widget and the caller pops itself
-  /// from `onPrimaryPressed`. Because it pops, [onSubmit] here returns null —
+  /// from [onPrimaryPressed]. Because it pops, `onSubmit` here returns null —
   /// this shell never resolves the future itself.
+  ///
+  /// [onPrimaryPressed] is handed the **dialog's** context, and must pop with
+  /// that rather than with the context it built the dialog from. `showDialog`
+  /// puts the dialog on the root navigator, while a caller rendered inside a
+  /// `StatefulShellRoute` branch resolves `Navigator.of` to the branch's own
+  /// navigator — so popping with the caller's context tore the branch's page
+  /// down instead of the dialog and left the admin console on a blank white
+  /// screen. It only ever appeared to work on phones, where these screens are
+  /// pushed onto the root navigator too.
   static Future<T?> showFormDialog<T>({
     required BuildContext context,
     required String title,
@@ -766,7 +779,7 @@ class AppDialogs {
     IconData icon = Icons.folder_special_rounded,
     required Widget content,
     required String primaryText,
-    required VoidCallback onPrimaryPressed,
+    required void Function(BuildContext dialogContext) onPrimaryPressed,
     String? secondaryText,
     VoidCallback? onSecondaryPressed,
     String? destructiveText,
@@ -784,8 +797,8 @@ class AppDialogs {
       onDestructive: onDestructivePressed == null
           ? null
           : () async => onDestructivePressed(),
-      onSubmit: () async {
-        onPrimaryPressed();
+      onSubmit: (dialogContext) async {
+        onPrimaryPressed(dialogContext);
         return null;
       },
     );

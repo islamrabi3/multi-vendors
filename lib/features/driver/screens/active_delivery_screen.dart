@@ -307,7 +307,10 @@ class _ActiveDeliveryView extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 context.l10n.deliveryProofOptionalHint,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -533,7 +536,7 @@ class _Sheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x1A281406),
+            color: Color(0x1A1E1519),
             blurRadius: 30,
             offset: Offset(0, -8),
           ),

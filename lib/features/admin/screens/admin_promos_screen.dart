@@ -1,41 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../app/tokens.dart';
-import '../../../core/models/banner_item.dart';
 import '../../../core/models/coupon.dart';
 import '../../../core/repositories/coupons_repository.dart';
-import '../../../core/repositories/offers_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
+import '../../../core/widgets/web/web_table.dart';
 import '../admin_coupons_cubit.dart';
-import '../admin_offers_cubit.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 class AdminPromosScreen extends StatelessWidget {
-  const AdminPromosScreen({super.key});
+  const AdminPromosScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => AdminOffersCubit(OffersRepository())),
-        BlocProvider(create: (_) => AdminCouponsCubit(CouponsRepository())),
-      ],
-      child: const _PromosView(),
+    // Only coupons live here now. Banners moved to the Ads screen, which
+    // owns the same `banners` table but with the placement, schedule,
+    // audience and counters this screen never had — two editors for one
+    // table meant whichever you happened to open decided what you could set.
+    return BlocProvider(
+      create: (_) => AdminCouponsCubit(CouponsRepository()),
+      child: _PromosView(embedded: embedded),
     );
   }
 }
 
 class _PromosView extends StatelessWidget {
-  const _PromosView();
+  const _PromosView({required this.embedded});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final webWide = AppBreakpoints.isWebWide(context);
+
+    final body = BlocListener<AdminCouponsCubit, AdminCouponsState>(
+      listenWhen: (p, c) => p.error != c.error && c.error != null,
+      listener: (context, s) => showFailure(context, s.error!),
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () => context.read<AdminCouponsCubit>().load(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            _SectionLabel('Coupons'),
+            SizedBox(height: 10),
+            _CouponsSection(),
+          ],
+        ),
+      ),
+    );
+
+    final header = Row(
+      children: [
+        Text(l10n.promos, style: AppType.display(26)),
+        const Spacer(),
+        _NewButton(),
+      ],
+    );
+
+    if (embedded) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            header,
+            const SizedBox(height: AppSpace.lg),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+
+    if (webWide) {
+      return WebPageChrome(
+        activeId: 'manage:/admin-app/promos',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.promos,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              header,
+              const SizedBox(height: AppSpace.lg),
+              Expanded(child: body),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
@@ -43,7 +112,7 @@ class _PromosView extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(context.l10n.promos),
+        title: Text(l10n.promos),
       ),
       body: SafeArea(
         top: false,
@@ -53,53 +122,9 @@ class _PromosView extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 12, 16, 10),
-              child: Row(
-                children: [
-                  Text(context.l10n.promos, style: AppType.display(26)),
-                  const Spacer(),
-                  _NewButton(),
-                ],
-              ),
+              child: header,
             ),
-            Expanded(
-              child: MultiBlocListener(
-                listeners: [
-                  BlocListener<AdminOffersCubit, AdminOffersState>(
-                    listenWhen: (p, c) => p.error != c.error && c.error != null,
-                    listener: (context, s) => showFailure(context, s.error!),
-                  ),
-                  BlocListener<AdminCouponsCubit, AdminCouponsState>(
-                    listenWhen: (p, c) => p.error != c.error && c.error != null,
-                    listener: (context, s) => showFailure(context, s.error!),
-                  ),
-                ],
-                child: RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () async {
-                    final offersFuture = context
-                        .read<AdminOffersCubit>()
-                        .load();
-                    final couponsFuture = context
-                        .read<AdminCouponsCubit>()
-                        .load();
-                    await Future.wait([offersFuture, couponsFuture]);
-                  },
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      _SectionLabel('Home banners'),
-                      SizedBox(height: 10),
-                      _BannersSection(),
-                      SizedBox(height: 20),
-                      _SectionLabel('Coupons'),
-                      SizedBox(height: 10),
-                      _CouponsSection(),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: body),
           ],
         ),
       ),
@@ -107,21 +132,13 @@ class _PromosView extends StatelessWidget {
   }
 }
 
+/// One thing to create here now that banners live on the Ads screen, so this
+/// is a button rather than the two-item menu it used to open.
 class _NewButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      onSelected: (v) {
-        if (v == 'banner') {
-          _showBannerForm(context, context.read<AdminOffersCubit>());
-        } else {
-          _showCouponForm(context, context.read<AdminCouponsCubit>());
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem(value: 'banner', child: Text(context.l10n.newBanner)),
-        PopupMenuItem(value: 'coupon', child: Text(context.l10n.newCoupon)),
-      ],
+    return GestureDetector(
+      onTap: () => _showCouponForm(context, context.read<AdminCouponsCubit>()),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
         decoration: BoxDecoration(
@@ -156,17 +173,16 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Counts coupons, not banners. The old version read the *offers* cubit
+    // even under the Coupons heading, which was left over from when this
+    // screen owned both.
     final active = context.select(
-      (AdminOffersCubit c) => c.state.offers.where((o) => o.isActive).length,
+      (AdminCouponsCubit c) => c.state.coupons.where((o) => o.isLive).length,
     );
-    final isBanners = text == 'Home banners';
-    final labelText = isBanners
-        ? context.l10n.homeBanners
-        : context.l10n.coupons;
     return Row(
       children: [
         Text(
-          labelText.toUpperCase(),
+          context.l10n.coupons.toUpperCase(),
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -174,179 +190,16 @@ class _SectionLabel extends StatelessWidget {
             color: AppColors.textFaint,
           ),
         ),
-        if (isBanners)
-          Text(
-            '  ·  $active ${context.l10n.active}',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textFaint,
-            ),
+        Text(
+          '  ·  $active ${context.l10n.active}',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textFaint,
           ),
+        ),
       ],
     );
-  }
-}
-
-class _BannersSection extends StatelessWidget {
-  const _BannersSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<AdminOffersCubit, AdminOffersState>(
-      builder: (context, state) {
-        if (state.loading) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: LoadingView(),
-          );
-        }
-        if (state.offers.isEmpty) {
-          return _emptyCard(context.l10n.noBannersYetTapNew);
-        }
-        final cubit = context.read<AdminOffersCubit>();
-        return Column(
-          children: state.offers
-              .map(
-                (o) => Padding(
-                  padding: const EdgeInsets.only(bottom: 11),
-                  child: _BannerCard(offer: o, cubit: cubit),
-                ),
-              )
-              .toList(),
-        );
-      },
-    );
-  }
-}
-
-class _BannerCard extends StatelessWidget {
-  const _BannerCard({required this.offer, required this.cubit});
-
-  final BannerItem offer;
-  final AdminOffersCubit cubit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              AppNetworkImage(
-                url: offer.imageUrl,
-                height: 78,
-                width: double.infinity,
-              ),
-              Positioned.fill(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: Alignment.centerLeft,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xCC1A1714), Color(0x221A1714)],
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        offer.title ?? context.l10n.untitledBanner,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.heading(18, color: Colors.white),
-                      ),
-                      if (offer.subtitle?.isNotEmpty ?? false)
-                        Text(
-                          offer.subtitle!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: offer.isActive
-                        ? AppColors.success
-                        : AppColors.textFaint,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  offer.isActive ? context.l10n.live : context.l10n.hidden,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                if (offer.code?.isNotEmpty ?? false) ...[
-                  const SizedBox(width: 8),
-                  SoftBadge(
-                    label: offer.code!,
-                    fill: AppColors.amberFill,
-                    ink: AppColors.amberInk,
-                  ),
-                ],
-                const Spacer(),
-                Switch(
-                  value: offer.isActive,
-                  activeThumbColor: AppColors.primary,
-                  onChanged: (_) => cubit.toggleActive(offer),
-                ),
-                IconButton(
-                  tooltip: context.l10n.delete,
-                  onPressed: () => _confirmDelete(context),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Color(0xFFC0392B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmDelete(BuildContext context) async {
-    final confirmed = await AppDialogs.showConfirmDialog(
-      context: context,
-      title: context.l10n.deleteBanner,
-      message:
-          '"${offer.title ?? offer.imageUrl}" ${context.l10n.willBeRemoved}',
-      confirmText: context.l10n.delete,
-      cancelText: context.l10n.cancel,
-      isDestructive: true,
-      icon: Icons.image_not_supported_rounded,
-    );
-    if (confirmed == true) {
-      cubit.delete(offer);
-    }
   }
 }
 
@@ -367,6 +220,9 @@ class _CouponsSection extends StatelessWidget {
           return _emptyCard(context.l10n.noCouponsYetTapNew);
         }
         final cubit = context.read<AdminCouponsCubit>();
+        if (AppBreakpoints.isWebWide(context)) {
+          return _CouponTable(coupons: state.coupons, cubit: cubit);
+        }
         return Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
@@ -386,6 +242,148 @@ class _CouponsSection extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Web/wide: coupons as a real table.
+///
+/// A coupon is a record with the same six facts every time — code, what it
+/// takes off, who it is for, how much of it is gone, when it dies, whether it
+/// is on. Stacked cards make you re-find each of those in a different place
+/// per row; columns put them where the eye already is.
+class _CouponTable extends StatelessWidget {
+  const _CouponTable({required this.coupons, required this.cubit});
+
+  final List<Coupon> coupons;
+  final AdminCouponsCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final columns = [
+      WebTableColumn(label: l10n.couponCode, flex: 2),
+      WebTableColumn(label: l10n.discount, flex: 2),
+      WebTableColumn(label: l10n.used, width: 120),
+      WebTableColumn(label: l10n.expiresLabel, width: 120),
+      WebTableColumn(label: l10n.statusLabel, width: 104),
+    ];
+
+    return WebTable(
+      columns: columns,
+      trailingWidth: 96,
+      rows: [
+        for (final coupon in coupons)
+          WebTableRow.aligned(
+            columns: columns,
+            trailingWidth: 96,
+            cells: [
+              Text(
+                coupon.code,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.mono(13, weight: FontWeight.w800),
+              ),
+              Text(
+                _discount(context, coupon),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12.5),
+              ),
+              Text(
+                '${coupon.usedCount} / ${coupon.usageLimit ?? '∞'}',
+                style: AppType.mono(12.5, color: AppColors.textSecondary),
+              ),
+              Text(
+                coupon.expiresAt == null
+                    ? '—'
+                    : DateFormat('MMM d, y').format(coupon.expiresAt!),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              _CouponStatus(coupon: coupon),
+            ],
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Expired or exhausted codes cannot be switched back on by
+                // flipping a toggle — the date or the cap is what stopped
+                // them, so the switch would lie.
+                SizedBox(
+                  width: 44,
+                  child: Transform.scale(
+                    scale: 0.78,
+                    child: Switch(
+                      value: coupon.isActive,
+                      onChanged: coupon.isExpired || coupon.isExhausted
+                          ? null
+                          : (_) => cubit.toggleActive(coupon),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l10n.delete,
+                  onPressed: () => _confirmDeleteCoupon(context, coupon, cubit),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  color: AppColors.dangerInk,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _discount(BuildContext context, Coupon coupon) {
+    final l10n = context.l10n;
+    if (coupon.isFreeDelivery) return l10n.couponTypeFreeDelivery;
+    final value = coupon.isPercentage
+        ? '${coupon.value.toStringAsFixed(0)}%'
+        : formatMoney(coupon.value);
+    final cap = coupon.maxDiscount != null
+        ? ' · ${l10n.max} ${formatMoney(coupon.maxDiscount!)}'
+        : '';
+    final min = coupon.minOrderAmount > 0
+        ? ' · ${l10n.min} ${formatMoney(coupon.minOrderAmount)}'
+        : '';
+    return '$value$cap$min';
+  }
+}
+
+/// Why a coupon is or is not working, in one badge.
+class _CouponStatus extends StatelessWidget {
+  const _CouponStatus({required this.coupon});
+
+  final Coupon coupon;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    // Order matters: a code can be expired *and* switched off, and the
+    // reason it stopped is more useful than the switch position.
+    final (label, fill, ink) = coupon.isExpired
+        ? (l10n.expired, AppColors.dangerFill, AppColors.dangerInk)
+        : coupon.isExhausted
+        ? (l10n.couponExhausted, AppColors.dangerFill, AppColors.dangerInk)
+        : coupon.isScheduled
+        ? (l10n.couponScheduled, AppColors.amberFill, AppColors.amberInk)
+        : coupon.isActive
+        ? (l10n.active, AppColors.successFill, AppColors.successInk)
+        : (l10n.pausedLabel, AppColors.neutralFill, AppColors.textMuted);
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: SoftBadge(label: label, fill: fill, ink: ink),
     );
   }
 }
@@ -453,7 +451,7 @@ class _CouponRow extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
-            color: dim ? const Color(0xFFF1ECE6) : AppColors.amberFill,
+            color: dim ? AppColors.neutralFill : AppColors.amberFill,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -491,7 +489,7 @@ class _CouponRow extends StatelessWidget {
               onPressed: () => _confirmDelete(context),
               icon: const Icon(
                 Icons.delete_outline,
-                color: Color(0xFFC0392B),
+                color: AppColors.dangerInk,
                 size: 20,
               ),
             ),
@@ -501,20 +499,27 @@ class _CouponRow extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context) async {
-    final confirmed = await AppDialogs.showConfirmDialog(
-      context: context,
-      title: context.l10n.deleteCoupon,
-      message: '"${coupon.code}" ${context.l10n.willBeRemoved}',
-      confirmText: context.l10n.delete,
-      cancelText: context.l10n.cancel,
-      isDestructive: true,
-      icon: Icons.confirmation_number_outlined,
-    );
-    if (confirmed == true) {
-      cubit.delete(coupon);
-    }
-  }
+  void _confirmDelete(BuildContext context) =>
+      _confirmDeleteCoupon(context, coupon, cubit);
+}
+
+/// Shared by the mobile row and the desktop table, so the two cannot drift
+/// into asking for confirmation differently.
+Future<void> _confirmDeleteCoupon(
+  BuildContext context,
+  Coupon coupon,
+  AdminCouponsCubit cubit,
+) async {
+  final confirmed = await AppDialogs.showConfirmDialog(
+    context: context,
+    title: context.l10n.deleteCoupon,
+    message: '"${coupon.code}" ${context.l10n.willBeRemoved}',
+    confirmText: context.l10n.delete,
+    cancelText: context.l10n.cancel,
+    isDestructive: true,
+    icon: Icons.confirmation_number_outlined,
+  );
+  if (confirmed == true) cubit.delete(coupon);
 }
 
 Widget _emptyCard(String message) => Container(
@@ -536,320 +541,8 @@ Widget _emptyCard(String message) => Container(
 // Forms
 // ---------------------------------------------------------------------------
 
-void _showBannerForm(BuildContext context, AdminOffersCubit cubit) {
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) =>
-        BlocProvider.value(value: cubit, child: const _BannerForm()),
-  );
-}
-
-class _BannerForm extends StatefulWidget {
-  const _BannerForm();
-
-  @override
-  State<_BannerForm> createState() => _BannerFormState();
-}
-
-class _BannerFormState extends State<_BannerForm> {
-  final _image = TextEditingController();
-  final _title = TextEditingController();
-  final _subtitle = TextEditingController();
-  bool _saving = false;
-  bool _uploading = false;
-
-  BannerType _type = BannerType.event;
-  String? _vendorId;
-  String? _couponCode;
-  List<({String id, String name})> _vendors = const [];
-  List<String> _couponCodes = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPickerData();
-  }
-
-  Future<void> _loadPickerData() async {
-    try {
-      final client = Supabase.instance.client;
-      final vendors = await client
-          .from('vendors')
-          .select('id, name')
-          .eq('approval_status', 'active')
-          .order('name', ascending: true);
-      final coupons = await client
-          .from('coupons')
-          .select('code')
-          .eq('is_active', true)
-          .order('code', ascending: true);
-      if (!mounted) return;
-      setState(() {
-        _vendors = (vendors as List)
-            .map((v) => (id: v['id'] as String, name: v['name'] as String))
-            .toList();
-        _couponCodes = (coupons as List)
-            .map((c) => c['code'] as String)
-            .toList();
-      });
-    } catch (_) {
-      // Pickers stay empty; validation will catch a missing selection.
-    }
-  }
-
-  @override
-  void dispose() {
-    _image.dispose();
-    _title.dispose();
-    _subtitle.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImage() async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1200,
-    );
-    if (file == null) return;
-    setState(() => _uploading = true);
-    try {
-      final bytes = await file.readAsBytes();
-      final name = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      final client = Supabase.instance.client;
-      await client.storage
-          .from('product-images')
-          .uploadBinary('banners/$name', bytes);
-      final url = client.storage
-          .from('product-images')
-          .getPublicUrl('banners/$name');
-      setState(() {
-        _image.text = url;
-      });
-      if (mounted) showSnack(context, 'Image uploaded successfully!');
-    } catch (error) {
-      if (mounted) showFailure(context, error);
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 4,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            context.l10n.newBanner,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 14),
-          GestureDetector(
-            onTap: _uploading ? null : _pickImage,
-            child: Container(
-              height: 128,
-              decoration: BoxDecoration(
-                color: AppColors.warmFill,
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (_image.text.trim().isNotEmpty) ...[
-                    AppNetworkImage(
-                      url: _image.text.trim(),
-                      height: 128,
-                      width: double.infinity,
-                    ),
-                    Container(
-                      color: Colors.black26,
-                      width: double.infinity,
-                      height: 128,
-                    ),
-                  ],
-                  if (_uploading)
-                    const CircularProgressIndicator(color: AppColors.primary)
-                  else
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _image.text.trim().isNotEmpty
-                              ? Icons.edit_outlined
-                              : Icons.add_photo_alternate_outlined,
-                          color: _image.text.trim().isNotEmpty
-                              ? Colors.white
-                              : AppColors.primary,
-                          size: 32,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _image.text.trim().isNotEmpty
-                              ? 'Tap to change photo'
-                              : 'Tap to upload banner image',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: _image.text.trim().isNotEmpty
-                                ? Colors.white
-                                : AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          SegmentedButton<BannerType>(
-            segments: [
-              ButtonSegment(
-                value: BannerType.coupon,
-                label: Text(context.l10n.bannerTypeCoupon),
-                icon: const Icon(Icons.confirmation_number_outlined, size: 16),
-              ),
-              ButtonSegment(
-                value: BannerType.vendor,
-                label: Text(context.l10n.bannerTypeVendor),
-                icon: const Icon(Icons.storefront_outlined, size: 16),
-              ),
-              ButtonSegment(
-                value: BannerType.event,
-                label: Text(context.l10n.bannerTypeEvent),
-                icon: const Icon(Icons.campaign_outlined, size: 16),
-              ),
-            ],
-            selected: {_type},
-            onSelectionChanged: (s) => setState(() => _type = s.first),
-          ),
-          const SizedBox(height: 12),
-          if (_type == BannerType.vendor) ...[
-            DropdownButtonFormField<String>(
-              initialValue: _vendorId,
-              isExpanded: true,
-              decoration: InputDecoration(
-                hintText: context.l10n.selectVendor,
-                prefixIcon: const Icon(Icons.storefront_outlined),
-              ),
-              items: _vendors
-                  .map(
-                    (v) => DropdownMenuItem(
-                      value: v.id,
-                      child: Text(v.name, overflow: TextOverflow.ellipsis),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => _vendorId = v),
-            ),
-            const SizedBox(height: 10),
-          ],
-          if (_type == BannerType.coupon) ...[
-            DropdownButtonFormField<String>(
-              initialValue: _couponCode,
-              isExpanded: true,
-              decoration: InputDecoration(
-                hintText: context.l10n.selectCoupon,
-                prefixIcon: const Icon(Icons.confirmation_number_outlined),
-              ),
-              items: _couponCodes
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) => setState(() => _couponCode = v),
-            ),
-            const SizedBox(height: 10),
-          ],
-          TextField(
-            controller: _title,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              hintText: context.l10n.titleEg40OffFirstOrder,
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _subtitle,
-            decoration: InputDecoration(
-              hintText: context.l10n.subtitleOptional,
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _image,
-            keyboardType: TextInputType.url,
-            decoration: InputDecoration(
-              hintText: context.l10n.imageUrl,
-              prefixIcon: const Icon(Icons.link_rounded),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 18),
-          FilledButton(
-            onPressed: _saving || _uploading ? null : _submit,
-            child: _saving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(context.l10n.publishBanner),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _submit() async {
-    final image = _image.text.trim();
-    final title = _title.text.trim();
-    if (image.isEmpty && title.isEmpty) {
-      showSnack(context, context.l10n.addATitleOrImageFirst, error: true);
-      return;
-    }
-    if (_type == BannerType.vendor &&
-        (_vendorId == null || _vendorId!.isEmpty)) {
-      showSnack(context, context.l10n.chooseVendorForBanner, error: true);
-      return;
-    }
-    if (_type == BannerType.coupon &&
-        (_couponCode == null || _couponCode!.isEmpty)) {
-      showSnack(context, context.l10n.chooseCouponForBanner, error: true);
-      return;
-    }
-    setState(() => _saving = true);
-    final ok = await context.read<AdminOffersCubit>().create(
-      imageUrl: image.isEmpty
-          ? 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
-          : image,
-      type: _type,
-      title: title,
-      subtitle: _subtitle.text.trim(),
-      code: _type == BannerType.coupon ? _couponCode : null,
-      vendorId: _type == BannerType.vendor ? _vendorId : null,
-    );
-    if (!mounted) return;
-    if (ok) {
-      Navigator.pop(context);
-      showSnack(context, context.l10n.bannerPublished);
-    } else {
-      setState(() => _saving = false);
-    }
-  }
-}
-
 void _showCouponForm(BuildContext context, AdminCouponsCubit cubit) {
-  showModalBottomSheet<void>(
+  showAdaptiveSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

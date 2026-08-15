@@ -41,13 +41,13 @@ class VendorFilters extends Equatable {
   /// How many filters the customer has actually set — drives the badge on the
   /// filter button, so `recommended` and "no toggles" read as unfiltered.
   int get activeCount => [
-        sort != VendorSort.recommended,
-        openOnly,
-        freeDeliveryOnly,
-        favoritesOnly,
-        maxDeliveryFee != null,
-        minRating != null,
-      ].where((on) => on).length;
+    sort != VendorSort.recommended,
+    openOnly,
+    freeDeliveryOnly,
+    favoritesOnly,
+    maxDeliveryFee != null,
+    minRating != null,
+  ].where((on) => on).length;
 
   VendorFilters copyWith({
     VendorSort? sort,
@@ -58,27 +58,26 @@ class VendorFilters extends Equatable {
     double? minRating,
     bool clearMaxDeliveryFee = false,
     bool clearMinRating = false,
-  }) =>
-      VendorFilters(
-        sort: sort ?? this.sort,
-        openOnly: openOnly ?? this.openOnly,
-        freeDeliveryOnly: freeDeliveryOnly ?? this.freeDeliveryOnly,
-        favoritesOnly: favoritesOnly ?? this.favoritesOnly,
-        maxDeliveryFee: clearMaxDeliveryFee
-            ? null
-            : (maxDeliveryFee ?? this.maxDeliveryFee),
-        minRating: clearMinRating ? null : (minRating ?? this.minRating),
-      );
+  }) => VendorFilters(
+    sort: sort ?? this.sort,
+    openOnly: openOnly ?? this.openOnly,
+    freeDeliveryOnly: freeDeliveryOnly ?? this.freeDeliveryOnly,
+    favoritesOnly: favoritesOnly ?? this.favoritesOnly,
+    maxDeliveryFee: clearMaxDeliveryFee
+        ? null
+        : (maxDeliveryFee ?? this.maxDeliveryFee),
+    minRating: clearMinRating ? null : (minRating ?? this.minRating),
+  );
 
   @override
   List<Object?> get props => [
-        sort,
-        openOnly,
-        freeDeliveryOnly,
-        favoritesOnly,
-        maxDeliveryFee,
-        minRating,
-      ];
+    sort,
+    openOnly,
+    freeDeliveryOnly,
+    favoritesOnly,
+    maxDeliveryFee,
+    minRating,
+  ];
 }
 
 class HomeState extends Equatable {
@@ -142,13 +141,12 @@ class HomeState extends Equatable {
 
   /// The admin's promoted stores, best rank first.
   List<Vendor> get recommendedVendors {
-    final promoted = vendors
-        .where((v) => v.isRecommended && v.isOpenNow())
-        .toList()
-      ..sort((a, b) {
-        final byRank = a.recommendedRank.compareTo(b.recommendedRank);
-        return byRank != 0 ? byRank : b.ratingAvg.compareTo(a.ratingAvg);
-      });
+    final promoted =
+        vendors.where((v) => v.isRecommended && v.isOpenNow()).toList()
+          ..sort((a, b) {
+            final byRank = a.recommendedRank.compareTo(b.recommendedRank);
+            return byRank != 0 ? byRank : b.ratingAvg.compareTo(a.ratingAvg);
+          });
     return promoted;
   }
 
@@ -224,37 +222,37 @@ class HomeState extends Equatable {
     VendorFilters? filters,
     bool clearError = false,
     bool clearAddress = false,
-  }) =>
-      HomeState(
-        loading: loading ?? this.loading,
-        error: clearError ? null : (error ?? this.error),
-        banners: banners ?? this.banners,
-        categories: categories ?? this.categories,
-        vendors: vendors ?? this.vendors,
-        deliverToAddress:
-            clearAddress ? null : (deliverToAddress ?? this.deliverToAddress),
-        addressLoaded: addressLoaded ?? this.addressLoaded,
-        favoriteVendorIds: favoriteVendorIds ?? this.favoriteVendorIds,
-        filters: filters ?? this.filters,
-      );
+  }) => HomeState(
+    loading: loading ?? this.loading,
+    error: clearError ? null : (error ?? this.error),
+    banners: banners ?? this.banners,
+    categories: categories ?? this.categories,
+    vendors: vendors ?? this.vendors,
+    deliverToAddress: clearAddress
+        ? null
+        : (deliverToAddress ?? this.deliverToAddress),
+    addressLoaded: addressLoaded ?? this.addressLoaded,
+    favoriteVendorIds: favoriteVendorIds ?? this.favoriteVendorIds,
+    filters: filters ?? this.filters,
+  );
 
   @override
   List<Object?> get props => [
-        loading,
-        error,
-        banners,
-        categories,
-        vendors,
-        deliverToAddress,
-        addressLoaded,
-        favoriteVendorIds,
-        filters,
-      ];
+    loading,
+    error,
+    banners,
+    categories,
+    vendors,
+    deliverToAddress,
+    addressLoaded,
+    favoriteVendorIds,
+    filters,
+  ];
 }
 
 class HomeCubit extends Cubit<HomeState> {
   HomeCubit(this._catalog, this._addresses, this._favorites)
-      : super(const HomeState()) {
+    : super(const HomeState()) {
     _categoriesSubscription = _catalog.vendorCategoriesStream().listen((list) {
       emit(state.copyWith(categories: list));
     }, onError: (_) {});
@@ -292,12 +290,14 @@ class HomeCubit extends Cubit<HomeState> {
       error = e.toString();
     } finally {
       if (!isClosed) {
-        emit(state.copyWith(
-          loading: false,
-          banners: banners,
-          vendors: vendors,
-          error: error,
-        ));
+        emit(
+          state.copyWith(
+            loading: false,
+            banners: banners,
+            vendors: vendors,
+            error: error,
+          ),
+        );
       }
     }
   }
@@ -307,10 +307,14 @@ class HomeCubit extends Cubit<HomeState> {
       final addresses = await _addresses.fetchAddresses();
       if (isClosed) return;
       // `fetchAddresses` already sorts default-first, then newest-first.
-      emit(addresses.isEmpty
-          ? state.copyWith(addressLoaded: true, clearAddress: true)
-          : state.copyWith(
-              addressLoaded: true, deliverToAddress: addresses.first));
+      emit(
+        addresses.isEmpty
+            ? state.copyWith(addressLoaded: true, clearAddress: true)
+            : state.copyWith(
+                addressLoaded: true,
+                deliverToAddress: addresses.first,
+              ),
+      );
     } catch (_) {
       if (!isClosed) emit(state.copyWith(addressLoaded: true));
     }

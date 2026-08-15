@@ -13,10 +13,15 @@ import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart' show ButtonSpinner;
 import '../../auth/auth_cubit.dart';
 import '../vendor_orders_cubit.dart';
+import '../vendor_shell.dart' show VendorWebNav;
+import '../widgets/store_state_controls.dart';
 import 'vendor_analytics_screen.dart';
+import 'vendor_orders_history_screen.dart';
+import 'vendor_payouts_screen.dart';
 import 'vendor_order_details_screen.dart';
 import 'vendor_schedule_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 enum _OrderFilter { incoming, preparing, ready, past }
 
@@ -60,9 +65,31 @@ class _DashboardViewState extends State<_DashboardView> {
   bool _togglingOpen = false;
   bool _togglingBusy = false;
 
+  /// Products that are out or nearly out. Only ever non-empty for a store that
+  /// turned tracking on, so a restaurant never sees this.
+  List<Map<String, dynamic>> _stockAlerts = const [];
+
   /// Order shown in the detail pane. Split widths only; below that a tap still
   /// pushes the detail route.
   String? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStockAlerts();
+  }
+
+  Future<void> _loadStockAlerts() async {
+    final vendor = context.read<AuthCubit>().state.vendor;
+    if (vendor == null) return;
+    try {
+      final alerts = await _admin.stockAlerts(vendor.id);
+      if (!mounted) return;
+      setState(() => _stockAlerts = alerts);
+    } catch (_) {
+      // A banner is not worth an error dialog; the menu still shows the truth.
+    }
+  }
 
   Future<void> _toggleOpen(bool open) async {
     final auth = context.read<AuthCubit>();
@@ -96,8 +123,22 @@ class _DashboardViewState extends State<_DashboardView> {
     }
   }
 
+  /// Opens one of the vendor's occasional tools.
+  ///
+  /// Inside the desktop web shell this swaps the content pane, so the sidebar
+  /// stays put and the tool is the same one its sidebar row opens. Everywhere
+  /// else it is the push it has always been.
+  void _openTool(String toolId, Widget Function() page) {
+    final webNav = VendorWebNav.maybeOf(context);
+    if (webNav != null) {
+      webNav.openTool(toolId);
+      return;
+    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page()));
+  }
+
   void _openStoreControls(Vendor vendor) {
-    showModalBottomSheet<void>(
+    showAdaptiveSheet<void>(
       context: context,
       showDragHandle: true,
       backgroundColor: AppColors.surface,
@@ -111,21 +152,28 @@ class _DashboardViewState extends State<_DashboardView> {
         },
         onAnalytics: () {
           Navigator.pop(sheetContext);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => VendorAnalyticsScreen(vendorId: vendor.id),
-            ),
+          _openTool(
+            'analytics',
+            () => VendorAnalyticsScreen(vendorId: vendor.id),
           );
         },
         onSchedule: () {
           Navigator.pop(sheetContext);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => VendorScheduleScreen(vendorId: vendor.id),
-            ),
+          _openTool(
+            'schedule',
+            () => VendorScheduleScreen(vendorId: vendor.id),
           );
+        },
+        onHistory: () {
+          Navigator.pop(sheetContext);
+          _openTool(
+            'history',
+            () => VendorOrdersHistoryScreen(vendorId: vendor.id),
+          );
+        },
+        onPayouts: () {
+          Navigator.pop(sheetContext);
+          _openTool('payouts', () => VendorPayoutsScreen(vendorId: vendor.id));
         },
       ),
     );
@@ -181,24 +229,42 @@ class _DashboardViewState extends State<_DashboardView> {
               return Column(
                 children: [
                   _VerificationNotice(vendor: vendor),
-                  _Header(
-                    vendor: vendor,
-                    actionable: state.pending.length + state.preparing.length,
-                    togglingOpen: _togglingOpen,
-                    onToggleOpen: _toggleOpen,
-                    onOpenControls: () => _openStoreControls(vendor),
+                  // The mobile header is a full-bleed dark block sized to
+                  // read at a glance on a phone; on web the sidebar already
+                  // carries navigation to Settings (where "store controls"
+                  // used to be the only door in), so the strip only needs
+                  // the identity + the one switch a vendor actually checks
+                  // this screen for.
+                  AppBreakpoints.isWebWide(context)
+                      ? _WebVendorStrip(
+                          vendor: vendor,
+                          actionable:
+                              state.pending.length + state.preparing.length,
+                          togglingOpen: _togglingOpen,
+                          onToggleOpen: _toggleOpen,
+                          togglingBusy: _togglingBusy,
+                          onToggleBusy: _toggleBusy,
+                        )
+                      : _Header(
+                          vendor: vendor,
+                          actionable:
+                              state.pending.length + state.preparing.length,
+                          togglingOpen: _togglingOpen,
+                          onToggleOpen: _toggleOpen,
+                          onOpenControls: () => _openStoreControls(vendor),
+                        ),
+                  _StockBanner(
+                    alerts: _stockAlerts,
+                    onReview: () => context.push('/vendor-app/menu'),
                   ),
                   _StatusBanner(
                     vendor: vendor,
                     busyPending: _togglingBusy,
                     onClearBusy: () => _toggleBusy(false),
                     onOpenStore: () => _toggleOpen(true),
-                    onEditHours: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            VendorScheduleScreen(vendorId: vendor.id),
-                      ),
+                    onEditHours: () => _openTool(
+                      'schedule',
+                      () => VendorScheduleScreen(vendorId: vendor.id),
                     ),
                   ),
                   if (state.loading)
@@ -395,7 +461,7 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpace.md),
-          _OpenToggle(
+          StoreOpenToggle(
             isOpen: vendor.isOpen,
             // The switch says "we are trading"; the timetable can still have
             // the store shut. Showing only the switch let an owner sit there
@@ -411,101 +477,183 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Full-width so the store's own state is never a detail in the corner.
-class _OpenToggle extends StatelessWidget {
-  const _OpenToggle({
-    required this.isOpen,
-    required this.busy,
-    required this.onChanged,
-    this.outsideHours = false,
-    this.closingTime,
+/// The web-width replacement for [_Header] — same identity and the same
+/// [StoreOpenToggle] pill, one row on the ordinary surface instead of a dark
+/// full-bleed block. No controls icon: the web sidebar already routes to
+/// Settings, where "store controls" led on mobile.
+class _WebVendorStrip extends StatelessWidget {
+  const _WebVendorStrip({
+    required this.vendor,
+    required this.actionable,
+    required this.togglingOpen,
+    required this.onToggleOpen,
+    required this.togglingBusy,
+    required this.onToggleBusy,
   });
 
-  /// The owner's own switch. Left as-is when the timetable closes the store, so
-  /// tomorrow's opening does not need anyone to come back and flip it.
-  final bool isOpen;
+  final Vendor vendor;
+  final int actionable;
+  final bool togglingOpen;
+  final ValueChanged<bool> onToggleOpen;
 
-  /// The switch is on but today's hours have it shut anyway.
-  final bool outsideHours;
-
-  /// Today's closing time, `HH:MM`, when there is one.
-  final String? closingTime;
-
-  final bool busy;
-  final ValueChanged<bool> onChanged;
+  /// Busy mode reached web only through the mobile store-controls sheet,
+  /// which this strip replaces — so on a desktop window there was no way to
+  /// turn it *on* at all (the status banner only offers to clear it once it
+  /// already is). It sits beside the open switch here: both answer "what is
+  /// my kitchen doing right now", which is the one thing this bar is for.
+  final bool togglingBusy;
+  final ValueChanged<bool> onToggleBusy;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final trading = isOpen && !outsideHours;
-    final accent = trading
-        ? AppColors.onDarkSuccess
-        : outsideHours
-        ? AppColors.amberInk
-        : AppColors.navInactive;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        AppSpace.lg,
-        AppSpace.sm,
-        AppSpace.sm,
-        AppSpace.sm,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.inkElevated,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
+      width: double.infinity,
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.xl,
+        vertical: AppSpace.md,
       ),
       child: Row(
         children: [
           Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Text(
-              outsideHours
-                  ? l10n.closedOutsideHours
-                  : trading && closingTime != null
-                  ? l10n.openUntil(closingTime!)
-                  : isOpen
-                  ? l10n.open
-                  : l10n.closed,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: accent,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-              ),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.warmFill,
+              borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
-          ),
-          SizedBox(
-            width: 44,
-            height: 26,
-            child: busy
-                ? const Padding(
-                    padding: EdgeInsets.all(5),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Transform.scale(
-                    scale: 0.85,
-                    child: Switch(
-                      value: isOpen,
-                      onChanged: onChanged,
-                      activeThumbColor: Colors.white,
-                      activeTrackColor: AppColors.success,
-                      inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: AppColors.onDarkTrack,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
+            clipBehavior: Clip.antiAlias,
+            child: vendor.logoUrl != null
+                ? AppNetworkImage(url: vendor.logoUrl, width: 36, height: 36)
+                : const Icon(
+                    Icons.storefront_rounded,
+                    color: AppColors.primary,
+                    size: 18,
                   ),
           ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vendor.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.heading(15),
+                ),
+                Text(
+                  actionable == 0
+                      ? l10n.allCaughtUp
+                      : '$actionable ${l10n.needsYourAttention}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: actionable == 0
+                        ? AppColors.textMuted
+                        : AppColors.successInk,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.md),
+          // Loose Flexible, not a bare child. A non-flex child is measured at
+          // its intrinsic width and keeps it, so on a cramped window the two
+          // pills push the row past its edge instead of giving way. Loose fit
+          // takes intrinsic width when there is room and less when there is
+          // not, at which point the labels inside ellipsise.
+          Flexible(
+            child: StoreBusyToggle(
+              isBusy: vendor.isBusy,
+              pending: togglingBusy,
+              onChanged: onToggleBusy,
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          // Shrink-wrapped: this is a control at the end of a row here, not
+          // the full-width banner the mobile header makes of it.
+          Flexible(
+            child: StoreOpenToggle(
+              isOpen: vendor.isOpen,
+              outsideHours: vendor.isOpen && !vendor.isOpenNow(),
+              closingTime: vendor.closingTime(),
+              busy: togglingOpen,
+              onChanged: onToggleOpen,
+              expand: false,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Items that have run out, or are about to.
+///
+/// Only a store that counts stock can have any, so this is invisible to a
+/// restaurant. Out-of-stock outranks low: one is lost sales happening now, the
+/// other is a warning.
+class _StockBanner extends StatelessWidget {
+  const _StockBanner({required this.alerts, required this.onReview});
+
+  final List<Map<String, dynamic>> alerts;
+  final VoidCallback onReview;
+
+  @override
+  Widget build(BuildContext context) {
+    if (alerts.isEmpty) return const SizedBox.shrink();
+    final l10n = context.l10n;
+    final out = alerts.where((a) => a['is_out'] == true).length;
+    final low = alerts.length - out;
+    final urgent = out > 0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.gutter,
+        AppSpace.sm,
+        AppSpace.gutter,
+        0,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.md),
+        decoration: BoxDecoration(
+          color: urgent ? AppColors.dangerFill : AppColors.amberFill,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              urgent ? Icons.inventory_2_rounded : Icons.warning_amber_rounded,
+              size: 19,
+              color: urgent ? AppColors.dangerInk : AppColors.amberInk,
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Text(
+                urgent ? l10n.outOfStockCount(out) : l10n.lowStockCount(low),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: urgent ? AppColors.dangerInk : AppColors.amberInk,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: onReview,
+              child: Text(
+                l10n.reviewStock,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -714,11 +862,15 @@ class _StoreControlsSheet extends StatelessWidget {
     required this.onToggleBusy,
     required this.onAnalytics,
     required this.onSchedule,
+    required this.onHistory,
+    required this.onPayouts,
   });
 
   final ValueChanged<bool> onToggleBusy;
   final VoidCallback onAnalytics;
   final VoidCallback onSchedule;
+  final VoidCallback onHistory;
+  final VoidCallback onPayouts;
 
   @override
   Widget build(BuildContext context) {
@@ -727,69 +879,132 @@ class _StoreControlsSheet extends StatelessWidget {
     if (vendor == null) return const SizedBox.shrink();
 
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpace.xl,
-              0,
-              AppSpace.xl,
-              AppSpace.md,
+      // The row list is taller than the sheet's default max height on short
+      // screens, so it scrolls rather than overflowing.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.xl,
+                0,
+                AppSpace.xl,
+                AppSpace.md,
+              ),
+              child: Text(l10n.storeControls, style: AppType.heading(17)),
             ),
-            child: Text(l10n.storeControls, style: AppType.heading(17)),
-          ),
-          SwitchListTile(
-            value: vendor.isBusy,
-            onChanged: onToggleBusy,
-            secondary: Icon(
-              Icons.local_fire_department_outlined,
-              color: vendor.isBusy ? AppColors.amberInk : AppColors.textMuted,
+            SwitchListTile(
+              value: vendor.isBusy,
+              onChanged: onToggleBusy,
+              secondary: Icon(
+                Icons.local_fire_department_outlined,
+                color: vendor.isBusy ? AppColors.amberInk : AppColors.textMuted,
+              ),
+              title: Text(
+                l10n.busyStore,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                l10n.busyMode,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
             ),
-            title: Text(
-              l10n.busyStore,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            ListTile(
+              onTap: onAnalytics,
+              leading: const Icon(
+                Icons.insights_rounded,
+                color: AppColors.textSecondary,
+              ),
+              title: Text(
+                l10n.vendorAnalytics,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textFaint,
+              ),
             ),
-            subtitle: Text(
-              l10n.busyMode,
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            // The money the store is owed, and when it lands. Given its own row
+            // rather than buried in analytics: it is the thing a shop owner
+            // opens the app to check that is not an order.
+            ListTile(
+              onTap: onPayouts,
+              leading: const Icon(
+                Icons.account_balance_wallet_outlined,
+                color: AppColors.textSecondary,
+              ),
+              title: Text(
+                l10n.payouts,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textFaint,
+              ),
             ),
-          ),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          ListTile(
-            onTap: onAnalytics,
-            leading: const Icon(
-              Icons.insights_rounded,
-              color: AppColors.textSecondary,
+            const Divider(height: 1, color: AppColors.borderSoft),
+            // Support, where every other occasional action lives. Previously a
+            // vendor had no route to it at all from their own app.
+            ListTile(
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/support');
+              },
+              leading: const Icon(
+                Icons.support_agent_rounded,
+                color: AppColors.textSecondary,
+              ),
+              title: Text(
+                l10n.contactSupport,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textFaint,
+              ),
             ),
-            title: Text(
-              l10n.vendorAnalytics,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            ListTile(
+              onTap: onHistory,
+              leading: const Icon(
+                Icons.receipt_long_outlined,
+                color: AppColors.textSecondary,
+              ),
+              title: Text(
+                l10n.ordersHistory,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textFaint,
+              ),
             ),
-            trailing: const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textFaint,
+            const Divider(height: 1, color: AppColors.borderSoft),
+            ListTile(
+              onTap: onSchedule,
+              leading: const Icon(
+                Icons.schedule_rounded,
+                color: AppColors.textSecondary,
+              ),
+              title: Text(
+                l10n.operatingSchedule,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textFaint,
+              ),
             ),
-          ),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          ListTile(
-            onTap: onSchedule,
-            leading: const Icon(
-              Icons.schedule_rounded,
-              color: AppColors.textSecondary,
-            ),
-            title: Text(
-              l10n.operatingSchedule,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            trailing: const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textFaint,
-            ),
-          ),
-          const SizedBox(height: AppSpace.sm),
-        ],
+            const SizedBox(height: AppSpace.sm),
+          ],
+        ),
       ),
     );
   }
@@ -1289,7 +1504,6 @@ class _ActionRow extends StatelessWidget {
     );
   }
 }
-
 
 /// Why an unapproved store sees orders it cannot act on.
 ///

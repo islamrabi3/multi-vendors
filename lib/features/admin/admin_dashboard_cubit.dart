@@ -30,27 +30,27 @@ class AdminDashboardState extends Equatable {
     Map<String, ({String name, String? logoUrl})>? vendorLabels,
     String? error,
     bool clearError = false,
-  }) =>
-      AdminDashboardState(
-        loading: loading ?? this.loading,
-        stats: stats ?? this.stats,
-        liveOrders: liveOrders ?? this.liveOrders,
-        vendorLabels: vendorLabels ?? this.vendorLabels,
-        error: clearError ? null : (error ?? this.error),
-      );
+  }) => AdminDashboardState(
+    loading: loading ?? this.loading,
+    stats: stats ?? this.stats,
+    liveOrders: liveOrders ?? this.liveOrders,
+    vendorLabels: vendorLabels ?? this.vendorLabels,
+    error: clearError ? null : (error ?? this.error),
+  );
 
   @override
-  List<Object?> get props =>
-      [loading, stats, liveOrders, vendorLabels, error];
+  List<Object?> get props => [loading, stats, liveOrders, vendorLabels, error];
 }
 
 /// Control-room feed: headline stats (RPC) plus a realtime stream of live
 /// orders, refreshed together.
 class AdminDashboardCubit extends Cubit<AdminDashboardState> {
   AdminDashboardCubit(this._repository) : super(const AdminDashboardState()) {
-    _subscription = _repository.liveOrdersStream().listen(_onOrders,
-        onError: (Object e) =>
-            emit(state.copyWith(loading: false, error: e.toString())));
+    _subscription = _repository.liveOrdersStream().listen(
+      _onOrders,
+      onError: (Object e) =>
+          emit(state.copyWith(loading: false, error: e.toString())),
+    );
     refreshStats();
   }
 
@@ -67,9 +67,7 @@ class AdminDashboardCubit extends Cubit<AdminDashboardState> {
   }
 
   Future<void> _onOrders(List<AppOrder> orders) async {
-    final live = orders
-        .where((o) => !o.status.isTerminal)
-        .toList()
+    final live = orders.where((o) => !o.status.isTerminal).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     final top = live.take(15).toList();
 

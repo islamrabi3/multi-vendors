@@ -19,9 +19,14 @@ import '../../../core/widgets/common.dart';
 /// commission rule with the admin's report, so the store and the platform
 /// cannot see different numbers for the same period.
 class VendorAnalyticsScreen extends StatefulWidget {
-  const VendorAnalyticsScreen({super.key, required this.vendorId});
+  const VendorAnalyticsScreen({
+    super.key,
+    required this.vendorId,
+    this.embedded = false,
+  });
 
   final String vendorId;
+  final bool embedded;
 
   @override
   State<VendorAnalyticsScreen> createState() => _VendorAnalyticsScreenState();
@@ -84,7 +89,9 @@ class _VendorAnalyticsScreenState extends State<VendorAnalyticsScreen> {
     final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(title: Text(l10n.storeAnalyticsAndReports)),
+      appBar: widget.embedded
+          ? null
+          : AppBar(title: Text(l10n.storeAnalyticsAndReports)),
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: _load,
@@ -166,10 +173,9 @@ class _VendorAnalyticsScreenState extends State<VendorAnalyticsScreen> {
             )
           else
             _Line(
-              label: '${l10n.platformCommission} '
-                  '(${s.commissionRate.toStringAsFixed(
-                s.commissionRate % 1 == 0 ? 0 : 1,
-              )}%)',
+              label:
+                  '${l10n.platformCommission} '
+                  '(${s.commissionRate.toStringAsFixed(s.commissionRate % 1 == 0 ? 0 : 1)}%)',
               value: -s.commission,
               subtle: true,
             ),

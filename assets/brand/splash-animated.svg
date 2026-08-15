@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 780" width="390" height="780" role="img" aria-label="Kitchen IN — animated splash" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="kinSplashBg" x1="0" y1="0" x2="0.72" y2="1"><stop offset="0" stop-color="#8F4468"></stop><stop offset=".46" stop-color="#5C2340"></stop><stop offset="1" stop-color="#431829"></stop></linearGradient>
+<clipPath id="kinSplashClip"><rect width="390" height="780"></rect></clipPath>
+
+</defs>
+<g clip-path="url(#kinSplashClip)">
+<rect width="390" height="780" fill="url(#kinSplashBg)"></rect>
+<circle id="kinDriftA" cx="392" cy="196" r="120" fill="#fff" opacity=".08"></circle>
+<circle id="kinDriftB" cx="-8" cy="546" r="90" fill="#fff" opacity=".07"></circle>
+<g id="kinTileG">
+<rect x="143" y="248" width="104" height="104" rx="30" fill="#fff" fill-opacity=".16" stroke="#fff" stroke-opacity=".25"></rect>
+<path id="kinArch" d="M175 326v-24a20 20 0 0 1 40 0v24" fill="none" stroke="#fff" stroke-width="9"></path>
+<circle id="kinDot" cx="195" cy="310" r="6.5" fill="#9DBE3F"></circle>
+</g>
+<text id="kinWord" x="195" y="424" text-anchor="middle" font-family="Cairo, &#39;Segoe UI&#39;, system-ui, sans-serif" font-size="52" font-weight="800" letter-spacing="-1.04" fill="#fff">Kitchen <tspan fill="#C3DE84">IN</tspan></text>
+<rect id="kinRule" x="163" y="446" width="64" height="3" rx="1.5" fill="#9DBE3F"></rect>
+<text id="kinTag" x="195" y="484" text-anchor="middle" font-family="Cairo, &#39;Segoe UI&#39;, system-ui, sans-serif" font-size="17" font-weight="500" fill="#fff" fill-opacity=".9">Good food, from the inside.</text>
+<g id="kinSpin"><path d="M195 682a18 18 0 1 1-18 18" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="3.5" stroke-linecap="round"></path></g>
+</g>
+</svg>

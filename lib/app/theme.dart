@@ -42,8 +42,8 @@ const SystemUiOverlayStyle appOverlayStyle = SystemUiOverlayStyle(
 TextStyle _clipping(TextStyle style) =>
     style.copyWith(overflow: TextOverflow.ellipsis);
 
-/// Eaty theme — warm, confident food-delivery brand.
-/// Body face Plus Jakarta Sans; display Bricolage Grotesque via [AppType].
+/// Kitchen IN theme — aubergine and pistachio, warm-neutral canvas.
+/// Cairo throughout; display and heading ramps come from [AppType].
 ThemeData buildTheme() {
   const scheme = ColorScheme(
     brightness: Brightness.light,

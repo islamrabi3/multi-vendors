@@ -52,9 +52,7 @@ class BlockedScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpace.md),
                 Text(
-                  closed
-                      ? l10n.accountClosedBody
-                      : l10n.accountBlockedBody,
+                  closed ? l10n.accountClosedBody : l10n.accountBlockedBody,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 14,
@@ -78,7 +76,9 @@ class BlockedScreen extends StatelessWidget {
                       reason,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                          fontSize: 13, color: AppColors.textSecondary),
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
@@ -99,10 +99,13 @@ class BlockedScreen extends StatelessWidget {
                 const SizedBox(height: AppSpace.md),
                 TextButton(
                   onPressed: () => context.read<AuthCubit>().signOut(),
-                  child: Text(l10n.logOut,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textMuted)),
+                  child: Text(
+                    l10n.logOut,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ),
               ],
             ),

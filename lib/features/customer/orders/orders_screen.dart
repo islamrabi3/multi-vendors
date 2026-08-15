@@ -106,11 +106,14 @@ class _OrdersViewState extends State<_OrdersView> {
                       : RefreshIndicator(
                           color: AppColors.primary,
                           onRefresh: () async {
-                            if (_active) {
-                              // active is streamed, but we can do a refresh
-                            } else {
-                              await context.read<OrdersCubit>().refresh();
-                            }
+                            final cubit = context.read<OrdersCubit>();
+                            // Both tabs now actually fetch. The active one is
+                            // streamed, but "streamed" is not "always right":
+                            // a dropped socket is indistinguishable from an
+                            // empty list, and this is the only way out of it.
+                            await (_active
+                                ? cubit.refreshActive()
+                                : cubit.refresh());
                           },
                           child: orders.isEmpty && !state.loadingPast
                               ? ListView(

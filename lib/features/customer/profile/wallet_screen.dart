@@ -43,7 +43,7 @@ class _WalletScreenState extends State<WalletScreen> {
   /// Opens Paymob's unified checkout for [amount]. The balance is credited by
   /// the webhook, never by this screen — so the money is only added once the
   /// transaction really succeeded.
-  Future<void> _startTopUp(double amount) async {
+  Future<void> _startTopUp(double amount, PaymobChannel channel) async {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
 
@@ -51,8 +51,7 @@ class _WalletScreenState extends State<WalletScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       messenger.showSnackBar(
-        SnackBar(
-            content: Text(message), backgroundColor: AppColors.dangerInk),
+        SnackBar(content: Text(message), backgroundColor: AppColors.dangerInk),
       );
     }
 
@@ -60,7 +59,10 @@ class _WalletScreenState extends State<WalletScreen> {
 
     PaymobCheckout checkout;
     try {
-      checkout = await _paymentRepo.createTopUpCheckout(amount);
+      checkout = await _paymentRepo.createTopUpCheckout(
+        amount,
+        channel: channel,
+      );
     } on PaymentException catch (error) {
       fail(_topUpErrorMessage(error.code));
       return;
@@ -70,8 +72,11 @@ class _WalletScreenState extends State<WalletScreen> {
     }
     if (!mounted) return;
 
-    final result =
-        await runPaymobCheckout(router, checkout, payments: _paymentRepo);
+    final result = await runPaymobCheckout(
+      router,
+      checkout,
+      payments: _paymentRepo,
+    );
     if (!mounted) return;
 
     switch (result) {
@@ -79,7 +84,8 @@ class _WalletScreenState extends State<WalletScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-                'Added ${amount.toStringAsFixed(2)} EGP to your wallet 🎉'),
+              'Added ${amount.toStringAsFixed(2)} EGP to your wallet 🎉',
+            ),
           ),
         );
         await _loadWallet();
@@ -93,19 +99,20 @@ class _WalletScreenState extends State<WalletScreen> {
         messenger.showSnackBar(
           const SnackBar(
             content: Text(
-                'Still confirming with the bank. Pull to refresh in a moment — '
-                'the balance updates once the payment is confirmed.'),
+              'Still confirming with the bank. Pull to refresh in a moment — '
+              'the balance updates once the payment is confirmed.',
+            ),
           ),
         );
     }
   }
 
   String _topUpErrorMessage(String code) => switch (code) {
-        'INVALID_TOPUP_AMOUNT' => 'Enter an amount between 10 and 20,000 EGP.',
-        'PAYMOB_NOT_CONFIGURED' =>
-          'Card payments are not available right now. Try again later.',
-        _ => 'Could not open the payment page. Please try again.',
-      };
+    'INVALID_TOPUP_AMOUNT' => 'Enter an amount between 10 and 20,000 EGP.',
+    'PAYMOB_NOT_CONFIGURED' =>
+      'Card payments are not available right now. Try again later.',
+    _ => 'Could not open the payment page. Please try again.',
+  };
 
   /// Amount picker. The quick-pick chips write into the text field and vice
   /// versa, which is exactly what `contentBuilder`'s `rebuild` callback is for —
@@ -115,6 +122,9 @@ class _WalletScreenState extends State<WalletScreen> {
   /// screen's job, so `onSubmit` returns the number and the webview follows.
   Future<void> _showTopUpDialog() async {
     final amount = TextEditingController(text: '100');
+    // Held here rather than in the dialog so `onSubmit` can read it: the
+    // dialog only ever returns the amount.
+    var channel = PaymobChannel.card;
     try {
       final chosen = await showFormDialog<double>(
         context: context,
@@ -145,13 +155,32 @@ class _WalletScreenState extends State<WalletScreen> {
                 ],
               ),
               const SizedBox(height: AppSpace.lg),
+              SegmentedButton<PaymobChannel>(
+                segments: [
+                  ButtonSegment(
+                    value: PaymobChannel.card,
+                    icon: const Icon(Icons.credit_card_rounded, size: 17),
+                    label: Text(context.l10n.card),
+                  ),
+                  ButtonSegment(
+                    value: PaymobChannel.wallet,
+                    icon: const Icon(Icons.smartphone_rounded, size: 17),
+                    label: Text(context.l10n.mobileWallet),
+                  ),
+                ],
+                selected: {channel},
+                onSelectionChanged: (value) {
+                  channel = value.first;
+                  rebuild();
+                },
+              ),
+              const SizedBox(height: AppSpace.md),
               TextField(
                 controller: amount,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: context.l10n.egp,
-                  prefixIcon:
-                      const Icon(Icons.payments_outlined, size: 20),
+                  prefixIcon: const Icon(Icons.payments_outlined, size: 20),
                 ),
                 // Keeps the chip selection in step with typed input.
                 onChanged: (_) => rebuild(),
@@ -159,14 +188,14 @@ class _WalletScreenState extends State<WalletScreen> {
             ],
           );
         },
-        onSubmit: () async {
+        onSubmit: (_) async {
           final value = double.tryParse(amount.text);
           // Null keeps the dialog open rather than silently doing nothing.
           if (value == null || value <= 0) return null;
           return value;
         },
       );
-      if (chosen != null) await _startTopUp(chosen);
+      if (chosen != null) await _startTopUp(chosen, channel);
     } finally {
       Future.delayed(const Duration(milliseconds: 500), () => amount.dispose());
     }
@@ -175,27 +204,25 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.myWallet),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(context.l10n.myWallet), elevation: 0),
       body: _isLoading
           ? const _WalletSkeleton()
           : RefreshIndicator(
               onRefresh: _loadWallet,
               child: ListView(
-                padding: EdgeInsets.fromLTRB(16, 16, 16,
-                    16 + MediaQuery.paddingOf(context).bottom),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  16 + MediaQuery.paddingOf(context).bottom,
+                ),
                 children: [
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [
-                          AppColors.primaryLight,
-                          AppColors.primaryDark
-                        ],
+                        colors: [AppColors.primaryLight, AppColors.primaryDark],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -207,7 +234,10 @@ class _WalletScreenState extends State<WalletScreen> {
                       children: [
                         Text(
                           context.l10n.currentBalance,
-                          style: const TextStyle(color: Colors.white70, fontSize: 14),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -227,14 +257,19 @@ class _WalletScreenState extends State<WalletScreen> {
                                 foregroundColor: AppColors.primaryDark,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadii.md),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.md,
+                                  ),
                                 ),
                               ),
                               onPressed: _showTopUpDialog,
                               icon: const Icon(Icons.add_circle_outline),
-                              label: Text(context.l10n.topUpWallet,
-                                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                              label: Text(
+                                context.l10n.topUpWallet,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -244,7 +279,10 @@ class _WalletScreenState extends State<WalletScreen> {
                   const SizedBox(height: 24),
                   Text(
                     context.l10n.pointsHistory,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (_transactions.isEmpty)
@@ -262,7 +300,9 @@ class _WalletScreenState extends State<WalletScreen> {
                       final isPositive = tx.amount > 0;
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: isPositive

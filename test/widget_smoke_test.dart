@@ -69,6 +69,9 @@ void main() {
   test('readableError maps known errors', () {
     expect(readableError('CART_EMPTY'), 'Your cart is empty.');
     expect(readableError('VENDOR_CLOSED'), 'This store is currently closed.');
-    expect(readableError('unknown_xyz'), 'Something went wrong. Please try again.');
+    expect(
+      readableError('unknown_xyz'),
+      'Something went wrong. Please try again.',
+    );
   });
 }

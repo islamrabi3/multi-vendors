@@ -13,6 +13,7 @@ import '../../auth/auth_cubit.dart';
 import '../menu_cubit.dart';
 import 'product_editor_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
@@ -68,7 +69,9 @@ class _MenuViewState extends State<_MenuView> {
     final String? result = await AppDialogs.showFormDialog<String>(
       context: context,
       title: isNew ? l10n.newSection : l10n.renameSection,
-      subtitle: isNew ? l10n.addCategorySectionDesc : l10n.modifyCategoryNameDesc,
+      subtitle: isNew
+          ? l10n.addCategorySectionDesc
+          : l10n.modifyCategoryNameDesc,
       icon: isNew ? Icons.create_new_folder_rounded : Icons.edit_note_rounded,
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -102,9 +105,9 @@ class _MenuViewState extends State<_MenuView> {
         ],
       ),
       primaryText: l10n.save,
-      onPrimaryPressed: () {
+      onPrimaryPressed: (dialogContext) {
         nameArVal = controllerAr.text.trim();
-        Navigator.pop(context, controller.text.trim());
+        Navigator.pop(dialogContext, controller.text.trim());
       },
       secondaryText: l10n.cancel,
     );
@@ -121,7 +124,9 @@ class _MenuViewState extends State<_MenuView> {
   /// Deleting a section is destructive enough to confirm, and the outcome —
   /// the items survive — is not obvious, so the dialog says it.
   Future<void> _deleteCategory(
-      BuildContext context, ProductCategory category) async {
+    BuildContext context,
+    ProductCategory category,
+  ) async {
     final cubit = context.read<MenuCubit>();
     final l10n = context.l10n;
     final confirmed = await AppDialogs.showConfirmDialog(
@@ -180,24 +185,28 @@ class _MenuViewState extends State<_MenuView> {
     final cubit = context.read<MenuCubit>();
     final state = cubit.state;
     final l10n = context.l10n;
-    final chosen = await showModalBottomSheet<_MoveTarget>(
+    final chosen = await showAdaptiveSheet<_MoveTarget>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
         Widget row(String label, String? id) => ListTile(
-              title: Text(label),
-              trailing: id == product.categoryId
-                  ? const Icon(Icons.check_rounded, color: AppColors.primary)
-                  : null,
-              onTap: () => Navigator.pop(sheetContext, _MoveTarget(id)),
-            );
+          title: Text(label),
+          trailing: id == product.categoryId
+              ? const Icon(Icons.check_rounded, color: AppColors.primary)
+              : null,
+          onTap: () => Navigator.pop(sheetContext, _MoveTarget(id)),
+        );
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpace.xl, 0, AppSpace.xl, AppSpace.md),
+                  AppSpace.xl,
+                  0,
+                  AppSpace.xl,
+                  AppSpace.md,
+                ),
                 child: Text(l10n.moveToSection, style: AppType.heading(17)),
               ),
               for (final category in state.categories)
@@ -215,7 +224,7 @@ class _MenuViewState extends State<_MenuView> {
   /// Drag-to-reorder for sections, plus rename and delete in the same place.
   Future<void> _manageSections(BuildContext context) async {
     final cubit = context.read<MenuCubit>();
-    await showModalBottomSheet<void>(
+    await showAdaptiveSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -231,11 +240,14 @@ class _MenuViewState extends State<_MenuView> {
   }
 
   Future<void> _setSectionAvailability(
-      BuildContext context, bool available) async {
+    BuildContext context,
+    bool available,
+  ) async {
     final cubit = context.read<MenuCubit>();
     final l10n = context.l10n;
-    final categoryId =
-        cubit.state.showUncategorized ? null : cubit.state.selectedCategoryId;
+    final categoryId = cubit.state.showUncategorized
+        ? null
+        : cubit.state.selectedCategoryId;
     if (await cubit.setSectionAvailability(
           categoryId: categoryId,
           available: available,
@@ -267,7 +279,8 @@ class _MenuViewState extends State<_MenuView> {
               onRetry: context.read<MenuCubit>().load,
             ),
             builder: (context, state) {
-              final failedToLoad = state.error != null &&
+              final failedToLoad =
+                  state.error != null &&
                   state.categories.isEmpty &&
                   state.products.isEmpty;
               return Column(
@@ -309,13 +322,17 @@ class _MenuViewState extends State<_MenuView> {
                             child: _SectionRail(
                               state: state,
                               language: _language,
-                              onEdit: (c) => _editCategory(context, category: c),
+                              onEdit: (c) =>
+                                  _editCategory(context, category: c),
                               onDelete: (c) => _deleteCategory(context, c),
                               onManage: () => _manageSections(context),
                             ),
                           ),
                           const VerticalDivider(
-                              width: 1, thickness: 1, color: AppColors.border),
+                            width: 1,
+                            thickness: 1,
+                            color: AppColors.border,
+                          ),
                           Expanded(child: _body(context, state, grid: true)),
                         ],
                       ),
@@ -345,20 +362,19 @@ class _MenuViewState extends State<_MenuView> {
     // Dragging only makes sense against the order being written: with a search
     // or a different sort applied, the list on screen is not the menu's order,
     // and a drop would renumber rows the vendor cannot see.
-    final canReorder = state.sort == MenuSort.manual &&
-        state.query.trim().isEmpty &&
-        !grid;
+    final canReorder =
+        state.sort == MenuSort.manual && state.query.trim().isEmpty && !grid;
 
     Widget tileFor(Product product, {Key? key}) => _ProductTile(
-          key: key,
-          product: product,
-          language: _language,
-          draggable: canReorder,
-          onEdit: () => _openEditor(context, product: product),
-          onDuplicate: () => _duplicateProduct(context, product),
-          onMove: () => _moveProduct(context, product),
-          onDelete: () => _deleteProduct(context, product),
-        );
+      key: key,
+      product: product,
+      language: _language,
+      draggable: canReorder,
+      onEdit: () => _openEditor(context, product: product),
+      onDuplicate: () => _duplicateProduct(context, product),
+      onMove: () => _moveProduct(context, product),
+      onDelete: () => _deleteProduct(context, product),
+    );
 
     if (grid) {
       return GridView.builder(
@@ -497,8 +513,10 @@ class _Header extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onAddItem,
                 style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 13,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadii.lg),
                   ),
@@ -507,7 +525,9 @@ class _Header extends StatelessWidget {
                 label: Text(
                   l10n.addItem,
                   style: const TextStyle(
-                      fontSize: 12.5, fontWeight: FontWeight.w800),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -531,7 +551,9 @@ class _Header extends StatelessWidget {
                       },
                     ),
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.lg, vertical: 12),
+                horizontal: AppSpace.lg,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.pill),
                 borderSide: const BorderSide(color: AppColors.border),
@@ -609,20 +631,20 @@ class _MenuActions extends StatelessWidget {
   }
 
   Widget _menuRow(IconData icon, String label) => Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
-          const SizedBox(width: AppSpace.md),
-          Flexible(child: Text(label)),
-        ],
-      );
+    children: [
+      Icon(icon, size: 18, color: AppColors.textSecondary),
+      const SizedBox(width: AppSpace.md),
+      Flexible(child: Text(label)),
+    ],
+  );
 }
 
 String _sortLabel(BuildContext context, MenuSort sort) => switch (sort) {
-      MenuSort.manual => context.l10n.sortManual,
-      MenuSort.nameAsc => context.l10n.sortNameAsc,
-      MenuSort.priceAsc => context.l10n.sortPriceAsc,
-      MenuSort.priceDesc => context.l10n.sortPriceDesc,
-    };
+  MenuSort.manual => context.l10n.sortManual,
+  MenuSort.nameAsc => context.l10n.sortNameAsc,
+  MenuSort.priceAsc => context.l10n.sortPriceAsc,
+  MenuSort.priceDesc => context.l10n.sortPriceDesc,
+};
 
 // -----------------------------------------------------------------------------
 // Section navigation
@@ -647,8 +669,8 @@ class _SectionChips extends StatelessWidget {
             context,
             label: context.l10n.all,
             count: state.products.length,
-            selected: state.selectedCategoryId == null &&
-                !state.showUncategorized,
+            selected:
+                state.selectedCategoryId == null && !state.showUncategorized,
             onTap: () => cubit.selectCategory(null),
           ),
           for (final c in state.categories)
@@ -711,10 +733,12 @@ class _SectionChips extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 '$count',
-                style: AppType.mono(11.5,
-                    color: selected
-                        ? Colors.white.withValues(alpha: 0.8)
-                        : AppColors.textFaint),
+                style: AppType.mono(
+                  11.5,
+                  color: selected
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : AppColors.textFaint,
+                ),
               ),
             ],
           ),
@@ -805,8 +829,8 @@ class _SectionRail extends StatelessWidget {
               color: selected
                   ? AppColors.ink
                   : hovered
-                      ? AppColors.warmFill
-                      : Colors.transparent,
+                  ? AppColors.warmFill
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadii.md),
             ),
             child: Row(
@@ -824,19 +848,28 @@ class _SectionRail extends StatelessWidget {
                   ),
                 ),
                 if (onEdit != null && hovered) ...[
-                  _railAction(Icons.edit_outlined, onEdit, selected,
-                      context.l10n.renameSection),
+                  _railAction(
+                    Icons.edit_outlined,
+                    onEdit,
+                    selected,
+                    context.l10n.renameSection,
+                  ),
                   if (onDelete != null)
-                    _railAction(Icons.delete_outline_rounded, onDelete,
-                        selected, context.l10n.delete),
+                    _railAction(
+                      Icons.delete_outline_rounded,
+                      onDelete,
+                      selected,
+                      context.l10n.delete,
+                    ),
                 ] else
                   Padding(
                     padding: const EdgeInsetsDirectional.only(end: 6),
                     child: Text(
                       '$count',
-                      style: AppType.mono(12,
-                          color:
-                              selected ? Colors.white : AppColors.textFaint),
+                      style: AppType.mono(
+                        12,
+                        color: selected ? Colors.white : AppColors.textFaint,
+                      ),
                     ),
                   ),
               ],
@@ -848,16 +881,22 @@ class _SectionRail extends StatelessWidget {
   }
 
   Widget _railAction(
-          IconData icon, VoidCallback onTap, bool selected, String tooltip) =>
-      IconButton(
-        onPressed: onTap,
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-        tooltip: tooltip,
-        icon: Icon(icon,
-            size: 15, color: selected ? Colors.white : AppColors.textMuted),
-      );
+    IconData icon,
+    VoidCallback onTap,
+    bool selected,
+    String tooltip,
+  ) => IconButton(
+    onPressed: onTap,
+    visualDensity: VisualDensity.compact,
+    padding: EdgeInsets.zero,
+    constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+    tooltip: tooltip,
+    icon: Icon(
+      icon,
+      size: 15,
+      color: selected ? Colors.white : AppColors.textMuted,
+    ),
+  );
 }
 
 /// Reorder, rename, delete and add sections in one place.
@@ -890,28 +929,42 @@ class _ManageSectionsSheet extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
-                      AppSpace.xl, 0, AppSpace.xl, AppSpace.xs),
+                    AppSpace.xl,
+                    0,
+                    AppSpace.xl,
+                    AppSpace.xs,
+                  ),
                   child: Text(l10n.manageSections, style: AppType.heading(18)),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
-                      AppSpace.xl, 0, AppSpace.xl, AppSpace.md),
+                    AppSpace.xl,
+                    0,
+                    AppSpace.xl,
+                    AppSpace.md,
+                  ),
                   child: Text(
                     l10n.reorderSections,
                     style: const TextStyle(
-                        fontSize: 12.5, color: AppColors.textMuted),
+                      fontSize: 12.5,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
                 Flexible(
                   child: ReorderableListView.builder(
                     shrinkWrap: true,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpace.lg, vertical: 4),
+                      horizontal: AppSpace.lg,
+                      vertical: 4,
+                    ),
                     itemCount: state.categories.length,
                     onReorder: (from, to) {
                       final moved = [...state.categories];
                       moved.insert(
-                          to > from ? to - 1 : to, moved.removeAt(from));
+                        to > from ? to - 1 : to,
+                        moved.removeAt(from),
+                      );
                       cubit.reorderCategories(moved);
                     },
                     itemBuilder: (context, i) {
@@ -919,11 +972,15 @@ class _ManageSectionsSheet extends StatelessWidget {
                       return ListTile(
                         key: ValueKey(category.id),
                         contentPadding: const EdgeInsetsDirectional.only(
-                            start: AppSpace.sm, end: 0),
+                          start: AppSpace.sm,
+                          end: 0,
+                        ),
                         leading: ReorderableDragStartListener(
                           index: i,
-                          child: const Icon(Icons.drag_indicator_rounded,
-                              color: AppColors.textFaint),
+                          child: const Icon(
+                            Icons.drag_indicator_rounded,
+                            color: AppColors.textFaint,
+                          ),
                         ),
                         title: Text(category.displayName(language)),
                         subtitle: Text(
@@ -940,8 +997,11 @@ class _ManageSectionsSheet extends StatelessWidget {
                             ),
                             IconButton(
                               tooltip: l10n.delete,
-                              icon: const Icon(Icons.delete_outline_rounded,
-                                  size: 19, color: AppColors.dangerInk),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 19,
+                                color: AppColors.dangerInk,
+                              ),
                               onPressed: () => onDelete(category),
                             ),
                           ],
@@ -998,8 +1058,11 @@ class _EmptyResult extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.search_off_rounded,
-              size: 52, color: AppColors.textFaint),
+          const Icon(
+            Icons.search_off_rounded,
+            size: 52,
+            color: AppColors.textFaint,
+          ),
           const SizedBox(height: AppSpace.md),
           Text(
             state.query.trim().isEmpty
@@ -1040,9 +1103,8 @@ class _ProductTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) => HoverBuilder(
-        builder: (context, hovered) => _tile(context, hovered),
-      );
+  Widget build(BuildContext context) =>
+      HoverBuilder(builder: (context, hovered) => _tile(context, hovered));
 
   Widget _tile(BuildContext context, bool hovered) {
     final l10n = context.l10n;
@@ -1053,7 +1115,8 @@ class _ProductTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border.all(
-              color: hovered ? AppColors.primaryLight : AppColors.border),
+            color: hovered ? AppColors.primaryLight : AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppRadii.xl),
           boxShadow: AppShadows.card,
         ),
@@ -1070,8 +1133,11 @@ class _ProductTile extends StatelessWidget {
                     if (draggable)
                       const Padding(
                         padding: EdgeInsetsDirectional.only(end: 4),
-                        child: Icon(Icons.drag_indicator_rounded,
-                            size: 18, color: AppColors.textFaint),
+                        child: Icon(
+                          Icons.drag_indicator_rounded,
+                          size: 18,
+                          color: AppColors.textFaint,
+                        ),
                       ),
                     AppNetworkImage(
                       url: product.imageUrl,
@@ -1104,7 +1170,8 @@ class _ProductTile extends StatelessWidget {
                                 Flexible(
                                   child: Text(
                                     l10n.optionGroupsCount(
-                                        product.optionGroups.length),
+                                      product.optionGroups.length,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -1145,19 +1212,25 @@ class _ProductTile extends StatelessWidget {
                         PopupMenuItem(
                           value: onDuplicate,
                           child: _row(
-                              Icons.copy_all_outlined, l10n.duplicateItem),
+                            Icons.copy_all_outlined,
+                            l10n.duplicateItem,
+                          ),
                         ),
                         PopupMenuItem(
                           value: onMove,
-                          child: _row(Icons.drive_file_move_outline,
-                              l10n.moveToSection),
+                          child: _row(
+                            Icons.drive_file_move_outline,
+                            l10n.moveToSection,
+                          ),
                         ),
                         const PopupMenuDivider(),
                         PopupMenuItem(
                           value: onDelete,
-                          child: _row(Icons.delete_outline_rounded,
-                              l10n.deleteItem,
-                              danger: true),
+                          child: _row(
+                            Icons.delete_outline_rounded,
+                            l10n.deleteItem,
+                            danger: true,
+                          ),
                         ),
                       ],
                     ),
@@ -1172,16 +1245,19 @@ class _ProductTile extends StatelessWidget {
   }
 
   Widget _row(IconData icon, String label, {bool danger = false}) => Row(
-        children: [
-          Icon(icon,
-              size: 18,
-              color: danger ? AppColors.dangerInk : AppColors.textSecondary),
-          const SizedBox(width: AppSpace.md),
-          Text(label,
-              style: TextStyle(
-                  color: danger ? AppColors.dangerInk : AppColors.ink)),
-        ],
-      );
+    children: [
+      Icon(
+        icon,
+        size: 18,
+        color: danger ? AppColors.dangerInk : AppColors.textSecondary,
+      ),
+      const SizedBox(width: AppSpace.md),
+      Text(
+        label,
+        style: TextStyle(color: danger ? AppColors.dangerInk : AppColors.ink),
+      ),
+    ],
+  );
 }
 
 class _SoldOutBadge extends StatelessWidget {
@@ -1189,18 +1265,18 @@ class _SoldOutBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: AppColors.dangerFill,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-        ),
-        child: Text(
-          context.l10n.soldOut.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            color: AppColors.dangerInk,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: AppColors.dangerFill,
+      borderRadius: BorderRadius.circular(AppRadii.sm),
+    ),
+    child: Text(
+      context.l10n.soldOut.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w800,
+        color: AppColors.dangerInk,
+      ),
+    ),
+  );
 }

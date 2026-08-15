@@ -64,8 +64,10 @@ class _VendorReviewsPreviewState extends State<VendorReviewsPreview> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.ratingsAndReviews,
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                l10n.ratingsAndReviews,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: AppSpace.lg),
               RatingSummary(breakdown: breakdown),
               const SizedBox(height: AppSpace.lg),

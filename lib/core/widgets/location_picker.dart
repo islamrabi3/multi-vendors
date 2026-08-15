@@ -383,7 +383,7 @@ class _ConfirmBar extends StatelessWidget {
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
         boxShadow: [
-          BoxShadow(color: Color(0x1A281406), blurRadius: 24, offset: Offset(0, -6)),
+          BoxShadow(color: Color(0x1A1E1519), blurRadius: 24, offset: Offset(0, -6)),
         ],
       ),
       child: Column(

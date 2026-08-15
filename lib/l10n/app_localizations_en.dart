@@ -19,7 +19,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createYournaccount => 'Create your account';
 
   @override
-  String get howWillYouUseEaty => 'How will you use Eaty?';
+  String get howWillYouUseKitchenIn => 'How will you use Kitchen IN?';
 
   @override
   String get continueText => 'Continue';
@@ -35,9 +35,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get passwordMin6Chars => 'Password (min 6 chars)';
-
-  @override
-  String get eaty => 'eaty';
 
   @override
   String get welcomeBack => 'Welcome back';
@@ -110,7 +107,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get averagePrepTimeMinutes => 'Average prep time (minutes)';
 
   @override
-  String get cravingsDelivered => 'Cravings, delivered.';
+  String get goodFoodFromTheInside => 'Good food, from the inside.';
 
   @override
   String get getStarted => 'Get started';
@@ -245,7 +242,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveOrders => 'Live orders';
 
   @override
-  String get eatyPlatformToday => 'EATY PLATFORM · TODAY';
+  String get platformToday => 'PLATFORM · TODAY';
 
   @override
   String get liveOverview => 'Live overview';
@@ -522,11 +519,151 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changeLanguage => 'Change Language';
 
   @override
+  String get collectedFromCustomers => 'Collected from customers';
+
+  @override
+  String get appWalletLabel => 'App wallet balance';
+
+  @override
+  String get whereItGoes => 'Where it goes';
+
+  @override
+  String ordersCount(int count) {
+    return '$count orders';
+  }
+
+  @override
+  String get platformNetLedger => 'Platform net (ledger)';
+
+  @override
+  String get signupWebSubhead =>
+      'Create an account to order from the kitchens near you, track every delivery, and keep your favourites in one place.';
+
+  @override
+  String get allRoles => 'All roles';
+
+  @override
+  String get roleCustomer => 'Customers';
+
+  @override
+  String get roleVendor => 'Vendors';
+
+  @override
+  String get roleDriver => 'Drivers';
+
+  @override
+  String get roleAdmin => 'Admins';
+
+  @override
+  String get statusActive => 'Active';
+
+  @override
+  String get statusBlocked => 'Blocked';
+
+  @override
+  String get statusClosed => 'Closed';
+
+  @override
+  String get allStatuses => 'Any status';
+
+  @override
+  String get joinedLabel => 'Joined';
+
+  @override
+  String get userLabel => 'User';
+
+  @override
+  String get roleLabel => 'Role';
+
+  @override
+  String get noUsersMatch => 'No users match these filters.';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String get addYourPhoneTitle => 'Add your phone number';
+
+  @override
+  String get addYourPhoneBody =>
+      'We need a number to reach you about your orders — a driver at the door, or a store confirming an address.';
+
+  @override
+  String get pageLabel => 'Page';
+
+  @override
+  String get visibilityLabel => 'Visibility';
+
+  @override
+  String get linkLabel => 'Link';
+
+  @override
+  String get scrollToReadAll => 'Scroll to the end to continue';
+
+  @override
+  String get iAgreeToTerms => 'I have read and agree to these terms';
+
+  @override
+  String get acceptAndContinue => 'Accept and continue';
+
+  @override
+  String policyVersionLabel(int version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get requireReacceptance => 'Require partners to accept again';
+
+  @override
+  String requireReacceptanceOn(int version) {
+    return 'Publishes as version $version. Every vendor or driver will be stopped until they accept it.';
+  }
+
+  @override
+  String requireReacceptanceOff(int version) {
+    return 'Stays at version $version. Existing signatures remain valid.';
+  }
+
+  @override
+  String get expiresLabel => 'Expires';
+
+  @override
+  String get pausedLabel => 'Paused';
+
+  @override
+  String get titleLabel => 'Title';
+
+  @override
+  String get adViews => 'Views';
+
+  @override
+  String get adTaps => 'Taps';
+
+  @override
+  String get adTapRate => 'Tap rate';
+
+  @override
+  String get statusSettled => 'Settled';
+
+  @override
+  String get noArabicName => 'No Arabic name';
+
+  @override
+  String get mobileWallet => 'Mobile wallet';
+
+  @override
+  String get mobileWalletProviders => 'Vodafone Cash, Etisalat, Orange';
+
+  @override
+  String get languageChangeLaterHint =>
+      'You can change this any time in Settings.';
+
+  @override
   String get missingSupabaseConfigurationnn1 =>
       'Missing Supabase configuration.';
 
   @override
-  String get multiVendor => 'Multi Vendor';
+  String get multiVendor => 'KitchenIN';
 
   @override
   String get orderFood => 'Order food';
@@ -2564,9 +2701,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sortPriceDesc => 'Price, high to low';
 
   @override
-  String get clearFilters => 'Clear filters';
-
-  @override
   String get noMatchingItems => 'No items match your search.';
 
   @override
@@ -3640,4 +3774,451 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get subscriptionNotDeductedNote =>
       'Your monthly subscription is billed separately and is not deducted from the payout above.';
+
+  @override
+  String get onboardingTitle4 => 'Now, later, or collect it yourself';
+
+  @override
+  String get onboardingBody4 =>
+      'Order for right now, schedule it for the time you want, or pick it up from the branch.';
+
+  @override
+  String get cashDue => 'Cash due';
+
+  @override
+  String get owedToYou => 'Owed to you';
+
+  @override
+  String get availableBalance => 'Available balance';
+
+  @override
+  String get cashCollectedLabel => 'Cash collected';
+
+  @override
+  String get totalEarningsLabel => 'Total earnings';
+
+  @override
+  String get totalSettlementsLabel => 'Settled';
+
+  @override
+  String get lastSettlement => 'Last settlement';
+
+  @override
+  String get statement => 'Statement';
+
+  @override
+  String get noTransactionsYet => 'No transactions yet.';
+
+  @override
+  String get youOweExplainer =>
+      'Cash you collected from customers and still owe the platform.';
+
+  @override
+  String get owedToYouExplainer => 'Money the platform owes you.';
+
+  @override
+  String get requestDeposit => 'Deposit money';
+
+  @override
+  String get depositAmount => 'Amount';
+
+  @override
+  String get depositMethod => 'How you paid';
+
+  @override
+  String get referenceOptional => 'Reference (optional)';
+
+  @override
+  String get submitRequest => 'Send request';
+
+  @override
+  String get depositRequested =>
+      'Request sent. It is credited once an admin confirms the payment.';
+
+  @override
+  String get depositsAwaitingReview => 'Deposits';
+
+  @override
+  String get noDepositsPending => 'No deposits waiting.';
+
+  @override
+  String get depositApproved => 'Deposit approved.';
+
+  @override
+  String get depositRejected => 'Deposit rejected.';
+
+  @override
+  String get financeTitle => 'Money';
+
+  @override
+  String get cashReconciliation => 'Cash reconciliation';
+
+  @override
+  String get settlementsTitle => 'Settlements';
+
+  @override
+  String get expectedCash => 'Expected';
+
+  @override
+  String get collectedCash => 'Collected';
+
+  @override
+  String get settledCash => 'Settled';
+
+  @override
+  String get outstandingCash => 'Outstanding';
+
+  @override
+  String get cashDifference => 'Difference';
+
+  @override
+  String get reconciliationClean =>
+      'Every cash order has a matching collection.';
+
+  @override
+  String get reconciliationException =>
+      'A cash order was delivered with no collection recorded. Its settlement did not run.';
+
+  @override
+  String get recordSettlement => 'Record settlement';
+
+  @override
+  String get settlementRecorded => 'Settlement recorded.';
+
+  @override
+  String get settlementMethodCash => 'Cash';
+
+  @override
+  String get settlementMethodBank => 'Bank transfer';
+
+  @override
+  String get settlementDetails => 'Settlement details';
+
+  @override
+  String get settlementHistory => 'History';
+
+  @override
+  String get settlementMethod => 'Method';
+
+  @override
+  String get settlementReference => 'Reference';
+
+  @override
+  String get settlementNotes => 'Notes';
+
+  @override
+  String get settlementStatus => 'Status';
+
+  @override
+  String get settlementRecordedOn => 'Recorded on';
+
+  @override
+  String get settlementCompletedOn => 'Completed on';
+
+  @override
+  String get settlementId => 'Settlement ID';
+
+  @override
+  String get settlementCompleted => 'Completed';
+
+  @override
+  String get driversTab => 'Drivers';
+
+  @override
+  String get booksBalanced => 'Books balance';
+
+  @override
+  String booksNotBalanced(String net) {
+    return 'Books do not balance — $net unaccounted for.';
+  }
+
+  @override
+  String unsettledOrdersWarning(int count) {
+    return '$count delivered orders were never split.';
+  }
+
+  @override
+  String get runBackfill => 'Split them now';
+
+  @override
+  String get driverCashDueTotal => 'Driver cash due';
+
+  @override
+  String get vendorPayableTotal => 'Store payables';
+
+  @override
+  String get platformNet => 'Platform net';
+
+  @override
+  String get amountRequired => 'Enter an amount.';
+
+  @override
+  String get refunds => 'Refunds';
+
+  @override
+  String get bonus => 'Bonus';
+
+  @override
+  String get penalty => 'Penalty';
+
+  @override
+  String get adjustments => 'Adjustment';
+
+  @override
+  String get reversal => 'Reversal';
+
+  @override
+  String get opensAt => 'Opens';
+
+  @override
+  String get closesAt => 'Closes';
+
+  @override
+  String get openAllDay => 'Open 24 hours';
+
+  @override
+  String get closesNextDay => 'Closes after midnight';
+
+  @override
+  String get hoursCloseTheStoreNotice =>
+      'Customers cannot order outside these hours, even while the store switch is on.';
+
+  @override
+  String get ordersHistory => 'Order history';
+
+  @override
+  String get noOrdersOnDay => 'No orders on this day.';
+
+  @override
+  String get dayTotal => 'Day total';
+
+  @override
+  String get payouts => 'Payouts';
+
+  @override
+  String get nextPayout => 'Next payout';
+
+  @override
+  String get earlyPayout => 'Request early payout';
+
+  @override
+  String earlyPayoutFee(String percent) {
+    return 'Fee ($percent%)';
+  }
+
+  @override
+  String get youReceive => 'You receive';
+
+  @override
+  String get earlyPayoutExplainer =>
+      'Your money normally arrives on the weekly payout run. Ask for it now, for a fee, and an admin reviews it sooner.';
+
+  @override
+  String get earlyPayoutUnavailable => 'Nothing to pay out yet.';
+
+  @override
+  String earlyPayoutDone(String amount) {
+    return 'Paid out. $amount is on its way.';
+  }
+
+  @override
+  String confirmEarlyPayout(String net, String gross, String date) {
+    return 'Request $net now instead of $gross on $date, for a fee?';
+  }
+
+  @override
+  String get chatWithDriver => 'Chat with your driver';
+
+  @override
+  String get trackStock => 'Track stock';
+
+  @override
+  String get trackStockOn =>
+      'Sold from a counted shelf. It goes out of stock at zero.';
+
+  @override
+  String get trackStockOff =>
+      'Always orderable while it is available. Right for a kitchen.';
+
+  @override
+  String get stockQuantity => 'Units in stock';
+
+  @override
+  String get lowStockThreshold => 'Warn me at or below';
+
+  @override
+  String get lowStockThresholdHint => '0 turns the warning off.';
+
+  @override
+  String get outOfStock => 'Out of stock';
+
+  @override
+  String get lowStock => 'Low stock';
+
+  @override
+  String get stockAlerts => 'Stock';
+
+  @override
+  String outOfStockCount(int count) {
+    return '$count out of stock';
+  }
+
+  @override
+  String lowStockCount(int count) {
+    return '$count running low';
+  }
+
+  @override
+  String get reviewStock => 'Review';
+
+  @override
+  String unitsLeft(int count) {
+    return '$count left';
+  }
+
+  @override
+  String get setStock => 'Set stock';
+
+  @override
+  String get stockUpdated => 'Stock updated.';
+
+  @override
+  String get contactSupport => 'Contact support';
+
+  @override
+  String get helpAndSupport => 'Help & support';
+
+  @override
+  String get importFromFile => 'Import a file';
+
+  @override
+  String get importFileHint =>
+      'CSV or Excel is read directly and exactly. PDFs and photos go through AI.';
+
+  @override
+  String get spreadsheetNoNameColumn =>
+      'No item-name column found. The sheet needs a column called Name, Item or Product.';
+
+  @override
+  String get spreadsheetEmpty => 'That file has no rows to read.';
+
+  @override
+  String get readingFile => 'Reading file…';
+
+  @override
+  String itemsFound(int count) {
+    return '$count items found';
+  }
+
+  @override
+  String get placementInterstitial => 'Full screen';
+
+  @override
+  String get busyModeHint =>
+      'Turn on when orders pile up, to add extra prep time';
+
+  @override
+  String get photoUpdated => 'Photo updated';
+
+  @override
+  String get autoAcceptOrdersHint =>
+      'New orders confirm instantly, no manual accept';
+
+  @override
+  String get newOrderSoundHint => 'Play a sound when a new order comes in';
+
+  @override
+  String get storeStatus => 'Store status';
+
+  @override
+  String get locationMissingHint =>
+      'Add a pin so customers can find you nearby';
+
+  @override
+  String get requestSettlement => 'Request settlement';
+
+  @override
+  String get requestSettlementHint =>
+      'Free — an admin reviews and pays this out. For instant cash-out, use Early Payout instead.';
+
+  @override
+  String get requestPayout => 'Request payout';
+
+  @override
+  String get requestPayoutHint =>
+      'Free — an admin reviews and pays out what you\'re owed.';
+
+  @override
+  String get settlementRequested =>
+      'Request sent. You\'ll be notified once an admin reviews it.';
+
+  @override
+  String get settlementRequestPending => 'Awaiting admin approval';
+
+  @override
+  String get settlementApproved => 'Settlement approved.';
+
+  @override
+  String get settlementRejected => 'Settlement declined.';
+
+  @override
+  String get settlementRequestsTab => 'Requests';
+
+  @override
+  String get noSettlementRequests => 'No requests waiting.';
+
+  @override
+  String get totalEarned => 'Total earned';
+
+  @override
+  String get alreadySettled => 'Already settled';
+
+  @override
+  String get outstandingNow => 'Outstanding now';
+
+  @override
+  String get shareReceipt => 'Share receipt';
+
+  @override
+  String pendingApprovalsBanner(int count) {
+    return '$count settlement requests awaiting your approval';
+  }
+
+  @override
+  String get searchByName => 'Search by name';
+
+  @override
+  String get settlementApprovalExternalNotice =>
+      'This only records that you already sent the money outside the app — nothing is transferred automatically.';
+
+  @override
+  String get feeLabel => 'Fee';
+
+  @override
+  String get grossAmount => 'Before fee';
+
+  @override
+  String get earlySettlementTag => 'Early';
+
+  @override
+  String get statusLabel => 'Status';
+
+  @override
+  String get lastMessageLabel => 'Last message';
+
+  @override
+  String get storeLabel => 'Store';
+
+  @override
+  String get dateLabel => 'Date';
+
+  @override
+  String get complaintResolvedAndNotified =>
+      'Complaint resolved and customer notified.';
+
+  @override
+  String get replyAndResolve => 'Reply & resolve';
+
+  @override
+  String get resolutionReply => 'Resolution reply';
 }

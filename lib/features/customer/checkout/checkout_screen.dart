@@ -83,7 +83,10 @@ class _CheckoutViewState extends State<_CheckoutView> {
 
     PaymobCheckout checkout;
     try {
-      checkout = await PaymentRepository().createOrderCheckout(orderId);
+      checkout = await PaymentRepository().createOrderCheckout(
+        orderId,
+        channel: state.paymobChannel,
+      );
     } catch (error) {
       await discard(AppFailure.from(error).message(l10n));
       return;
@@ -223,8 +226,29 @@ class _CheckoutViewState extends State<_CheckoutView> {
                 emoji: '💳',
                 title: context.l10n.cardPaymob,
                 subtitle: context.l10n.visaMastercardMeeza,
-                selected: state.paymentMethod == 'paymob',
-                onTap: () => cubit.selectPaymentMethod('paymob'),
+                // Both cards below are 'paymob'; the channel is what
+                // separates them, so neither may key its highlight off the
+                // method alone or the two would light up together.
+                selected:
+                    state.paymentMethod == 'paymob' &&
+                    state.paymobChannel == PaymobChannel.card,
+                onTap: () => cubit.selectPaymentMethod(
+                  'paymob',
+                  channel: PaymobChannel.card,
+                ),
+              ),
+              const SizedBox(height: 9),
+              _PaymentSelectorCard(
+                emoji: '📱',
+                title: context.l10n.mobileWallet,
+                subtitle: context.l10n.mobileWalletProviders,
+                selected:
+                    state.paymentMethod == 'paymob' &&
+                    state.paymobChannel == PaymobChannel.wallet,
+                onTap: () => cubit.selectPaymentMethod(
+                  'paymob',
+                  channel: PaymobChannel.wallet,
+                ),
               ),
 
               // Coupon section

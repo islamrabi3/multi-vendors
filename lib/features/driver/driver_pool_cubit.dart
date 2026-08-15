@@ -52,40 +52,39 @@ class DriverPoolState extends Equatable {
     String? claimingOrderId,
     bool clearTransient = false,
     bool clearClaiming = false,
-  }) =>
-      DriverPoolState(
-        loading: loading ?? this.loading,
-        isOnline: isOnline ?? this.isOnline,
-        orders: orders ?? this.orders,
-        vendorLabels: vendorLabels ?? this.vendorLabels,
-        todayEarnings: todayEarnings ?? this.todayEarnings,
-        todayTrips: todayTrips ?? this.todayTrips,
-        error: clearTransient ? null : error,
-        claimedOrderId: clearTransient ? null : claimedOrderId,
-        claimingOrderId:
-            clearClaiming ? null : (claimingOrderId ?? this.claimingOrderId),
-      );
+  }) => DriverPoolState(
+    loading: loading ?? this.loading,
+    isOnline: isOnline ?? this.isOnline,
+    orders: orders ?? this.orders,
+    vendorLabels: vendorLabels ?? this.vendorLabels,
+    todayEarnings: todayEarnings ?? this.todayEarnings,
+    todayTrips: todayTrips ?? this.todayTrips,
+    error: clearTransient ? null : error,
+    claimedOrderId: clearTransient ? null : claimedOrderId,
+    claimingOrderId: clearClaiming
+        ? null
+        : (claimingOrderId ?? this.claimingOrderId),
+  );
 
   @override
   List<Object?> get props => [
-        loading,
-        isOnline,
-        orders,
-        vendorLabels,
-        todayEarnings,
-        todayTrips,
-        error,
-        claimedOrderId,
-        claimingOrderId,
-      ];
+    loading,
+    isOnline,
+    orders,
+    vendorLabels,
+    todayEarnings,
+    todayTrips,
+    error,
+    claimedOrderId,
+    claimingOrderId,
+  ];
 }
 
 /// Online/offline presence plus the realtime pool of unclaimed
 /// ready_for_pickup orders (only streamed while online — RLS hides the pool
 /// from offline drivers anyway).
 class DriverPoolCubit extends Cubit<DriverPoolState> {
-  DriverPoolCubit(this._orders, this._driver)
-      : super(const DriverPoolState()) {
+  DriverPoolCubit(this._orders, this._driver) : super(const DriverPoolState()) {
     _init();
   }
 
@@ -96,8 +95,10 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
   Timer? _refreshTimer;
 
   Future<void> _init() async {
-    _mySubscription = _orders.driverOrdersStream().listen(_onMyOrders,
-        onError: (Object _) {});
+    _mySubscription = _orders.driverOrdersStream().listen(
+      _onMyOrders,
+      onError: (Object _) {},
+    );
     try {
       final online = await _driver.fetchIsOnline();
       emit(state.copyWith(loading: false, isOnline: online));
@@ -126,24 +127,29 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
 
   void _onMyOrders(List<AppOrder> orders) {
     final now = DateTime.now();
-    final today = orders.where((o) =>
-        o.status == OrderStatus.delivered &&
-        o.createdAt.year == now.year &&
-        o.createdAt.month == now.month &&
-        o.createdAt.day == now.day);
+    final today = orders.where(
+      (o) =>
+          o.status == OrderStatus.delivered &&
+          o.createdAt.year == now.year &&
+          o.createdAt.month == now.month &&
+          o.createdAt.day == now.day,
+    );
     // clearTransient so a consumed claim/error doesn't re-fire the listener.
-    emit(state.copyWith(
-      todayEarnings: today.fold<double>(0, (sum, o) => sum + o.deliveryFee),
-      todayTrips: today.length,
-      clearTransient: true,
-    ));
+    emit(
+      state.copyWith(
+        todayEarnings: today.fold<double>(0, (sum, o) => sum + o.deliveryFee),
+        todayTrips: today.length,
+        clearTransient: true,
+      ),
+    );
   }
 
   void _listen() {
     _subscription?.cancel();
-    _subscription = _orders.driverPoolStream().listen(_onOrders,
-        onError: (Object error) =>
-            emit(state.copyWith(error: error.toString())));
+    _subscription = _orders.driverPoolStream().listen(
+      _onOrders,
+      onError: (Object error) => emit(state.copyWith(error: error.toString())),
+    );
   }
 
   Future<void> _onOrders(List<AppOrder> orders) async {
@@ -157,8 +163,13 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
         labels = {...labels, ...await _orders.vendorLabels(missing)};
       } catch (_) {}
     }
-    emit(state.copyWith(
-        orders: orders, vendorLabels: labels, clearTransient: true));
+    emit(
+      state.copyWith(
+        orders: orders,
+        vendorLabels: labels,
+        clearTransient: true,
+      ),
+    );
   }
 
   Future<void> setOnline(bool online) async {
@@ -188,8 +199,13 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
         await _subscription?.cancel();
         _subscription = null;
         _stopTimer();
-        emit(state.copyWith(
-            isOnline: false, orders: const [], clearTransient: true));
+        emit(
+          state.copyWith(
+            isOnline: false,
+            orders: const [],
+            clearTransient: true,
+          ),
+        );
         return;
       }
       final orders = await _orders.fetchDriverPool();
@@ -199,11 +215,14 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
           if (o.vendorName != null)
             o.vendorId: (name: o.vendorName!, logoUrl: o.vendorLogoUrl),
       };
-      emit(state.copyWith(
+      emit(
+        state.copyWith(
           isOnline: true,
           orders: orders,
           vendorLabels: labels,
-          clearTransient: true));
+          clearTransient: true,
+        ),
+      );
       if (_subscription == null) _listen();
     } catch (error) {
       emit(state.copyWith(error: error.toString()));
@@ -219,17 +238,18 @@ class DriverPoolCubit extends Cubit<DriverPoolState> {
     try {
       final won = await _orders.claimDelivery(order.id);
       if (won) {
-        emit(state.copyWith(
-            claimedOrderId: order.id, clearClaiming: true));
+        emit(state.copyWith(claimedOrderId: order.id, clearClaiming: true));
       } else {
-        emit(state.copyWith(
+        emit(
+          state.copyWith(
             error: 'ORDER_TAKEN',
             orders: state.orders.where((o) => o.id != order.id).toList(),
-            clearClaiming: true));
+            clearClaiming: true,
+          ),
+        );
       }
     } catch (error) {
-      emit(state.copyWith(
-          error: error.toString(), clearClaiming: true));
+      emit(state.copyWith(error: error.toString(), clearClaiming: true));
     }
   }
 

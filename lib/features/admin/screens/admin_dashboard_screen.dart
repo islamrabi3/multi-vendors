@@ -11,6 +11,7 @@ import '../../auth/auth_cubit.dart';
 import '../admin_dashboard_cubit.dart';
 import 'admin_order_detail_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../admin_shell.dart' show AdminWebNav;
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -43,13 +44,22 @@ class _DashboardViewState extends State<_DashboardView> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final split = AppBreakpoints.isSplit(constraints.maxWidth);
+          final webWide = AppBreakpoints.isWebWide(context);
           return BlocBuilder<AdminDashboardCubit, AdminDashboardState>(
             builder: (context, state) {
               final cubit = context.read<AdminDashboardCubit>();
               if (split) {
                 return Column(
                   children: [
-                    _Header(stats: state.stats),
+                    // The mobile hero is a full-bleed dark block sized to be
+                    // the first thing seen scrolling on a phone — on web,
+                    // where the sidebar already carries the brand and "Live
+                    // overview" repeats the top bar's page title, that same
+                    // block is 300px of a monitor spent on five numbers. A
+                    // slim strip says the same thing in a fifth of the height.
+                    webWide
+                        ? _WebStatStrip(stats: state.stats)
+                        : _Header(stats: state.stats),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(22, 15, 22, 20),
@@ -99,11 +109,15 @@ class _DashboardViewState extends State<_DashboardView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _AttentionRow(stats: state.stats),
+                          const SizedBox(height: 14),
+                          const _Shortcuts(),
                           const SizedBox(height: 18),
                           Row(
                             children: [
-                              Text(context.l10n.liveOrders,
-                                  style: AppType.heading(17)),
+                              Text(
+                                context.l10n.liveOrders,
+                                style: AppType.heading(17),
+                              ),
                               const Spacer(),
                               const _UpdatingDot(),
                             ],
@@ -118,17 +132,20 @@ class _DashboardViewState extends State<_DashboardView> {
                             Padding(
                               padding: EdgeInsets.only(top: 30),
                               child: EmptyView(
-                                  message: context.l10n.noLiveOrdersRightNow,
-                                  icon: Icons.receipt_long_outlined),
+                                message: context.l10n.noLiveOrdersRightNow,
+                                icon: Icons.receipt_long_outlined,
+                              ),
                             )
                           else
-                            ...state.liveOrders.map((o) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 9),
-                                  child: _LiveOrderCard(
-                                    order: o,
-                                    label: state.vendorLabels[o.vendorId]?.name,
-                                  ),
-                                )),
+                            ...state.liveOrders.map(
+                              (o) => Padding(
+                                padding: const EdgeInsets.only(bottom: 9),
+                                child: _LiveOrderCard(
+                                  order: o,
+                                  label: state.vendorLabels[o.vendorId]?.name,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -136,6 +153,115 @@ class _DashboardViewState extends State<_DashboardView> {
                 ),
               );
             },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The handful of places an admin goes several times a day.
+///
+/// Everything occasional lives behind Manage, which is right — but it made the
+/// four or five daily destinations cost two taps and a scan of a long list.
+/// These are the ones worth a shortcut, gated by permission so a scoped role
+/// is not shown a door it cannot open.
+class _Shortcuts extends StatelessWidget {
+  const _Shortcuts();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final auth = context.watch<AuthCubit>().state;
+
+    final items = <(IconData, String, String, String)>[
+      (
+        Icons.query_stats_outlined,
+        l10n.financeTitle,
+        '/admin-app/finance',
+        'reports.view',
+      ),
+      (
+        Icons.handshake_outlined,
+        l10n.settlementsTitle,
+        '/admin-app/settlements',
+        'finance.settle',
+      ),
+      (
+        Icons.account_balance_outlined,
+        l10n.depositsAwaitingReview,
+        '/admin-app/deposits',
+        'finance.settle',
+      ),
+      (
+        Icons.support_agent_outlined,
+        l10n.supportChat,
+        '/admin-app/support',
+        'support.handle',
+      ),
+      (
+        Icons.delivery_dining_outlined,
+        l10n.driverApprovals,
+        '/admin-app/drivers',
+        'drivers.view',
+      ),
+      (
+        Icons.local_offer_outlined,
+        l10n.promos,
+        '/admin-app/promos',
+        'promos.manage',
+      ),
+    ].where((item) => auth.can(item.$4)).toList();
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 92,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final (icon, label, route, _) = items[i];
+          return SizedBox(
+            width: 96,
+            child: Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              child: InkWell(
+                onTap: () => AdminWebNav.go(context, route),
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 22, color: AppColors.primary),
+                      const SizedBox(height: 6),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            height: 1.2,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           );
         },
       ),
@@ -172,22 +298,23 @@ class _LiveOrdersPanel extends StatelessWidget {
           child: state.loading
               ? const LoadingView()
               : state.liveOrders.isEmpty
-                  ? EmptyView(
-                      message: context.l10n.noLiveOrdersRightNow,
-                      icon: Icons.receipt_long_outlined)
-                  : ListView.separated(
-                      itemCount: state.liveOrders.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 9),
-                      itemBuilder: (_, i) {
-                        final o = state.liveOrders[i];
-                        return _LiveOrderCard(
-                          order: o,
-                          label: state.vendorLabels[o.vendorId]?.name,
-                          selected: o.id == selectedId,
-                          onSelect: onSelect,
-                        );
-                      },
-                    ),
+              ? EmptyView(
+                  message: context.l10n.noLiveOrdersRightNow,
+                  icon: Icons.receipt_long_outlined,
+                )
+              : ListView.separated(
+                  itemCount: state.liveOrders.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 9),
+                  itemBuilder: (_, i) {
+                    final o = state.liveOrders[i];
+                    return _LiveOrderCard(
+                      order: o,
+                      label: state.vendorLabels[o.vendorId]?.name,
+                      selected: o.id == selectedId,
+                      onSelect: onSelect,
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -243,7 +370,7 @@ class _StatGrid extends StatelessWidget {
             label: context.l10n.ordersNeedAttention,
             icon: Icons.warning_amber_rounded,
             fill: AppColors.warmFill,
-            border: const Color(0xFFFAD9CC),
+            border: AppColors.attentionBorder,
             ink: AppColors.primaryDark,
             onTap: () => context.go('/admin-app/orders'),
           ),
@@ -269,7 +396,7 @@ class _StatGrid extends StatelessWidget {
             fill: AppColors.surface,
             border: AppColors.border,
             ink: AppColors.ink,
-            onTap: () => context.push('/admin-app/drivers'),
+            onTap: () => AdminWebNav.go(context, '/admin-app/drivers'),
           ),
         ),
         const SizedBox(width: 11),
@@ -286,12 +413,10 @@ class _StatGrid extends StatelessWidget {
                 ? AppColors.warmFill
                 : AppColors.surface,
             border: stats.supportOpen > 0
-                ? const Color(0xFFFAD9CC)
+                ? AppColors.attentionBorder
                 : AppColors.border,
-            ink: stats.supportOpen > 0
-                ? AppColors.primaryDark
-                : AppColors.ink,
-            onTap: () => context.push('/admin-app/support'),
+            ink: stats.supportOpen > 0 ? AppColors.primaryDark : AppColors.ink,
+            onTap: () => AdminWebNav.go(context, '/admin-app/support'),
           ),
         ),
       ],
@@ -309,7 +434,11 @@ class _Header extends StatelessWidget {
     return Container(
       color: AppColors.ink,
       padding: EdgeInsets.fromLTRB(
-          22, MediaQuery.of(context).padding.top + 14, 22, 20),
+        22,
+        MediaQuery.of(context).padding.top + 14,
+        22,
+        20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -319,12 +448,15 @@ class _Header extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(context.l10n.eatyPlatformToday,
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            letterSpacing: 1)),
+                    Text(
+                      context.l10n.platformToday,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        letterSpacing: 1,
+                      ),
+                    ),
                     const SizedBox(height: 5),
                     Row(
                       children: [
@@ -332,12 +464,15 @@ class _Header extends StatelessWidget {
                           width: 9,
                           height: 9,
                           decoration: const BoxDecoration(
-                              color: Color(0xFF5FE39B),
-                              shape: BoxShape.circle),
+                            color: AppColors.onDarkSuccess,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        Text(context.l10n.liveOverview,
-                            style: AppType.heading(21, color: Colors.white)),
+                        Text(
+                          context.l10n.liveOverview,
+                          style: AppType.heading(21, color: Colors.white),
+                        ),
                       ],
                     ),
                   ],
@@ -349,34 +484,144 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Text(context.l10n.grossMerchandiseValue,
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+          Text(
+            context.l10n.grossMerchandiseValue,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 12,
+            ),
+          ),
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(formatMoney(stats.gmvToday),
-                style: AppType.display(38, color: Colors.white)),
+            child: Text(
+              formatMoney(stats.gmvToday),
+              style: AppType.display(38, color: Colors.white),
+            ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              _DarkStat(value: '${stats.ordersToday}', label: context.l10n.orders),
+              _DarkStat(
+                value: '${stats.ordersToday}',
+                label: context.l10n.orders,
+              ),
               const SizedBox(width: 9),
               _DarkStat(
-                  value: '${stats.vendorsOpen}',
-                  suffix: 'on',
-                  label: context.l10n.vendors),
+                value: '${stats.vendorsOpen}',
+                suffix: 'on',
+                label: context.l10n.vendors,
+              ),
               const SizedBox(width: 9),
               _DarkStat(
-                  value: '${stats.driversOnline}',
-                  suffix: 'on',
-                  label: context.l10n.drivers),
+                value: '${stats.driversOnline}',
+                suffix: 'on',
+                label: context.l10n.drivers,
+              ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The web-width replacement for [_Header]: the same five numbers, one row,
+/// on the ordinary surface rather than a dark hero — the sidebar already
+/// carries the brand and the top bar already carries the page title, so
+/// this only needs to say what's true right now.
+class _WebStatStrip extends StatelessWidget {
+  const _WebStatStrip({required this.stats});
+
+  final AdminStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      width: double.infinity,
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      // Every item here is a fixed width, so at 900px — the narrowest window
+      // that still gets the web layout — a large currency value or a longer
+      // translation runs the row past the edge. Scrolling beats a striped
+      // overflow bar drawn across the day's numbers.
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          // Required inside a horizontal scroll: the default `max` demands an
+          // unbounded width and fails outright rather than overflowing.
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: AppColors.success,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              l10n.grossMerchandiseValue,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              formatMoney(stats.gmvToday),
+              style: AppType.mono(20, weight: FontWeight.w800),
+            ),
+            const SizedBox(width: 28),
+            Container(width: 1, height: 24, color: AppColors.border),
+            const SizedBox(width: 28),
+            _InlineStat(value: '${stats.ordersToday}', label: l10n.orders),
+            const SizedBox(width: 24),
+            _InlineStat(
+              value: '${stats.vendorsOpen}',
+              label: l10n.vendors,
+              tone: AppColors.successInk,
+            ),
+            const SizedBox(width: 24),
+            _InlineStat(
+              value: '${stats.driversOnline}',
+              label: l10n.drivers,
+              tone: AppColors.successInk,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineStat extends StatelessWidget {
+  const _InlineStat({required this.value, required this.label, this.tone});
+
+  final String value;
+  final String label;
+  final Color? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          value,
+          style: AppType.mono(
+            16,
+            weight: FontWeight.w800,
+            color: tone ?? AppColors.ink,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+      ],
     );
   }
 }
@@ -417,15 +662,18 @@ class _AvatarButton extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: const Color(0xFF243029),
+          color: AppColors.inkElevated,
           borderRadius: BorderRadius.circular(14),
         ),
         alignment: Alignment.center,
-        child: Text(context.l10n.a,
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 16)),
+        child: Text(
+          context.l10n.a,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+          ),
+        ),
       ),
     );
   }
@@ -444,7 +692,7 @@ class _DarkStat extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 13),
         decoration: BoxDecoration(
-          color: const Color(0xFF243029),
+          color: AppColors.inkElevated,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -454,23 +702,28 @@ class _DarkStat extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(value,
-                    style: AppType.display(19, color: Colors.white)),
+                Text(value, style: AppType.display(19, color: Colors.white)),
                 if (suffix != null) ...[
                   const SizedBox(width: 3),
-                  Text(context.l10n.on,
-                      style: TextStyle(
-                          color: Color(0xFF5FE39B),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700)),
+                  Text(
+                    context.l10n.on,
+                    style: TextStyle(
+                      color: AppColors.onDarkSuccess,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ],
             ),
             const SizedBox(height: 1),
-            Text(label,
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 10.5)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 10.5,
+              ),
+            ),
           ],
         ),
       ),
@@ -493,7 +746,7 @@ class _AttentionRow extends StatelessWidget {
             label: context.l10n.ordersNeedAttention,
             icon: Icons.warning_amber_rounded,
             fill: AppColors.warmFill,
-            border: const Color(0xFFFAD9CC),
+            border: AppColors.attentionBorder,
             ink: AppColors.primaryDark,
             onTap: () => context.go('/admin-app/orders'),
           ),
@@ -550,7 +803,8 @@ class _AttentionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: fill,
             border: Border.all(
-                color: hovered && onTap != null ? AppColors.primary : border),
+              color: hovered && onTap != null ? AppColors.primary : border,
+            ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: hovered && onTap != null ? AppShadows.card : null,
           ),
@@ -565,9 +819,14 @@ class _AttentionCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 2),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600, color: ink)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ink,
+                ),
+              ),
             ],
           ),
         ),
@@ -588,14 +847,19 @@ class _UpdatingDot extends StatelessWidget {
           width: 7,
           height: 7,
           decoration: const BoxDecoration(
-              color: AppColors.success, shape: BoxShape.circle),
+            color: AppColors.success,
+            shape: BoxShape.circle,
+          ),
         ),
         const SizedBox(width: 6),
-        Text(context.l10n.updating,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted)),
+        Text(
+          context.l10n.updating,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+          ),
+        ),
       ],
     );
   }
@@ -631,14 +895,15 @@ class _LiveOrderCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border.all(
-                color: selected
-                    ? AppColors.primary
-                    : hovered
-                        ? AppColors.primaryLight
-                        : flagged
-                            ? const Color(0xFFF6C7B8)
-                            : AppColors.border,
-                width: flagged || selected ? 1.5 : 1),
+              color: selected
+                  ? AppColors.primary
+                  : hovered
+                  ? AppColors.primaryLight
+                  : flagged
+                  ? AppColors.attentionBorder
+                  : AppColors.border,
+              width: flagged || selected ? 1.5 : 1,
+            ),
             borderRadius: BorderRadius.circular(14),
             boxShadow: hovered || selected ? AppShadows.card : null,
           ),
@@ -653,25 +918,31 @@ class _LiveOrderCard extends StatelessWidget {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: AppNetworkImage(
-                    url: order.vendorLogoUrl, width: 38, height: 38),
+                  url: order.vendorLogoUrl,
+                  width: 38,
+                  height: 38,
+                ),
               ),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SelectableId(order.orderNumber,
-                        style: AppType.mono(11, color: AppColors.textFaint),
-                        selectable: onSelect != null),
+                    SelectableId(
+                      order.orderNumber,
+                      style: AppType.mono(11, color: AppColors.textFaint),
+                      selectable: onSelect != null,
+                    ),
                     Text(
                       '${label ?? order.vendorName ?? context.l10n.store} → '
                       '${order.customerName ?? context.l10n.customer}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppColors.ink),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.ink,
+                      ),
                     ),
                   ],
                 ),
@@ -683,17 +954,21 @@ class _LiveOrderCard extends StatelessWidget {
                   if (flagged)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryDark,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                          '${context.l10n.stuck} ${DateTime.now().difference(order.createdAt).inMinutes}${context.l10n.mShort}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10.5)),
+                        '${context.l10n.stuck} ${DateTime.now().difference(order.createdAt).inMinutes}${context.l10n.mShort}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10.5,
+                        ),
+                      ),
                     )
                   else
                     OrderStatusChip(status: order.status),

@@ -158,6 +158,9 @@ class Product extends Equatable {
     this.imageUrl,
     this.sortOrder = 0,
     this.optionGroups = const [],
+    this.trackStock = false,
+    this.stockQuantity = 0,
+    this.lowStockThreshold = 0,
   });
 
   final String id;
@@ -172,6 +175,29 @@ class Product extends Equatable {
   final bool isAvailable;
   final int sortOrder;
   final List<ProductOptionGroup> optionGroups;
+
+  /// Whether this product has a countable stock. Off for a kitchen, on for a
+  /// shelf — see `product_is_sellable` in the database, which this mirrors.
+  final bool trackStock;
+  final int stockQuantity;
+
+  /// Warn at or below this. Zero means never warn.
+  final int lowStockThreshold;
+
+  /// Whether a customer can actually buy it right now.
+  ///
+  /// `isAvailable` is the shop's decision to sell it at all; a tracked product
+  /// with nothing left is out of stock regardless of that switch. Mirrors
+  /// `product_is_sellable` so the app and the server agree.
+  bool get isSellable =>
+      isAvailable && (!trackStock || stockQuantity > 0);
+
+  bool get isOutOfStock => trackStock && stockQuantity <= 0;
+
+  /// Running low but not gone. Distinct from [isOutOfStock] because the shop
+  /// can still sell these, and the two need different words on screen.
+  bool get isLowStock =>
+      trackStock && stockQuantity > 0 && stockQuantity <= lowStockThreshold;
 
   String displayName(String languageCode) =>
       localizedText(name, nameAr, languageCode);
@@ -189,7 +215,12 @@ class Product extends Equatable {
   ///
   /// A reorder is applied locally before its write lands, so the dragged row
   /// does not jump back to its old place for the length of a round trip.
-  Product copyWith({int? sortOrder, bool? isAvailable, String? categoryId}) =>
+  Product copyWith({
+    int? sortOrder,
+    bool? isAvailable,
+    String? categoryId,
+    int? stockQuantity,
+  }) =>
       Product(
         id: id,
         vendorId: vendorId,
@@ -203,6 +234,9 @@ class Product extends Equatable {
         isAvailable: isAvailable ?? this.isAvailable,
         sortOrder: sortOrder ?? this.sortOrder,
         optionGroups: optionGroups,
+        trackStock: trackStock,
+        stockQuantity: stockQuantity ?? this.stockQuantity,
+        lowStockThreshold: lowStockThreshold,
       );
 
   factory Product.fromMap(Map<String, dynamic> map) => Product(
@@ -220,6 +254,9 @@ class Product extends Equatable {
         optionGroups: ((map['product_option_groups'] as List?) ?? [])
             .map((g) => ProductOptionGroup.fromMap(g as Map<String, dynamic>))
             .toList(),
+        trackStock: (map['track_stock'] as bool?) ?? false,
+        stockQuantity: ((map['stock_quantity'] as num?) ?? 0).toInt(),
+        lowStockThreshold: ((map['low_stock_threshold'] as num?) ?? 0).toInt(),
       );
 
   // `sortOrder` belongs here: a reorder changes nothing else about a row, and

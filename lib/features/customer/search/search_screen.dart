@@ -246,10 +246,7 @@ class _RecentSearches extends StatelessWidget {
                 style: AppType.heading(16),
               ),
             ),
-            TextButton(
-              onPressed: onClear,
-              child: Text(context.l10n.clearAll),
-            ),
+            TextButton(onPressed: onClear, child: Text(context.l10n.clearAll)),
           ],
         ),
         const SizedBox(height: AppSpace.xs),

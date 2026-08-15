@@ -6,32 +6,40 @@ import 'package:multi_vendor/core/models/vendor.dart';
 import 'package:multi_vendor/features/customer/cart/cart_cubit.dart';
 
 Vendor vendor(String id, {String name = 'Store'}) => Vendor(
-      id: id,
-      ownerId: 'owner',
-      name: name,
-      isOpen: true,
-      isActive: true,
-      approvalStatus: 'active',
-      autoAccept: false,
-      deliveryFee: 20,
-      minOrderAmount: 0,
-      avgPrepMinutes: 20,
-      ratingAvg: 0,
-      ratingCount: 0,
-    );
+  id: id,
+  ownerId: 'owner',
+  name: name,
+  isOpen: true,
+  isActive: true,
+  approvalStatus: 'active',
+  autoAccept: false,
+  deliveryFee: 20,
+  minOrderAmount: 0,
+  avgPrepMinutes: 20,
+  ratingAvg: 0,
+  ratingCount: 0,
+);
 
 Product product(String id, double price, {String vendorId = 'v1'}) => Product(
-      id: id,
-      vendorId: vendorId,
-      name: 'Product $id',
-      price: price,
-      isAvailable: true,
-    );
+  id: id,
+  vendorId: vendorId,
+  name: 'Product $id',
+  price: price,
+  isAvailable: true,
+);
 
 const cheese = ProductOption(
-    id: 'opt-cheese', groupId: 'g1', name: 'Extra Cheese', priceDelta: 10);
+  id: 'opt-cheese',
+  groupId: 'g1',
+  name: 'Extra Cheese',
+  priceDelta: 10,
+);
 const bacon = ProductOption(
-    id: 'opt-bacon', groupId: 'g1', name: 'Bacon', priceDelta: 20);
+  id: 'opt-bacon',
+  groupId: 'g1',
+  name: 'Bacon',
+  priceDelta: 20,
+);
 
 void main() {
   group('CartItem pricing', () {
@@ -48,9 +56,10 @@ void main() {
     test('signature differs per option selection', () {
       final plain = CartItem(product: product('p1', 95), quantity: 1);
       final withCheese = CartItem(
-          product: product('p1', 95),
-          quantity: 1,
-          selectedOptions: const [cheese]);
+        product: product('p1', 95),
+        quantity: 1,
+        selectedOptions: const [cheese],
+      );
       expect(plain.signature, isNot(withCheese.signature));
     });
   });
@@ -61,16 +70,16 @@ void main() {
       build: CartCubit.new,
       act: (cubit) {
         final v = vendor('v1');
-        cubit.addItem(v,
-            CartItem(product: product('p1', 50), quantity: 1));
-        cubit.addItem(v,
-            CartItem(product: product('p1', 50), quantity: 2));
+        cubit.addItem(v, CartItem(product: product('p1', 50), quantity: 1));
+        cubit.addItem(v, CartItem(product: product('p1', 50), quantity: 2));
         cubit.addItem(
-            v,
-            CartItem(
-                product: product('p1', 50),
-                quantity: 1,
-                selectedOptions: const [cheese]));
+          v,
+          CartItem(
+            product: product('p1', 50),
+            quantity: 1,
+            selectedOptions: const [cheese],
+          ),
+        );
       },
       verify: (cubit) {
         expect(cubit.state.items, hasLength(2));
@@ -97,7 +106,9 @@ void main() {
     test('conflictsWithCart flags a different vendor', () {
       final cubit = CartCubit();
       cubit.addItem(
-          vendor('v1'), CartItem(product: product('p1', 50), quantity: 1));
+        vendor('v1'),
+        CartItem(product: product('p1', 50), quantity: 1),
+      );
       expect(cubit.conflictsWithCart(vendor('v2')), isTrue);
       expect(cubit.conflictsWithCart(vendor('v1')), isFalse);
     });
@@ -107,9 +118,13 @@ void main() {
       build: CartCubit.new,
       act: (cubit) {
         cubit.addItem(
-            vendor('v1'), CartItem(product: product('p1', 50), quantity: 3));
-        cubit.startNewCart(vendor('v2'),
-            CartItem(product: product('p2', 80, vendorId: 'v2'), quantity: 1));
+          vendor('v1'),
+          CartItem(product: product('p1', 50), quantity: 3),
+        );
+        cubit.startNewCart(
+          vendor('v2'),
+          CartItem(product: product('p2', 80, vendorId: 'v2'), quantity: 1),
+        );
       },
       verify: (cubit) {
         expect(cubit.state.vendor!.id, 'v2');

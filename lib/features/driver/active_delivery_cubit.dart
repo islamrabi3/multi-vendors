@@ -39,20 +39,26 @@ class ActiveDeliveryState extends Equatable {
     bool? busy,
     bool clearOrder = false,
     bool clearError = false,
-  }) =>
-      ActiveDeliveryState(
-        loading: loading ?? this.loading,
-        order: clearOrder ? null : (order ?? this.order),
-        vendorName: vendorName ?? this.vendorName,
-        vendorLocation: vendorLocation ?? this.vendorLocation,
-        myLocation: myLocation ?? this.myLocation,
-        error: clearError ? null : (error ?? this.error),
-        busy: busy ?? this.busy,
-      );
+  }) => ActiveDeliveryState(
+    loading: loading ?? this.loading,
+    order: clearOrder ? null : (order ?? this.order),
+    vendorName: vendorName ?? this.vendorName,
+    vendorLocation: vendorLocation ?? this.vendorLocation,
+    myLocation: myLocation ?? this.myLocation,
+    error: clearError ? null : (error ?? this.error),
+    busy: busy ?? this.busy,
+  );
 
   @override
-  List<Object?> get props =>
-      [loading, order, vendorName, vendorLocation, myLocation, error, busy];
+  List<Object?> get props => [
+    loading,
+    order,
+    vendorName,
+    vendorLocation,
+    myLocation,
+    error,
+    busy,
+  ];
 }
 
 /// The driver's current out_for_delivery order. While active:
@@ -61,7 +67,7 @@ class ActiveDeliveryState extends Equatable {
 ///  - refreshes drivers.current_lat/lng on a slow cadence.
 class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
   ActiveDeliveryCubit(this._orders, this._driver, this._supabase)
-      : super(const ActiveDeliveryState()) {
+    : super(const ActiveDeliveryState()) {
     _init();
   }
 
@@ -77,24 +83,27 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
   DateTime _lastStoredUpdate = DateTime.fromMillisecondsSinceEpoch(0);
 
   Future<void> _init() async {
-    _ordersSubscription = _orders.driverOrdersStream().listen((orders) {
-      final active = orders
-          .where((o) => o.status == OrderStatus.outForDelivery)
-          .firstOrNull;
-      if (active == null) {
-        _stopTracking();
-        emit(state.copyWith(loading: false, clearOrder: true));
-        return;
-      }
-      final changedOrder = state.order?.id != active.id;
-      emit(state.copyWith(loading: false, order: active));
-      if (changedOrder) {
-        _loadVendor(active.vendorId);
-        _startTracking(active.id);
-      }
-    }, onError: (Object error) {
-      emit(state.copyWith(loading: false, error: error.toString()));
-    });
+    _ordersSubscription = _orders.driverOrdersStream().listen(
+      (orders) {
+        final active = orders
+            .where((o) => o.status == OrderStatus.outForDelivery)
+            .firstOrNull;
+        if (active == null) {
+          _stopTracking();
+          emit(state.copyWith(loading: false, clearOrder: true));
+          return;
+        }
+        final changedOrder = state.order?.id != active.id;
+        emit(state.copyWith(loading: false, order: active));
+        if (changedOrder) {
+          _loadVendor(active.vendorId);
+          _startTracking(active.id);
+        }
+      },
+      onError: (Object error) {
+        emit(state.copyWith(loading: false, error: error.toString()));
+      },
+    );
   }
 
   Future<void> _loadVendor(String vendorId) async {
@@ -106,10 +115,12 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
           .single();
       final lat = (data['lat'] as num?)?.toDouble();
       final lng = (data['lng'] as num?)?.toDouble();
-      emit(state.copyWith(
-        vendorName: data['name'] as String?,
-        vendorLocation: lat != null && lng != null ? LatLng(lat, lng) : null,
-      ));
+      emit(
+        state.copyWith(
+          vendorName: data['name'] as String?,
+          vendorLocation: lat != null && lng != null ? LatLng(lat, lng) : null,
+        ),
+      );
     } catch (_) {}
   }
 
@@ -124,8 +135,7 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        emit(state.copyWith(
-            error: 'LOCATION_PERMISSION_DENIED'));
+        emit(state.copyWith(error: 'LOCATION_PERMISSION_DENIED'));
         return;
       }
       _positionSubscription = Geolocator.getPositionStream(
@@ -143,7 +153,10 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
     if (channel != null) {
       try {
         await _driver.broadcastLocation(
-            channel, position.latitude, position.longitude);
+          channel,
+          position.latitude,
+          position.longitude,
+        );
       } catch (_) {}
     }
     if (DateTime.now().difference(_lastStoredUpdate) >
@@ -192,7 +205,11 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
     if (order == null) return;
     emit(state.copyWith(busy: true, clearError: true));
     try {
-      await _orders.updateStatus(order.id, OrderStatus.delivered, proofUrl: proofUrl);
+      await _orders.updateStatus(
+        order.id,
+        OrderStatus.delivered,
+        proofUrl: proofUrl,
+      );
       emit(state.copyWith(busy: false));
     } catch (error) {
       emit(state.copyWith(busy: false, error: error.toString()));

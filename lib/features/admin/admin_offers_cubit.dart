@@ -20,12 +20,11 @@ class AdminOffersState extends Equatable {
     List<BannerItem>? offers,
     String? error,
     bool clearError = false,
-  }) =>
-      AdminOffersState(
-        loading: loading ?? this.loading,
-        offers: offers ?? this.offers,
-        error: clearError ? null : (error ?? this.error),
-      );
+  }) => AdminOffersState(
+    loading: loading ?? this.loading,
+    offers: offers ?? this.offers,
+    error: clearError ? null : (error ?? this.error),
+  );
 
   @override
   List<Object?> get props => [loading, offers, error];
@@ -59,8 +58,10 @@ class AdminOffersCubit extends Cubit<AdminOffersState> {
     try {
       final nextSort = state.offers.isEmpty
           ? 1
-          : state.offers.map((o) => o.sortOrder).reduce((a, b) => a > b ? a : b) +
-              1;
+          : state.offers
+                    .map((o) => o.sortOrder)
+                    .reduce((a, b) => a > b ? a : b) +
+                1;
       await _repository.create(
         imageUrl: imageUrl,
         type: type,

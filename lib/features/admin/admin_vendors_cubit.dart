@@ -52,11 +52,11 @@ class AdminVendorsState extends Equatable {
   List<Vendor> get visible => vendors;
 
   int countFor(VendorFilter filter) => switch (filter) {
-        VendorFilter.all => counts.all,
-        VendorFilter.pending => counts.pending,
-        VendorFilter.active => counts.active,
-        VendorFilter.suspended => counts.suspended,
-      };
+    VendorFilter.all => counts.all,
+    VendorFilter.pending => counts.pending,
+    VendorFilter.active => counts.active,
+    VendorFilter.suspended => counts.suspended,
+  };
 
   AdminVendorsState copyWith({
     bool? loading,
@@ -68,29 +68,28 @@ class AdminVendorsState extends Equatable {
     String? search,
     String? error,
     bool clearError = false,
-  }) =>
-      AdminVendorsState(
-        loading: loading ?? this.loading,
-        vendors: vendors ?? this.vendors,
-        filter: filter ?? this.filter,
-        loadingMore: loadingMore ?? this.loadingMore,
-        hasMore: hasMore ?? this.hasMore,
-        counts: counts ?? this.counts,
-        search: search ?? this.search,
-        error: clearError ? null : (error ?? this.error),
-      );
+  }) => AdminVendorsState(
+    loading: loading ?? this.loading,
+    vendors: vendors ?? this.vendors,
+    filter: filter ?? this.filter,
+    loadingMore: loadingMore ?? this.loadingMore,
+    hasMore: hasMore ?? this.hasMore,
+    counts: counts ?? this.counts,
+    search: search ?? this.search,
+    error: clearError ? null : (error ?? this.error),
+  );
 
   @override
   List<Object?> get props => [
-        loading,
-        vendors,
-        filter,
-        loadingMore,
-        hasMore,
-        counts,
-        search,
-        error,
-      ];
+    loading,
+    vendors,
+    filter,
+    loadingMore,
+    hasMore,
+    counts,
+    search,
+    error,
+  ];
 }
 
 class AdminVendorsCubit extends Cubit<AdminVendorsState> {
@@ -111,11 +110,13 @@ class AdminVendorsCubit extends Cubit<AdminVendorsState> {
         search: state.search,
       );
       if (isClosed) return;
-      emit(state.copyWith(
-        loading: false,
-        vendors: vendors,
-        hasMore: vendors.length == kPageSize,
-      ));
+      emit(
+        state.copyWith(
+          loading: false,
+          vendors: vendors,
+          hasMore: vendors.length == kPageSize,
+        ),
+      );
     } catch (e) {
       if (isClosed) return;
       emit(state.copyWith(loading: false, error: e.toString()));
@@ -137,14 +138,16 @@ class AdminVendorsCubit extends Cubit<AdminVendorsState> {
       );
       if (isClosed) return;
       final known = state.vendors.map((v) => v.id).toSet();
-      emit(state.copyWith(
-        loadingMore: false,
-        hasMore: page.length == kPageSize,
-        vendors: [
-          ...state.vendors,
-          ...page.where((v) => !known.contains(v.id)),
-        ],
-      ));
+      emit(
+        state.copyWith(
+          loadingMore: false,
+          hasMore: page.length == kPageSize,
+          vendors: [
+            ...state.vendors,
+            ...page.where((v) => !known.contains(v.id)),
+          ],
+        ),
+      );
     } catch (e) {
       if (isClosed) return;
       emit(state.copyWith(loadingMore: false, error: e.toString()));
@@ -162,23 +165,27 @@ class AdminVendorsCubit extends Cubit<AdminVendorsState> {
   /// Debounced by the caller; this just reloads the first page.
   Future<void> setSearch(String search) async {
     if (search == state.search) return;
-    emit(state.copyWith(
-      search: search,
-      vendors: const [],
-      hasMore: true,
-      loadingMore: false,
-    ));
+    emit(
+      state.copyWith(
+        search: search,
+        vendors: const [],
+        hasMore: true,
+        loadingMore: false,
+      ),
+    );
     await load();
   }
 
   Future<void> setFilter(VendorFilter filter) async {
     if (filter == state.filter) return;
-    emit(state.copyWith(
-      filter: filter,
-      vendors: const [],
-      hasMore: true,
-      loadingMore: false,
-    ));
+    emit(
+      state.copyWith(
+        filter: filter,
+        vendors: const [],
+        hasMore: true,
+        loadingMore: false,
+      ),
+    );
     await load();
   }
 

@@ -100,11 +100,24 @@ class OffersRepository {
   /// Counted server-side because the numbers are billable: a client that can
   /// write them directly can inflate them. Fire and forget — an ad that fails
   /// to record a view must still render.
-  Future<void> recordEvent(String adId, {required bool click}) async {
+  Future<void> recordEvent(
+    String adId, {
+    bool click = false,
+    bool dismissal = false,
+  }) async {
     try {
       await supabase.rpc(
         'record_ad_event',
-        params: {'p_ad_id': adId, 'p_event': click ? 'click' : 'impression'},
+        params: {
+          'p_ad_id': adId,
+          // A dismissal is its own signal: a high dismissal rate against a low
+          // click rate is how an ad that only annoys people shows up.
+          'p_event': dismissal
+              ? 'dismissal'
+              : click
+              ? 'click'
+              : 'impression',
+        },
       );
     } catch (_) {
       // Reporting is not worth interrupting a customer for.

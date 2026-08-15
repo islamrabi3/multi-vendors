@@ -246,7 +246,7 @@ void _showDriverControls(BuildContext context) {
                 color: AppColors.textSecondary,
               ),
               title: Text(
-                l10n.supportChat,
+                l10n.contactSupport,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               trailing: const Icon(

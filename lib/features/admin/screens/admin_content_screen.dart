@@ -6,13 +6,22 @@ import '../../../core/repositories/app_content_repository.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart' show ButtonSpinner;
+import '../../../core/widgets/web/web_shell_frame.dart';
+import '../../../core/widgets/web/web_table.dart';
 import '../../customer/profile/content_page_screen.dart' show iconForPlatform;
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 /// Terms, privacy, about and the social footer — all editable here so wording
 /// changes never wait on an app release.
 class AdminContentScreen extends StatefulWidget {
-  const AdminContentScreen({super.key});
+  const AdminContentScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   State<AdminContentScreen> createState() => _AdminContentScreenState();
@@ -53,7 +62,7 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
   }
 
   Future<void> _editLink([AppLink? link]) async {
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showAdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -82,85 +91,116 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final webWide = AppBreakpoints.isWebWide(context);
+
+    final body = FutureBuilder<({List<AppContent> pages, List<AppLink> links})>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const LoadingView();
+        }
+        if (snap.hasError) {
+          return FailureView(error: snap.error!, onRetry: _reload);
+        }
+        final data = snap.data!;
+        // A settings-style row of one title plus one status line reads
+        // as broken stretched full-bleed across a monitor — wide screens
+        // get a compact table instead, same rows and actions.
+        if (webWide) {
+          return _WebContentTables(
+            pages: data.pages,
+            links: data.links,
+            onEditPage: _editPage,
+            onAddLink: () => _editLink(),
+            onEditLink: _editLink,
+            onDeleteLink: _deleteLink,
+          );
+        }
+        return ListView(
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.gutter,
+            AppSpace.md,
+            AppSpace.gutter,
+            AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
+          ),
+          children: [
+            _sectionLabel(l10n.content),
+            for (final page in data.pages)
+              _Tile(
+                icon: switch (page.key) {
+                  'terms' => Icons.gavel_outlined,
+                  'privacy' => Icons.privacy_tip_outlined,
+                  _ => Icons.info_outline,
+                },
+                title: page.titleEn.isEmpty ? page.key : page.titleEn,
+                subtitle: page.isPublished
+                    ? (page.isEmpty
+                          ? l10n.contentNotAvailableYet
+                          : l10n.published)
+                    : l10n.draft,
+                // An unpublished or empty page is the one an operator
+                // needs to notice, so it is the one that gets the warm
+                // tint.
+                attention: !page.isPublished || page.isEmpty,
+                onTap: () => _editPage(page),
+              ),
+            const SizedBox(height: AppSpace.lg),
+            Row(
+              children: [
+                Expanded(child: _sectionLabel(l10n.socialLinks)),
+                TextButton.icon(
+                  onPressed: () => _editLink(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: Text(l10n.addLink),
+                ),
+              ],
+            ),
+            if (data.links.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
+                child: EmptyView(
+                  message: l10n.socialLinks,
+                  icon: Icons.link_outlined,
+                ),
+              )
+            else
+              for (final link in data.links)
+                _Tile(
+                  icon: iconForPlatform(link.platform),
+                  title: link.platform,
+                  subtitle: link.url,
+                  dimmed: !link.isActive,
+                  onTap: () => _editLink(link),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.dangerInk,
+                    ),
+                    onPressed: () => _deleteLink(link),
+                  ),
+                ),
+          ],
+        );
+      },
+    );
+
+    if (widget.embedded) {
+      return Padding(padding: const EdgeInsets.all(AppSpace.xl), child: body);
+    }
+
+    if (webWide) {
+      return WebPageChrome(
+        activeId: 'manage:/admin-app/content',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.content,
+        child: Padding(padding: const EdgeInsets.all(AppSpace.xl), child: body),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(l10n.content)),
-      body: FutureBuilder<({List<AppContent> pages, List<AppLink> links})>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const LoadingView();
-          }
-          if (snap.hasError) {
-            return FailureView(error: snap.error!, onRetry: _reload);
-          }
-          final data = snap.data!;
-          return ListView(
-            padding: EdgeInsets.fromLTRB(
-              AppSpace.gutter,
-              AppSpace.md,
-              AppSpace.gutter,
-              AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
-            ),
-            children: [
-              _sectionLabel(l10n.content),
-              for (final page in data.pages)
-                _Tile(
-                  icon: switch (page.key) {
-                    'terms' => Icons.gavel_outlined,
-                    'privacy' => Icons.privacy_tip_outlined,
-                    _ => Icons.info_outline,
-                  },
-                  title: page.titleEn.isEmpty ? page.key : page.titleEn,
-                  subtitle: page.isPublished
-                      ? (page.isEmpty
-                            ? l10n.contentNotAvailableYet
-                            : l10n.published)
-                      : l10n.draft,
-                  // An unpublished or empty page is the one an operator needs
-                  // to notice, so it is the one that gets the warm tint.
-                  attention: !page.isPublished || page.isEmpty,
-                  onTap: () => _editPage(page),
-                ),
-              const SizedBox(height: AppSpace.lg),
-              Row(
-                children: [
-                  Expanded(child: _sectionLabel(l10n.socialLinks)),
-                  TextButton.icon(
-                    onPressed: () => _editLink(),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text(l10n.addLink),
-                  ),
-                ],
-              ),
-              if (data.links.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
-                  child: EmptyView(
-                    message: l10n.socialLinks,
-                    icon: Icons.link_outlined,
-                  ),
-                )
-              else
-                for (final link in data.links)
-                  _Tile(
-                    icon: iconForPlatform(link.platform),
-                    title: link.platform,
-                    subtitle: link.url,
-                    dimmed: !link.isActive,
-                    onTap: () => _editLink(link),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: AppColors.dangerInk,
-                      ),
-                      onPressed: () => _deleteLink(link),
-                    ),
-                  ),
-            ],
-          );
-        },
-      ),
+      body: body,
     );
   }
 
@@ -179,6 +219,173 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
         letterSpacing: 1.2,
         color: AppColors.textMuted,
       ),
+    ),
+  );
+}
+
+/// The desktop counterpart to the compact mobile settings rows above.
+/// Keeping pages and footer links in separate tables makes the two content
+/// types immediately scannable while retaining the same edit/delete actions.
+class _WebContentTables extends StatelessWidget {
+  const _WebContentTables({
+    required this.pages,
+    required this.links,
+    required this.onEditPage,
+    required this.onAddLink,
+    required this.onEditLink,
+    required this.onDeleteLink,
+  });
+
+  final List<AppContent> pages;
+  final List<AppLink> links;
+  final ValueChanged<AppContent> onEditPage;
+  final VoidCallback onAddLink;
+  final ValueChanged<AppLink> onEditLink;
+  final ValueChanged<AppLink> onDeleteLink;
+
+  // Not `static const`: a const list cannot reach `l10n`, which is exactly
+  // why these column headers stayed English while the rest of the console
+  // was translated.
+  static List<WebTableColumn> _pageColumnsOf(BuildContext context) => [
+    WebTableColumn(label: context.l10n.pageLabel, flex: 2),
+    WebTableColumn(label: context.l10n.visibilityLabel, width: 150),
+  ];
+  static List<WebTableColumn> _linkColumnsOf(BuildContext context) => [
+    WebTableColumn(label: context.l10n.platform, width: 170),
+    WebTableColumn(label: context.l10n.linkLabel, flex: 3),
+    WebTableColumn(label: context.l10n.visibilityLabel, width: 110),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        Text(l10n.content, style: AppType.heading(20)),
+        const SizedBox(height: AppSpace.lg),
+        WebTable(
+          columns: _pageColumnsOf(context),
+          rows: [
+            for (final page in pages)
+              WebTableRow.aligned(
+                columns: _pageColumnsOf(context),
+                onTap: () => onEditPage(page),
+                cells: [
+                  Row(
+                    children: [
+                      Icon(
+                        _pageIcon(page.key),
+                        color: AppColors.primary,
+                        size: 19,
+                      ),
+                      const SizedBox(width: AppSpace.md),
+                      Expanded(
+                        child: Text(
+                          page.titleEn.isEmpty ? page.key : page.titleEn,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  _StateLabel(
+                    label: page.isPublished ? l10n.published : l10n.draft,
+                    active: page.isPublished && !page.isEmpty,
+                  ),
+                ],
+              ),
+          ],
+          emptyState: EmptyView(
+            message: l10n.contentNotAvailableYet,
+            icon: Icons.article_outlined,
+          ),
+        ),
+        const SizedBox(height: AppSpace.xxl),
+        Row(
+          children: [
+            Text(l10n.socialLinks, style: AppType.heading(20)),
+            const Spacer(),
+            FilledButton.icon(
+              onPressed: onAddLink,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(l10n.addLink),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.lg),
+        WebTable(
+          columns: _linkColumnsOf(context),
+          trailingWidth: 72,
+          rows: [
+            for (final link in links)
+              WebTableRow.aligned(
+                columns: _linkColumnsOf(context),
+                onTap: () => onEditLink(link),
+                trailingWidth: 72,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: l10n.delete,
+                      icon: const Icon(Icons.delete_outline_rounded, size: 19),
+                      color: AppColors.dangerInk,
+                      onPressed: () => onDeleteLink(link),
+                    ),
+                  ],
+                ),
+                cells: [
+                  Row(
+                    children: [
+                      Icon(iconForPlatform(link.platform), size: 18),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(
+                        child: Text(
+                          link.platform,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(link.url, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  _StateLabel(label: l10n.active, active: link.isActive),
+                ],
+              ),
+          ],
+          emptyState: EmptyView(
+            message: l10n.socialLinks,
+            icon: Icons.link_outlined,
+          ),
+        ),
+      ],
+    );
+  }
+
+  IconData _pageIcon(String key) => switch (key) {
+    'terms' => Icons.gavel_outlined,
+    'privacy' => Icons.privacy_tip_outlined,
+    _ => Icons.info_outline,
+  };
+}
+
+class _StateLabel extends StatelessWidget {
+  const _StateLabel({required this.label, required this.active});
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    label,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: active ? AppColors.successInk : AppColors.textMuted,
     ),
   );
 }
@@ -259,6 +466,11 @@ class _PageEditorState extends State<_PageEditor> {
   late final _bodyEn = TextEditingController(text: widget.page.bodyEn);
   late final _bodyAr = TextEditingController(text: widget.page.bodyAr ?? '');
   late bool _published = widget.page.isPublished;
+
+  /// Off by default. Re-asking is the disruptive choice — every store and
+  /// rider is stopped at a wall of text until they sign again — so it has to
+  /// be picked deliberately, not inherited from the last edit.
+  bool _bumpVersion = false;
   bool _saving = false;
 
   @override
@@ -280,7 +492,11 @@ class _PageEditorState extends State<_PageEditor> {
           bodyEn: _bodyEn.text.trim(),
           bodyAr: _bodyAr.text.trim().isEmpty ? null : _bodyAr.text.trim(),
           isPublished: _published,
+          version: widget.page.version,
+          requiresAcceptance: widget.page.requiresAcceptance,
+          audience: widget.page.audience,
         ),
+        bumpVersion: _bumpVersion,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -365,6 +581,37 @@ class _PageEditorState extends State<_PageEditor> {
               ),
             ),
           ),
+          // Only the partner agreements are gated, so only they can trigger a
+          // re-signature. Offering this on the About page would be noise.
+          if (widget.page.requiresAcceptance) ...[
+            const SizedBox(height: AppSpace.md),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border.all(
+                  color: _bumpVersion ? AppColors.amberInk : AppColors.border,
+                ),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: SwitchListTile(
+                value: _bumpVersion,
+                onChanged: (v) => setState(() => _bumpVersion = v),
+                title: Text(
+                  l10n.requireReacceptance,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  _bumpVersion
+                      ? l10n.requireReacceptanceOn(widget.page.version + 1)
+                      : l10n.requireReacceptanceOff(widget.page.version),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpace.xl),
           FilledButton(
             style: FilledButton.styleFrom(

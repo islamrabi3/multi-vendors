@@ -20,10 +20,22 @@ class SupportChatScreen extends StatefulWidget {
     super.key,
     required this.thread,
     this.asAdmin = false,
+    this.embedded = false,
+    this.onChanged,
   });
 
   final SupportThread thread;
   final bool asAdmin;
+
+  /// True when a web split view is already drawing the list pane beside
+  /// this — skips the [Scaffold]/[AppBar] and returns just a slim header
+  /// row plus the message column, meant to fill a bordered pane.
+  final bool embedded;
+
+  /// Called after this thread's status changes here. The embedded split
+  /// view has no navigation pop to hang a refresh off of, so the list pane
+  /// needs its own signal to re-fetch and stop showing a stale badge.
+  final VoidCallback? onChanged;
 
   @override
   State<SupportChatScreen> createState() => _SupportChatScreenState();
@@ -33,18 +45,21 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   final _repo = SupportRepository();
   final _input = TextEditingController();
   final _scroll = ScrollController();
-  late final Stream<List<SupportMessage>> _stream =
-      _repo.messagesStream(widget.thread.id);
+  late final Stream<List<SupportMessage>> _stream = _repo.messagesStream(
+    widget.thread.id,
+  );
 
   /// The thread row itself is streamed too, so resolving on one side updates
   /// the other immediately instead of on the next time the screen is opened.
-  late final Stream<SupportThread?> _threadStream =
-      _repo.threadStream(widget.thread.id);
+  late final Stream<SupportThread?> _threadStream = _repo.threadStream(
+    widget.thread.id,
+  );
 
   /// Only the customer is offered templates — an admin is the one they exist
   /// to stand in for.
-  late final Future<List<SupportTemplate>> _templates =
-      widget.asAdmin ? Future.value(const []) : _repo.fetchTemplates();
+  late final Future<List<SupportTemplate>> _templates = widget.asAdmin
+      ? Future.value(const [])
+      : _repo.fetchTemplates();
 
   bool _sending = false;
 
@@ -115,7 +130,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   Future<void> _toggleResolved(String current) async {
     try {
       await _repo.setStatus(
-          widget.thread.id, current == 'open' ? 'resolved' : 'open');
+        widget.thread.id,
+        current == 'open' ? 'resolved' : 'open',
+      );
+      widget.onChanged?.call();
     } catch (e) {
       if (mounted) showFailure(context, e);
     }
@@ -124,12 +142,208 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+
+    final resolvedBanner = StreamBuilder<SupportThread?>(
+      stream: _threadStream,
+      builder: (context, snap) {
+        final status = snap.data?.status ?? widget.thread.status;
+        if (status != 'resolved') return const SizedBox.shrink();
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.lg,
+            vertical: AppSpace.md,
+          ),
+          color: AppColors.successFill,
+          child: Row(
+            children: [
+              const Icon(
+                Icons.check_circle_outline,
+                size: 17,
+                color: AppColors.successInk,
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Text(
+                  l10n.supportResolvedNotice,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.successInk,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    final messagesArea = StreamBuilder<List<SupportMessage>>(
+      stream: _stream,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const LoadingView();
+        }
+        if (snap.hasError) {
+          return FailureView(error: snap.error!);
+        }
+        final messages = snap.data ?? const <SupportMessage>[];
+        if (messages.isEmpty) {
+          // An empty thread is the one moment a menu of reasons is
+          // more useful than a blank box: most of them are answered
+          // by a template, and the customer never waits for an agent.
+          if (widget.asAdmin) {
+            return EmptyView(
+              message: l10n.supportChatEmpty,
+              icon: Icons.support_agent_outlined,
+            );
+          }
+          return _TemplatePicker(
+            templates: _templates,
+            busy: _sending,
+            onPick: _sendTemplate,
+          );
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scroll.hasClients) {
+            _scroll.jumpTo(_scroll.position.maxScrollExtent);
+          }
+        });
+        return ListView.builder(
+          controller: _scroll,
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.lg,
+            AppSpace.lg,
+            AppSpace.lg,
+            AppSpace.sm,
+          ),
+          itemCount: messages.length,
+          itemBuilder: (context, i) => _Bubble(
+            message: messages[i],
+            // Mine when the sender's side matches the side I am on.
+            mine: messages[i].isFromAdmin == widget.asAdmin,
+          ),
+        );
+      },
+    );
+
+    final inputBar = Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.md,
+        AppSpace.sm,
+        AppSpace.md,
+        AppSpace.sm,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: l10n.attachSomething,
+            onPressed: _sending ? null : _attach,
+            icon: const Icon(Icons.attach_file_rounded, size: 21),
+            color: AppColors.textMuted,
+          ),
+          Expanded(
+            child: TextField(
+              controller: _input,
+              minLines: 1,
+              maxLines: 4,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: l10n.typeAMessage,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.lg,
+                  vertical: AppSpace.md,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          SizedBox(
+            width: 46,
+            height: 46,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.zero,
+                shape: const CircleBorder(),
+              ),
+              onPressed: _sending ? null : () => _send(),
+              child: _sending
+                  ? const ButtonSpinner(size: 16)
+                  : const Icon(Icons.send_rounded, size: 19),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.embedded) {
+      // The split view already lists the thread on the left with its own
+      // name/status; this pane just needs a resolve action, not a full
+      // AppBar duplicating what's already visible one tap away.
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              AppSpace.md,
+              AppSpace.md,
+              AppSpace.md,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.thread.userName ?? l10n.customer,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.heading(15),
+                  ),
+                ),
+                if (widget.asAdmin)
+                  StreamBuilder<SupportThread?>(
+                    stream: _threadStream,
+                    builder: (context, snap) {
+                      final status = snap.data?.status ?? widget.thread.status;
+                      return TextButton(
+                        onPressed: () => _toggleResolved(status),
+                        child: Text(
+                          status == 'open' ? l10n.markResolved : l10n.reopen,
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
+          resolvedBanner,
+          Expanded(child: messagesArea),
+          inputBar,
+        ],
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(widget.asAdmin
-            ? (widget.thread.userName ?? l10n.customer)
-            : l10n.supportChat),
+        title: Text(
+          widget.asAdmin
+              ? (widget.thread.userName ?? l10n.customer)
+              : l10n.supportChat,
+        ),
         actions: [
           if (widget.asAdmin)
             StreamBuilder<SupportThread?>(
@@ -139,7 +353,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                 return TextButton(
                   onPressed: () => _toggleResolved(status),
                   child: Text(
-                      status == 'open' ? l10n.markResolved : l10n.reopen),
+                    status == 'open' ? l10n.markResolved : l10n.reopen,
+                  ),
                 );
               },
             ),
@@ -147,139 +362,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       ),
       body: Column(
         children: [
-          // Visible to the user as well: a thread the platform considers done
-          // should say so on both sides, the moment it happens.
-          StreamBuilder<SupportThread?>(
-            stream: _threadStream,
-            builder: (context, snap) {
-              final status = snap.data?.status ?? widget.thread.status;
-              if (status != 'resolved') return const SizedBox.shrink();
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpace.lg, vertical: AppSpace.md),
-                color: AppColors.successFill,
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle_outline,
-                        size: 17, color: AppColors.successInk),
-                    const SizedBox(width: AppSpace.sm),
-                    Expanded(
-                      child: Text(
-                        l10n.supportResolvedNotice,
-                        style: const TextStyle(
-                            fontSize: 12.5,
-                            height: 1.35,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.successInk),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          Expanded(
-            child: StreamBuilder<List<SupportMessage>>(
-              stream: _stream,
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const LoadingView();
-                }
-                if (snap.hasError) {
-                  return FailureView(error: snap.error!);
-                }
-                final messages = snap.data ?? const <SupportMessage>[];
-                if (messages.isEmpty) {
-                  // An empty thread is the one moment a menu of reasons is
-                  // more useful than a blank box: most of them are answered
-                  // by a template, and the customer never waits for an agent.
-                  if (widget.asAdmin) {
-                    return EmptyView(
-                      message: l10n.supportChatEmpty,
-                      icon: Icons.support_agent_outlined,
-                    );
-                  }
-                  return _TemplatePicker(
-                    templates: _templates,
-                    busy: _sending,
-                    onPick: _sendTemplate,
-                  );
-                }
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scroll.hasClients) {
-                    _scroll.jumpTo(_scroll.position.maxScrollExtent);
-                  }
-                });
-                return ListView.builder(
-                  controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.sm),
-                  itemCount: messages.length,
-                  itemBuilder: (context, i) => _Bubble(
-                    message: messages[i],
-                    // Mine when the sender's side matches the side I am on.
-                    mine: messages[i].isFromAdmin == widget.asAdmin,
-                  ),
-                );
-              },
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                    top: BorderSide(color: AppColors.border)),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: l10n.attachSomething,
-                    onPressed: _sending ? null : _attach,
-                    icon: const Icon(Icons.attach_file_rounded, size: 21),
-                    color: AppColors.textMuted,
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.newline,
-                      decoration: InputDecoration(
-                        hintText: l10n.typeAMessage,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppSpace.lg, vertical: AppSpace.md),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpace.sm),
-                  SizedBox(
-                    width: 46,
-                    height: 46,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        shape: const CircleBorder(),
-                      ),
-                      onPressed: _sending ? null : () => _send(),
-                      child: _sending
-                          ? const ButtonSpinner(size: 16)
-                          : const Icon(Icons.send_rounded, size: 19),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          resolvedBanner,
+          Expanded(child: messagesArea),
+          SafeArea(top: false, child: inputBar),
         ],
       ),
     );
@@ -319,8 +404,11 @@ class _TemplatePicker extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpace.xl),
           children: [
             const SizedBox(height: AppSpace.xl),
-            Icon(Icons.support_agent_outlined,
-                size: 44, color: AppColors.textFaint),
+            Icon(
+              Icons.support_agent_outlined,
+              size: 44,
+              color: AppColors.textFaint,
+            ),
             const SizedBox(height: AppSpace.lg),
             Text(
               l10n.howCanWeHelp,
@@ -381,13 +469,17 @@ class _Bubble extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpace.sm),
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.lg, vertical: AppSpace.md - 2),
+          horizontal: AppSpace.lg,
+          vertical: AppSpace.md - 2,
+        ),
         constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(context).width * 0.75),
+          maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+        ),
         decoration: BoxDecoration(
           color: mine ? AppColors.primary : AppColors.surface,
           border: Border.all(
-              color: mine ? AppColors.primary : AppColors.border),
+            color: mine ? AppColors.primary : AppColors.border,
+          ),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(AppRadii.lg),
             topRight: const Radius.circular(AppRadii.lg),
@@ -396,8 +488,9 @@ class _Bubble extends StatelessWidget {
           ),
         ),
         child: Column(
-          crossAxisAlignment:
-              mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: mine
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             if (message.hasAttachment) ...[
               ChatAttachmentView(

@@ -4,30 +4,34 @@ import 'package:multi_vendor/core/models/product.dart';
 import 'package:multi_vendor/core/models/vendor.dart';
 
 Vendor _vendor({double deliveryFee = 15}) => Vendor(
-      id: 'v1',
-      ownerId: 'owner',
-      name: 'Store',
-      isOpen: true,
-      isActive: true,
-      approvalStatus: 'active',
-      autoAccept: false,
-      deliveryFee: deliveryFee,
-      minOrderAmount: 0,
-      avgPrepMinutes: 20,
-      ratingAvg: 0,
-      ratingCount: 0,
-    );
+  id: 'v1',
+  ownerId: 'owner',
+  name: 'Store',
+  isOpen: true,
+  isActive: true,
+  approvalStatus: 'active',
+  autoAccept: false,
+  deliveryFee: deliveryFee,
+  minOrderAmount: 0,
+  avgPrepMinutes: 20,
+  ratingAvg: 0,
+  ratingCount: 0,
+);
 
 Product _product(double price) => Product(
-      id: 'p1',
-      vendorId: 'v1',
-      name: 'Item',
-      price: price,
-      isAvailable: true,
-    );
+  id: 'p1',
+  vendorId: 'v1',
+  name: 'Item',
+  price: price,
+  isAvailable: true,
+);
 
 const _addon = ProductOption(
-    id: 'o1', groupId: 'g1', name: 'Extra', priceDelta: 5);
+  id: 'o1',
+  groupId: 'g1',
+  name: 'Extra',
+  priceDelta: 5,
+);
 
 void main() {
   group('Checkout total math', () {
@@ -35,9 +39,10 @@ void main() {
       final items = [
         CartItem(product: _product(100), quantity: 2),
         CartItem(
-            product: _product(50),
-            quantity: 1,
-            selectedOptions: const [_addon]),
+          product: _product(50),
+          quantity: 1,
+          selectedOptions: const [_addon],
+        ),
       ];
       final subtotal = items.fold<double>(0, (s, i) => s + i.lineTotal);
       expect(subtotal, 255); // (100*2) + (50+5)*1
@@ -49,9 +54,7 @@ void main() {
     });
 
     test('zero discount leaves total = subtotal + delivery', () {
-      final items = [
-        CartItem(product: _product(80), quantity: 3),
-      ];
+      final items = [CartItem(product: _product(80), quantity: 3)];
       final subtotal = items.fold<double>(0, (s, i) => s + i.lineTotal);
       expect(subtotal, 240);
 
@@ -62,9 +65,17 @@ void main() {
 
     test('line total with multiple options sums correctly', () {
       const opt1 = ProductOption(
-          id: 'o1', groupId: 'g1', name: 'Size L', priceDelta: 15);
+        id: 'o1',
+        groupId: 'g1',
+        name: 'Size L',
+        priceDelta: 15,
+      );
       const opt2 = ProductOption(
-          id: 'o2', groupId: 'g2', name: 'Extra cheese', priceDelta: 10);
+        id: 'o2',
+        groupId: 'g2',
+        name: 'Extra cheese',
+        priceDelta: 10,
+      );
       final item = CartItem(
         product: _product(60),
         quantity: 2,

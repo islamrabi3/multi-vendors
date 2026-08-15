@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent;
 import 'package:url_launcher/url_launcher.dart' show closeInAppWebView;
 
+import '../../core/models/pending_policy.dart';
 import '../../core/models/profile.dart';
 import '../../core/models/vendor.dart';
 import '../../core/repositories/admin_roles_repository.dart';
@@ -24,6 +25,7 @@ class AppAuthState extends Equatable {
     this.error,
     this.info,
     this.permissions = const [],
+    this.pendingPolicy,
   });
 
   final AuthStatus status;
@@ -42,6 +44,10 @@ class AppAuthState extends Equatable {
   /// server, so a stale copy of this list grants nothing.
   final List<String> permissions;
 
+  /// Terms this partner has not accepted at their current version. Null for
+  /// customers and admins, and for anyone already up to date.
+  final PendingPolicy? pendingPolicy;
+
   /// True when the signed-in admin holds [key], or holds everything.
   bool can(String key) =>
       permissions.contains('*') || permissions.contains(key);
@@ -50,6 +56,31 @@ class AppAuthState extends Equatable {
   /// vendor onboarding, since the answer decides whether onboarding applies.
   bool get needsRoleChoice =>
       status == AuthStatus.authenticated && profile?.roleConfirmed == false;
+
+  /// Signed in, role settled, but no phone on file.
+  ///
+  /// Email/password sign-up asks for a phone; OAuth cannot — the provider
+  /// returns a name and an email and nothing else. Every order then has a
+  /// customer, a store or a rider that nobody can call when the address is
+  /// wrong or the gate is locked, which is the one failure a delivery app
+  /// cannot absorb.
+  ///
+  /// Admins are exempt: nobody rings an admin about an order, and trapping
+  /// the console behind a phone field would lock out the account that fixes
+  /// everything else. Existing accounts missing a number are caught here too,
+  /// not just new ones, so the gap backfills itself as people sign in.
+  bool get needsPhone =>
+      status == AuthStatus.authenticated &&
+      profile?.roleConfirmed != false &&
+      profile?.role != UserRole.admin &&
+      (profile?.phone?.trim().isEmpty ?? true);
+
+  /// Terms are a condition of trading, so this sits ahead of the screens
+  /// where trading happens. Deliberately *after* the phone gate: a partner
+  /// who has agreed to terms we cannot reach them about is worse than one
+  /// who has not agreed yet.
+  bool get needsPolicyAcceptance =>
+      status == AuthStatus.authenticated && pendingPolicy != null;
 
   bool get needsVendorOnboarding =>
       status == AuthStatus.authenticated &&
@@ -65,6 +96,8 @@ class AppAuthState extends Equatable {
     String? error,
     String? info,
     List<String>? permissions,
+    PendingPolicy? pendingPolicy,
+    bool clearPendingPolicy = false,
     bool clearMessages = false,
     bool clearVendor = false,
     bool clearProfile = false,
@@ -76,6 +109,9 @@ class AppAuthState extends Equatable {
     error: clearMessages ? null : error,
     info: clearMessages ? null : info,
     permissions: permissions ?? this.permissions,
+    pendingPolicy: clearPendingPolicy
+        ? null
+        : (pendingPolicy ?? this.pendingPolicy),
   );
 
   @override
@@ -87,6 +123,7 @@ class AppAuthState extends Equatable {
     error,
     info,
     permissions,
+    pendingPolicy,
   ];
 }
 
@@ -152,26 +189,23 @@ class AuthCubit extends Cubit<AppAuthState> {
   /// admin reaches the dashboard while it is open rather than at next sign-in.
   void _watchVendor() {
     _vendorSubscription?.cancel();
-    _vendorSubscription = _repository.watchMyVendor().listen(
-      (vendor) async {
-        if (vendor == null || isClosed) return;
-        if (vendor == state.vendor) return;
-        // The row from the socket carries no opening hours: a realtime stream
-        // cannot embed a related table. Taking it as-is left the dashboard
-        // flipping between "closed — outside hours" and "open" depending on
-        // which of the two sources spoke last, so the event is treated as a
-        // signal to re-read the whole thing.
-        try {
-          final full = await _repository.fetchMyVendor();
-          if (isClosed || full == null) return;
-          if (full == state.vendor) return;
-          emit(state.copyWith(vendor: full));
-        } catch (error) {
-          debugPrint('Vendor re-read failed: $error');
-        }
-      },
-      onError: (Object error) => debugPrint('Vendor watch dropped: $error'),
-    );
+    _vendorSubscription = _repository.watchMyVendor().listen((vendor) async {
+      if (vendor == null || isClosed) return;
+      if (vendor == state.vendor) return;
+      // The row from the socket carries no opening hours: a realtime stream
+      // cannot embed a related table. Taking it as-is left the dashboard
+      // flipping between "closed — outside hours" and "open" depending on
+      // which of the two sources spoke last, so the event is treated as a
+      // signal to re-read the whole thing.
+      try {
+        final full = await _repository.fetchMyVendor();
+        if (isClosed || full == null) return;
+        if (full == state.vendor) return;
+        emit(state.copyWith(vendor: full));
+      } catch (error) {
+        debugPrint('Vendor re-read failed: $error');
+      }
+    }, onError: (Object error) => debugPrint('Vendor watch dropped: $error'));
   }
 
   Future<void> _refresh() async {
@@ -203,12 +237,18 @@ class AuthCubit extends Cubit<AppAuthState> {
               (_) => const <String>[],
             )
           : const <String>[];
+      // Only partners are gated, so only they pay for the round trip.
+      final pendingPolicy =
+          profile.role == UserRole.vendor || profile.role == UserRole.driver
+          ? await _repository.fetchPendingPolicy()
+          : null;
       emit(
         AppAuthState(
           status: AuthStatus.authenticated,
           profile: profile,
           vendor: vendor,
           permissions: permissions,
+          pendingPolicy: pendingPolicy,
         ),
       );
       _watchProfile();
@@ -287,6 +327,21 @@ class AuthCubit extends Cubit<AppAuthState> {
   }
 
   /// Name/phone edit from the profile screen.
+  /// Records acceptance and clears the gate.
+  Future<bool> acceptPendingPolicy() async {
+    final pending = state.pendingPolicy;
+    if (pending == null) return true;
+    emit(state.copyWith(busy: true, clearMessages: true));
+    try {
+      await _repository.acceptPolicy(pending.key);
+      emit(state.copyWith(busy: false, clearPendingPolicy: true));
+      return true;
+    } catch (error) {
+      emit(state.copyWith(busy: false, error: error.toString()));
+      return false;
+    }
+  }
+
   Future<bool> updateProfile({required String fullName, String? phone}) async {
     emit(state.copyWith(busy: true, clearMessages: true));
     try {

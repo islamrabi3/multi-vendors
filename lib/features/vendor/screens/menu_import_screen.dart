@@ -1,15 +1,23 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/repositories/menu_import_repository.dart';
+import '../../../core/utils/menu_sheet_parser.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
-/// Photos -> AI extraction -> editable review -> one-shot import.
+/// A file or photos -> structured menu -> editable review -> one-shot import.
+///
+/// Two routes in, deliberately. A spreadsheet is parsed on the device because
+/// it is already structured and a model would only add cost and transcription
+/// errors to numbers that are already exact. Photos and PDFs go to the
+/// extractor, because there they are the only way to read the thing.
 /// Pops with `true` when items were imported so the menu can reload.
 class MenuImportScreen extends StatefulWidget {
   const MenuImportScreen({super.key, required this.vendorId});
@@ -32,8 +40,60 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
 
   static const _maxImages = 5;
 
+  /// A spreadsheet is already structured, so it is parsed here rather than
+  /// sent to the model: exact, instant, free, and it cannot mis-read a price
+  /// that was already a number. PDFs and photos still go to the extractor,
+  /// because for those there is nothing else to do.
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['csv', 'xlsx', 'xls', 'pdf'],
+      withData: true,
+    );
+    final file = result?.files.singleOrNull;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null) return;
+
+    final extension = (file.extension ?? '').toLowerCase();
+
+    if (extension == 'pdf') {
+      // Handed to the extractor like a photo; the function decides how to read
+      // it. Counts against the same limit, because it costs the same.
+      setState(() {
+        _images.add((bytes: bytes, mimeType: 'application/pdf'));
+      });
+      return;
+    }
+
+    setState(() => _step = _Step.extracting);
+    try {
+      final menu = extension == 'csv'
+          ? MenuSheetParser.parseCsv(bytes)
+          : MenuSheetParser.parseExcel(bytes);
+      if (!mounted) return;
+      setState(() {
+        _menu = menu;
+        _step = _Step.review;
+      });
+    } on MenuSheetException catch (error) {
+      if (!mounted) return;
+      setState(() => _step = _Step.pick);
+      showSnack(context, switch (error.code) {
+        'SHEET_NO_NAME_COLUMN' => context.l10n.spreadsheetNoNameColumn,
+        _ => context.l10n.spreadsheetEmpty,
+      }, error: true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _step = _Step.pick);
+      showFailure(context, error);
+    }
+  }
+
   Future<void> _pickImages() async {
-    final files = await _picker.pickMultiImage(maxWidth: 1600, limit: _maxImages);
+    final files = await _picker.pickMultiImage(
+      maxWidth: 1600,
+      limit: _maxImages,
+    );
     if (files.isEmpty) return;
     for (final file in files.take(_maxImages - _images.length)) {
       final bytes = await file.readAsBytes();
@@ -64,9 +124,7 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
   }
 
   Future<void> _import() async {
-    final menu = _menu
-        .where((category) => category.items.isNotEmpty)
-        .toList();
+    final menu = _menu.where((category) => category.items.isNotEmpty).toList();
     if (menu.isEmpty) return;
     setState(() => _step = _Step.importing);
     try {
@@ -88,7 +146,7 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
     final name = TextEditingController(text: category.name);
     final nameAr = TextEditingController(text: category.nameAr);
 
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showAdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -107,16 +165,18 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                 controller: name,
                 textDirection: TextDirection.ltr,
                 decoration: InputDecoration(
-                    labelText:
-                        '${sheetContext.l10n.sectionName} · ${sheetContext.l10n.english}'),
+                  labelText:
+                      '${sheetContext.l10n.sectionName} · ${sheetContext.l10n.english}',
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: nameAr,
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
-                    labelText:
-                        '${sheetContext.l10n.sectionName} · ${sheetContext.l10n.arabic}'),
+                  labelText:
+                      '${sheetContext.l10n.sectionName} · ${sheetContext.l10n.arabic}',
+                ),
               ),
               const SizedBox(height: 16),
               FilledButton(
@@ -145,11 +205,12 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
     final name = TextEditingController(text: item.name);
     final nameAr = TextEditingController(text: item.nameAr);
     final price = TextEditingController(
-        text: item.price == 0 ? '' : item.price.toStringAsFixed(2));
+      text: item.price == 0 ? '' : item.price.toStringAsFixed(2),
+    );
     final description = TextEditingController(text: item.description);
     final descriptionAr = TextEditingController(text: item.descriptionAr);
 
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showAdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -168,40 +229,46 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                 controller: name,
                 textDirection: TextDirection.ltr,
                 decoration: InputDecoration(
-                    labelText:
-                        '${sheetContext.l10n.itemName} · ${sheetContext.l10n.english}'),
+                  labelText:
+                      '${sheetContext.l10n.itemName} · ${sheetContext.l10n.english}',
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: nameAr,
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
-                    labelText:
-                        '${sheetContext.l10n.itemName} · ${sheetContext.l10n.arabic}'),
+                  labelText:
+                      '${sheetContext.l10n.itemName} · ${sheetContext.l10n.arabic}',
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: price,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration:
-                    InputDecoration(labelText: sheetContext.l10n.priceLabel),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: sheetContext.l10n.priceLabel,
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: description,
                 textDirection: TextDirection.ltr,
                 decoration: InputDecoration(
-                    labelText:
-                        '${sheetContext.l10n.descriptionOptional} · ${sheetContext.l10n.english}'),
+                  labelText:
+                      '${sheetContext.l10n.descriptionOptional} · ${sheetContext.l10n.english}',
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: descriptionAr,
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
-                    labelText:
-                        '${sheetContext.l10n.descriptionOptional} · ${sheetContext.l10n.arabic}'),
+                  labelText:
+                      '${sheetContext.l10n.descriptionOptional} · ${sheetContext.l10n.arabic}',
+                ),
               ),
               const SizedBox(height: 16),
               FilledButton(
@@ -247,18 +314,21 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
   }
 
   Widget _busyView(String label) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: AppColors.primary),
-            const SizedBox(height: 16),
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600)),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CircularProgressIndicator(color: AppColors.primary),
+        const SizedBox(height: 16),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _pickView() {
     return ListView(
@@ -276,10 +346,14 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
               const Icon(Icons.auto_awesome, color: AppColors.primary),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(context.l10n.importMenuHint,
-                    style: const TextStyle(
-                        fontSize: 13, height: 1.45,
-                        color: AppColors.textSecondary)),
+                child: Text(
+                  context.l10n.importMenuHint,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -298,7 +372,19 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.memory(_images[i].bytes, fit: BoxFit.cover),
+                    // A PDF has no thumbnail; decoding its bytes as an image
+                    // would throw, so it gets an icon instead.
+                    child: _images[i].mimeType == 'application/pdf'
+                        ? Container(
+                            color: AppColors.warmFill,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.picture_as_pdf_rounded,
+                              color: AppColors.primary,
+                              size: 30,
+                            ),
+                          )
+                        : Image.memory(_images[i].bytes, fit: BoxFit.cover),
                   ),
                   Positioned(
                     top: 4,
@@ -316,6 +402,43 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
               ),
             if (_images.length < _maxImages)
               GestureDetector(
+                onTap: _pickFile,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.upload_file_outlined,
+                        color: AppColors.primary,
+                        size: 30,
+                      ),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          context.l10n.importFromFile,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            height: 1.2,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (_images.length < _maxImages)
+              GestureDetector(
                 onTap: _pickImages,
                 child: Container(
                   decoration: BoxDecoration(
@@ -326,14 +449,20 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.add_photo_alternate_outlined,
-                          color: AppColors.primary, size: 30),
+                      const Icon(
+                        Icons.add_photo_alternate_outlined,
+                        color: AppColors.primary,
+                        size: 30,
+                      ),
                       const SizedBox(height: 4),
-                      Text(context.l10n.addPhotos,
-                          style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary)),
+                      Text(
+                        context.l10n.addPhotos,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -360,13 +489,18 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
           child: Row(
             children: [
               Expanded(
-                child: Text(context.l10n.reviewExtractedMenu,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary)),
+                child: Text(
+                  context.l10n.reviewExtractedMenu,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
-              Text('$total',
-                  style: AppType.mono(14, color: AppColors.primaryDark)),
+              Text(
+                '$total',
+                style: AppType.mono(14, color: AppColors.primaryDark),
+              ),
             ],
           ),
         ),
@@ -380,28 +514,38 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                 InkWell(
                   onTap: () => _editCategory(category),
                   child: Padding(
-                    padding:
-                        const EdgeInsetsDirectional.only(top: 10, bottom: 6),
+                    padding: const EdgeInsetsDirectional.only(
+                      top: 10,
+                      bottom: 6,
+                    ),
                     child: Row(
                       children: [
                         Flexible(
                           child: Text(
-                              [category.name, category.nameAr]
-                                  .where((part) => part.isNotEmpty)
-                                  .join(' · ')
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1,
-                                  color: AppColors.textFaint)),
+                            [category.name, category.nameAr]
+                                .where((part) => part.isNotEmpty)
+                                .join(' · ')
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                              color: AppColors.textFaint,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 6),
                         if (category.isMissingTranslation)
-                          const Icon(Icons.translate_rounded,
-                              size: 14, color: AppColors.amberInk),
-                        const Icon(Icons.edit_outlined,
-                            size: 13, color: AppColors.textFaint),
+                          const Icon(
+                            Icons.translate_rounded,
+                            size: 14,
+                            color: AppColors.amberInk,
+                          ),
+                        const Icon(
+                          Icons.edit_outlined,
+                          size: 13,
+                          color: AppColors.textFaint,
+                        ),
                       ],
                     ),
                   ),
@@ -420,37 +564,50 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                       // Both names are shown so a missing translation is
                       // obvious before the menu is committed.
                       title: Text(
-                          [item.name, item.nameAr]
-                              .where((part) => part.isNotEmpty)
-                              .join('  ·  '),
-                          style:
-                              const TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: item.description.isEmpty &&
-                              item.descriptionAr.isEmpty
+                        [
+                          item.name,
+                          item.nameAr,
+                        ].where((part) => part.isNotEmpty).join('  ·  '),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle:
+                          item.description.isEmpty && item.descriptionAr.isEmpty
                           ? null
                           : Text(
-                              [item.description, item.descriptionAr]
-                                  .where((part) => part.isNotEmpty)
-                                  .join('  ·  '),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                              [
+                                item.description,
+                                item.descriptionAr,
+                              ].where((part) => part.isNotEmpty).join('  ·  '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (item.isMissingTranslation)
                             const Padding(
-                              padding:
-                                  EdgeInsetsDirectional.only(end: 6),
-                              child: Icon(Icons.translate_rounded,
-                                  size: 16, color: AppColors.amberInk),
+                              padding: EdgeInsetsDirectional.only(end: 6),
+                              child: Icon(
+                                Icons.translate_rounded,
+                                size: 16,
+                                color: AppColors.amberInk,
+                              ),
                             ),
-                          Text(formatMoney(item.price),
-                              style: AppType.mono(13,
-                                  color: AppColors.primaryDark)),
+                          Text(
+                            formatMoney(item.price),
+                            style: AppType.mono(
+                              13,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
                           IconButton(
-                            icon: const Icon(Icons.close,
-                                size: 18, color: AppColors.textFaint),
-                            onPressed: () => setState(
-                                () => category.items.remove(item)),
+                            icon: const Icon(
+                              Icons.close,
+                              size: 18,
+                              color: AppColors.textFaint,
+                            ),
+                            onPressed: () =>
+                                setState(() => category.items.remove(item)),
                           ),
                         ],
                       ),
@@ -464,8 +621,9 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
           minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: FilledButton.icon(
             onPressed: total == 0 ? null : _import,
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(54),
+            ),
             icon: const Icon(Icons.download_done_rounded, size: 20),
             label: Text('${context.l10n.importAll} ($total)'),
           ),

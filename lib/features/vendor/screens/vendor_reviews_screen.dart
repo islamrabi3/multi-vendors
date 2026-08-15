@@ -15,7 +15,9 @@ import '../../auth/auth_cubit.dart';
 /// read a single one of them — so a run of one-star reviews was invisible to
 /// the only person who could act on it.
 class VendorReviewsScreen extends StatefulWidget {
-  const VendorReviewsScreen({super.key});
+  const VendorReviewsScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<VendorReviewsScreen> createState() => _VendorReviewsScreenState();
@@ -119,49 +121,48 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
     final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(title: Text(l10n.reviewsInbox)),
+      appBar: widget.embedded ? null : AppBar(title: Text(l10n.reviewsInbox)),
       body: _loading
           ? const LoadingView()
           : _error != null
-              ? FailureView(error: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    controller: _scroll,
+          ? FailureView(error: _error!, onRetry: _load)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                controller: _scroll,
+                padding: const EdgeInsets.all(AppSpace.lg),
+                children: [
+                  Container(
                     padding: const EdgeInsets.all(AppSpace.lg),
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(AppSpace.lg),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          border: Border.all(color: AppColors.border),
-                          borderRadius: BorderRadius.circular(AppRadii.xl),
-                        ),
-                        child: RatingSummary(breakdown: _breakdown),
-                      ),
-                      const SizedBox(height: AppSpace.xl),
-                      if (_reviews.isEmpty)
-                        EmptyView(
-                          message: l10n.noReviewsYet,
-                          icon: Icons.reviews_outlined,
-                        )
-                      else
-                        for (final review in _reviews)
-                          ReviewTile(review: review),
-                      if (_loadingMore)
-                        const Padding(
-                          padding: EdgeInsets.all(AppSpace.lg),
-                          child: Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        ),
-                    ],
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(AppRadii.xl),
+                    ),
+                    child: RatingSummary(breakdown: _breakdown),
                   ),
-                ),
+                  const SizedBox(height: AppSpace.xl),
+                  if (_reviews.isEmpty)
+                    EmptyView(
+                      message: l10n.noReviewsYet,
+                      icon: Icons.reviews_outlined,
+                    )
+                  else
+                    for (final review in _reviews) ReviewTile(review: review),
+                  if (_loadingMore)
+                    const Padding(
+                      padding: EdgeInsets.all(AppSpace.lg),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }

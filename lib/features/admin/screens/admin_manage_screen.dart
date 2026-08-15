@@ -3,8 +3,171 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../auth/auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+
+/// The same grouping the mobile Manage screen renders as a list, in one
+/// place so the desktop web sidebar (`adminManageWebSections`) can't drift
+/// from it — same items, same permission gate, same order.
+List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
+  final l10n = context.l10n;
+  final auth = context.watch<AuthCubit>().state;
+  bool can(ManageNavItem item) => auth.can(item.permission);
+
+  final groups = <(String, List<ManageNavItem>)>[
+    (
+      l10n.operations,
+      [
+        ManageNavItem(
+          icon: Icons.report_problem_outlined,
+          label: l10n.customerReports,
+          route: '/admin-app/complaints',
+          permission: 'support.handle',
+        ),
+        ManageNavItem(
+          icon: Icons.support_agent_outlined,
+          label: l10n.supportChat,
+          route: '/admin-app/support',
+          permission: 'support.handle',
+        ),
+        ManageNavItem(
+          icon: Icons.people_outline,
+          label: l10n.users,
+          route: '/admin-app/users',
+          permission: 'users.block',
+        ),
+        ManageNavItem(
+          icon: Icons.admin_panel_settings_outlined,
+          label: l10n.managementRoles,
+          route: '/admin-app/roles',
+          permission: 'staff.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.campaign_outlined,
+          label: l10n.announcements,
+          route: '/admin-app/announcements',
+          permission: 'notifications.send',
+        ),
+        ManageNavItem(
+          icon: Icons.payments_outlined,
+          label: l10n.salesAndFinancialReports,
+          route: '/admin-app/sales-reports',
+          permission: 'reports.view',
+        ),
+        ManageNavItem(
+          icon: Icons.delivery_dining_outlined,
+          label: l10n.driverApprovals,
+          route: '/admin-app/drivers',
+          permission: 'drivers.view',
+        ),
+        ManageNavItem(
+          icon: Icons.map_outlined,
+          label: l10n.serviceAreas,
+          route: '/admin-app/service-areas',
+          permission: 'content.manage',
+        ),
+      ],
+    ),
+    (
+      l10n.catalog,
+      [
+        ManageNavItem(
+          icon: Icons.category_outlined,
+          label: l10n.categoriesTab,
+          route: '/admin-app/categories',
+          permission: 'catalog.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.document_scanner_outlined,
+          label: l10n.importMenuFromPhotos,
+          route: '/admin-app/menu-import',
+          permission: 'catalog.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.price_change_outlined,
+          label: l10n.priceAdjustment,
+          route: '/admin-app/price-adjustment',
+          permission: 'catalog.manage',
+        ),
+      ],
+    ),
+    (
+      // Money gets its own group: these three are the only screens that move
+      // real balances, and burying them under "operations" makes that easy
+      // to miss.
+      l10n.financeTitle,
+      [
+        ManageNavItem(
+          icon: Icons.query_stats_outlined,
+          label: l10n.financeTitle,
+          route: '/admin-app/finance',
+          permission: 'reports.view',
+        ),
+        ManageNavItem(
+          icon: Icons.handshake_outlined,
+          label: l10n.settlementsTitle,
+          route: '/admin-app/settlements',
+          permission: 'finance.settle',
+        ),
+        ManageNavItem(
+          icon: Icons.account_balance_outlined,
+          label: l10n.depositsAwaitingReview,
+          route: '/admin-app/deposits',
+          permission: 'finance.settle',
+        ),
+      ],
+    ),
+    (
+      l10n.growth,
+      [
+        ManageNavItem(
+          icon: Icons.local_offer_outlined,
+          label: l10n.promos,
+          route: '/admin-app/promos',
+          permission: 'promos.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.ad_units_outlined,
+          label: l10n.adManager,
+          route: '/admin-app/ads',
+          permission: 'ads.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.article_outlined,
+          label: l10n.content,
+          route: '/admin-app/content',
+          permission: 'content.manage',
+        ),
+      ],
+    ),
+  ];
+
+  return [
+    for (final (title, items) in groups)
+      if (items.where(can).toList() case final visible when visible.isNotEmpty)
+        (title, visible),
+  ];
+}
+
+/// [adminManageGroups] reshaped for [WebShellFrame]'s sidebar — every item
+/// pushes its route exactly as the mobile row does (`context.push`), so
+/// deep-linking and the back stack behave identically on web.
+List<WebNavSection> adminManageWebSections(BuildContext context) => [
+  for (final (title, items) in adminManageGroups(context))
+    WebNavSection(
+      title: title,
+      items: [
+        for (final item in items)
+          WebNavItem(
+            id: 'manage:${item.route}',
+            icon: item.icon,
+            label: item.label,
+            onTap: () => context.push(item.route),
+          ),
+      ],
+    ),
+];
 
 /// Everything the admin does occasionally, in one place.
 ///
@@ -19,110 +182,7 @@ class AdminManageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final auth = context.watch<AuthCubit>().state;
-    bool can(_ManageItem item) => auth.can(item.permission);
-
-    final groups = <(String, List<_ManageItem>)>[
-      (
-        l10n.operations,
-        [
-          _ManageItem(
-            icon: Icons.report_problem_outlined,
-            label: l10n.customerReports,
-            route: '/admin-app/complaints',
-            permission: 'support.handle',
-          ),
-          _ManageItem(
-            icon: Icons.support_agent_outlined,
-            label: l10n.supportChat,
-            route: '/admin-app/support',
-            permission: 'support.handle',
-          ),
-          _ManageItem(
-            icon: Icons.people_outline,
-            label: l10n.users,
-            route: '/admin-app/users',
-            permission: 'users.block',
-          ),
-          _ManageItem(
-            icon: Icons.admin_panel_settings_outlined,
-            label: l10n.managementRoles,
-            route: '/admin-app/roles',
-            permission: 'staff.manage',
-          ),
-          _ManageItem(
-            icon: Icons.campaign_outlined,
-            label: l10n.announcements,
-            route: '/admin-app/announcements',
-            permission: 'notifications.send',
-          ),
-          _ManageItem(
-            icon: Icons.payments_outlined,
-            label: l10n.salesAndFinancialReports,
-            route: '/admin-app/sales-reports',
-            permission: 'reports.view',
-          ),
-          _ManageItem(
-            icon: Icons.delivery_dining_outlined,
-            label: l10n.driverApprovals,
-            route: '/admin-app/drivers',
-            permission: 'drivers.view',
-          ),
-          _ManageItem(
-            icon: Icons.map_outlined,
-            label: l10n.serviceAreas,
-            route: '/admin-app/service-areas',
-            permission: 'content.manage',
-          ),
-        ],
-      ),
-      (
-        l10n.catalog,
-        [
-          _ManageItem(
-            icon: Icons.category_outlined,
-            label: l10n.categoriesTab,
-            route: '/admin-app/categories',
-            permission: 'catalog.manage',
-          ),
-          _ManageItem(
-            icon: Icons.document_scanner_outlined,
-            label: l10n.importMenuFromPhotos,
-            route: '/admin-app/menu-import',
-            permission: 'catalog.manage',
-          ),
-          _ManageItem(
-            icon: Icons.price_change_outlined,
-            label: l10n.priceAdjustment,
-            route: '/admin-app/price-adjustment',
-            permission: 'catalog.manage',
-          ),
-        ],
-      ),
-      (
-        l10n.growth,
-        [
-          _ManageItem(
-            icon: Icons.local_offer_outlined,
-            label: l10n.promos,
-            route: '/admin-app/promos',
-            permission: 'promos.manage',
-          ),
-          _ManageItem(
-            icon: Icons.ad_units_outlined,
-            label: l10n.adManager,
-            route: '/admin-app/ads',
-            permission: 'ads.manage',
-          ),
-          _ManageItem(
-            icon: Icons.article_outlined,
-            label: l10n.content,
-            route: '/admin-app/content',
-            permission: 'content.manage',
-          ),
-        ],
-      ),
-    ];
+    final groups = adminManageGroups(context);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -137,49 +197,47 @@ class AdminManageScreen extends StatelessWidget {
             AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
           ),
           children: [
-            for (final (title, allItems) in groups)
-              if (allItems.where(can).toList() case final items
-                  when items.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpace.xs,
-                    AppSpace.sm,
-                    AppSpace.xs,
-                    AppSpace.sm,
-                  ),
-                  child: Text(
-                    title.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                      color: AppColors.textMuted,
-                    ),
+            for (final (title, items) in groups) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.xs,
+                  AppSpace.sm,
+                  AppSpace.xs,
+                  AppSpace.sm,
+                ),
+                child: Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: AppColors.textMuted,
                   ),
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < items.length; i++) ...[
-                        if (i > 0)
-                          const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: AppColors.borderSoft,
-                          ),
-                        _ManageRow(item: items[i]),
-                      ],
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      if (i > 0)
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: AppColors.borderSoft,
+                        ),
+                      _ManageRow(item: items[i]),
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(height: AppSpace.lg),
-              ],
+              ),
+              const SizedBox(height: AppSpace.lg),
+            ],
             const SizedBox(height: AppSpace.sm),
             Center(
               child: TextButton.icon(
@@ -198,9 +256,10 @@ class AdminManageScreen extends StatelessWidget {
   }
 }
 
-/// One row in the Manage grid.
-class _ManageItem {
-  const _ManageItem({
+/// One row in the Manage grid — public because [adminManageWebSections]
+/// (the desktop sidebar) builds from the same list.
+class ManageNavItem {
+  const ManageNavItem({
     required this.icon,
     required this.label,
     required this.route,
@@ -220,7 +279,7 @@ class _ManageItem {
 class _ManageRow extends StatelessWidget {
   const _ManageRow({required this.item});
 
-  final _ManageItem item;
+  final ManageNavItem item;
 
   @override
   Widget build(BuildContext context) {

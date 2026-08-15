@@ -99,12 +99,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       primaryText: l10n.save,
-      onPrimaryPressed: () {
+      onPrimaryPressed: (dialogContext) {
         if (nameController.text.trim().isEmpty) {
           showSnack(context, l10n.nameRequired, error: true);
           return;
         }
-        Navigator.of(context).pop(true);
+        Navigator.of(dialogContext).pop(true);
       },
       secondaryText: l10n.cancel,
       onSecondaryPressed: () => Navigator.of(context).pop(false),
@@ -269,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const _MenuDivider(),
                   _MenuRow(
                     icon: Icons.support_agent_outlined,
-                    label: context.l10n.supportChat,
+                    label: context.l10n.contactSupport,
                     onTap: () => context.push('/support'),
                   ),
                   const _MenuDivider(),

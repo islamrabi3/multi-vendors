@@ -13,6 +13,8 @@ import '../../../core/widgets/location_picker.dart';
 import '../../auth/auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import 'package:multi_vendor/app/locale_cubit.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
+import '../vendor_shell.dart' show VendorWebNav;
 
 class VendorSettingsScreen extends StatefulWidget {
   const VendorSettingsScreen({super.key});
@@ -51,7 +53,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
     required ValueChanged<String> onSave,
   }) async {
     final controller = TextEditingController(text: initial);
-    final result = await showModalBottomSheet<String>(
+    final result = await showAdaptiveSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.canvas,
@@ -169,7 +171,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
 
       final field = isLogo ? 'logo_url' : 'cover_url';
       await _patch({field: url});
-      if (mounted) showSnack(context, 'Photo updated successfully!');
+      if (mounted) showSnack(context, context.l10n.photoUpdated);
     } catch (error) {
       if (mounted) showFailure(context, error);
     } finally {
@@ -200,162 +202,168 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
               ),
             ),
 
-            // Open / closed hero.
+            // Store status — open/closed and busy mode share one container so
+            // the two most consequential switches on the screen read as a
+            // single control surface, not two competing hero cards.
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: vendor.isOpen
-                      ? const [Color(0xFF18A957), Color(0xFF0E7C3F)]
-                      : const [Color(0xFF8C8178), Color(0xFF6B635C)],
-                ),
                 borderRadius: BorderRadius.circular(AppRadii.xl),
-                boxShadow: [
-                  BoxShadow(
-                    color:
-                        (vendor.isOpen
-                                ? const Color(0xFF18A957)
-                                : const Color(0xFF8C8178))
-                            .withValues(alpha: 0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+                boxShadow: AppShadows.raised,
               ),
-              child: Row(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
                 children: [
+                  // Open / closed.
                   Container(
-                    width: 10,
-                    height: 10,
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: vendor.isOpen
-                          ? const Color(0xFF5FE39B)
-                          : const Color(0xFFE39B5F),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              (vendor.isOpen
-                                      ? const Color(0xFF5FE39B)
-                                      : const Color(0xFFE39B5F))
-                                  .withValues(alpha: 0.5),
-                          blurRadius: 6,
-                          spreadRadius: 2,
-                        ),
-                      ],
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: vendor.isOpen
+                            ? const [AppColors.success, AppColors.successInk]
+                            : const [
+                                AppColors.textMuted,
+                                AppColors.textSecondary,
+                              ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          vendor.isOpen
-                              ? context.l10n.storeIsOpen
-                              : context.l10n.storeIsClosed,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: vendor.isOpen
+                                ? AppColors.onDarkSuccess
+                                : AppColors.textFaint,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color:
+                                    (vendor.isOpen
+                                            ? AppColors.onDarkSuccess
+                                            : AppColors.textFaint)
+                                        .withValues(alpha: 0.5),
+                                blurRadius: 6,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          vendor.isOpen
-                              ? context.l10n.acceptingOrdersNow
-                              : context.l10n.customersCantOrder,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                vendor.isOpen
+                                    ? context.l10n.storeIsOpen
+                                    : context.l10n.storeIsClosed,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                vendor.isOpen
+                                    ? context.l10n.acceptingOrdersNow
+                                    : context.l10n.customersCantOrder,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: vendor.isOpen,
+                          onChanged: _busy
+                              ? null
+                              : (v) => _patch({'is_open': v}),
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: Colors.white.withValues(
+                            alpha: 0.45,
+                          ),
+                          inactiveThumbColor: Colors.white,
+                          inactiveTrackColor: Colors.white.withValues(
+                            alpha: 0.2,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Switch(
-                    value: vendor.isOpen,
-                    onChanged: _busy ? null : (v) => _patch({'is_open': v}),
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: Colors.white.withValues(alpha: 0.45),
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Busy Mode Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: vendor.isBusy ? AppColors.amberFill : Colors.white,
-                borderRadius: BorderRadius.circular(AppRadii.xl),
-                border: Border.all(
-                  color: vendor.isBusy
-                      ? AppColors.amberInk.withValues(alpha: 0.4)
-                      : AppColors.border,
-                ),
-                boxShadow: AppShadows.card,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.local_fire_department_rounded,
-                    color: vendor.isBusy
-                        ? AppColors.amberInk
-                        : AppColors.textMuted,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // Busy mode — only meaningful while open, so it is visually
+                  // subordinate: same card, plain surface, no shadow of its own.
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    color: vendor.isBusy ? AppColors.amberFill : Colors.white,
+                    child: Row(
                       children: [
-                        Text(
-                          'Busy Mode (+15 mins prep)',
-                          style: TextStyle(
-                            color: vendor.isBusy
-                                ? AppColors.amberInk
-                                : AppColors.ink,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                        Icon(
+                          Icons.local_fire_department_rounded,
+                          color: vendor.isBusy
+                              ? AppColors.amberInk
+                              : AppColors.textMuted,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.l10n.busyMode,
+                                style: TextStyle(
+                                  color: vendor.isBusy
+                                      ? AppColors.amberInk
+                                      : AppColors.ink,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                vendor.isBusy
+                                    ? context.l10n.busyStoreNotice
+                                    : context.l10n.busyModeHint,
+                                style: TextStyle(
+                                  color: vendor.isBusy
+                                      ? AppColors.amberInk.withValues(
+                                          alpha: 0.8,
+                                        )
+                                      : AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          vendor.isBusy
-                              ? 'Customers see store as busy with +15 min extra prep'
-                              : 'Toggle when orders overflow to add prep time buffer',
-                          style: TextStyle(
-                            color: vendor.isBusy
-                                ? AppColors.amberInk.withValues(alpha: 0.8)
-                                : AppColors.textMuted,
-                            fontSize: 12,
-                          ),
+                        Switch(
+                          value: vendor.isBusy,
+                          onChanged: !_busy && vendor.isOpen
+                              ? (v) => _patch({
+                                  'is_busy': v,
+                                  'extra_prep_minutes': v ? 15 : 0,
+                                })
+                              : null,
+                          activeTrackColor: AppColors.amberInk,
                         ),
                       ],
                     ),
-                  ),
-                  Switch(
-                    value: vendor.isBusy,
-                    onChanged: _busy
-                        ? null
-                        : (v) => _patch({
-                            'is_busy': v,
-                            'extra_prep_minutes': v ? 15 : 0,
-                          }),
-                    activeTrackColor: AppColors.amberInk,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // Shop Cover & Logo Image Editor
+            // Shop cover & logo. The cover photo stays fully visible at rest —
+            // a permanent dark scrim over the vendor's own photo hid the thing
+            // they came here to check. A bottom gradient plus a small "change"
+            // pill carry the edit affordance instead.
             Container(
               height: 180,
               decoration: BoxDecoration(
@@ -366,7 +374,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
               clipBehavior: Clip.antiAlias,
               child: Stack(
                 children: [
-                  // Cover Image
+                  // Cover image.
                   Positioned.fill(
                     child: GestureDetector(
                       onTap: _busy ? null : () => _uploadImage(isLogo: false),
@@ -378,42 +386,104 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                             height: 180,
                             width: double.infinity,
                           ),
-                          Container(color: Colors.black38),
-                          Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.add_photo_alternate_rounded,
-                                  color: Colors.white70,
-                                  size: 28,
+                          if (vendor.coverUrl == null)
+                            Container(
+                              color: Colors.black26,
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.add_photo_alternate_rounded,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      context.l10n.tapToAddPhoto,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  vendor.coverUrl != null
-                                      ? 'Change Cover Photo'
-                                      : 'Upload Cover Photo',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          else ...[
+                            // Bottom scrim only, so the logo and pill stay
+                            // legible without dimming the photo itself.
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              height: 64,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0),
+                                      Colors.black.withValues(alpha: 0.45),
+                                    ],
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                            Positioned(
+                              top: 10,
+                              right: 10,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.pill,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.edit_rounded,
+                                        color: Colors.white,
+                                        size: 13,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        context.l10n.tapToChangePhoto,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
-                  // Logo/Avatar (Bottom Left)
+                  // Logo, bottom-left, overlapping the cover. The image stays
+                  // uncovered; a small pencil badge at the corner is the only
+                  // edit affordance, so the logo itself is always checkable.
                   Positioned(
                     bottom: 12,
                     left: 16,
                     child: GestureDetector(
                       onTap: _busy ? null : () => _uploadImage(isLogo: true),
                       child: Stack(
-                        alignment: Alignment.center,
+                        clipBehavior: Clip.none,
                         children: [
                           Container(
                             width: 68,
@@ -437,17 +507,25 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                               height: 68,
                             ),
                           ),
-                          Container(
-                            width: 68,
-                            height: 68,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.black26,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              color: Colors.white,
-                              size: 18,
+                          Positioned(
+                            right: -2,
+                            bottom: -2,
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.primary,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.edit_rounded,
+                                color: Colors.white,
+                                size: 12,
+                              ),
                             ),
                           ),
                         ],
@@ -500,7 +578,8 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
               ),
               // Stores created before the map picker existed have no
               // coordinates, so they are invisible to "nearby" until the owner
-              // drops a pin here.
+              // drops a pin here — flagged with the same amber "needs you"
+              // language as busy mode, rather than reading as just another row.
               _navRow(
                 vendor.lat == null
                     ? Icons.add_location_alt_outlined
@@ -510,6 +589,12 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                     ? context.l10n.pickOnMap
                     : '${vendor.lat!.toStringAsFixed(5)}, '
                           '${vendor.lng!.toStringAsFixed(5)}',
+                subtitle: vendor.lat == null || vendor.lng == null
+                    ? context.l10n.locationMissingHint
+                    : null,
+                iconColor: vendor.lat == null || vendor.lng == null
+                    ? AppColors.amberInk
+                    : null,
                 onTap: () async {
                   final picked = await showLocationPicker(
                     context,
@@ -537,7 +622,17 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                     ? '—'
                     : '${vendor.ratingAvg.toStringAsFixed(1)} · '
                           '${vendor.ratingCount}',
-                onTap: () => context.push('/vendor-app/reviews'),
+                // In the desktop shell this opens in the content pane beside
+                // the sidebar — the same place the sidebar's own Reviews row
+                // opens it — rather than pushing a page over the shell.
+                onTap: () {
+                  final webNav = VendorWebNav.maybeOf(context);
+                  if (webNav != null) {
+                    webNav.openTool('reviews');
+                    return;
+                  }
+                  context.push('/vendor-app/reviews');
+                },
               ),
             ]),
             const SizedBox(height: 20),
@@ -605,12 +700,14 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 context.l10n.autoAcceptOrders,
                 vendor.autoAccept,
                 (v) => _patch({'auto_accept': v}),
+                subtitle: context.l10n.autoAcceptOrdersHint,
               ),
               _switchRow(
                 Icons.volume_up_rounded,
                 context.l10n.newOrderSound,
                 _soundOn,
                 (v) => setState(() => _soundOn = v),
+                subtitle: context.l10n.newOrderSoundHint,
               ),
               _switchRow(
                 Icons.language_rounded,
@@ -619,6 +716,10 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
                 (v) => context.read<LocaleCubit>().setLocale(
                   v ? const Locale('ar') : const Locale('en'),
                 ),
+                subtitle:
+                    context.watch<LocaleCubit>().state.languageCode == 'ar'
+                    ? context.l10n.arabic
+                    : context.l10n.english,
               ),
             ]),
             const SizedBox(height: 32),
@@ -740,34 +841,60 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
     String label,
     String value, {
     required VoidCallback onTap,
+    String? subtitle,
+    Color? iconColor,
   }) {
     return InkWell(
       onTap: _busy ? null : onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 20, color: AppColors.primary),
+            Icon(icon, size: 20, color: iconColor ?? AppColors.primary),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14.5,
-                color: AppColors.ink,
-              ),
-            ),
-            const Spacer(),
-            Flexible(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textMuted,
-                ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.5,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: iconColor ?? AppColors.textFaint,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(width: 4),
@@ -786,8 +913,9 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
     IconData icon,
     String label,
     bool value,
-    ValueChanged<bool> onChanged,
-  ) {
+    ValueChanged<bool> onChanged, {
+    String? subtitle,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
@@ -795,13 +923,26 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
           Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14.5,
-                color: AppColors.ink,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                    color: AppColors.ink,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textFaint,
+                    ),
+                  ),
+              ],
             ),
           ),
           Switch(

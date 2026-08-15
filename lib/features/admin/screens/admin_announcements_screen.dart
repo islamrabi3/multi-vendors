@@ -3,12 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/web_table.dart';
 import '../../../core/repositories/campaigns_repository.dart';
 import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/responsive_list.dart';
+import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../auth/auth_cubit.dart';
+import 'admin_manage_screen.dart' show adminManageWebSections;
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 /// Platform-wide announcements.
 ///
@@ -22,7 +26,12 @@ import '../../auth/auth_cubit.dart';
 /// to-do list, sent ones are a record — and paged because a campaign list only
 /// ever grows.
 class AdminAnnouncementsScreen extends StatefulWidget {
-  const AdminAnnouncementsScreen({super.key});
+  const AdminAnnouncementsScreen({super.key, this.embedded = false});
+
+  /// True when a web sidebar is already drawing the shell around this screen
+  /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
+  /// and returns just the content.
+  final bool embedded;
 
   @override
   State<AdminAnnouncementsScreen> createState() =>
@@ -40,7 +49,7 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
   void _reload() => setState(() => _revision++);
 
   Future<void> _compose() async {
-    final outcome = await showModalBottomSheet<_ComposeOutcome>(
+    final outcome = await showAdaptiveSheet<_ComposeOutcome>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -110,23 +119,104 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final webWide = AppBreakpoints.isWebWide(context);
     final canSend = context.select(
       (AuthCubit c) => c.state.can('notifications.send'),
     );
+
+    final tabs = TabBar(
+      tabs: [
+        Tab(text: l10n.statusSent),
+        Tab(text: l10n.drafts),
+      ],
+    );
+
+    final body = TabBarView(
+      children: [
+        _CampaignList(
+          key: ValueKey('sent-$_revision'),
+          repo: _repo,
+          sent: true,
+          canSend: canSend,
+          onSend: _send,
+        ),
+        _CampaignList(
+          key: ValueKey('drafts-$_revision'),
+          repo: _repo,
+          sent: false,
+          canSend: canSend,
+          onSend: _send,
+        ),
+      ],
+    );
+
+    // Wide/embedded layouts have no floating action button to hang this off,
+    // so it surfaces as a button above the tabs instead.
+    final header = ColoredBox(
+      color: AppColors.surface,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (canSend)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.lg,
+                AppSpace.md,
+                AppSpace.lg,
+                0,
+              ),
+              child: Row(
+                children: [
+                  const Spacer(),
+                  FilledButton.icon(
+                    onPressed: _compose,
+                    icon: const Icon(Icons.campaign_outlined, size: 18),
+                    label: Text(l10n.newAnnouncement),
+                  ),
+                ],
+              ),
+            ),
+          tabs,
+        ],
+      ),
+    );
+
+    if (widget.embedded) {
+      return DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            header,
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+
+    if (webWide) {
+      return DefaultTabController(
+        length: 2,
+        child: WebPageChrome(
+          activeId: 'manage:/admin-app/announcements',
+          sections: adminManageWebSections(context),
+          pageTitle: l10n.announcements,
+          child: Column(
+            children: [
+              header,
+              const Divider(height: 1, thickness: 1, color: AppColors.border),
+              Expanded(child: body),
+            ],
+          ),
+        ),
+      );
+    }
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: AppColors.canvas,
-        appBar: AppBar(
-          title: Text(l10n.announcements),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: l10n.statusSent),
-              Tab(text: l10n.drafts),
-            ],
-          ),
-        ),
+        appBar: AppBar(title: Text(l10n.announcements), bottom: tabs),
         floatingActionButton: canSend
             ? FloatingActionButton.extended(
                 onPressed: _compose,
@@ -134,24 +224,7 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
                 label: Text(l10n.newAnnouncement),
               )
             : null,
-        body: TabBarView(
-          children: [
-            _CampaignList(
-              key: ValueKey('sent-$_revision'),
-              repo: _repo,
-              sent: true,
-              canSend: canSend,
-              onSend: _send,
-            ),
-            _CampaignList(
-              key: ValueKey('drafts-$_revision'),
-              repo: _repo,
-              sent: false,
-              canSend: canSend,
-              onSend: _send,
-            ),
-          ],
-        ),
+        body: body,
       ),
     );
   }
@@ -274,24 +347,204 @@ class _CampaignListState extends State<_CampaignList> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ResponsiveCardList(
-        controller: _scroll,
-        padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg,
-          AppSpace.lg,
-          AppSpace.lg,
-          96,
-        ),
-        itemCount: _campaigns.length,
-        // Full width in both layouts: the paging spinner belongs to the list,
-        // not to whichever column happens to end last.
-        footer: PagingFooter(loading: _loadingMore, hasMore: _hasMore),
-        itemBuilder: (context, i) => _CampaignCard(
-          campaign: _campaigns[i],
-          canSend: widget.canSend,
-          onSend: widget.onSend,
-        ),
+      child: AppBreakpoints.isWebWide(context)
+          ? _CampaignTable(
+              campaigns: _campaigns,
+              controller: _scroll,
+              canSend: widget.canSend,
+              onSend: widget.onSend,
+              loadingMore: _loadingMore,
+              hasMore: _hasMore,
+            )
+          : ResponsiveCardList(
+              controller: _scroll,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.lg,
+                AppSpace.lg,
+                AppSpace.lg,
+                96,
+              ),
+              itemCount: _campaigns.length,
+              // Full width in both layouts: the paging spinner belongs to the list,
+              // not to whichever column happens to end last.
+              footer: PagingFooter(loading: _loadingMore, hasMore: _hasMore),
+              itemBuilder: (context, i) => _CampaignCard(
+                campaign: _campaigns[i],
+                canSend: widget.canSend,
+                onSend: widget.onSend,
+              ),
+            ),
+    );
+  }
+}
+
+/// Web/wide: campaigns as a table.
+///
+/// A campaign is read for four things — what it said, who it went to, how it
+/// landed, and when. Cards spread those across two lines and a badge; columns
+/// put the whole send history in one scan, which is how you notice that
+/// yesterday's driver push failed.
+class _CampaignTable extends StatelessWidget {
+  const _CampaignTable({
+    required this.campaigns,
+    required this.controller,
+    required this.canSend,
+    required this.onSend,
+    required this.loadingMore,
+    required this.hasMore,
+  });
+
+  final List<NotificationCampaign> campaigns;
+  final ScrollController controller;
+  final bool canSend;
+  final void Function(NotificationCampaign campaign, {bool asCopy}) onSend;
+  final bool loadingMore;
+  final bool hasMore;
+
+  String _audience(BuildContext context, String audience) => switch (audience) {
+    'customers' => context.l10n.audienceCustomers,
+    'vendors' => context.l10n.audienceVendors,
+    'drivers' => context.l10n.audienceDrivers,
+    _ => context.l10n.audienceAll,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final columns = [
+      WebTableColumn(label: l10n.titleLabel, flex: 3),
+      WebTableColumn(label: l10n.audience, width: 120),
+      WebTableColumn(label: l10n.delivered, width: 130),
+      WebTableColumn(label: l10n.dateLabel, width: 120),
+      WebTableColumn(label: l10n.statusLabel, width: 96),
+    ];
+
+    return SingleChildScrollView(
+      controller: controller,
+      child: Column(
+        children: [
+          WebTable(
+            columns: columns,
+            trailingWidth: canSend ? 84 : 20,
+            rows: [
+              for (final campaign in campaigns)
+                WebTableRow.aligned(
+                  columns: columns,
+                  trailingWidth: canSend ? 84 : 20,
+                  cells: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          campaign.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                        Text(
+                          campaign.body,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      _audience(context, campaign.audience),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    // Failures are the reason to open this screen, so they
+                    // are coloured rather than left to be counted.
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '${campaign.delivered}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          TextSpan(text: ' / ${campaign.recipients}'),
+                          if (campaign.failed > 0)
+                            TextSpan(
+                              text: '  ·  ${campaign.failed}',
+                              style: const TextStyle(
+                                color: AppColors.dangerInk,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                      style: AppType.mono(12, color: AppColors.textSecondary),
+                    ),
+                    Text(
+                      DateFormat(
+                        'MMM d, y',
+                      ).format(campaign.sentAt ?? campaign.createdAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    _CampaignStatus(status: campaign.status),
+                  ],
+                  trailing: canSend && campaign.canSend
+                      ? Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: TextButton(
+                            onPressed: () => onSend(campaign),
+                            child: Text(l10n.sendNow),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+            ],
+          ),
+          PagingFooter(loading: loadingMore, hasMore: hasMore),
+          const SizedBox(height: AppSpace.xl),
+        ],
       ),
+    );
+  }
+}
+
+class _CampaignStatus extends StatelessWidget {
+  const _CampaignStatus({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final (label, fill, ink) = switch (status) {
+      'sent' => (l10n.statusSent, AppColors.successFill, AppColors.successInk),
+      'sending' => (
+        l10n.statusSending,
+        AppColors.amberFill,
+        AppColors.amberInk,
+      ),
+      'failed' => (
+        l10n.statusFailed,
+        AppColors.dangerFill,
+        AppColors.dangerInk,
+      ),
+      _ => (l10n.statusDraft, AppColors.neutralFill, AppColors.textMuted),
+    };
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: SoftBadge(label: label, fill: fill, ink: ink),
     );
   }
 }

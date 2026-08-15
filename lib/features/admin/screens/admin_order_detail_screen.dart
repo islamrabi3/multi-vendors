@@ -12,6 +12,7 @@ import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../auth/auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 
 /// Ordered happy-path stages used to render the intervention timeline.
 const _flow = [
@@ -66,7 +67,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   });
 
   Future<void> _assign() async {
-    final driver = await showModalBottomSheet<DriverOption>(
+    final driver = await showAdaptiveSheet<DriverOption>(
       context: context,
       showDragHandle: true,
       builder: (_) => _DriverPicker(repo: _repo),
@@ -106,7 +107,8 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
         ),
       ),
       primaryText: context.l10n.cancelOrder,
-      onPrimaryPressed: () => Navigator.pop(context, controller.text.trim()),
+      onPrimaryPressed: (dialogContext) =>
+          Navigator.pop(dialogContext, controller.text.trim()),
       secondaryText: context.l10n.back,
     );
     if (reason == null) return;
@@ -340,9 +342,7 @@ class _Body extends StatelessWidget {
             decoration: BoxDecoration(
               color: _refunded ? AppColors.successFill : AppColors.amberFill,
               border: Border.all(
-                color: _refunded
-                    ? const Color(0xFFCDEBD9)
-                    : const Color(0xFFF6E2C0),
+                color: _refunded ? AppColors.successFill : AppColors.amberFill,
               ),
               borderRadius: BorderRadius.circular(14),
             ),
@@ -417,7 +417,7 @@ class _Body extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(13),
             decoration: BoxDecoration(
-              color: const Color(0xFFFBE7E4),
+              color: AppColors.dangerFill,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
@@ -425,7 +425,7 @@ class _Body extends StatelessWidget {
                 const Icon(
                   Icons.info_outline,
                   size: 18,
-                  color: Color(0xFFC0392B),
+                  color: AppColors.dangerInk,
                 ),
                 const SizedBox(width: 9),
                 Expanded(
@@ -433,7 +433,7 @@ class _Body extends StatelessWidget {
                     '${context.l10n.reason}: ${order.rejectionReason}',
                     style: const TextStyle(
                       fontSize: 12.5,
-                      color: Color(0xFFC0392B),
+                      color: AppColors.dangerInk,
                     ),
                   ),
                 ),
@@ -542,12 +542,12 @@ class _Timeline extends StatelessWidget {
     bool voided = false,
   }) {
     final Color dot = voided
-        ? const Color(0xFFC0392B)
+        ? AppColors.dangerInk
         : done
         ? AppColors.success
         : current
         ? AppColors.primaryDark
-        : const Color(0xFFE4DDD4);
+        : AppColors.borderStrong;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +564,7 @@ class _Timeline extends StatelessWidget {
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 2, color: const Color(0xFFE4DDD4)),
+                  child: Container(width: 2, color: AppColors.borderStrong),
                 ),
             ],
           ),
@@ -610,7 +610,7 @@ class _DriverRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: assigned ? AppColors.successFill : AppColors.amberFill,
         border: Border.all(
-          color: assigned ? const Color(0xFFCDEBD9) : const Color(0xFFF6E2C0),
+          color: assigned ? AppColors.successFill : AppColors.amberFill,
         ),
         borderRadius: BorderRadius.circular(14),
       ),

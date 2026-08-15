@@ -230,5 +230,14 @@ class Vendor extends Equatable {
     isRecommended,
     recommendedRank,
     schedules,
+    categoryId,
+    description,
+    coverUrl,
+    phone,
+    addressText,
+    lat,
+    lng,
+    billingModel,
+    subscriptionFee,
   ];
 }
