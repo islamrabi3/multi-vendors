@@ -82,15 +82,20 @@ class _BrandPanel extends StatelessWidget {
       // thing on screen.
       color: AppColors.primaryDark,
       padding: const EdgeInsets.all(56),
+      // Centred on both axes. Start-aligned, the block sat against the left
+      // edge of a half-width panel with the rest of it empty, which read as
+      // the content having failed to lay out rather than as a deliberate
+      // margin.
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const KitchenInLockup(markSize: 64, fontSize: 40, onDark: true),
           if (headline != null) ...[
             const SizedBox(height: 32),
             Text(
               headline!,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 26,
                 height: 1.25,
@@ -107,6 +112,7 @@ class _BrandPanel extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: Text(
                 subhead!,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,
                   height: 1.55,

@@ -1136,11 +1136,17 @@ abstract class AppLocalizations {
   /// **'{count} orders'**
   String ordersCount(int count);
 
-  /// No description provided for @platformNetLedger.
+  /// No description provided for @platformEarnings.
   ///
   /// In en, this message translates to:
-  /// **'Platform net (ledger)'**
-  String get platformNetLedger;
+  /// **'Platform earnings'**
+  String get platformEarnings;
+
+  /// No description provided for @earlySettlementFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Early settlement fees'**
+  String get earlySettlementFees;
 
   /// No description provided for @signupWebSubhead.
   ///
@@ -1363,6 +1369,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load more'**
   String get loadMore;
+
+  /// No description provided for @proofPhotoCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'No photo taken — the delivery was not confirmed.'**
+  String get proofPhotoCancelled;
+
+  /// No description provided for @uploadingProofPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading photo…'**
+  String get uploadingProofPhoto;
+
+  /// No description provided for @deliverWithoutPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliver without photo'**
+  String get deliverWithoutPhoto;
+
+  /// No description provided for @sendTipAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Send {amount} tip'**
+  String sendTipAmount(String amount);
+
+  /// No description provided for @aiMenuImport.
+  ///
+  /// In en, this message translates to:
+  /// **'AI menu import'**
+  String get aiMenuImport;
+
+  /// No description provided for @aiMenuImportOn.
+  ///
+  /// In en, this message translates to:
+  /// **'This store can scan its own menu photos.'**
+  String get aiMenuImportOn;
+
+  /// No description provided for @aiMenuImportOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Only admins can import this store’s menu.'**
+  String get aiMenuImportOff;
+
+  /// No description provided for @aiMenuImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan photos of your menu'**
+  String get aiMenuImportHint;
+
+  /// No description provided for @newOrderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New order'**
+  String get newOrderTitle;
+
+  /// No description provided for @viewOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'View order'**
+  String get viewOrder;
+
+  /// No description provided for @itemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =1{1 item} other{{count} items}}'**
+  String itemsCount(int count);
 
   /// No description provided for @mobileWallet.
   ///
@@ -7080,7 +7152,7 @@ abstract class AppLocalizations {
   /// No description provided for @driverShareLabel.
   ///
   /// In en, this message translates to:
-  /// **'Driver share'**
+  /// **'Driver share (%)'**
   String get driverShareLabel;
 
   /// No description provided for @platformShareLabel.
@@ -7958,6 +8030,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resolution reply'**
   String get resolutionReply;
+
+  /// No description provided for @earlyPayoutFeeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Early payout fee'**
+  String get earlyPayoutFeeTitle;
+
+  /// No description provided for @earlyPayoutFeeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of the payable, minimum {min}'**
+  String earlyPayoutFeeSummary(String percent, String min);
+
+  /// No description provided for @earlyPayoutFeeScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to stores and drivers. New requests only — anything already pending keeps the fee it was quoted.'**
+  String get earlyPayoutFeeScope;
+
+  /// No description provided for @feePercentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Percent of payable (%)'**
+  String get feePercentLabel;
+
+  /// No description provided for @feeMinLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum fee'**
+  String get feeMinLabel;
+
+  /// No description provided for @feePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'On {amount}: fee {fee}, they receive {net}'**
+  String feePreview(String amount, String fee, String net);
+
+  /// No description provided for @feeUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Early payout fee updated'**
+  String get feeUpdated;
+
+  /// No description provided for @invalidFeePercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a percent between 0 and 100.'**
+  String get invalidFeePercent;
+
+  /// No description provided for @invalidFeeMin.
+  ///
+  /// In en, this message translates to:
+  /// **'The minimum fee cannot be negative.'**
+  String get invalidFeeMin;
+
+  /// No description provided for @deleteUncategorizedAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all {count} uncategorized items'**
+  String deleteUncategorizedAction(int count);
+
+  /// No description provided for @moveUncategorizedAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Move all {count} into a section'**
+  String moveUncategorizedAction(int count);
+
+  /// No description provided for @deleteUncategorizedConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Permanently delete this item?} other{Permanently delete these {count} items?}} They are removed from the menu — unlike deleting a section, which keeps its items.'**
+  String deleteUncategorizedConfirm(int count);
+
+  /// No description provided for @moveItemsToSection.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Move 1 item to} other{Move {count} items to}}'**
+  String moveItemsToSection(int count);
+
+  /// No description provided for @itemsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 item deleted} other{{count} items deleted}}'**
+  String itemsDeleted(int count);
+
+  /// No description provided for @selectItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Select items'**
+  String get selectItems;
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get selectAll;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 selected} other{{count} selected}}'**
+  String selectedCount(int count);
+
+  /// No description provided for @deleteItemsConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Permanently delete this item?} other{Permanently delete these {count} items?}} This cannot be undone.'**
+  String deleteItemsConfirm(int count);
+
+  /// No description provided for @showingOfTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing {shown} of {total} items'**
+  String showingOfTotal(int shown, int total);
+
+  /// No description provided for @driverShareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver delivery-fee share'**
+  String get driverShareTitle;
+
+  /// No description provided for @driverShareSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver keeps {driverPercent}% · platform keeps {platformPercent}%'**
+  String driverShareSummary(String driverPercent, String platformPercent);
+
+  /// No description provided for @driverShareScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to future deliveries only — orders already settled keep the split they were settled at.'**
+  String get driverShareScope;
+
+  /// No description provided for @platformShareResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform keeps {percent}%'**
+  String platformShareResult(String percent);
+
+  /// No description provided for @driverShareUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver share updated'**
+  String get driverShareUpdated;
+
+  /// No description provided for @enterValidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email'**
+  String get enterValidEmail;
+
+  /// No description provided for @passwordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be at least 6 characters'**
+  String get passwordTooShort;
+
+  /// No description provided for @showPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get showPassword;
+
+  /// No description provided for @hidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get hidePassword;
+
+  /// No description provided for @resetPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset your password'**
+  String get resetPasswordTitle;
+
+  /// No description provided for @resetPasswordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We will email a link to set a new one.'**
+  String get resetPasswordSubtitle;
+
+  /// No description provided for @sendResetLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Send link'**
+  String get sendResetLink;
+
+  /// No description provided for @resetLinkSent.
+  ///
+  /// In en, this message translates to:
+  /// **'If that email has an account, a reset link is on its way'**
+  String get resetLinkSent;
+
+  /// No description provided for @setNewPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a new password'**
+  String get setNewPasswordTitle;
+
+  /// No description provided for @setNewPasswordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a password for your account.'**
+  String get setNewPasswordSubtitle;
+
+  /// No description provided for @newPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get newPassword;
+
+  /// No description provided for @confirmNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new password'**
+  String get confirmNewPassword;
+
+  /// No description provided for @passwordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get passwordsDoNotMatch;
+
+  /// No description provided for @setNewPasswordAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Set password'**
+  String get setNewPasswordAction;
+
+  /// No description provided for @financialSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Financial summary'**
+  String get financialSummary;
+
+  /// No description provided for @adPerformanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Performance'**
+  String get adPerformanceLabel;
+
+  /// No description provided for @adPerformanceCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'{views} · {taps} taps · {rate}%'**
+  String adPerformanceCompact(String views, String taps, String rate);
+
+  /// No description provided for @scheduleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get scheduleLabel;
+
+  /// No description provided for @adAlwaysOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Always on'**
+  String get adAlwaysOn;
 }
 
 class _AppLocalizationsDelegate

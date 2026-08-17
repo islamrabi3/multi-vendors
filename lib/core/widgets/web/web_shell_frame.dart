@@ -6,6 +6,8 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../../app/tokens.dart';
 import '../brand_logo.dart';
+import '../messages_button.dart';
+import '../notification_bell.dart';
 
 /// One row in a [WebShellFrame] sidebar.
 class WebNavItem {
@@ -54,6 +56,7 @@ class WebShellFrame extends StatelessWidget {
     required this.pageTitle,
     this.onSignOut,
     this.maxContentWidth = 1200,
+    this.forStaff = false,
   });
 
   final String activeId;
@@ -62,6 +65,12 @@ class WebShellFrame extends StatelessWidget {
   final String pageTitle;
   final VoidCallback? onSignOut;
   final double maxContentWidth;
+
+  /// True in the admin console: the top bar's messages icon badges the
+  /// support queue (threads waiting on staff) rather than the vendor
+  /// console's "replies waiting for me" count — the same distinction
+  /// [MessagesButton.staff] draws.
+  final bool forStaff;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +93,11 @@ class WebShellFrame extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                _TopBar(title: pageTitle, onSignOut: onSignOut),
+                _TopBar(
+                  title: pageTitle,
+                  onSignOut: onSignOut,
+                  forStaff: forStaff,
+                ),
                 const Divider(height: 1, thickness: 1, color: AppColors.border),
                 Expanded(
                   child: Align(
@@ -118,6 +131,7 @@ class WebPageChrome extends StatelessWidget {
     required this.child,
     this.onSignOut,
     this.maxContentWidth = 1200,
+    this.forStaff = false,
   });
 
   final String activeId;
@@ -126,6 +140,7 @@ class WebPageChrome extends StatelessWidget {
   final Widget child;
   final VoidCallback? onSignOut;
   final double maxContentWidth;
+  final bool forStaff;
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +151,7 @@ class WebPageChrome extends StatelessWidget {
       pageTitle: pageTitle,
       onSignOut: onSignOut,
       maxContentWidth: maxContentWidth,
+      forStaff: forStaff,
       child: child,
     );
   }
@@ -257,10 +273,11 @@ class _SidebarItem extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, this.onSignOut});
+  const _TopBar({required this.title, this.onSignOut, this.forStaff = false});
 
   final String title;
   final VoidCallback? onSignOut;
+  final bool forStaff;
 
   @override
   Widget build(BuildContext context) {
@@ -272,6 +289,18 @@ class _TopBar extends StatelessWidget {
         children: [
           Text(title, style: AppType.heading(18)),
           const Spacer(),
+          // Two different questions, two icons: "is there anything new"
+          // (mixed feed — settlements, announcements, support replies) versus
+          // "do I have a message waiting" (support only). Neither console had
+          // either entry point before; a settlement event or a support reply
+          // left no trace once its push was dismissed.
+          if (forStaff)
+            const MessagesButton.staff(compact: true)
+          else
+            const MessagesButton(compact: true),
+          const SizedBox(width: AppSpace.sm),
+          const NotificationBell(compact: true),
+          const SizedBox(width: AppSpace.sm),
           // On a phone the language lives in Settings, which every role has.
           // The consoles do not — an admin's settings are the Manage hub, a
           // vendor's are store settings — so on web the switch belongs in the

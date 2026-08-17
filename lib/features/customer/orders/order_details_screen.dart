@@ -954,6 +954,62 @@ class _OrderDetailsSkeleton extends StatelessWidget {
 ///
 /// Paid from the customer's wallet rather than added to the order total: the
 /// order is already settled by this point, and re-charging a card for a few
+
+/// One preset tip amount.
+///
+/// Was an `OutlinedButton` showing `formatMoney` — `EGP 20.00` in a third of
+/// a card, which the button ellipsised down to `…EGP 2`. A tip button that
+/// cannot say how much it is worth is the one control on the screen that
+/// must never be ambiguous, so this drops the decimals, scales down rather
+/// than truncating, and marks the selection with more than a tint.
+class _TipChip extends StatelessWidget {
+  const _TipChip({
+    required this.amount,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final double amount;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.warmFill : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              formatMoneyCompact(amount),
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                color: selected ? AppColors.primary : AppColors.ink,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// pounds is both slow and expensive. A tip on an order that already has one
 /// shows the amount instead of the form.
 class _TipCard extends StatefulWidget {
@@ -1055,21 +1111,12 @@ class _TipCardState extends State<_TipCard> {
             children: [
               for (final amount in _presets) ...[
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: _sending
+                  child: _TipChip(
+                    amount: amount,
+                    selected: _selected == amount,
+                    onTap: _sending
                         ? null
                         : () => setState(() => _selected = amount),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _selected == amount
-                          ? AppColors.warmFill
-                          : null,
-                      side: BorderSide(
-                        color: _selected == amount
-                            ? AppColors.primary
-                            : AppColors.border,
-                      ),
-                    ),
-                    child: Text(formatMoney(amount)),
                   ),
                 ),
                 if (amount != _presets.last) const SizedBox(width: 8),
@@ -1081,7 +1128,16 @@ class _TipCardState extends State<_TipCard> {
             width: double.infinity,
             child: FilledButton(
               onPressed: _selected == null || _sending ? null : _send,
-              child: _sending ? const ButtonSpinner() : Text(l10n.sendTip),
+              // Naming the amount on the button itself: this deducts from a
+              // wallet the moment it is pressed, and the figure was only
+              // visible as a highlighted chip further up.
+              child: _sending
+                  ? const ButtonSpinner()
+                  : Text(
+                      _selected == null
+                          ? l10n.sendTip
+                          : l10n.sendTipAmount(formatMoneyCompact(_selected!)),
+                    ),
             ),
           ),
         ],

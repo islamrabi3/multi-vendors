@@ -193,6 +193,7 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/complaints',
         sections: adminManageWebSections(context),
         pageTitle: l10n.customerReports,

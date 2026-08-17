@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -267,6 +269,139 @@ class _ActiveDeliveryView extends StatelessWidget {
     );
   }
 
+  /// Take a photo, upload it, and only then complete the drop.
+  ///
+  /// "Confirm with photo" has to mean the photo arrived. Two earlier versions
+  /// of this completed the delivery when it had not: backing out of the
+  /// camera marked the order delivered, and so did a failed upload. Delivery
+  /// is not reversible, so both produced a completed drop with no proof and
+  /// no way to undo it.
+  ///
+  /// The upload is also the slow step — a photo over a phone connection at
+  /// someone's door — and it ran with no indication anything was happening,
+  /// so the screen sat still and then jumped to delivered. It now blocks
+  /// visibly, and a failure offers the choice rather than taking it.
+  Future<void> _deliverWithPhoto(
+    BuildContext context,
+    ActiveDeliveryCubit cubit,
+    String orderId,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final l10n = context.l10n;
+
+    XFile? file;
+    try {
+      file = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+    } catch (error) {
+      // Could not even open the camera: leave the order alone so the driver
+      // can retry or skip deliberately.
+      showFailureOn(messenger, l10n, error);
+      return;
+    }
+
+    // Backing out of the camera is not a decision to deliver. "Skip & mark
+    // delivered" is a separate, deliberate button for that.
+    if (file == null) {
+      showSnackOn(messenger, l10n.proofPhotoCancelled);
+      return;
+    }
+
+    final bytes = await file.readAsBytes();
+    final name = file.name;
+    while (true) {
+      // Re-checked every pass, not once before the loop: the driver can leave
+      // this screen while the camera is open or between retries, and anything
+      // below would be pushing dialogs onto a navigator that has moved on.
+      if (!navigator.mounted) return;
+
+      // Captured so the dialog is closed by its own context rather than by
+      // popping whatever happens to be on top of the navigator — the same
+      // mistake that once tore a page down instead of a dialog.
+      BuildContext? progressContext;
+      // Barrier-locked: the upload decides whether the order completes, so
+      // dismissing this would leave the driver guessing which way it went.
+      unawaited(
+        showDialog<void>(
+          context: navigator.context,
+          barrierDismissible: false,
+          builder: (dialogContext) {
+            progressContext = dialogContext;
+            return PopScope(
+              canPop: false,
+              child: AlertDialog(
+                content: Row(
+                  children: [
+                    const ButtonSpinner(size: 20),
+                    const SizedBox(width: AppSpace.lg),
+                    Expanded(child: Text(l10n.uploadingProofPhoto)),
+                  ],
+                ),
+              ),
+            );
+          },
+        ).then((_) => progressContext = null),
+      );
+
+      String? url;
+      Object? failure;
+      try {
+        url = await OrderRepository().uploadDeliveryProofImage(
+          orderId,
+          bytes,
+          name,
+        );
+      } catch (error) {
+        failure = error;
+      }
+
+      if (progressContext case final dialogContext?
+          when dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+      }
+      if (!navigator.mounted) return;
+
+      if (url != null) {
+        cubit.markDelivered(proofUrl: url);
+        return;
+      }
+
+      // Failed. The driver chose to attach proof, so the app must not decide
+      // on their behalf that going without it is fine.
+      final choice = await showDialog<String>(
+        context: navigator.context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(l10n.proofPhotoFailed),
+          content: Text(errorText(dialogContext, failure!)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, 'cancel'),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, 'skip'),
+              child: Text(l10n.deliverWithoutPhoto),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, 'retry'),
+              child: Text(l10n.retry),
+            ),
+          ],
+        ),
+      );
+
+      if (choice == 'retry') continue;
+      // Cancel leaves the order active and untouched; skip is the driver
+      // saying out loud that the drop happened without proof.
+      if (choice == 'skip') cubit.markDelivered();
+      return;
+    }
+  }
+
   void _showDeliveryProofDialog(BuildContext context) {
     final cubit = context.read<ActiveDeliveryCubit>();
     final order = cubit.state.order;
@@ -318,44 +453,9 @@ class _ActiveDeliveryView extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  // Every step here can fail — the camera can be refused, the
-                  // upload can be rejected — and this was an async callback
-                  // with no catch, so any of them took the app down mid
-                  // delivery. The photo is optional, so a failure to attach
-                  // one must never block completing the drop.
-                  onPressed: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final l10n = context.l10n;
+                  onPressed: () {
                     Navigator.pop(sheetCtx);
-                    XFile? file;
-                    try {
-                      file = await ImagePicker().pickImage(
-                        source: ImageSource.camera,
-                        maxWidth: 1024,
-                        imageQuality: 85,
-                      );
-                    } catch (error) {
-                      // Could not even open the camera: leave the order alone
-                      // so the driver can retry or skip deliberately.
-                      showFailureOn(messenger, l10n, error);
-                      return;
-                    }
-                    if (file == null) {
-                      cubit.markDelivered();
-                      return;
-                    }
-                    try {
-                      final url = await OrderRepository()
-                          .uploadDeliveryProofImage(
-                            order.id,
-                            await file.readAsBytes(),
-                            file.name,
-                          );
-                      cubit.markDelivered(proofUrl: url);
-                    } catch (_) {
-                      cubit.markDelivered();
-                      showSnackOn(messenger, l10n.proofPhotoFailed);
-                    }
+                    _deliverWithPhoto(context, cubit, order.id);
                   },
                   icon: const Icon(
                     Icons.photo_camera_rounded,

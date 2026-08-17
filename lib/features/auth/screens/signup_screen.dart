@@ -107,16 +107,20 @@ class _SignupFormState extends State<SignupForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  context.l10n.createYournaccount,
-                  style: AppType.display(30, color: AppColors.ink),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  context.l10n.howWillYouUseKitchenIn,
-                  style: TextStyle(fontSize: 14, color: AppColors.textMuted),
-                ),
-                const SizedBox(height: 22),
+                // The brand panel beside this carries the heading on web;
+                // printing it here too said the same thing twice.
+                if (!webWide) ...[
+                  Text(
+                    context.l10n.createYournaccount,
+                    style: AppType.display(30, color: AppColors.ink),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    context.l10n.howWillYouUseKitchenIn,
+                    style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                  ),
+                  const SizedBox(height: 22),
+                ],
 
                 // Role selector cards
                 _RoleCard(

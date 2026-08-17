@@ -1,14 +1,17 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:multi_vendor/l10n/app_localizations.dart';
 import 'locale_cubit.dart';
+import 'tokens.dart';
 
 import '../core/repositories/auth_repository.dart';
 import '../core/repositories/cart_repository.dart';
 import '../core/repositories/catalog_repository.dart';
 import '../core/services/notification_service.dart';
+import '../core/widgets/web/web_toast.dart';
 import '../features/auth/auth_cubit.dart';
 import '../features/customer/cart/cart_cubit.dart';
 import 'router.dart';
@@ -41,6 +44,27 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
     // that can open it. A tap from a cold start arrives before this point, so
     // the parked route is drained once the first frame is up.
     NotificationService.instance.onOpenRoute = _router.push;
+
+    // A push that lands while a browser tab is in the foreground is never
+    // drawn by the browser — the service worker only handles the background —
+    // and flutter_local_notifications, which covers this on native, has no web
+    // implementation. So on web the app draws it itself, as the same corner
+    // card the consoles already use for a new order.
+    if (kIsWeb) {
+      NotificationService.instance.onForegroundMessage = (title, body, data) {
+        final context = _router.routerDelegate.navigatorKey.currentContext;
+        if (context == null || !AppBreakpoints.isWebWide(context)) return;
+        final route = NotificationService.routeFor(data);
+        WebToast.show(
+          context,
+          title: title.isEmpty ? context.l10n.notifications : title,
+          detail: body.isEmpty ? null : body,
+          actionLabel: route == null ? null : context.l10n.viewOrder,
+          onAction: route == null ? null : () => _router.push(route),
+        );
+      };
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pending = NotificationService.instance.consumePendingRoute();
       if (pending != null) _router.push(pending);

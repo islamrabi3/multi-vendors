@@ -154,6 +154,12 @@ class AdminRepository {
   }
 
   /// All stores across every approval state, newest first.
+  ///
+  /// Still used by two small pickers (Categories, Menu import) that assign
+  /// one thing to one store — [fetchVendorsPage] below is the paginated,
+  /// searchable version for browsing the roster itself. Both pickers are on
+  /// the pagination-audit list to move to the same search field the price
+  /// adjustment screen now uses.
   Future<List<Vendor>> fetchVendors() async {
     final data = await supabase
         .from('vendors')
@@ -732,34 +738,32 @@ class AdminRepository {
   Future<PlatformReport> fetchPlatformReport({
     DateTime? startDate,
     DateTime? endDate,
-    double driverSharePercent = 90,
   }) async {
     final data = await supabase.rpc(
       'admin_platform_report',
       params: {
         'p_start': startDate?.toUtc().toIso8601String(),
         'p_end': endDate?.toUtc().toIso8601String(),
-        'p_driver_share': driverSharePercent,
+        // No override: the server prices every split at the live
+        // `driver_delivery_share()` config, same as the settlement engine. A
+        // hardcoded percent here used to silently diverge from what drivers
+        // and vendors were actually paid the moment that config changed.
       },
     );
     return PlatformReport.fromMap((data as Map).cast<String, dynamic>());
   }
 
-  /// What each driver is owed for the same period.
-  ///
-  /// [driverSharePercent] is the cut of the delivery fee the driver keeps; tips
-  /// are passed through in full.
+  /// What each driver is owed for the same period, at the delivery-fee split
+  /// currently configured platform-wide. Tips are passed through in full.
   Future<List<DriverReportItem>> fetchDriverEarningsReport({
     DateTime? startDate,
     DateTime? endDate,
-    double driverSharePercent = 90,
   }) async {
     final data = await supabase.rpc(
       'admin_driver_payout_report',
       params: {
         'p_start': startDate?.toUtc().toIso8601String(),
         'p_end': endDate?.toUtc().toIso8601String(),
-        'p_driver_share': driverSharePercent,
       },
     );
     return (data as List)

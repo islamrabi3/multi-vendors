@@ -4,14 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/models/finance.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
+import '../../../core/repositories/finance_repository.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/widgets/location_picker.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 import '../../auth/auth_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -222,6 +226,31 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
   /// Promotion onto the customer home's recommended rail. Only offered for an
   /// approved store — promoting a pending one would advertise a store the
   /// customer cannot order from.
+  /// Hands the AI menu importer to this store, or takes it back.
+  ///
+  /// Each run costs a model call per photo, so this is off by default and
+  /// granted per store rather than to everyone. The server checks the same
+  /// flag in `can_extract_menu`, so switching it off stops the spending and
+  /// not merely the button.
+  Future<void> _setAiMenu(bool enabled) async {
+    setState(() => _busy = true);
+    try {
+      await VendorAdminRepository().updateVendor(widget.vendorId, {
+        'ai_menu_enabled': enabled,
+      });
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _future = _load();
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showFailure(context, e);
+      }
+    }
+  }
+
   Future<void> _setRecommended(bool recommended, {int rank = 0}) async {
     setState(() => _busy = true);
     try {
@@ -348,6 +377,31 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
                       ),
                     ),
                   ),
+                  const Divider(height: 1, color: AppColors.borderSoft),
+                  SwitchListTile(
+                    value: vendor.aiMenuEnabled,
+                    onChanged: _busy ? null : _setAiMenu,
+                    secondary: Icon(
+                      Icons.document_scanner_outlined,
+                      color: vendor.aiMenuEnabled
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                    ),
+                    title: Text(
+                      context.l10n.aiMenuImport,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      vendor.aiMenuEnabled
+                          ? context.l10n.aiMenuImportOn
+                          : context.l10n.aiMenuImportOff,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1, color: AppColors.borderSoft),
                   // Rank decides the order of the rail on the customer
                   // home. Only meaningful once the store is promoted, so
                   // it stays hidden until then.
@@ -580,6 +634,10 @@ class _Body extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 18),
+                _label(context.l10n.financialSummary),
+                const SizedBox(height: 9),
+                _FinancePanel(vendorId: vendor.id),
                 const SizedBox(height: 18),
                 _label(context.l10n.ownerAndContact),
                 const SizedBox(height: 9),
@@ -842,4 +900,237 @@ class _ActionBar extends StatelessWidget {
             ),
     );
   }
+}
+
+/// What this store is owed, what it owes, and its lifetime numbers — the one
+/// thing the profile view above it never showed. An admin fielding "where is
+/// my money" had to leave this screen, open Settlements, and search the store
+/// by name in a flat list to answer a question this screen is the obvious
+/// place to ask.
+class _FinancePanel extends StatefulWidget {
+  const _FinancePanel({required this.vendorId});
+
+  final String vendorId;
+
+  @override
+  State<_FinancePanel> createState() => _FinancePanelState();
+}
+
+class _FinancePanelState extends State<_FinancePanel> {
+  final _repository = FinanceRepository();
+  late Future<WalletSummary> _future = _repository.vendorWallet(
+    widget.vendorId,
+  );
+
+  Future<void> _openHistory() async {
+    List<Settlement> history;
+    try {
+      history = await _repository.settlements(
+        ownerType: LedgerOwner.vendor,
+        ownerId: widget.vendorId,
+        limit: 50,
+      );
+    } catch (error) {
+      if (mounted) showFailure(context, error);
+      return;
+    }
+    if (!mounted) return;
+
+    await showAdaptiveSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            0,
+            AppSpace.xl,
+            AppSpace.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.settlementsTitle,
+                style: AppType.heading(18),
+              ),
+              const SizedBox(height: AppSpace.md),
+              if (history.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: EmptyView(
+                    message: context.l10n.noTransactionsYet,
+                    icon: Icons.receipt_long_outlined,
+                  ),
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 420),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: history.length,
+                    itemBuilder: (_, i) => SettlementTile(
+                      settlement: history[i],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return FutureBuilder<WalletSummary>(
+      future: _future,
+      builder: (context, snap) {
+        if (!snap.hasData && snap.connectionState != ConnectionState.done) {
+          return const _FinancePanelSkeleton();
+        }
+        if (snap.hasError) {
+          return _FinanceError(
+            onRetry: () => setState(
+              () => _future = _repository.vendorWallet(widget.vendorId),
+            ),
+          );
+        }
+        final wallet = snap.data!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: MoneyTile(
+                    label: l10n.vendorPayableTotal,
+                    value: formatMoney(wallet.payable),
+                    tone: wallet.payable > 0 ? AppColors.successInk : null,
+                    emphasis: true,
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: MoneyTile(
+                    label: l10n.cashDue,
+                    value: formatMoney(wallet.cashDue),
+                    tone: wallet.cashDue > 0 ? AppColors.amberInk : null,
+                    emphasis: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            _Card(
+              children: [
+                _row(l10n.totalEarningsLabel, formatMoney(wallet.totalEarnings)),
+                _row(
+                  l10n.totalSettlementsLabel,
+                  formatMoney(wallet.totalSettlements),
+                ),
+                _row(
+                  l10n.lastSettlement,
+                  wallet.lastSettlementAt == null
+                      ? '—'
+                      : '${wallet.lastSettlementAt!.day}/'
+                            '${wallet.lastSettlementAt!.month}/'
+                            '${wallet.lastSettlementAt!.year}',
+                  last: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            OutlinedButton.icon(
+              onPressed: _openHistory,
+              icon: const Icon(Icons.history_rounded, size: 17),
+              label: Text(l10n.settlementHistory),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Same two-line row style as the rest of this screen's cards — kept local
+  // rather than reaching into `_Body`'s private helpers, which are not
+  // reusable across widgets.
+  Widget _row(String label, String value, {bool last = false}) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      border: last
+          ? null
+          : const Border(bottom: BorderSide(color: AppColors.borderSoft)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _FinancePanelSkeleton extends StatelessWidget {
+  const _FinancePanelSkeleton();
+
+  @override
+  Widget build(BuildContext context) => SkeletonTheme(
+    child: Row(
+      children: [
+        Expanded(
+          child: Skeleton.box(height: 68, radius: AppRadii.lg),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Skeleton.box(height: 68, radius: AppRadii.lg),
+        ),
+      ],
+    ),
+  );
+}
+
+class _FinanceError extends StatelessWidget {
+  const _FinanceError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppSpace.lg),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            context.l10n.errUnknown,
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+        ),
+        TextButton(onPressed: onRetry, child: Text(context.l10n.retry)),
+      ],
+    ),
+  );
 }

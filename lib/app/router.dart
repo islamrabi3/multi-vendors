@@ -14,6 +14,7 @@ import '../features/auth/screens/phone_capture_screen.dart';
 import '../features/auth/screens/policy_acceptance_screen.dart';
 import '../features/auth/screens/blocked_screen.dart';
 import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/reset_password_screen.dart';
 import '../features/auth/screens/role_choice_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
@@ -173,6 +174,13 @@ GoRouter buildRouter(AuthCubit authCubit) {
       }
 
       // Authenticated.
+      // A password-reset link just landed. Ahead of every other authenticated
+      // gate, including the lockout below — a blocked account should still be
+      // able to set a new password, and this is a short-lived detour that
+      // clears itself the moment the new-password screen succeeds.
+      if (auth.passwordRecovery) {
+        return location == '/reset-password' ? null : '/reset-password';
+      }
       // A suspended or closed account is stopped ahead of everything else:
       // the server already refuses its writes, and without this the user just
       // meets unexplained failures screen by screen. Support stays reachable
@@ -230,6 +238,10 @@ GoRouter buildRouter(AuthCubit authCubit) {
       ),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, _) => const ResetPasswordScreen(),
+      ),
       GoRoute(
         path: '/choose-role',
         builder: (_, _) => const RoleChoiceScreen(),

@@ -58,6 +58,34 @@ Deno.serve(async (req) => {
     if (userError || !userData.user) return json({ error: "UNAUTHORIZED" }, 401);
 
     const body = await req.json().catch(() => ({}));
+
+    // Which store this menu is for, and whether this caller may spend a model
+    // call on it. Previously any signed-in account could extract a menu —
+    // authentication was checked, authorisation was not, so the cost was open
+    // to anyone with a login.
+    //
+    // Asked as the *user*, not as the service role: `can_extract_menu` reads
+    // `auth.uid()`, which is null on an admin client and would refuse
+    // everyone.
+    const vendorId = body.vendor_id;
+    if (typeof vendorId !== "string" || vendorId.length === 0) {
+      return json({ error: "VENDOR_ID_REQUIRED" }, 400);
+    }
+    const asUser = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } },
+    );
+    const { data: allowed, error: allowedError } = await asUser.rpc(
+      "can_extract_menu",
+      { p_vendor_id: vendorId },
+    );
+    if (allowedError) {
+      console.error("can_extract_menu failed", allowedError);
+      return json({ error: "EXTRACTION_CHECK_FAILED" }, 500);
+    }
+    if (allowed !== true) return json({ error: "EXTRACTION_NOT_ALLOWED" }, 403);
+
     const images = Array.isArray(body.images) ? body.images : [];
     if (images.length === 0) return json({ error: "NO_IMAGES" }, 400);
     if (images.length > MAX_IMAGES) return json({ error: "TOO_MANY_IMAGES" }, 400);

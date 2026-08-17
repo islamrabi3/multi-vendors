@@ -160,6 +160,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/service-areas',
         sections: adminManageWebSections(context),
         pageTitle: l10n.serviceAreas,

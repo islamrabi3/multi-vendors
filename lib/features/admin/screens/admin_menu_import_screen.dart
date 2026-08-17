@@ -201,6 +201,7 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/menu-import',
         sections: adminManageWebSections(context),
         pageTitle: l10n.importMenuFromPhotos,

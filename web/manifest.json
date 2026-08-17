@@ -1,11 +1,11 @@
 {
-    "name": "KichenIN",
+    "name": "KitchenIn",
     "short_name": "App",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#hexcode",
     "theme_color": "#hexcode",
-    "description": "Best App",
+    "description": "Best App for food delivery services",
     "orientation": "any",
     "prefer_related_applications": false,
     "icons": [

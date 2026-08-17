@@ -245,15 +245,158 @@ class _MenuViewState extends State<_MenuView> {
   ) async {
     final cubit = context.read<MenuCubit>();
     final l10n = context.l10n;
-    final categoryId = cubit.state.showUncategorized
-        ? null
-        : cubit.state.selectedCategoryId;
-    if (await cubit.setSectionAvailability(
-          categoryId: categoryId,
-          available: available,
-        ) &&
-        context.mounted) {
+    // The orphan bucket has no category id, and passing null for it meant
+    // "the whole menu" — so marking this group sold out took every item the
+    // store sells down with it. It gets its own call.
+    final ok = cubit.state.showUncategorized
+        ? await cubit.setUncategorizedAvailability(available)
+        : await cubit.setSectionAvailability(
+            categoryId: cubit.state.selectedCategoryId,
+            available: available,
+          );
+    if (ok && context.mounted) showSnack(context, l10n.saved);
+  }
+
+  /// Empties the orphan bucket.
+  ///
+  /// The one bulk action on this screen that destroys anything, so it names
+  /// the count and says plainly that the items go — unlike deleting a section,
+  /// which keeps them. Those two live next to each other in the UI and a
+  /// vendor will read one expecting the other.
+  Future<void> _deleteUncategorized(BuildContext context) async {
+    final cubit = context.read<MenuCubit>();
+    final l10n = context.l10n;
+    final count = cubit.state.uncategorized.length;
+    if (count == 0) return;
+
+    final confirmed = await AppDialogs.showConfirmDialog(
+      context: context,
+      title: l10n.uncategorized,
+      message: l10n.deleteUncategorizedConfirm(count),
+      confirmText: l10n.delete,
+      cancelText: l10n.cancel,
+    );
+    if (confirmed != true) return;
+    if (await cubit.deleteUncategorized() && context.mounted) {
+      showSnack(context, l10n.itemsDeleted(count));
+    }
+  }
+
+  /// The non-destructive way out of the same bucket: file the whole group
+  /// under an existing section instead of deleting it.
+  Future<void> _moveUncategorized(BuildContext context) async {
+    final cubit = context.read<MenuCubit>();
+    final state = cubit.state;
+    final l10n = context.l10n;
+    final count = state.uncategorized.length;
+    if (count == 0) return;
+    if (state.categories.isEmpty) {
+      showSnack(context, l10n.addASectionThenYourFirstProduct);
+      return;
+    }
+
+    final chosen = await showAdaptiveSheet<_MoveTarget>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.xl,
+                0,
+                AppSpace.xl,
+                AppSpace.md,
+              ),
+              child: Text(
+                l10n.moveItemsToSection(count),
+                style: AppType.heading(17),
+              ),
+            ),
+            for (final category in state.categories)
+              ListTile(
+                title: Text(category.displayName(_language)),
+                onTap: () =>
+                    Navigator.pop(sheetContext, _MoveTarget(category.id)),
+              ),
+          ],
+        ),
+      ),
+    );
+    final target = chosen?.id;
+    if (target == null) return;
+    if (await cubit.moveUncategorizedTo(target) && context.mounted) {
       showSnack(context, l10n.saved);
+    }
+  }
+
+  /// Files every picked item under one section.
+  ///
+  /// "No section" is offered here, unlike in the whole-bucket move, because a
+  /// vendor emptying a section they are about to delete has a real reason to
+  /// want it.
+  Future<void> _moveSelected(BuildContext context) async {
+    final cubit = context.read<MenuCubit>();
+    final state = cubit.state;
+    final l10n = context.l10n;
+    final count = state.selection.length;
+
+    final chosen = await showAdaptiveSheet<_MoveTarget>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.xl,
+                0,
+                AppSpace.xl,
+                AppSpace.md,
+              ),
+              child: Text(
+                l10n.moveItemsToSection(count),
+                style: AppType.heading(17),
+              ),
+            ),
+            for (final category in state.categories)
+              ListTile(
+                title: Text(category.displayName(_language)),
+                onTap: () =>
+                    Navigator.pop(sheetContext, _MoveTarget(category.id)),
+              ),
+            ListTile(
+              title: Text(l10n.uncategorized),
+              onTap: () => Navigator.pop(sheetContext, const _MoveTarget(null)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null) return;
+    if (await cubit.moveSelectedTo(chosen.id) && context.mounted) {
+      showSnack(context, l10n.saved);
+    }
+  }
+
+  Future<void> _deleteSelected(BuildContext context) async {
+    final cubit = context.read<MenuCubit>();
+    final l10n = context.l10n;
+    final count = cubit.state.selection.length;
+    if (count == 0) return;
+
+    final confirmed = await AppDialogs.showConfirmDialog(
+      context: context,
+      title: l10n.selectedCount(count),
+      message: l10n.deleteItemsConfirm(count),
+      confirmText: l10n.delete,
+      cancelText: l10n.cancel,
+    );
+    if (confirmed != true) return;
+    if (await cubit.deleteSelected() && context.mounted) {
+      showSnack(context, l10n.itemsDeleted(count));
     }
   }
 
@@ -283,18 +426,33 @@ class _MenuViewState extends State<_MenuView> {
                   state.error != null &&
                   state.categories.isEmpty &&
                   state.products.isEmpty;
-              return Column(
+              final body = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Header(
-                    state: state,
-                    search: _search,
-                    onAddItem: () => _openEditor(context),
-                    onAddSection: () => _editCategory(context),
-                    onManageSections: () => _manageSections(context),
-                    onBulkAvailability: (available) =>
-                        _setSectionAvailability(context, available),
-                  ),
+                  // Selection replaces the header rather than stacking under
+                  // it: while items are picked, searching and adding are not
+                  // what the vendor is doing, and leaving both on screen makes
+                  // the count compete with the title for the same row.
+                  if (state.selecting)
+                    _SelectionBar(
+                      state: state,
+                      visible: state.visibleProducts(_language),
+                      onMove: () => _moveSelected(context),
+                      onDelete: () => _deleteSelected(context),
+                    )
+                  else
+                    _Header(
+                      state: state,
+                      search: _search,
+                      onAddItem: () => _openEditor(context),
+                      onAddSection: () => _editCategory(context),
+                      onManageSections: () => _manageSections(context),
+                      onBulkAvailability: (available) =>
+                          _setSectionAvailability(context, available),
+                      onDeleteUncategorized: () =>
+                          _deleteUncategorized(context),
+                      onMoveUncategorized: () => _moveUncategorized(context),
+                    ),
                   if (state.loading)
                     const Expanded(child: LoadingView())
                   else if (failedToLoad)
@@ -326,6 +484,8 @@ class _MenuViewState extends State<_MenuView> {
                                   _editCategory(context, category: c),
                               onDelete: (c) => _deleteCategory(context, c),
                               onManage: () => _manageSections(context),
+                              onDeleteUncategorized: () =>
+                                  _deleteUncategorized(context),
                             ),
                           ),
                           const VerticalDivider(
@@ -343,6 +503,18 @@ class _MenuViewState extends State<_MenuView> {
                   ],
                 ],
               );
+
+              // Back gesture and Escape leave selection mode before they leave
+              // the screen — the standard contract for a mode, and the reason
+              // a vendor can experiment with picking items without worrying
+              // about being thrown out of the menu.
+              return PopScope(
+                canPop: !state.selecting,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop) context.read<MenuCubit>().clearSelection();
+                },
+                child: body,
+              );
             },
           );
         },
@@ -356,24 +528,45 @@ class _MenuViewState extends State<_MenuView> {
       return _EmptyResult(
         state: state,
         onClear: context.read<MenuCubit>().clearFilters,
+        onAddItem: () => _openEditor(context),
       );
     }
 
     // Dragging only makes sense against the order being written: with a search
     // or a different sort applied, the list on screen is not the menu's order,
-    // and a drop would renumber rows the vendor cannot see.
+    // and a drop would renumber rows the vendor cannot see. Picking items is a
+    // third reason not to: a long-press cannot both start a drag and start a
+    // selection.
     final canReorder =
-        state.sort == MenuSort.manual && state.query.trim().isEmpty && !grid;
+        state.sort == MenuSort.manual &&
+        state.query.trim().isEmpty &&
+        !state.selecting &&
+        !grid;
+
+    // Only worth printing when the list is not already filtered to one
+    // section — under a section heading it would repeat that heading on every
+    // single row.
+    final showSection = state.selectedCategoryId == null;
+    final sectionNames = {
+      for (final c in state.categories) c.id: c.displayName(_language),
+    };
 
     Widget tileFor(Product product, {Key? key}) => _ProductTile(
       key: key,
       product: product,
       language: _language,
       draggable: canReorder,
+      selecting: state.selecting,
+      selected: state.selection.contains(product.id),
+      sectionName: showSection
+          ? (sectionNames[product.categoryId] ?? context.l10n.uncategorized)
+          : null,
       onEdit: () => _openEditor(context, product: product),
       onDuplicate: () => _duplicateProduct(context, product),
       onMove: () => _moveProduct(context, product),
       onDelete: () => _deleteProduct(context, product),
+      onToggleSelect: () =>
+          context.read<MenuCubit>().toggleSelected(product.id),
     );
 
     if (grid) {
@@ -381,7 +574,11 @@ class _MenuViewState extends State<_MenuView> {
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 460,
-          mainAxisExtent: 104,
+          // Tall enough for the tile's own content (58px image + 12px padding
+          // top and bottom) with room for a larger system text scale. A cell
+          // sized exactly to the design's own line heights overflows the
+          // moment a device asks for bigger text.
+          mainAxisExtent: 112,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
@@ -454,6 +651,8 @@ class _Header extends StatelessWidget {
     required this.onAddSection,
     required this.onManageSections,
     required this.onBulkAvailability,
+    required this.onDeleteUncategorized,
+    required this.onMoveUncategorized,
   });
 
   final MenuState state;
@@ -462,11 +661,14 @@ class _Header extends StatelessWidget {
   final VoidCallback onAddSection;
   final VoidCallback onManageSections;
   final ValueChanged<bool> onBulkAvailability;
+  final VoidCallback onDeleteUncategorized;
+  final VoidCallback onMoveUncategorized;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cubit = context.read<MenuCubit>();
+    final language = Localizations.localeOf(context).languageCode;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -487,13 +689,20 @@ class _Header extends StatelessWidget {
                     const SizedBox(height: 2),
                     // The three numbers a vendor actually checks on opening
                     // this screen, rather than a subtitle that repeats the
-                    // title.
+                    // title. Under a filter they describe the whole menu
+                    // rather than the list on screen, so the count of what is
+                    // actually showing takes over.
                     Text(
-                      l10n.menuStats(
-                        state.products.length,
-                        state.categories.length,
-                        state.soldOutCount,
-                      ),
+                      state.isFiltered
+                          ? l10n.showingOfTotal(
+                              state.visibleProducts(language).length,
+                              state.products.length,
+                            )
+                          : l10n.menuStats(
+                              state.products.length,
+                              state.categories.length,
+                              state.soldOutCount,
+                            ),
                       style: const TextStyle(
                         fontSize: 12.5,
                         color: AppColors.textMuted,
@@ -508,6 +717,8 @@ class _Header extends StatelessWidget {
                 onAddSection: onAddSection,
                 onManageSections: onManageSections,
                 onBulkAvailability: onBulkAvailability,
+                onDeleteUncategorized: onDeleteUncategorized,
+                onMoveUncategorized: onMoveUncategorized,
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
@@ -566,6 +777,154 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// What the header becomes while items are picked.
+///
+/// Everything here acts on the set: the two availability calls are the reason
+/// the mode exists (an evening's sold-out list is ten taps, not ten round
+/// trips), and move and delete are the same operations the single-item menu
+/// offers, applied at once.
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar({
+    required this.state,
+    required this.visible,
+    required this.onMove,
+    required this.onDelete,
+  });
+
+  final MenuState state;
+
+  /// The rows currently on screen — what "select all" means, since selecting
+  /// items hidden behind a filter would be a promise the vendor cannot check.
+  final List<Product> visible;
+
+  final VoidCallback onMove;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cubit = context.read<MenuCubit>();
+    final count = state.selection.length;
+    final allPicked =
+        visible.isNotEmpty &&
+        visible.every((p) => state.selection.contains(p.id));
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        12,
+        MediaQuery.paddingOf(context).top + 10,
+        12,
+        10,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.warmFill,
+        border: Border(bottom: BorderSide(color: AppColors.primaryLight)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                tooltip: l10n.cancel,
+                onPressed: cubit.clearSelection,
+                icon: const Icon(Icons.close_rounded),
+                color: AppColors.ink,
+              ),
+              Expanded(
+                child: Text(
+                  l10n.selectedCount(count),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.heading(16),
+                ),
+              ),
+              TextButton(
+                onPressed: () => cubit.toggleSelectAll(visible),
+                child: Text(allPicked ? l10n.clearFilters : l10n.selectAll),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // Horizontally scrollable so four labelled actions survive a 320px
+          // phone in Arabic without any of them being cut in half.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _action(
+                  context,
+                  Icons.check_circle_outline_rounded,
+                  l10n.markAllAvailable,
+                  () => _availability(context, true),
+                ),
+                const SizedBox(width: 8),
+                _action(
+                  context,
+                  Icons.remove_shopping_cart_outlined,
+                  l10n.markAllSoldOut,
+                  () => _availability(context, false),
+                ),
+                const SizedBox(width: 8),
+                _action(
+                  context,
+                  Icons.drive_file_move_outline,
+                  l10n.moveToSection,
+                  onMove,
+                ),
+                const SizedBox(width: 8),
+                _action(
+                  context,
+                  Icons.delete_outline_rounded,
+                  l10n.delete,
+                  onDelete,
+                  danger: true,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _availability(BuildContext context, bool available) async {
+    final cubit = context.read<MenuCubit>();
+    final l10n = context.l10n;
+    if (await cubit.setSelectedAvailability(available) && context.mounted) {
+      showSnack(context, l10n.saved);
+    }
+  }
+
+  Widget _action(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onPressed, {
+    bool danger = false,
+  }) {
+    final ink = danger ? AppColors.dangerInk : AppColors.ink;
+    return OutlinedButton.icon(
+      onPressed: state.busy ? null : onPressed,
+      icon: Icon(icon, size: 17),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: ink,
+        backgroundColor: AppColors.surface,
+        side: BorderSide(
+          color: danger ? AppColors.dangerInk : AppColors.border,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+      ),
+    );
+  }
+}
+
 /// The overflow menu: everything that is not "add an item".
 class _MenuActions extends StatelessWidget {
   const _MenuActions({
@@ -573,20 +932,28 @@ class _MenuActions extends StatelessWidget {
     required this.onAddSection,
     required this.onManageSections,
     required this.onBulkAvailability,
+    required this.onDeleteUncategorized,
+    required this.onMoveUncategorized,
   });
 
   final MenuState state;
   final VoidCallback onAddSection;
   final VoidCallback onManageSections;
   final ValueChanged<bool> onBulkAvailability;
+  final VoidCallback onDeleteUncategorized;
+  final VoidCallback onMoveUncategorized;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cubit = context.read<MenuCubit>();
     // "Section" here means whatever the list is currently showing, so the
-    // wording changes when nothing is filtered.
-    final wholeMenu = state.selectedCategoryId == null;
+    // wording changes when nothing is filtered. The orphan bucket counts as a
+    // section for this purpose even though its id is null — it is a group of
+    // items on screen, not the whole menu.
+    final wholeMenu =
+        state.selectedCategoryId == null && !state.showUncategorized;
+    final orphans = state.uncategorized.length;
     return PopupMenuButton<VoidCallback>(
       tooltip: l10n.manage,
       icon: const Icon(Icons.more_horiz_rounded),
@@ -600,6 +967,27 @@ class _MenuActions extends StatelessWidget {
           value: onManageSections,
           child: _menuRow(Icons.reorder_rounded, l10n.manageSections),
         ),
+        // Only while the bucket has anything in it. It is not a section, so it
+        // never appears in Manage sections and these are the only ways to
+        // clear it other than one item at a time.
+        if (orphans > 0) ...[
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: onMoveUncategorized,
+            child: _menuRow(
+              Icons.drive_file_move_outline,
+              l10n.moveUncategorizedAction(orphans),
+            ),
+          ),
+          PopupMenuItem(
+            value: onDeleteUncategorized,
+            child: _menuRow(
+              Icons.delete_sweep_outlined,
+              l10n.deleteUncategorizedAction(orphans),
+              tone: AppColors.dangerInk,
+            ),
+          ),
+        ],
         const PopupMenuDivider(),
         PopupMenuItem(
           value: () => onBulkAvailability(false),
@@ -630,11 +1018,13 @@ class _MenuActions extends StatelessWidget {
     );
   }
 
-  Widget _menuRow(IconData icon, String label) => Row(
+  Widget _menuRow(IconData icon, String label, {Color? tone}) => Row(
     children: [
-      Icon(icon, size: 18, color: AppColors.textSecondary),
+      Icon(icon, size: 18, color: tone ?? AppColors.textSecondary),
       const SizedBox(width: AppSpace.md),
-      Flexible(child: Text(label)),
+      Flexible(
+        child: Text(label, style: TextStyle(color: tone)),
+      ),
     ],
   );
 }
@@ -757,6 +1147,7 @@ class _SectionRail extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onManage,
+    required this.onDeleteUncategorized,
   });
 
   final MenuState state;
@@ -764,6 +1155,11 @@ class _SectionRail extends StatelessWidget {
   final ValueChanged<ProductCategory> onEdit;
   final ValueChanged<ProductCategory> onDelete;
   final VoidCallback onManage;
+
+  /// The orphan bucket gets the same hover-delete every real section has.
+  /// Without it the one group a vendor most wants to clear was the only row
+  /// on the rail with no way to act on it.
+  final VoidCallback onDeleteUncategorized;
 
   @override
   Widget build(BuildContext context) {
@@ -797,6 +1193,10 @@ class _SectionRail extends StatelessWidget {
             count: orphans,
             selected: state.showUncategorized,
             onTap: cubit.selectUncategorized,
+            // No rename: there is nothing to name. Deleting here removes the
+            // items themselves, which the confirm dialog spells out, because
+            // the identical control one row up keeps them.
+            onDelete: onDeleteUncategorized,
           ),
         const SizedBox(height: AppSpace.md),
         TextButton.icon(
@@ -1040,40 +1440,54 @@ class _ManageSectionsSheet extends StatelessWidget {
 /// What the list shows when a filter or a search matches nothing — which is a
 /// different situation from a store with no menu at all.
 class _EmptyResult extends StatelessWidget {
-  const _EmptyResult({required this.state, required this.onClear});
+  const _EmptyResult({
+    required this.state,
+    required this.onClear,
+    required this.onAddItem,
+  });
 
   final MenuState state;
   final VoidCallback onClear;
+  final VoidCallback onAddItem;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    if (!state.isFiltered) {
-      return EmptyView(
-        message: l10n.sectionHasNoItems,
-        icon: Icons.lunch_dining_outlined,
-      );
-    }
+    // Three situations, and the way out of each one is different. Telling all
+    // three "no items" and stopping there left the commonest of them — an
+    // empty section the vendor just created — with nothing to press.
+    final searching = state.query.trim().isNotEmpty;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.search_off_rounded,
-            size: 52,
-            color: AppColors.textFaint,
-          ),
-          const SizedBox(height: AppSpace.md),
-          Text(
-            state.query.trim().isEmpty
-                ? l10n.sectionHasNoItems
-                : l10n.noMatchingItems,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textMuted),
-          ),
-          const SizedBox(height: AppSpace.md),
-          TextButton(onPressed: onClear, child: Text(l10n.clearFilters)),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              searching
+                  ? Icons.search_off_rounded
+                  : Icons.lunch_dining_outlined,
+              size: 52,
+              color: AppColors.textFaint,
+            ),
+            const SizedBox(height: AppSpace.md),
+            Text(
+              searching ? l10n.noMatchingItems : l10n.sectionHasNoItems,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textMuted),
+            ),
+            const SizedBox(height: AppSpace.lg),
+            if (searching)
+              TextButton(onPressed: onClear, child: Text(l10n.clearFilters))
+            else
+              // An empty section wants an item in it, not its filter cleared.
+              FilledButton.icon(
+                onPressed: onAddItem,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(l10n.addItem),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1085,10 +1499,14 @@ class _ProductTile extends StatelessWidget {
     required this.product,
     required this.language,
     required this.draggable,
+    required this.selecting,
+    required this.selected,
+    required this.sectionName,
     required this.onEdit,
     required this.onDuplicate,
     required this.onMove,
     required this.onDelete,
+    required this.onToggleSelect,
   });
 
   final Product product;
@@ -1097,10 +1515,24 @@ class _ProductTile extends StatelessWidget {
   /// Shows the grab handle. The listener itself is installed by the list, so
   /// the tile does not need to know its own index.
   final bool draggable;
+
+  /// The screen is picking items for a bulk action. Tap picks instead of
+  /// opening the editor, and the per-item controls step aside — a switch and
+  /// an overflow menu on a row that is also a checkbox is three different
+  /// answers to what a tap means.
+  final bool selecting;
+  final bool selected;
+
+  /// Which section the item is filed under, shown only when the list is not
+  /// already filtered to one. Without it "All" is a flat list of names with no
+  /// way to tell a duplicate in two sections apart.
+  final String? sectionName;
+
   final VoidCallback onEdit;
   final VoidCallback onDuplicate;
   final VoidCallback onMove;
   final VoidCallback onDelete;
+  final VoidCallback onToggleSelect;
 
   @override
   Widget build(BuildContext context) =>
@@ -1109,88 +1541,131 @@ class _ProductTile extends StatelessWidget {
   Widget _tile(BuildContext context, bool hovered) {
     final l10n = context.l10n;
     final available = product.isAvailable;
-    return Opacity(
-      opacity: available ? 1 : 0.72,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(
-            color: hovered ? AppColors.primaryLight : AppColors.border,
-          ),
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          boxShadow: AppShadows.card,
+    return Container(
+      decoration: BoxDecoration(
+        // A sold-out item is still a real item the vendor edits, so it keeps
+        // full-strength text; the old blanket 0.72 opacity also dimmed the
+        // badge that said why. A tinted ground carries the state instead.
+        color: selected
+            ? AppColors.warmFill
+            : available
+            ? AppColors.surface
+            : AppColors.neutralFill,
+        border: Border.all(
+          color: selected
+              ? AppColors.primary
+              : hovered
+              ? AppColors.primaryLight
+              : AppColors.border,
+          width: selected ? 1.5 : 1,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onEdit,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 4, 12),
-                child: Row(
-                  children: [
-                    if (draggable)
-                      const Padding(
-                        padding: EdgeInsetsDirectional.only(end: 4),
-                        child: Icon(
-                          Icons.drag_indicator_rounded,
-                          size: 18,
-                          color: AppColors.textFaint,
-                        ),
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        boxShadow: AppShadows.card,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: selecting ? onToggleSelect : onEdit,
+            // The way in to selection mode. Deliberately not a hover-only
+            // checkbox: this screen is used on phones more than on desktops.
+            onLongPress: selecting ? null : onToggleSelect,
+            child: Padding(
+              padding: EdgeInsetsDirectional.fromSTEB(
+                12,
+                12,
+                selecting ? 12 : 4,
+                12,
+              ),
+              child: Row(
+                children: [
+                  if (selecting)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 6),
+                      child: Icon(
+                        selected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        size: 22,
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.textFaint,
                       ),
-                    AppNetworkImage(
-                      url: product.imageUrl,
-                      height: 58,
-                      width: 58,
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    )
+                  else if (draggable)
+                    const Padding(
+                      padding: EdgeInsetsDirectional.only(end: 4),
+                      child: Icon(
+                        Icons.drag_indicator_rounded,
+                        size: 18,
+                        color: AppColors.textFaint,
+                      ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            product.displayName(language),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14.5,
-                              color: AppColors.ink,
+                  AppNetworkImage(
+                    url: product.imageUrl,
+                    height: 58,
+                    width: 58,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                product.displayName(language),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.5,
+                                  color: AppColors.ink,
+                                ),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              PriceText(formatMoney(product.price), size: 13.5),
-                              if (product.optionGroups.isNotEmpty) ...[
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
+                            if (!available) ...[
+                              const SizedBox(width: 6),
+                              const _SoldOutBadge(),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        // One line, in the order the facts are asked for: what
+                        // it costs, how many choices it carries, where it
+                        // lives. It ellipsises rather than wrapping, so the
+                        // tile keeps one height whatever the item is called.
+                        Row(
+                          children: [
+                            PriceText(formatMoney(product.price), size: 13.5),
+                            Flexible(
+                              child: Text(
+                                [
+                                  if (product.optionGroups.isNotEmpty)
                                     l10n.optionGroupsCount(
                                       product.optionGroups.length,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textFaint,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  ?sectionName,
+                                ].map((part) => ' \u00b7 $part').join(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textFaint,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              ],
-                              if (!available) ...[
-                                const SizedBox(width: 8),
-                                const _SoldOutBadge(),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
+                  ),
+                  if (!selecting) ...[
                     Switch(
                       value: available,
                       onChanged: (_) =>
@@ -1223,6 +1698,13 @@ class _ProductTile extends StatelessWidget {
                             l10n.moveToSection,
                           ),
                         ),
+                        PopupMenuItem(
+                          value: onToggleSelect,
+                          child: _row(
+                            Icons.checklist_rounded,
+                            l10n.selectItems,
+                          ),
+                        ),
                         const PopupMenuDivider(),
                         PopupMenuItem(
                           value: onDelete,
@@ -1235,7 +1717,7 @@ class _ProductTile extends StatelessWidget {
                       ],
                     ),
                   ],
-                ),
+                ],
               ),
             ),
           ),

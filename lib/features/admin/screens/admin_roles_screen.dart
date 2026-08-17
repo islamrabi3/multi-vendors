@@ -280,6 +280,7 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
       return DefaultTabController(
         length: 3,
         child: WebPageChrome(
+          forStaff: true,
           activeId: 'manage:/admin-app/roles',
           sections: adminManageWebSections(context),
           pageTitle: l10n.managementRoles,

@@ -40,6 +40,12 @@ class AdminPermission {
     AdminPermission('reports.view', 'finance'),
     AdminPermission('payments.refund', 'finance'),
     AdminPermission('wallets.adjust', 'finance'),
+    // Both were already enforced server-side and used by the Settlements and
+    // Deposits nav items, but neither was offered here — so a new role could
+    // not be given access to the payout screens at all, and only an
+    // unrestricted admin could reach them.
+    AdminPermission('finance.settle', 'finance'),
+    AdminPermission('finance.adjust', 'finance'),
   ];
 
   static List<String> get groups {

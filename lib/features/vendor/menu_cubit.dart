@@ -24,6 +24,7 @@ class MenuState extends Equatable {
     this.showUncategorized = false,
     this.sort = MenuSort.manual,
     this.busy = false,
+    this.selection = const {},
   });
 
   final bool loading;
@@ -46,6 +47,21 @@ class MenuState extends Equatable {
   /// A write is in flight. Kept separate from [loading] so the list stays on
   /// screen while a toggle or a reorder settles.
   final bool busy;
+
+  /// Item ids picked for a bulk action.
+  ///
+  /// Non-empty is selection mode: the screen swaps its header for a count and
+  /// its actions for the ones that apply to a set. A vendor putting ten items
+  /// sold out for the evening had to flip ten switches and wait for ten round
+  /// trips; this makes it one.
+  final Set<String> selection;
+
+  bool get selecting => selection.isNotEmpty;
+
+  /// Only the selected items still present in the menu — a bulk action that
+  /// silently included a deleted id would fail the whole write.
+  List<Product> get selectedProducts =>
+      products.where((p) => selection.contains(p.id)).toList();
 
   List<Product> productsIn(String categoryId) =>
       products.where((p) => p.categoryId == categoryId).toList();
@@ -115,6 +131,7 @@ class MenuState extends Equatable {
     bool? showUncategorized,
     MenuSort? sort,
     bool? busy,
+    Set<String>? selection,
     bool clearError = false,
     bool clearCategoryFilter = false,
   }) => MenuState(
@@ -129,6 +146,7 @@ class MenuState extends Equatable {
     showUncategorized: showUncategorized ?? this.showUncategorized,
     sort: sort ?? this.sort,
     busy: busy ?? this.busy,
+    selection: selection ?? this.selection,
   );
 
   @override
@@ -142,6 +160,7 @@ class MenuState extends Equatable {
     showUncategorized,
     sort,
     busy,
+    selection,
   ];
 }
 
@@ -324,4 +343,79 @@ class MenuCubit extends Cubit<MenuState> {
       available: available,
     ),
   );
+
+  // ===== The uncategorised bucket =====
+  //
+  // Not a section, so none of the section operations reach it: it has no id to
+  // pass them. These three take the ids in the bucket instead, read off the
+  // state the vendor is looking at.
+
+  Future<bool> deleteUncategorized() {
+    final ids = [for (final p in state.uncategorized) p.id];
+    // Nothing to delete is a success, not a write — `_mutate` would reload the
+    // whole menu to prove that zero rows changed.
+    if (ids.isEmpty) return Future.value(true);
+    // The bucket is about to be empty, and a filter pointing at an empty
+    // bucket shows a blank list with no explanation.
+    if (state.showUncategorized) selectCategory(null);
+    return _mutate(() => _admin.deleteProducts(vendorId, ids));
+  }
+
+  Future<bool> moveUncategorizedTo(String categoryId) {
+    final ids = [for (final p in state.uncategorized) p.id];
+    if (ids.isEmpty) return Future.value(true);
+    if (state.showUncategorized) selectCategory(categoryId);
+    return _mutate(() => _admin.moveProducts(vendorId, ids, categoryId));
+  }
+
+  Future<bool> setUncategorizedAvailability(bool available) {
+    final ids = [for (final p in state.uncategorized) p.id];
+    if (ids.isEmpty) return Future.value(true);
+    return _mutate(
+      () => _admin.setProductsAvailability(vendorId, ids, available),
+    );
+  }
+
+  // ===== Bulk selection =====
+
+  void toggleSelected(String id) {
+    final next = {...state.selection};
+    if (!next.remove(id)) next.add(id);
+    emit(state.copyWith(selection: next));
+  }
+
+  /// Selects everything currently on screen, or clears it if all of it is
+  /// already selected — one control for both directions, because a separate
+  /// "deselect all" is a second button that is disabled most of the time.
+  void toggleSelectAll(List<Product> visible) {
+    final ids = {for (final p in visible) p.id};
+    final allPicked = ids.isNotEmpty && ids.every(state.selection.contains);
+    emit(state.copyWith(selection: allPicked ? const {} : ids));
+  }
+
+  void clearSelection() => emit(state.copyWith(selection: const {}));
+
+  Future<bool> setSelectedAvailability(bool available) =>
+      _bulk((ids) => _admin.setProductsAvailability(vendorId, ids, available));
+
+  Future<bool> moveSelectedTo(String? categoryId) =>
+      _bulk((ids) => _admin.moveProducts(vendorId, ids, categoryId));
+
+  Future<bool> deleteSelected() =>
+      _bulk((ids) => _admin.deleteProducts(vendorId, ids));
+
+  /// Runs one bulk write over the current selection.
+  ///
+  /// Reads the ids off [MenuState.selectedProducts] rather than off the raw
+  /// selection set, so an id left behind by a row that has since been deleted
+  /// elsewhere cannot fail the whole write.
+  Future<bool> _bulk(Future<void> Function(List<String> ids) write) async {
+    final ids = [for (final p in state.selectedProducts) p.id];
+    if (ids.isEmpty) return true;
+    final ok = await _mutate(() => write(ids));
+    // Only on success: a failed write keeps the selection so the vendor can
+    // retry it, rather than having to pick the same rows again.
+    if (ok && !isClosed) clearSelection();
+    return ok;
+  }
 }

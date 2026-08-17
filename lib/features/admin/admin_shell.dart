@@ -209,6 +209,7 @@ class _AdminWebShellState extends State<_AdminWebShell> {
         : _embeddedManageScreen(_manageRoute!);
 
     return WebShellFrame(
+      forStaff: true,
       activeId: _manageRoute != null
           ? 'manage:$_manageRoute'
           : 'branch:${widget.shell.currentIndex}',

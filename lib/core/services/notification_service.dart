@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+
+import '../config/app_config.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,6 +33,17 @@ class NotificationService {
   /// router exists; a tap that arrives before then is replayed through
   /// [consumePendingRoute].
   void Function(String route)? onOpenRoute;
+
+  /// A push that arrived while a browser tab was in the foreground.
+  ///
+  /// Native draws these with flutter_local_notifications, which has no web
+  /// implementation — so on web the app has to render its own in-page banner,
+  /// and this is how the service hands one over. Null until the UI layer sets
+  /// it, in which case a foreground push on web is simply not shown; the
+  /// service worker still handles everything that arrives while the tab is
+  /// closed or in the background.
+  void Function(String title, String body, Map<String, dynamic> data)?
+  onForegroundMessage;
   String? _pendingRoute;
 
   /// The route a notification asked for while the router was not ready yet.
@@ -64,17 +77,23 @@ class NotificationService {
 
   /// Initializes FCM and local notification listeners.
   ///
-  /// No-op on web. Web push needs a `firebase-messaging-sw.js` and a VAPID
-  /// key that this project does not have, so every call below would throw into
-  /// the catch — after the browser had already been asked for notification
-  /// permission on page load, which is the surest way to have it denied
-  /// forever.
+  /// On web this needs two things that native does not: the service worker at
+  /// `web/firebase-messaging-sw.js`, and a VAPID key. Without the key it stays
+  /// a no-op and the browser is never prompted — a permission request fired on
+  /// page load and denied is denied *permanently*, so asking before push can
+  /// actually be delivered would burn the only chance to ask.
+  ///
+  /// The native-only pieces below (background isolate, local-notification
+  /// plugin, Android channel) are skipped on web: the browser draws
+  /// background notifications from the service worker itself.
   Future<void> initialize() async {
-    if (kIsWeb) return;
+    if (kIsWeb && !AppConfig.hasWebPush) return;
     try {
-      FirebaseMessaging.onBackgroundMessage(
-        _firebaseMessagingBackgroundHandler,
-      );
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler,
+        );
+      }
 
       // Notification Permissions
       final settings = await _fcm.requestPermission(
@@ -87,12 +106,23 @@ class NotificationService {
         if (kDebugMode) print('User granted notification permissions');
       }
 
-      // iOS shows nothing while the app is in the foreground unless this is
-      // set; Android has no equivalent switch.
-      await _fcm.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
+      if (!kIsWeb) {
+        // iOS shows nothing while the app is in the foreground unless this is
+        // set; Android has no equivalent switch.
+        await _fcm.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+      }
+
+      // Declared here rather than inside the native block below: the
+      // foreground listener further down reads it too.
+      const androidChannel = AndroidNotificationChannel(
+        'high_importance_channel',
+        'High Importance Notifications',
+        description: 'Used for order updates and chat alerts.',
+        importance: Importance.high,
       );
 
       // Initialize Local Notifications for Foreground display
@@ -105,41 +135,50 @@ class NotificationService {
 
       // A foreground banner is drawn by flutter_local_notifications, so its own
       // tap callback is what fires for those — the FCM stream never sees them.
-      await _localNotifications.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: (response) {
-          final payload = response.payload;
-          if (payload == null || payload.isEmpty) return;
-          final data = <String, dynamic>{};
-          for (final pair in payload.split('|')) {
-            final split = pair.indexOf('=');
-            if (split > 0) {
-              data[pair.substring(0, split)] = pair.substring(split + 1);
+      // The plugin has no web backend, so this whole block is native-only.
+      if (!kIsWeb) {
+        await _localNotifications.initialize(
+          initSettings,
+          onDidReceiveNotificationResponse: (response) {
+            final payload = response.payload;
+            if (payload == null || payload.isEmpty) return;
+            final data = <String, dynamic>{};
+            for (final pair in payload.split('|')) {
+              final split = pair.indexOf('=');
+              if (split > 0) {
+                data[pair.substring(0, split)] = pair.substring(split + 1);
+              }
             }
-          }
-          final route = routeFor(data);
-          if (route == null) return;
-          onOpenRoute == null ? _pendingRoute = route : onOpenRoute!(route);
-        },
-      );
+            final route = routeFor(data);
+            if (route == null) return;
+            onOpenRoute == null ? _pendingRoute = route : onOpenRoute!(route);
+          },
+        );
 
-      const androidChannel = AndroidNotificationChannel(
-        'high_importance_channel',
-        'High Importance Notifications',
-        description: 'Used for order updates and chat alerts.',
-        importance: Importance.high,
-      );
-
-      final androidPlugin = _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      await androidPlugin?.createNotificationChannel(androidChannel);
+        final androidPlugin = _localNotifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        await androidPlugin?.createNotificationChannel(androidChannel);
+      }
 
       // Listen for FCM messages while app is in foreground
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         final notification = message.notification;
         final android = message.notification?.android;
+        // flutter_local_notifications has no web implementation; a foreground
+        // push in a browser tab is surfaced by the app's own in-page banner
+        // instead, which `onForegroundMessage` hands to the UI layer.
+        if (kIsWeb) {
+          if (notification != null) {
+            onForegroundMessage?.call(
+              notification.title ?? '',
+              notification.body ?? '',
+              message.data,
+            );
+          }
+          return;
+        }
         if (notification != null) {
           _localNotifications.show(
             notification.hashCode,
@@ -190,9 +229,13 @@ class NotificationService {
   /// getToken() waits for APNs itself. Gating on it skipped the sync entirely
   /// on iOS.
   Future<void> syncFcmToken() async {
-    if (kIsWeb) return;
+    if (kIsWeb && !AppConfig.hasWebPush) return;
     try {
-      final token = await _fcm.getToken();
+      // Web derives its token from the VAPID key and the registered service
+      // worker; native ignores the argument entirely.
+      final token = await _fcm.getToken(
+        vapidKey: kIsWeb ? AppConfig.fcmVapidKey : null,
+      );
       if (token == null) {
         if (kDebugMode) print('FCM token not available yet.');
         return;

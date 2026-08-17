@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -49,9 +51,14 @@ class _AdminPriceAdjustmentScreenState
   bool _increase = true;
 
   List<VendorCategory> _categories = const [];
-  List<Vendor> _vendors = const [];
   String? _categoryId;
-  String? _vendorId;
+
+  /// Held as the full row rather than just an id — unlike categories, which
+  /// are few enough to keep the whole list in memory, the store picker below
+  /// searches the server, so nothing else on screen has the chosen store's
+  /// name to look up once the search results are gone.
+  Vendor? _vendor;
+  String? get _vendorId => _vendor?.id;
 
   int? _affected;
   bool _counting = false;
@@ -75,12 +82,8 @@ class _AdminPriceAdjustmentScreenState
   Future<void> _loadPickers() async {
     try {
       final categories = await _repository.fetchVendorCategories();
-      final vendors = await _repository.fetchVendors();
       if (!mounted) return;
-      setState(() {
-        _categories = categories;
-        _vendors = vendors;
-      });
+      setState(() => _categories = categories);
     } catch (error) {
       if (mounted) showFailure(context, error);
     }
@@ -153,12 +156,7 @@ class _AdminPriceAdjustmentScreenState
         : l10n.priceDecreaseSummary(amount, target);
   }
 
-  String? get _vendorName {
-    for (final vendor in _vendors) {
-      if (vendor.id == _vendorId) return vendor.name;
-    }
-    return null;
-  }
+  String? get _vendorName => _vendor?.name;
 
   String? get _categoryName {
     for (final category in _categories) {
@@ -325,23 +323,11 @@ class _AdminPriceAdjustmentScreenState
                 ),
               ),
               if (_scope == _Scope.vendor)
-                DropdownButtonFormField<String>(
-                  initialValue: _vendorId,
-                  isExpanded: true,
-                  decoration: InputDecoration(labelText: l10n.store),
-                  items: [
-                    for (final vendor in _vendors)
-                      DropdownMenuItem(
-                        value: vendor.id,
-                        child: Text(
-                          vendor.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _vendorId = value);
+                _VendorSearchField(
+                  repository: _repository,
+                  selected: _vendor,
+                  onSelected: (vendor) {
+                    setState(() => _vendor = vendor);
                     _refreshCount();
                   },
                 ),
@@ -447,6 +433,7 @@ class _AdminPriceAdjustmentScreenState
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/price-adjustment',
         sections: adminManageWebSections(context),
         pageTitle: l10n.priceAdjustment,
@@ -535,6 +522,175 @@ class _HistoryRow extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Type-ahead in place of a dropdown of every store.
+///
+/// A `DropdownButtonFormField` loaded every vendor up front and rendered them
+/// all in one scrollable menu — fine at a dozen stores, unusable at a
+/// thousand, and it paid the full list's payload on every visit to this
+/// screen even when a category-scoped run never looked at it. This searches
+/// the server instead, the same `fetchVendorsPage` the main vendors list
+/// already pages through.
+class _VendorSearchField extends StatefulWidget {
+  const _VendorSearchField({
+    required this.repository,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final AdminRepository repository;
+  final Vendor? selected;
+  final ValueChanged<Vendor?> onSelected;
+
+  @override
+  State<_VendorSearchField> createState() => _VendorSearchFieldState();
+}
+
+class _VendorSearchFieldState extends State<_VendorSearchField> {
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  Timer? _debounce;
+  List<Vendor> _results = const [];
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selected != null) _controller.text = widget.selected!.name;
+    _focusNode.addListener(() {
+      // Losing focus with nothing picked clears the typed text, so the field
+      // never shows a query that was never turned into a selection.
+      if (!_focusNode.hasFocus && widget.selected == null) {
+        _controller.clear();
+      }
+      setState(() {});
+    });
+  }
+
+  @override
+  void didUpdateWidget(_VendorSearchField old) {
+    super.didUpdateWidget(old);
+    // The scope radio above can be switched away and back, remembering the
+    // last pick — this keeps the field in sync when that happens externally.
+    if (widget.selected?.id != old.selected?.id) {
+      _controller.text = widget.selected?.name ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String value) {
+    widget.onSelected(null);
+    _debounce?.cancel();
+    if (value.trim().length < 2) {
+      setState(() => _results = const []);
+      return;
+    }
+    setState(() => _searching = true);
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      final results = await widget.repository.fetchVendorsPage(
+        limit: 20,
+        offset: 0,
+        search: value,
+      );
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _searching = false;
+      });
+    });
+  }
+
+  void _pick(Vendor vendor) {
+    _focusNode.unfocus();
+    setState(() {
+      _controller.text = vendor.name;
+      _results = const [];
+    });
+    widget.onSelected(vendor);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          onChanged: _onChanged,
+          decoration: InputDecoration(
+            labelText: l10n.store,
+            hintText: l10n.searchByName,
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: _searching
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : widget.selected != null
+                ? IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () {
+                      _controller.clear();
+                      setState(() => _results = const []);
+                      widget.onSelected(null);
+                    },
+                  )
+                : null,
+          ),
+        ),
+        // Only while the field is actually focused: without this, the stale
+        // result list from a search flashed back on screen the next time this
+        // widget rebuilt for an unrelated reason (the count refreshing).
+        if (_focusNode.hasFocus && _results.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            constraints: const BoxConstraints(maxHeight: 240),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              boxShadow: AppShadows.card,
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: _results.length,
+              itemBuilder: (context, i) {
+                final vendor = _results[i];
+                return ListTile(
+                  dense: true,
+                  leading: const Icon(
+                    Icons.storefront_outlined,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  title: Text(
+                    vendor.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => _pick(vendor),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

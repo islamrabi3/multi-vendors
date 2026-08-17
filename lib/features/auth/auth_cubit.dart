@@ -26,6 +26,7 @@ class AppAuthState extends Equatable {
     this.info,
     this.permissions = const [],
     this.pendingPolicy,
+    this.passwordRecovery = false,
   });
 
   final AuthStatus status;
@@ -47,6 +48,13 @@ class AppAuthState extends Equatable {
   /// Terms this partner has not accepted at their current version. Null for
   /// customers and admins, and for anyone already up to date.
   final PendingPolicy? pendingPolicy;
+
+  /// A password-reset link was just opened. Supabase turns that click into a
+  /// real, signed-in session — which, left alone, would route the user
+  /// straight into the app without ever asking for a new password, making the
+  /// "reset" link a silent magic-sign-in link instead. This gate is what
+  /// forces a stop at `/reset-password` first.
+  final bool passwordRecovery;
 
   /// True when the signed-in admin holds [key], or holds everything.
   bool can(String key) =>
@@ -101,6 +109,7 @@ class AppAuthState extends Equatable {
     bool clearMessages = false,
     bool clearVendor = false,
     bool clearProfile = false,
+    bool? passwordRecovery,
   }) => AppAuthState(
     status: status ?? this.status,
     profile: clearProfile ? null : (profile ?? this.profile),
@@ -112,6 +121,7 @@ class AppAuthState extends Equatable {
     pendingPolicy: clearPendingPolicy
         ? null
         : (pendingPolicy ?? this.pendingPolicy),
+    passwordRecovery: passwordRecovery ?? this.passwordRecovery,
   );
 
   @override
@@ -124,6 +134,7 @@ class AppAuthState extends Equatable {
     info,
     permissions,
     pendingPolicy,
+    passwordRecovery,
   ];
 }
 
@@ -146,6 +157,13 @@ class AuthCubit extends Cubit<AppAuthState> {
       // Must settle before _refresh, or the router would route the user to
       // the customer home before their claimed role is visible.
       if (signedIn) await _applyPendingSignupRole();
+      // Set ahead of _refresh so the very first emission the router sees
+      // already carries the gate — a redirect computed off a state that has a
+      // session but not yet this flag would send the user straight past
+      // `/reset-password` and into the app.
+      if (event.event == AuthChangeEvent.passwordRecovery) {
+        emit(state.copyWith(passwordRecovery: true));
+      }
       _refresh();
     });
     _refresh();
@@ -249,6 +267,10 @@ class AuthCubit extends Cubit<AppAuthState> {
           vendor: vendor,
           permissions: permissions,
           pendingPolicy: pendingPolicy,
+          // This full-replacement constructor otherwise drops the recovery
+          // gate the instant this method runs, which is on every single
+          // event on this stream, including the one that just set it.
+          passwordRecovery: state.passwordRecovery,
         ),
       );
       _watchProfile();
@@ -268,6 +290,26 @@ class AuthCubit extends Cubit<AppAuthState> {
     try {
       await _repository.signIn(email: email.trim(), password: password);
       // onAuthStateChange triggers _refresh.
+      emit(state.copyWith(busy: false));
+    } catch (error) {
+      emit(state.copyWith(busy: false, error: error.toString()));
+    }
+  }
+
+  Future<void> sendPasswordReset(String email) =>
+      _repository.sendPasswordResetEmail(email.trim());
+
+  /// Releases the `/reset-password` gate once a new password is set — this is
+  /// the only way out of it, since the redirect otherwise reroutes anything
+  /// else straight back there.
+  void clearPasswordRecovery() =>
+      emit(state.copyWith(passwordRecovery: false));
+
+  Future<void> setNewPassword(String password) async {
+    emit(state.copyWith(busy: true, clearMessages: true));
+    try {
+      await _repository.updatePassword(password);
+      clearPasswordRecovery();
       emit(state.copyWith(busy: false));
     } catch (error) {
       emit(state.copyWith(busy: false, error: error.toString()));

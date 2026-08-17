@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/tokens.dart';
@@ -86,6 +87,19 @@ class _ContentPageScreenState extends State<ContentPageScreen> {
                       ? (widget.fallbackTitle ?? '')
                       : title,
                 ),
+                // Someone reading the terms or the privacy policy with a
+                // question about them had no way to ask one without leaving
+                // the page to hunt for the support entry point buried in
+                // Profile. Signed out, this bounces to `/login` like any
+                // other gated page — a real conversation needs an account —
+                // but it is one visible tap away instead of a dead end.
+                actions: [
+                  IconButton(
+                    tooltip: context.l10n.supportChat,
+                    onPressed: () => context.push('/support'),
+                    icon: const Icon(Icons.support_agent_rounded),
+                  ),
+                ],
               ),
               if (snap.connectionState != ConnectionState.done)
                 const SliverFillRemaining(child: LoadingView())

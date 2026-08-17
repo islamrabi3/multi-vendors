@@ -17,6 +17,8 @@ import '../../../core/utils/money.dart';
 import '../../../core/widgets/ad_slot.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/messages_button.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/interstitial_ad.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/vendor_card.dart';
@@ -219,55 +221,16 @@ class _Header extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          _BellButton(),
+          const SizedBox(width: 8),
+          const MessagesButton(),
+          const SizedBox(width: 8),
+          const NotificationBell(),
         ],
       ),
     );
   }
 }
 
-class _BellButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => context.push('/notifications'),
-      borderRadius: BorderRadius.circular(21),
-      child: Stack(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
-              boxShadow: AppShadows.card,
-            ),
-            child: const Icon(
-              Icons.notifications_none_rounded,
-              size: 21,
-              color: AppColors.ink,
-            ),
-          ),
-          PositionedDirectional(
-            top: 9,
-            end: 10,
-            child: Container(
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.surface, width: 1.5),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ===== Search bar =====
 /// Not a field — a button that opens the search page.

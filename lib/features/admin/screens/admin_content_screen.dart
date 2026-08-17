@@ -190,6 +190,7 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/content',
         sections: adminManageWebSections(context),
         pageTitle: l10n.content,

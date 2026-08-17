@@ -45,6 +45,13 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
   bool _loadingMoreSettlements = false;
   bool _hasMoreSettlements = false;
 
+  /// The statement had the same problem one section further down and no fix:
+  /// 40 rows, then nothing, with no indication that anything was missing. A
+  /// busy store passes 40 ledger rows inside a week.
+  static const _entriesPage = 25;
+  bool _loadingMoreEntries = false;
+  bool _hasMoreEntries = false;
+
   bool _loading = true;
   bool _requestingSettlement = false;
   String? _error;
@@ -67,7 +74,7 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
         _repository.ledger(
           ownerType: LedgerOwner.vendor,
           ownerId: widget.vendorId,
-          limit: 40,
+          limit: _entriesPage,
         ),
         _repository.settlements(
           ownerType: LedgerOwner.vendor,
@@ -84,6 +91,7 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
         // A full page means there is probably another; the next fetch
         // settles it either way.
         _hasMoreSettlements = _settlements.length == _settlementsPage;
+        _hasMoreEntries = _entries.length == _entriesPage;
         _loading = false;
       });
     } catch (error) {
@@ -115,6 +123,29 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
       if (!mounted) return;
       setState(() => _loadingMoreSettlements = false);
       showFailure(context, error, onRetry: _loadMoreSettlements);
+    }
+  }
+
+  Future<void> _loadMoreEntries() async {
+    if (_loadingMoreEntries || !_hasMoreEntries) return;
+    setState(() => _loadingMoreEntries = true);
+    try {
+      final page = await _repository.ledger(
+        ownerType: LedgerOwner.vendor,
+        ownerId: widget.vendorId,
+        limit: _entriesPage,
+        offset: _entries.length,
+      );
+      if (!mounted) return;
+      setState(() {
+        _entries = [..._entries, ...page];
+        _hasMoreEntries = page.length == _entriesPage;
+        _loadingMoreEntries = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadingMoreEntries = false);
+      showFailure(context, error, onRetry: _loadMoreEntries);
     }
   }
 
@@ -188,82 +219,257 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
                   AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
                 ),
                 children: [
-                  WalletHeadline(wallet: _wallet!),
-                  const SizedBox(height: AppSpace.md),
-                  if (_pendingRequest != null)
-                    PendingSettlementTile(pending: _pendingRequest!)
-                  else ...[
-                    EarlyPayoutCard(quote: _quote!, onTake: _takeEarly),
-                    const SizedBox(height: AppSpace.md),
-                    SettlementRequestCard(
-                      title: l10n.requestSettlement,
-                      hint: l10n.requestSettlementHint,
-                      payable: _wallet!.payable,
-                      busy: _requestingSettlement,
-                      onRequest: _requestSettlement,
-                    ),
-                  ],
-                  const SizedBox(height: AppSpace.md),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 1.95,
-                    crossAxisSpacing: AppSpace.md,
-                    mainAxisSpacing: AppSpace.md,
+                  // A statement is a column of rows, and a row 1,300px wide
+                  // puts its label and its amount at opposite ends of the
+                  // monitor. Cap it and centre it; the console's own chrome
+                  // fills the rest.
+                  _capped(
+                    context,
                     children: [
-                      MoneyTile(
-                        label: l10n.totalEarningsLabel,
-                        value: formatMoney(_wallet!.totalEarnings),
-                        tone: AppColors.successInk,
+                      WalletHeadline(wallet: _wallet!),
+                      const SizedBox(height: AppSpace.md),
+                      if (_pendingRequest != null)
+                        PendingSettlementTile(pending: _pendingRequest!)
+                      else ...[
+                        EarlyPayoutCard(quote: _quote!, onTake: _takeEarly),
+                        const SizedBox(height: AppSpace.md),
+                        SettlementRequestCard(
+                          title: l10n.requestSettlement,
+                          hint: l10n.requestSettlementHint,
+                          payable: _wallet!.payable,
+                          busy: _requestingSettlement,
+                          onRequest: _requestSettlement,
+                        ),
+                      ],
+                      const SizedBox(height: AppSpace.md),
+                      // Two totals that describe one running account, so they read
+                      // as consecutive lines rather than as a pair of unrelated
+                      // dashboard tiles sitting side by side.
+                      _SummaryRows(
+                        rows: [
+                          (
+                            label: l10n.totalEarningsLabel,
+                            value: formatMoney(_wallet!.totalEarnings),
+                            tone: AppColors.successInk,
+                          ),
+                          (
+                            label: l10n.totalSettlementsLabel,
+                            value: formatMoney(_wallet!.cashSettled),
+                            tone: null,
+                          ),
+                        ],
                       ),
-                      MoneyTile(
-                        label: l10n.totalSettlementsLabel,
-                        value: formatMoney(_wallet!.cashSettled),
+                      if (_settlements.isNotEmpty) ...[
+                        const SizedBox(height: AppSpace.lg),
+                        _SectionHeader(
+                          title: l10n.settlementsTitle,
+                          count: _settlements.length,
+                          hasMore: _hasMoreSettlements,
+                        ),
+                        const SizedBox(height: AppSpace.xs),
+                        _ListCard(
+                          children: [
+                            for (final settlement in _settlements)
+                              SettlementTile(settlement: settlement),
+                          ],
+                        ),
+                        // A button rather than infinite scroll: this list sits in
+                        // the middle of a page that continues with the statement
+                        // below it, so loading on scroll would fight the section
+                        // underneath for the same gesture.
+                        if (_hasMoreSettlements)
+                          _LoadMore(
+                            busy: _loadingMoreSettlements,
+                            onPressed: _loadMoreSettlements,
+                          ),
+                      ],
+                      const SizedBox(height: AppSpace.lg),
+                      _SectionHeader(
+                        title: l10n.statement,
+                        count: _entries.length,
+                        hasMore: _hasMoreEntries,
                       ),
+                      const SizedBox(height: AppSpace.xs),
+                      if (_entries.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          child: EmptyView(
+                            message: l10n.noTransactionsYet,
+                            icon: Icons.receipt_long_outlined,
+                          ),
+                        )
+                      else ...[
+                        _ListCard(
+                          children: [
+                            for (final entry in _entries)
+                              LedgerTile(entry: entry),
+                          ],
+                        ),
+                        if (_hasMoreEntries)
+                          _LoadMore(
+                            busy: _loadingMoreEntries,
+                            onPressed: _loadMoreEntries,
+                          ),
+                      ],
                     ],
                   ),
-                  if (_settlements.isNotEmpty) ...[
-                    const SizedBox(height: AppSpace.lg),
-                    Text(l10n.settlementsTitle, style: AppType.heading(16)),
-                    for (final settlement in _settlements)
-                      SettlementTile(settlement: settlement),
-                    // A button rather than infinite scroll: this list sits in
-                    // the middle of a page that continues with the statement
-                    // below it, so loading on scroll would fight the section
-                    // underneath for the same gesture.
-                    if (_hasMoreSettlements)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpace.sm),
-                        child: Center(
-                          child: _loadingMoreSettlements
-                              ? const Padding(
-                                  padding: EdgeInsets.all(AppSpace.sm),
-                                  child: ButtonSpinner(size: 18),
-                                )
-                              : TextButton(
-                                  onPressed: _loadMoreSettlements,
-                                  child: Text(l10n.loadMore),
-                                ),
-                        ),
-                      ),
-                  ],
-                  const SizedBox(height: AppSpace.lg),
-                  Text(l10n.statement, style: AppType.heading(16)),
-                  const SizedBox(height: AppSpace.xs),
-                  if (_entries.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: EmptyView(
-                        message: l10n.noTransactionsYet,
-                        icon: Icons.receipt_long_outlined,
-                      ),
-                    )
-                  else
-                    for (final entry in _entries) LedgerTile(entry: entry),
                 ],
               ),
       ),
     );
   }
+
+  /// One `ListView` child holding the page, so the cap applies to the content
+  /// without the scroll view itself being boxed — a `ConstrainedBox` around
+  /// the `ListView` would also narrow its scrollbar and its refresh gesture.
+  Widget _capped(BuildContext context, {required List<Widget> children}) {
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
+    if (!AppBreakpoints.isWebWide(context)) return column;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 820),
+        child: column,
+      ),
+    );
+  }
+}
+
+/// Totals as consecutive rows in one card.
+///
+/// Replaces a two-cell `GridView`: on a phone those cells were half the width
+/// of a figure that can run to `EGP 123,456.78`, and in the web console they
+/// stretched to a third of the window each with nothing in them. A money
+/// figure wants a label on its left and nothing else on its line.
+class _SummaryRows extends StatelessWidget {
+  const _SummaryRows({required this.rows});
+
+  final List<({String label, String value, Color? tone})> rows;
+
+  @override
+  Widget build(BuildContext context) => _ListCard(
+    children: [
+      for (final row in rows)
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.md,
+            vertical: AppSpace.md,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  row.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Text(
+                row.value,
+                style: AppType.mono(
+                  16,
+                  weight: FontWeight.w800,
+                  color: row.tone ?? AppColors.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+}
+
+/// A bordered container that hairlines between its children, so a run of rows
+/// reads as one list instead of as loose tiles on the page background.
+class _ListCard extends StatelessWidget {
+  const _ListCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                thickness: 1,
+                color: AppColors.borderSoft,
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              child: children[i],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Section title with how many rows are under it.
+///
+/// The count carries a `+` while more pages exist, because "10" next to a list
+/// of ten is the exact claim the old screen made falsely — it had more and
+/// said nothing.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.count,
+    required this.hasMore,
+  });
+
+  final String title;
+  final int count;
+  final bool hasMore;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(child: Text(title, style: AppType.heading(16))),
+      if (count > 0)
+        Text(
+          hasMore ? '$count+' : '$count',
+          style: AppType.mono(12.5, color: AppColors.textFaint),
+        ),
+    ],
+  );
+}
+
+class _LoadMore extends StatelessWidget {
+  const _LoadMore({required this.busy, required this.onPressed});
+
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: AppSpace.sm),
+    child: Center(
+      child: busy
+          ? const Padding(
+              padding: EdgeInsets.all(AppSpace.sm),
+              child: ButtonSpinner(size: 18),
+            )
+          : TextButton(
+              onPressed: onPressed,
+              child: Text(context.l10n.loadMore),
+            ),
+    ),
+  );
 }

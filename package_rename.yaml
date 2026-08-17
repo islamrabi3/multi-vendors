@@ -1,17 +1,17 @@
 package_rename_config:
   android:
-    app_name: "KichenIN" # Display name
+    app_name: "KitchenIn" # Display name
     package_name: "com.kitchenin.app" # Package name
 
 
   ios:
-    app_name: "KichenIN" # Display name
-    bundle_name: "KichenIN" # Bundle name
+    app_name: "KitchenIn" # Display name
+    bundle_name: "KitchenIn" # Bundle name
     package_name: "com.kitchenin.app" # Product Bundle Identifier
 
 
   web:
-    app_name: "KichenIN" # App title & PWA name
+    app_name: "KitchenIn" # App title & PWA name
     short_app_name: "App" # PWA short name (defaults to app_name)
-    description: "Best App" # Web app description
+    description: "Best App for food delivery services" # Web app description
 

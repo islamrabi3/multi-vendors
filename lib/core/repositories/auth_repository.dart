@@ -192,6 +192,26 @@ class AuthRepository {
     );
   }
 
+  /// Emails a reset link. Always succeeds from the caller's point of view —
+  /// Supabase does not report whether the address has an account, so neither
+  /// does this, which is the point: it must not be usable to test whether an
+  /// email is registered.
+  ///
+  /// [_oauthRedirect] is reused rather than a dedicated URL: it is already the
+  /// one address allow-listed under Auth > URL Configuration for this project,
+  /// so sending the recovery link here needs no extra dashboard config. The
+  /// link lands the user back on this same origin with a recovery session,
+  /// and `AuthCubit` turns that specific event into the `/reset-password`
+  /// gate rather than a normal sign-in.
+  Future<void> sendPasswordResetEmail(String email) =>
+      supabase.auth.resetPasswordForEmail(email, redirectTo: _oauthRedirect);
+
+  /// Sets a new password on the current session — the recovery session a
+  /// reset link produces, or an ordinary one for a signed-in user changing it
+  /// by choice.
+  Future<void> updatePassword(String password) =>
+      supabase.auth.updateUser(UserAttributes(password: password));
+
   /// Only offered where it belongs — see `supportsAppleSignIn`.
   Future<void> signInWithApple() async {
     await supabase.auth.signInWithOAuth(

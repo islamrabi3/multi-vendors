@@ -7,6 +7,8 @@ import '../../../core/models/order.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/messages_button.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../auth/auth_cubit.dart';
 import '../admin_dashboard_cubit.dart';
 import 'admin_order_detail_screen.dart';
@@ -478,6 +480,9 @@ class _Header extends StatelessWidget {
                   ],
                 ),
               ),
+              const MessagesButton.staff(compact: true, dark: true),
+              const NotificationBell(compact: true, dark: true),
+              const SizedBox(width: 4),
               _AvatarButton(
                 onSignOut: () => context.read<AuthCubit>().signOut(),
               ),

@@ -10,6 +10,8 @@ import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/messages_button.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/skeleton.dart' show ButtonSpinner;
 import '../../auth/auth_cubit.dart';
 import '../vendor_orders_cubit.dart';
@@ -22,6 +24,7 @@ import 'vendor_order_details_screen.dart';
 import 'vendor_schedule_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
+import '../../../core/widgets/web/web_toast.dart';
 
 enum _OrderFilter { incoming, preparing, ready, past }
 
@@ -137,6 +140,43 @@ class _DashboardViewState extends State<_DashboardView> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page()));
   }
 
+  /// Tells the kitchen an order landed.
+  ///
+  /// A bottom snackbar reading "New order received!" is a phone alert: on a
+  /// console it sits at the far edge of a wide window, says nothing about
+  /// which order, and cannot be acted on. On web this is a corner card
+  /// carrying the number, the total and a way to open it; on a phone the
+  /// snackbar is still the right shape and is left alone.
+  void _announceNewOrder(BuildContext context, VendorOrdersState state) {
+    final l10n = context.l10n;
+    if (!AppBreakpoints.isWebWide(context)) {
+      showSnack(context, l10n.newOrderReceived);
+      return;
+    }
+
+    // The stream is ordered oldest-first, so the arrival is the last pending
+    // row. Sorted rather than assumed: a burst can land in one snapshot.
+    final pending = [...state.pending]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final order = pending.firstOrNull;
+
+    WebToast.show(
+      context,
+      icon: Icons.receipt_long_rounded,
+      title: l10n.newOrderTitle,
+      trailingValue: order == null ? null : formatMoney(order.total),
+      detail: order == null
+          ? null
+          : '${order.orderNumber} · ${l10n.itemsCount(order.items.length)}',
+      actionLabel: order == null ? null : l10n.viewOrder,
+      onAction: order == null
+          ? null
+          // Selecting rather than navigating: on a wide window the detail
+          // pane is already on screen beside the list.
+          : () => setState(() => _selectedId = order.id),
+    );
+  }
+
   void _openStoreControls(Vendor vendor) {
     showAdaptiveSheet<void>(
       context: context,
@@ -196,7 +236,7 @@ class _DashboardViewState extends State<_DashboardView> {
             listenWhen: (p, c) => c.newOrderArrived || c.error != null,
             listener: (context, state) {
               if (state.newOrderArrived) {
-                showSnack(context, context.l10n.newOrderReceived);
+                _announceNewOrder(context, state);
               } else if (state.error != null) {
                 showFailure(context, state.error!);
               }
@@ -452,7 +492,9 @@ class _Header extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpace.sm),
+              const SizedBox(width: AppSpace.xs),
+              const MessagesButton(compact: true, dark: true),
+              const NotificationBell(compact: true, dark: true),
               IconButton(
                 onPressed: onOpenControls,
                 tooltip: l10n.storeControls,

@@ -105,7 +105,7 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
   Future<void> _extract() async {
     setState(() => _step = _Step.extracting);
     try {
-      final menu = await _repo.extractMenu(_images);
+      final menu = await _repo.extractMenu(widget.vendorId, _images);
       if (!mounted) return;
       if (menu.isEmpty) {
         setState(() => _step = _Step.pick);

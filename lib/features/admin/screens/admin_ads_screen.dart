@@ -11,6 +11,7 @@ import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
+import '../../../core/widgets/web/web_table.dart';
 import '../../auth/auth_cubit.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 import '../../../core/widgets/web/adaptive_sheet.dart';
@@ -109,63 +110,70 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
             icon: Icons.campaign_outlined,
           );
         }
-        // Grouped by surface: an operator thinks in slots, not in rows.
-        final byPlacement = <AdPlacement, List<BannerItem>>{};
-        for (final ad in ads) {
-          byPlacement.putIfAbsent(ad.placement, () => []).add(ad);
+        // Live ones first — that is the question an operator opens this
+        // screen to answer — then grouped by surface, so placement still
+        // reads as neighbourhoods even without a section header for each.
+        final sorted = [...ads]..sort((a, b) {
+          final live = (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0);
+          if (live != 0) return live;
+          final placement = a.placement.index.compareTo(b.placement.index);
+          if (placement != 0) return placement;
+          return b.sortOrder.compareTo(a.sortOrder);
+        });
+
+        Future<void> toggle(BannerItem ad) async {
+          try {
+            await _repo.setActive(ad.id, !ad.isActive);
+          } catch (error) {
+            if (context.mounted) showFailure(context, error);
+          } finally {
+            if (context.mounted) _reload();
+          }
         }
+
         return RefreshIndicator(
           onRefresh: () async => _reload(),
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              webWide ? 0 : AppSpace.lg,
-              webWide ? 0 : AppSpace.lg,
-              webWide ? 0 : AppSpace.lg,
-              // Room for the floating "New ad" button on mobile; on web that
-              // button sits in the header row instead, so the list can run to
-              // the bottom of the pane.
-              webWide ? AppSpace.xl : 96,
-            ),
-            children: [
-              for (final placement in AdPlacement.values)
-                if (byPlacement[placement] case final slotAds?) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpace.xs,
-                      AppSpace.md,
-                      AppSpace.xs,
-                      AppSpace.sm,
-                    ),
-                    child: Text(
-                      placementLabel(context, placement).toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.1,
-                        color: AppColors.textFaint,
-                      ),
-                    ),
-                  ),
-                  // A placement's ads sit side by side on a laptop: a
-                  // column of 96px-tall artwork cards down a 1200px window
-                  // is most of the screen doing nothing.
-                  _AdGroup(
-                    ads: slotAds,
+          child: webWide
+              ? SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: AppSpace.xl),
+                  child: _AdTable(
+                    ads: sorted,
                     canManage: canManage,
-                    onToggle: (ad) async {
-                      try {
-                        await _repo.setActive(ad.id, !ad.isActive);
-                      } catch (error) {
-                        if (context.mounted) showFailure(context, error);
-                      } finally {
-                        if (context.mounted) _reload();
-                      }
-                    },
+                    onToggle: toggle,
                     onDelete: _delete,
                   ),
-                ],
-            ],
-          ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.lg,
+                    AppSpace.lg,
+                    AppSpace.lg,
+                    // Room for the floating "New ad" button.
+                    96,
+                  ),
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < sorted.length; i++)
+                            _AdRow(
+                              ad: sorted[i],
+                              canManage: canManage,
+                              last: i == sorted.length - 1,
+                              onToggle: () => toggle(sorted[i]),
+                              onDelete: () => _delete(sorted[i]),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
         );
       },
     );
@@ -200,6 +208,7 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/ads',
         sections: adminManageWebSections(context),
         pageTitle: l10n.adManager,
@@ -225,9 +234,126 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
   }
 }
 
-/// One placement's ads, in as many columns as the window allows.
-class _AdGroup extends StatelessWidget {
-  const _AdGroup({
+String placementLabel(BuildContext context, AdPlacement placement) =>
+    switch (placement) {
+      AdPlacement.homeCarousel => context.l10n.placementHomeCarousel,
+      AdPlacement.homeInline => context.l10n.placementHomeInline,
+      AdPlacement.vendorTop => context.l10n.placementVendorTop,
+      AdPlacement.cart => context.l10n.placementCart,
+      AdPlacement.orderTracking => context.l10n.placementOrderTracking,
+      AdPlacement.interstitial => context.l10n.placementInterstitial,
+    };
+
+/// Why an ad is or is not running, in one badge — the first thing an
+/// operator looking at a row of ads needs.
+({String label, Color fill, Color ink}) _adStatus(
+  BuildContext context,
+  BannerItem ad,
+) {
+  final l10n = context.l10n;
+  if (ad.hasEnded) {
+    return (
+      label: l10n.adEnded,
+      fill: AppColors.neutralFill,
+      ink: AppColors.textMuted,
+    );
+  }
+  if (ad.isScheduled) {
+    return (
+      label: l10n.couponScheduled,
+      fill: AppColors.amberFill,
+      ink: AppColors.amberInk,
+    );
+  }
+  if (!ad.isActive) {
+    return (
+      label: l10n.statusDraft,
+      fill: AppColors.neutralFill,
+      ink: AppColors.textMuted,
+    );
+  }
+  return (
+    label: l10n.adLive,
+    fill: AppColors.successFill,
+    ink: AppColors.successInk,
+  );
+}
+
+class _AdStatus extends StatelessWidget {
+  const _AdStatus({required this.ad});
+
+  final BannerItem ad;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _adStatus(context, ad);
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: SoftBadge(label: status.label, fill: status.fill, ink: status.ink),
+    );
+  }
+}
+
+/// The artwork thumbnail every row leads with — a table still has to let an
+/// operator recognise the creative, just without the full-width hero an
+/// image-first card gave it.
+class _AdThumb extends StatelessWidget {
+  const _AdThumb({required this.ad});
+
+  final BannerItem ad;
+  static const double size = 44;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          child: AppNetworkImage(
+            url: ad.posterUrl ?? ad.imageUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+          ),
+        ),
+        if (ad.isVideo)
+          PositionedDirectional(
+            bottom: 1,
+            end: 1,
+            child: Icon(
+              Icons.play_circle_rounded,
+              size: size * 0.4,
+              color: Colors.white,
+              shadows: const [Shadow(blurRadius: 3, color: Colors.black54)],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// `Aug 12 → Sep 1`, or "always on" once neither end is set. Read straight
+/// off the row rather than reformatted per caller, so the table cell and the
+/// mobile subtitle can never disagree about what a blank date means.
+String _adSchedule(BuildContext context, BannerItem ad) {
+  final parts = [
+    if (ad.startsAt != null) DateFormat.MMMd().format(ad.startsAt!),
+    if (ad.endsAt != null) DateFormat.MMMd().format(ad.endsAt!),
+  ];
+  if (parts.isEmpty) return context.l10n.adAlwaysOn;
+  return parts.join(' → ');
+}
+
+/// Web/wide: ads as a real table.
+///
+/// A stack of 16:9 artwork cards was the layout when the whole point of a row
+/// was to look at the creative. It stops being that the moment the question
+/// is "what's running and how is it doing" — a placement, a status, three
+/// numbers and a date range are six facts an operator re-finds in a
+/// different spot per card; columns put every one of them where the eye
+/// already is.
+class _AdTable extends StatelessWidget {
+  const _AdTable({
     required this.ads,
     required this.canManage,
     required this.onToggle,
@@ -241,316 +367,211 @@ class _AdGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = (constraints.maxWidth / 360).floor().clamp(1, 3);
-        const spacing = AppSpace.sm;
-        final width =
-            (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final ad in ads)
-              SizedBox(
-                width: columns == 1 ? constraints.maxWidth : width,
-                child: _AdCard(
-                  ad: ad,
-                  canManage: canManage,
-                  onToggle: () => onToggle(ad),
-                  onDelete: () => onDelete(ad),
+    final l10n = context.l10n;
+    final columns = [
+      WebTableColumn(label: l10n.adManager, flex: 3),
+      WebTableColumn(label: l10n.adPlacement, flex: 2),
+      WebTableColumn(label: l10n.adPerformanceLabel, width: 170),
+      WebTableColumn(label: l10n.scheduleLabel, width: 130),
+      WebTableColumn(label: l10n.statusLabel, width: 104),
+    ];
+
+    return WebTable(
+      columns: columns,
+      trailingWidth: 96,
+      rows: [
+        for (final ad in ads)
+          WebTableRow.aligned(
+            columns: columns,
+            trailingWidth: 96,
+            cells: [
+              Row(
+                children: [
+                  _AdThumb(ad: ad),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          ad.title ?? ad.advertiser ?? '—',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (ad.advertiser != null && ad.title != null)
+                          Text(
+                            ad.advertiser!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                placementLabel(context, ad.placement),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
                 ),
               ),
-          ],
-        );
-      },
+              Text(
+                l10n.adPerformanceCompact(
+                  _compact(ad.impressions),
+                  _compact(ad.clicks),
+                  (ad.clickRate * 100).toStringAsFixed(1),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.mono(12, color: AppColors.textSecondary),
+              ),
+              Text(
+                _adSchedule(context, ad),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              _AdStatus(ad: ad),
+            ],
+            trailing: canManage
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        child: Transform.scale(
+                          scale: 0.78,
+                          child: Switch(
+                            value: ad.isActive,
+                            // An ended campaign cannot be switched back on —
+                            // its end date has passed, and toggling would
+                            // look like it worked while the server kept it
+                            // hidden.
+                            onChanged: ad.hasEnded
+                                ? null
+                                : (_) => onToggle(ad),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.delete,
+                        onPressed: () => onDelete(ad),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
+                        color: AppColors.dangerInk,
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+      ],
     );
   }
 }
 
-String placementLabel(BuildContext context, AdPlacement placement) =>
-    switch (placement) {
-      AdPlacement.homeCarousel => context.l10n.placementHomeCarousel,
-      AdPlacement.homeInline => context.l10n.placementHomeInline,
-      AdPlacement.vendorTop => context.l10n.placementVendorTop,
-      AdPlacement.cart => context.l10n.placementCart,
-      AdPlacement.orderTracking => context.l10n.placementOrderTracking,
-      AdPlacement.interstitial => context.l10n.placementInterstitial,
-    };
-
-class _AdCard extends StatelessWidget {
-  const _AdCard({
+/// Mobile: one row per ad, thumbnail leading, the same facts as the table
+/// condensed into a title and a subtitle line.
+class _AdRow extends StatelessWidget {
+  const _AdRow({
     required this.ad,
     required this.canManage,
+    required this.last,
     required this.onToggle,
     required this.onDelete,
   });
 
   final BannerItem ad;
   final bool canManage;
+  final bool last;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
 
-  /// Why it is or is not running, in one badge. An operator looking at a list
-  /// of ads needs that before anything else.
-  ({String label, Color fill, Color ink}) _status(BuildContext context) {
-    final l10n = context.l10n;
-    if (ad.hasEnded) {
-      return (
-        label: l10n.adEnded,
-        fill: AppColors.neutralFill,
-        ink: AppColors.textMuted,
-      );
-    }
-    if (ad.isScheduled) {
-      return (
-        label: l10n.couponScheduled,
-        fill: AppColors.amberFill,
-        ink: AppColors.amberInk,
-      );
-    }
-    if (!ad.isActive) {
-      return (
-        label: l10n.statusDraft,
-        fill: AppColors.neutralFill,
-        ink: AppColors.textMuted,
-      );
-    }
-    return (
-      label: l10n.adLive,
-      fill: AppColors.successFill,
-      ink: AppColors.successInk,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final status = _status(context);
-    final dates = [
-      if (ad.startsAt != null) DateFormat.yMMMd().format(ad.startsAt!),
-      if (ad.endsAt != null) DateFormat.yMMMd().format(ad.endsAt!),
-    ].join(' → ');
-
+    final dim = !ad.isLive;
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpace.sm),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: last
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.borderSoft)),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 16:9 rather than a fixed 96px strip. Ad artwork is designed to a
-          // ratio, and letterboxing it into a band that changes shape with
-          // the column width made every creative look wrong in the one place
-          // the operator is meant to be judging it.
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                AppNetworkImage(url: ad.posterUrl ?? ad.imageUrl),
-                if (ad.isVideo)
-                  const PositionedDirectional(
-                    top: 8,
-                    start: 8,
-                    child: Icon(
-                      Icons.play_circle_outline_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                PositionedDirectional(
-                  top: 8,
-                  end: 8,
-                  child: SoftBadge(
-                    label: status.label,
-                    fill: status.fill,
-                    ink: status.ink,
-                  ),
-                ),
-              ],
-            ),
+      child: Opacity(
+        opacity: dim ? 0.72 : 1,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 4,
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpace.lg,
-              AppSpace.md,
-              AppSpace.lg,
-              AppSpace.sm,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ad.title ?? ad.advertiser ?? '—',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-                // The advertiser is who is being billed, so it earns its own
-                // line rather than only appearing when there is no title.
-                if (ad.advertiser != null && ad.title != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    ad.advertiser!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpace.md),
-                // Views, taps and tap rate are what an ad manager exists to
-                // report. They used to be one 11.5px muted sentence under the
-                // title — present, but not readable at a glance, which is the
-                // only way anybody actually reads them.
-                Row(
-                  children: [
-                    _AdMetric(
-                      value: _compact(ad.impressions),
-                      label: l10n.adViews,
-                    ),
-                    _AdMetric(value: _compact(ad.clicks), label: l10n.adTaps),
-                    _AdMetric(
-                      value: '${(ad.clickRate * 100).toStringAsFixed(1)}%',
-                      label: l10n.adTapRate,
-                      // A click-through rate is the number worth comparing
-                      // between creatives, so it is the one that is tinted.
-                      tone: ad.clicks > 0 ? AppColors.successInk : null,
-                    ),
-                  ],
-                ),
-                if (dates.isNotEmpty) ...[
-                  const SizedBox(height: AppSpace.sm),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.schedule_rounded,
-                        size: 13,
-                        color: AppColors.textFaint,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          dates,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textFaint,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
+          leading: _AdThumb(ad: ad),
+          title: Text(
+            ad.title ?? ad.advertiser ?? '—',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           ),
-          if (canManage) ...[
-            const Divider(height: 1, color: AppColors.borderSoft),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.sm,
-                vertical: 2,
+          subtitle: Text(
+            [
+              placementLabel(context, ad.placement),
+              l10n.adPerformanceCompact(
+                _compact(ad.impressions),
+                _compact(ad.clicks),
+                (ad.clickRate * 100).toStringAsFixed(1),
               ),
-              child: Row(
-                children: [
-                  // Scaled down: a full-size Switch is a phone control, and
-                  // at this size it was the loudest thing on a card whose
-                  // point is the artwork.
-                  Transform.scale(
-                    scale: 0.8,
-                    child: Switch(
+            ].join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+          trailing: canManage
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Switch(
                       value: ad.isActive,
-                      // An ended campaign cannot be switched back on — its
-                      // end date has passed, and toggling would look like it
-                      // worked while the server kept it hidden.
                       onChanged: ad.hasEnded ? null : (_) => onToggle(),
                     ),
-                  ),
-                  Text(
-                    ad.isActive ? l10n.active : l10n.pausedLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: ad.isActive
-                          ? AppColors.successInk
-                          : AppColors.textMuted,
+                    IconButton(
+                      tooltip: l10n.delete,
+                      onPressed: onDelete,
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.dangerInk,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: l10n.delete,
-                    onPressed: onDelete,
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      size: 19,
-                      color: AppColors.dangerInk,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+                  ],
+                )
+              : _AdStatus(ad: ad),
+        ),
       ),
     );
   }
 }
-
-/// One headline figure in an ad card.
-class _AdMetric extends StatelessWidget {
-  const _AdMetric({required this.value, required this.label, this.tone});
-
-  final String value;
-  final String label;
-  final Color? tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppType.mono(
-              15,
-              weight: FontWeight.w800,
-              color: tone ?? AppColors.ink,
-            ),
-          ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-              color: AppColors.textFaint,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// 12400 -> 12.4k. A view count in the tens of thousands should not push the
 /// two figures beside it off the card.
 String _compact(int value) {

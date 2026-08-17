@@ -88,6 +88,7 @@ class _PromosView extends StatelessWidget {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/promos',
         sections: adminManageWebSections(context),
         pageTitle: l10n.promos,

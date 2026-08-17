@@ -87,11 +87,15 @@ class MenuImportException implements Exception {
 /// Photos in -> structured menu out (extract-menu Edge Function), then a
 /// single vendor_import_menu RPC creates all sections and items at once.
 class MenuImportRepository {
+  /// [vendorId] is checked server-side against `can_extract_menu`, so a
+  /// store whose switch is off cannot extract by calling this directly.
   Future<List<ExtractedCategory>> extractMenu(
+      String vendorId,
       List<({Uint8List bytes, String mimeType})> images) async {
     final response = await supabase.functions.invoke(
       'extract-menu',
       body: {
+        'vendor_id': vendorId,
         'images': [
           for (final image in images)
             {

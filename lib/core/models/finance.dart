@@ -333,6 +333,8 @@ class FinanceOverview extends Equatable {
     this.platformCommission = 0,
     this.platformDeliveryMargin = 0,
     this.platformDiscounts = 0,
+    this.earlySettlementFees = 0,
+    this.platformEarnings = 0,
     this.platformRevenue = 0,
     this.settlements = 0,
     this.deposits = 0,
@@ -374,8 +376,20 @@ class FinanceOverview extends Equatable {
   final double platformDeliveryMargin;
   final double platformDiscounts;
 
-  /// The platform account's own net for the period. Negative while it is
-  /// holding money it owes onward from online orders.
+  /// Charged to a vendor who asked to be paid before the settlement date.
+  final double earlySettlementFees;
+
+  /// What the business actually made: commission, its share of delivery and
+  /// early-settlement fees, less the discounts it funded itself.
+  ///
+  /// This — not [platformRevenue] — is the bottom line to show an operator.
+  final double platformEarnings;
+
+  /// The platform ledger account's net movement, which is a *clearing*
+  /// balance, not a profit: customer money lands in this account and leaves
+  /// again as vendor and driver settlements, so it trends to zero as
+  /// settlements complete. Useful for spotting settlements falling behind
+  /// (the balance drifts away from zero), misleading as a headline figure.
   final double platformRevenue;
 
   final double settlements;
@@ -411,6 +425,8 @@ class FinanceOverview extends Equatable {
     platformCommission: money(map['platform_commission']),
     platformDeliveryMargin: money(map['platform_delivery_margin']),
     platformDiscounts: money(map['platform_discounts']),
+    earlySettlementFees: money(map['early_settlement_fees']),
+    platformEarnings: money(map['platform_earnings']),
     platformRevenue: money(map['platform_revenue']),
     settlements: money(map['settlements']),
     deposits: money(map['deposits']),
@@ -431,6 +447,7 @@ class FinanceOverview extends Equatable {
     mobileWalletRevenue,
     appWalletRevenue,
     cashCollected,
+    platformEarnings,
     platformRevenue,
     driverCashDue,
     vendorPayable,
@@ -517,6 +534,43 @@ class EarlySettlementQuote extends Equatable {
         available: (map['available'] as bool?) ?? false,
         nextScheduledPayout: _time(map['next_scheduled_payout']),
       );
+
+  /// Prices a payout locally, for previewing a fee schedule before it is
+  /// saved. Never used to charge anyone: a real quote comes from the server,
+  /// which reads the payable from the ledger so a client cannot inflate it.
+  ///
+  /// Mirrors `vendor_early_settlement_quote` / `driver_early_settlement_quote`
+  /// line for line, including the refusal at the end. A preview that
+  /// disagreed with the server would be worse than no preview at all.
+  static EarlySettlementQuote preview({
+    required double payable,
+    required double percent,
+    required double min,
+  }) {
+    var fee = payable <= 0
+        ? 0.0
+        : ((payable * percent / 100 * 100).roundToDouble() / 100);
+    if (fee < min) fee = min;
+    // The floor can exceed a small balance, and advancing less than nothing is
+    // not an offer — so there simply isn't one.
+    if (fee >= payable) {
+      return EarlySettlementQuote(
+        payable: payable,
+        feePercent: percent,
+        netPayout: payable,
+      );
+    }
+    return EarlySettlementQuote(
+      payable: payable,
+      fee: fee,
+      feePercent: percent,
+      netPayout: payable - fee,
+      // `fee > 0` is not redundant with the check above: a schedule of 0% with
+      // no floor prices every payout at nothing, and the server treats that as
+      // no offer rather than as a free one.
+      available: payable > 0 && fee > 0,
+    );
+  }
 
   @override
   List<Object?> get props => [payable, fee, netPayout, available];

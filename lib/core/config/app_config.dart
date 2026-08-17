@@ -40,6 +40,24 @@ abstract final class AppConfig {
   static const googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
 
   static bool get hasPlacesSearch => googleMapsApiKey.isNotEmpty;
+
+  /// Web Push certificate ("VAPID key") from Firebase Console → Project
+  /// Settings → Cloud Messaging → Web Push certificates.
+  ///
+  /// Required only for browser notifications; Android and iOS use APNs/FCM
+  /// directly and ignore it. It is a public key by design — it ships in the
+  /// client of every web app that uses web push — but it is supplied at build
+  /// time rather than committed so a fork does not inherit this project's.
+  ///
+  ///   flutter build web --dart-define=FCM_VAPID_KEY=B...
+  ///
+  /// Empty means web push stays off, and the browser is never asked for
+  /// notification permission. That matters: a permission prompt fired on page
+  /// load and then denied is denied *permanently*, so asking before the app
+  /// can actually deliver anything would burn the one chance to ask.
+  static const fcmVapidKey = String.fromEnvironment('FCM_VAPID_KEY');
+
+  static bool get hasWebPush => fcmVapidKey.isNotEmpty;
 }
 
 // flutter pub get

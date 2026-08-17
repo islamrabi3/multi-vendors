@@ -16,6 +16,19 @@ class SupportRepository {
         .toList();
   }
 
+  /// How many threads are waiting on a staff reply, right now.
+  ///
+  /// The messages badge for admin/vendor/driver staff views: unlike a
+  /// customer's own unread count, staff do not have "unread" messages of
+  /// their own — they have a queue. `status` already tracks this correctly
+  /// (`touch_support_thread` reopens a thread the moment its owner posts to
+  /// it), so this is just a count over what the inbox screen already filters
+  /// on with `openOnly: true`.
+  Stream<int> watchOpenThreadCount() => supabase
+      .from('support_threads')
+      .stream(primaryKey: ['id'])
+      .map((rows) => rows.where((r) => r['status'] == 'open').length);
+
   /// The admin inbox. Open threads first, then by activity — an admin works
   /// the queue, and a resolved thread is not the queue.
   Future<List<SupportThread>> fetchAllThreads({bool openOnly = false}) async {

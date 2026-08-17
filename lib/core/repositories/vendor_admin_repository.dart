@@ -29,7 +29,10 @@ class VendorAdminRepository {
         .toList();
   }
 
-  Future<Vendor> updateVendor(String vendorId, Map<String, dynamic> values) async {
+  Future<Vendor> updateVendor(
+    String vendorId,
+    Map<String, dynamic> values,
+  ) async {
     final data = await supabase
         .from('vendors')
         .update(values)
@@ -53,9 +56,10 @@ class VendorAdminRepository {
       'name_ar': (nameAr?.trim().isEmpty ?? true) ? null : nameAr!.trim(),
     };
     final query = id == null
-        ? supabase
-            .from('product_categories')
-            .insert({'vendor_id': vendorId, ...values})
+        ? supabase.from('product_categories').insert({
+            'vendor_id': vendorId,
+            ...values,
+          })
         : supabase.from('product_categories').update(values).eq('id', id);
     final data = await query.select().single();
     return ProductCategory.fromMap(data);
@@ -71,18 +75,24 @@ class VendorAdminRepository {
   /// places is two writes that must agree, and a client that sends only the
   /// moved row leaves the rest of the menu holding stale positions.
   Future<void> reorderCategories(String vendorId, List<String> ids) =>
-      supabase.rpc('vendor_reorder_categories',
-          params: {'p_vendor_id': vendorId, 'p_ids': ids});
+      supabase.rpc(
+        'vendor_reorder_categories',
+        params: {'p_vendor_id': vendorId, 'p_ids': ids},
+      );
 
   Future<void> reorderProducts(String vendorId, List<String> ids) =>
-      supabase.rpc('vendor_reorder_products',
-          params: {'p_vendor_id': vendorId, 'p_ids': ids});
+      supabase.rpc(
+        'vendor_reorder_products',
+        params: {'p_vendor_id': vendorId, 'p_ids': ids},
+      );
 
   /// Copies an item with its option groups and options. The copy arrives
   /// unavailable, directly after its source.
   Future<String> duplicateProduct(String productId) async {
-    final id = await supabase
-        .rpc('vendor_duplicate_product', params: {'p_product_id': productId});
+    final id = await supabase.rpc(
+      'vendor_duplicate_product',
+      params: {'p_product_id': productId},
+    );
     return id as String;
   }
 
@@ -93,11 +103,14 @@ class VendorAdminRepository {
     required String? categoryId,
     required bool available,
   }) async {
-    final count = await supabase.rpc('vendor_set_section_availability', params: {
-      'p_vendor_id': vendorId,
-      'p_category_id': categoryId,
-      'p_available': available,
-    });
+    final count = await supabase.rpc(
+      'vendor_set_section_availability',
+      params: {
+        'p_vendor_id': vendorId,
+        'p_category_id': categoryId,
+        'p_available': available,
+      },
+    );
     return (count as num?)?.toInt() ?? 0;
   }
 
@@ -105,7 +118,8 @@ class VendorAdminRepository {
   Future<void> setProductCategory(String productId, String? categoryId) =>
       supabase
           .from('products')
-          .update({'category_id': categoryId}).eq('id', productId);
+          .update({'category_id': categoryId})
+          .eq('id', productId);
 
   /// Sets a product's stock to an exact count, or moves it by a delta.
   ///
@@ -152,8 +166,63 @@ class VendorAdminRepository {
   Future<void> deleteProduct(String id) =>
       supabase.from('products').delete().eq('id', id);
 
-  Future<void> setProductAvailability(String id, bool isAvailable) =>
-      supabase.from('products').update({'is_available': isAvailable}).eq('id', id);
+  /// Clears out the orphan bucket in one write.
+  ///
+  /// Items whose section was deleted land in "uncategorised", and there was no
+  /// way to act on that group as a group — a store left with thirty orphans
+  /// after tidying its menu had to delete them one confirmation at a time.
+  ///
+  /// Takes the ids the vendor is actually looking at rather than re-deriving
+  /// "everything with a null section" server-side, so the delete cannot reach
+  /// past what was on screen. `vendor_id` is pinned as well, so a stale id from
+  /// another store is a no-op rather than a cross-tenant delete; RLS refuses it
+  /// regardless.
+  Future<void> deleteProducts(String vendorId, List<String> ids) async {
+    if (ids.isEmpty) return;
+    await supabase
+        .from('products')
+        .delete()
+        .eq('vendor_id', vendorId)
+        .inFilter('id', ids);
+  }
+
+  /// Files the same group under a section instead of deleting it — the
+  /// non-destructive way out of the orphan bucket.
+  Future<void> moveProducts(
+    String vendorId,
+    List<String> ids,
+    String? categoryId,
+  ) async {
+    if (ids.isEmpty) return;
+    await supabase
+        .from('products')
+        .update({'category_id': categoryId})
+        .eq('vendor_id', vendorId)
+        .inFilter('id', ids);
+  }
+
+  /// Marks a specific set of items available or sold out.
+  ///
+  /// `setSectionAvailability` cannot express this: its `null` category means
+  /// "the whole menu", so asking it for the orphan bucket silently applied to
+  /// every item the store sells.
+  Future<void> setProductsAvailability(
+    String vendorId,
+    List<String> ids,
+    bool available,
+  ) async {
+    if (ids.isEmpty) return;
+    await supabase
+        .from('products')
+        .update({'is_available': available})
+        .eq('vendor_id', vendorId)
+        .inFilter('id', ids);
+  }
+
+  Future<void> setProductAvailability(String id, bool isAvailable) => supabase
+      .from('products')
+      .update({'is_available': isAvailable})
+      .eq('id', id);
 
   Future<ProductOptionGroup> saveOptionGroup({
     required String productId,
@@ -203,7 +272,11 @@ class VendorAdminRepository {
     return supabase.storage.from(bucket).getPublicUrl(path);
   }
 
-  Future<Vendor> toggleBusyMode(String vendorId, bool isBusy, {int extraPrepMinutes = 15}) async {
+  Future<Vendor> toggleBusyMode(
+    String vendorId,
+    bool isBusy, {
+    int extraPrepMinutes = 15,
+  }) async {
     return updateVendor(vendorId, {
       'is_busy': isBusy,
       'extra_prep_minutes': isBusy ? extraPrepMinutes : 0,
@@ -226,8 +299,13 @@ class VendorAdminRepository {
   /// it the upsert conflicts on the primary key instead — never matches, and
   /// so becomes a plain insert that trips the unique index the second time a
   /// day is edited.
-  Future<void> updateSchedule(String vendorId, int dayOfWeek, String openTime,
-      String closeTime, bool isClosed) async {
+  Future<void> updateSchedule(
+    String vendorId,
+    int dayOfWeek,
+    String openTime,
+    String closeTime,
+    bool isClosed,
+  ) async {
     await supabase.from('vendor_schedules').upsert({
       'vendor_id': vendorId,
       'day_of_week': dayOfWeek,
@@ -260,7 +338,6 @@ class VendorAdminRepository {
     return VendorSettlement.fromMap((data as Map).cast<String, dynamic>());
   }
 }
-
 
 /// One store's commercial position for a period.
 class VendorSettlement {

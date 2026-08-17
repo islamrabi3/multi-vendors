@@ -9,6 +9,8 @@ import '../../../core/repositories/driver_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/messages_button.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/ui_kit.dart';
 import '../../auth/auth_cubit.dart';
@@ -383,6 +385,9 @@ class _Header extends StatelessWidget {
                 inactiveThumbColor: Colors.white,
                 inactiveTrackColor: AppColors.onDarkTrack,
               ),
+              const SizedBox(width: 4),
+              const MessagesButton(compact: true, dark: true),
+              const NotificationBell(compact: true, dark: true),
               IconButton(
                 tooltip: context.l10n.settings,
                 onPressed: () => _showDriverControls(context),
@@ -451,8 +456,9 @@ class _PoolCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: AppShadows.card,
+        // A 1px border and a drop shadow on the same card is the "ghost card"
+        // look; the border alone reads better on the pool's canvas.
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,6 +502,8 @@ class _PoolCard extends StatelessWidget {
                     ),
                     Text(
                       '${context.l10n.ready} · ${DateFormat('h:mm a').format(order.createdAt)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11.5,
                         color: AppColors.textMuted,
@@ -504,25 +512,40 @@ class _PoolCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatMoney(order.deliveryFee),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: AppColors.success,
+              const SizedBox(width: AppSpace.sm),
+              // Capped: this column took whatever width it wanted, so a
+              // four-figure fee or a longer translation of "payout" squeezed
+              // the store name beside it down to an ellipsis.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 110),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Text(
+                        formatMoney(order.deliveryFee),
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: AppColors.success,
+                        ),
+                      ),
                     ),
-                  ),
-                  Text(
-                    context.l10n.payout,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      color: AppColors.textFaint,
+                    Text(
+                      context.l10n.payout,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: AppColors.textFaint,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -565,12 +588,22 @@ class _PoolCard extends StatelessWidget {
               ),
             ),
             onPressed: enabled ? onClaim : null,
+            // The cash variant is three pieces plus an amount, and in Arabic
+            // it ran past a fixed-height button and was simply cut off — the
+            // driver could not read what they were about to collect. Scaling
+            // down keeps the whole label legible at any width instead.
             child: claiming
                 ? const ButtonSpinner()
-                : Text(
-                    order.isCod
-                        ? '${context.l10n.claimCollect} ${formatMoney(order.total)} ${context.l10n.cash}'
-                        : context.l10n.claimDelivery,
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      order.isCod
+                          ? '${context.l10n.claimCollect} '
+                                '${formatMoney(order.total)} '
+                                '${context.l10n.cash}'
+                          : context.l10n.claimDelivery,
+                      maxLines: 1,
+                    ),
                   ),
           ),
         ],

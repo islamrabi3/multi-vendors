@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/tokens.dart';
 import '../../../core/widgets/web/web_auth_frame.dart';
 import '../../../core/utils/platform_capabilities.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/common.dart';
 import '../auth_cubit.dart';
@@ -21,13 +22,51 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _resetEmail = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _resetEmail.dispose();
     super.dispose();
+  }
+
+  /// Collects an address and fires the reset email. Always shows the same
+  /// confirmation regardless of whether the address has an account — see
+  /// [AuthRepository.sendPasswordResetEmail] for why.
+  Future<void> _forgotPassword() async {
+    final l10n = context.l10n;
+    _resetEmail.text = _email.text.trim();
+
+    final sent = await showFormDialog<bool>(
+      context: context,
+      title: l10n.resetPasswordTitle,
+      subtitle: l10n.resetPasswordSubtitle,
+      icon: Icons.lock_reset_rounded,
+      contentBuilder: (_) => TextField(
+        controller: _resetEmail,
+        autofocus: true,
+        keyboardType: TextInputType.emailAddress,
+        decoration: InputDecoration(
+          labelText: l10n.email,
+          hintText: l10n.saraemailcom,
+        ),
+      ),
+      submitLabel: l10n.sendResetLink,
+      cancelLabel: l10n.cancel,
+      onSubmit: (_) async {
+        final email = _resetEmail.text.trim();
+        if (!email.contains('@')) throw Exception(l10n.enterValidEmail);
+        await context.read<AuthCubit>().sendPasswordReset(email);
+        return true;
+      },
+    );
+
+    if (sent == true && mounted) {
+      showSnack(context, l10n.resetLinkSent);
+    }
   }
 
   @override
@@ -46,26 +85,32 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo lockup — the mark and the wordmark, drawn from the
-                  // one definition in `brand_logo.dart` so the arch here and
-                  // the arch on the splash cannot drift apart.
-                  const Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: KitchenInLockup(markSize: 46, fontSize: 30),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Welcome Text
-                  Text(
-                    context.l10n.welcomeBack,
-                    style: AppType.display(32, color: AppColors.ink),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    context.l10n.logInToPickUpWhereYouLeftOff,
-                    style: TextStyle(fontSize: 14, color: AppColors.textMuted),
-                  ),
-                  const SizedBox(height: 30),
+                  // On web the brand panel beside this already shows the
+                  // lockup and the welcome, so repeating them here printed
+                  // the same three lines twice on one screen.
+                  if (!webWide) ...[
+                    // Logo lockup — the mark and the wordmark, drawn from the
+                    // one definition in `brand_logo.dart` so the arch here and
+                    // the arch on the splash cannot drift apart.
+                    const Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: KitchenInLockup(markSize: 46, fontSize: 30),
+                    ),
+                    const SizedBox(height: 40),
+                    Text(
+                      context.l10n.welcomeBack,
+                      style: AppType.display(32, color: AppColors.ink),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      context.l10n.logInToPickUpWhereYouLeftOff,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
 
                   // Email Field
                   Text(
@@ -85,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       fillColor: Colors.white,
                     ),
                     validator: (v) => (v == null || !v.contains('@'))
-                        ? 'Enter a valid email'
+                        ? context.l10n.enterValidEmail
                         : null,
                   ),
                   const SizedBox(height: 13),
@@ -108,22 +153,29 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintText: context.l10n.emptyString,
                       hintStyle: const TextStyle(letterSpacing: 1.5),
                       fillColor: Colors.white,
-                      suffixIcon: TextButton(
+                      // An icon reads at a glance in either language; the old
+                      // "Show"/"Hide" button was a literal English word baked
+                      // into the widget tree — never translated, regardless of
+                      // the app's language.
+                      suffixIcon: IconButton(
                         onPressed: () => setState(
                           () => _obscurePassword = !_obscurePassword,
                         ),
-                        child: Text(
-                          _obscurePassword ? 'Show' : 'Hide',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
+                        tooltip: _obscurePassword
+                            ? context.l10n.showPassword
+                            : context.l10n.hidePassword,
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 20,
+                          color: AppColors.textMuted,
                         ),
                       ),
                     ),
-                    validator: (v) =>
-                        (v == null || v.length < 6) ? 'Min 6 characters' : null,
+                    validator: (v) => (v == null || v.length < 6)
+                        ? context.l10n.passwordTooShort
+                        : null,
                   ),
 
                   // Forgot Password
@@ -131,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: _forgotPassword,
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,

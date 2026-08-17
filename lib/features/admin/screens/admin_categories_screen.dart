@@ -127,6 +127,7 @@ class _CategoriesViewState extends State<_CategoriesView> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/categories',
         sections: adminManageWebSections(context),
         pageTitle: l10n.categoriesTab,

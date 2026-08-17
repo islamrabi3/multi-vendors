@@ -376,6 +376,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/users',
         sections: adminManageWebSections(context),
         pageTitle: l10n.users,

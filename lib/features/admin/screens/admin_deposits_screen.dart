@@ -127,6 +127,7 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/deposits',
         sections: adminManageWebSections(context),
         pageTitle: l10n.depositsAwaitingReview,

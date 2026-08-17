@@ -152,6 +152,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/sales-reports',
         sections: adminManageWebSections(context),
         pageTitle: l10n.salesAndFinancialReports,
@@ -323,6 +324,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
               ],
               payout: item.netPayout,
               payoutColor: AppColors.successInk,
+              payoutLabel: l10n.netPayout,
             ),
         ],
       ),
@@ -364,6 +366,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
               ],
               payout: item.netDriverPayout,
               payoutColor: AppColors.primary,
+              payoutLabel: l10n.netPayout,
             ),
         ],
       ),
@@ -606,12 +609,19 @@ class _PartyCard extends StatelessWidget {
     required this.lines,
     required this.payout,
     required this.payoutColor,
+    required this.payoutLabel,
   });
 
   final String name;
   final List<String> lines;
   final double payout;
   final Color payoutColor;
+
+  /// What [payout] actually is. Every card on both the vendor and the driver
+  /// tab used to print "Net to platform" underneath a number that was neither
+  /// — a vendor's payout and a driver's payout are money leaving the
+  /// platform, the opposite of what the caption claimed.
+  final String payoutLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -668,7 +678,7 @@ class _PartyCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                context.l10n.netMargin,
+                payoutLabel,
                 style: const TextStyle(
                   fontSize: 10,
                   color: AppColors.textFaint,

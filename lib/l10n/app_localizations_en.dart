@@ -533,7 +533,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get platformNetLedger => 'Platform net (ledger)';
+  String get platformEarnings => 'Platform earnings';
+
+  @override
+  String get earlySettlementFees => 'Early settlement fees';
 
   @override
   String get signupWebSubhead =>
@@ -654,6 +657,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loadMore => 'Load more';
+
+  @override
+  String get proofPhotoCancelled =>
+      'No photo taken — the delivery was not confirmed.';
+
+  @override
+  String get uploadingProofPhoto => 'Uploading photo…';
+
+  @override
+  String get deliverWithoutPhoto => 'Deliver without photo';
+
+  @override
+  String sendTipAmount(String amount) {
+    return 'Send $amount tip';
+  }
+
+  @override
+  String get aiMenuImport => 'AI menu import';
+
+  @override
+  String get aiMenuImportOn => 'This store can scan its own menu photos.';
+
+  @override
+  String get aiMenuImportOff => 'Only admins can import this store’s menu.';
+
+  @override
+  String get aiMenuImportHint => 'Scan photos of your menu';
+
+  @override
+  String get newOrderTitle => 'New order';
+
+  @override
+  String get viewOrder => 'View order';
+
+  @override
+  String itemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get mobileWallet => 'Mobile wallet';
@@ -3746,7 +3793,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get perMonthSuffix => '/mo';
 
   @override
-  String get driverShareLabel => 'Driver share';
+  String get driverShareLabel => 'Driver share (%)';
 
   @override
   String get platformShareLabel => 'Platform share';
@@ -4228,4 +4275,192 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resolutionReply => 'Resolution reply';
+
+  @override
+  String get earlyPayoutFeeTitle => 'Early payout fee';
+
+  @override
+  String earlyPayoutFeeSummary(String percent, String min) {
+    return '$percent% of the payable, minimum $min';
+  }
+
+  @override
+  String get earlyPayoutFeeScope =>
+      'Applies to stores and drivers. New requests only — anything already pending keeps the fee it was quoted.';
+
+  @override
+  String get feePercentLabel => 'Percent of payable (%)';
+
+  @override
+  String get feeMinLabel => 'Minimum fee';
+
+  @override
+  String feePreview(String amount, String fee, String net) {
+    return 'On $amount: fee $fee, they receive $net';
+  }
+
+  @override
+  String get feeUpdated => 'Early payout fee updated';
+
+  @override
+  String get invalidFeePercent => 'Enter a percent between 0 and 100.';
+
+  @override
+  String get invalidFeeMin => 'The minimum fee cannot be negative.';
+
+  @override
+  String deleteUncategorizedAction(int count) {
+    return 'Delete all $count uncategorized items';
+  }
+
+  @override
+  String moveUncategorizedAction(int count) {
+    return 'Move all $count into a section';
+  }
+
+  @override
+  String deleteUncategorizedConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Permanently delete these $count items?',
+      one: 'Permanently delete this item?',
+    );
+    return '$_temp0 They are removed from the menu — unlike deleting a section, which keeps its items.';
+  }
+
+  @override
+  String moveItemsToSection(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Move $count items to',
+      one: 'Move 1 item to',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String itemsDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items deleted',
+      one: '1 item deleted',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get selectItems => 'Select items';
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String selectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count selected',
+      one: '1 selected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteItemsConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Permanently delete these $count items?',
+      one: 'Permanently delete this item?',
+    );
+    return '$_temp0 This cannot be undone.';
+  }
+
+  @override
+  String showingOfTotal(int shown, int total) {
+    return 'Showing $shown of $total items';
+  }
+
+  @override
+  String get driverShareTitle => 'Driver delivery-fee share';
+
+  @override
+  String driverShareSummary(String driverPercent, String platformPercent) {
+    return 'Driver keeps $driverPercent% · platform keeps $platformPercent%';
+  }
+
+  @override
+  String get driverShareScope =>
+      'Applies to future deliveries only — orders already settled keep the split they were settled at.';
+
+  @override
+  String platformShareResult(String percent) {
+    return 'Platform keeps $percent%';
+  }
+
+  @override
+  String get driverShareUpdated => 'Driver share updated';
+
+  @override
+  String get enterValidEmail => 'Enter a valid email';
+
+  @override
+  String get passwordTooShort => 'Must be at least 6 characters';
+
+  @override
+  String get showPassword => 'Show password';
+
+  @override
+  String get hidePassword => 'Hide password';
+
+  @override
+  String get resetPasswordTitle => 'Reset your password';
+
+  @override
+  String get resetPasswordSubtitle => 'We will email a link to set a new one.';
+
+  @override
+  String get sendResetLink => 'Send link';
+
+  @override
+  String get resetLinkSent =>
+      'If that email has an account, a reset link is on its way';
+
+  @override
+  String get setNewPasswordTitle => 'Set a new password';
+
+  @override
+  String get setNewPasswordSubtitle => 'Choose a password for your account.';
+
+  @override
+  String get newPassword => 'New password';
+
+  @override
+  String get confirmNewPassword => 'Confirm new password';
+
+  @override
+  String get passwordsDoNotMatch => 'Passwords do not match';
+
+  @override
+  String get setNewPasswordAction => 'Set password';
+
+  @override
+  String get financialSummary => 'Financial summary';
+
+  @override
+  String get adPerformanceLabel => 'Performance';
+
+  @override
+  String adPerformanceCompact(String views, String taps, String rate) {
+    return '$views · $taps taps · $rate%';
+  }
+
+  @override
+  String get scheduleLabel => 'Schedule';
+
+  @override
+  String get adAlwaysOn => 'Always on';
 }

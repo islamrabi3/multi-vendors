@@ -198,6 +198,7 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
       return DefaultTabController(
         length: 2,
         child: WebPageChrome(
+          forStaff: true,
           activeId: 'manage:/admin-app/announcements',
           sections: adminManageWebSections(context),
           pageTitle: l10n.announcements,

@@ -9,7 +9,6 @@ import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/finance_widgets.dart';
-import '../../../core/widgets/responsive_list.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 import '../../../core/widgets/web/adaptive_sheet.dart';
@@ -40,17 +39,22 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   // used after being disposed", which then took the whole render pass with it.
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
+  final _feePercentController = TextEditingController();
+  final _feeMinController = TextEditingController();
 
   @override
   void dispose() {
     _amountController.dispose();
     _referenceController.dispose();
+    _feePercentController.dispose();
+    _feeMinController.dispose();
     super.dispose();
   }
 
   List<PartyBalance> _drivers = const [];
   List<PartyBalance> _vendors = const [];
   List<Settlement> _pending = const [];
+  ({double percent, double min})? _fee;
   bool _loading = true;
   String? _error;
   String _driverQuery = '';
@@ -73,6 +77,12 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         _repository.vendorBalances(),
         _repository.pendingSettlementRequests(),
       ]);
+      // Not in the batch above: an admin who can settle but whose role
+      // predates `finance.settle` still gets a working screen, just without
+      // the fee control, rather than an error page over the whole tab.
+      final fee = await _repository.earlySettlementFeeConfig().then<
+        ({double percent, double min})?
+      >((v) => v, onError: (_) => null);
       if (!mounted) return;
       // Early ones cost the party a fee specifically for faster review, so
       // they lead the queue rather than sitting wherever their timestamp
@@ -83,6 +93,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         _drivers = results[0] as List<PartyBalance>;
         _vendors = results[1] as List<PartyBalance>;
         _pending = pending;
+        _fee = fee;
         _loading = false;
       });
     } catch (error) {
@@ -289,6 +300,144 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
     );
   }
 
+  /// Sets what an early payout costs, for stores and drivers alike.
+  ///
+  /// Both fields matter together, so they are edited together: the fee is
+  /// `percent` of the payable but never less than `min`, which is what stops a
+  /// 1.5% cut of EGP 40 from being worth less than the transfer that carries
+  /// it. The preview line exists because those two rules interact — on small
+  /// balances the floor is the fee, and the percent is doing nothing.
+  Future<void> _editFee() async {
+    final l10n = context.l10n;
+    final current = _fee;
+    if (current == null) return;
+
+    _feePercentController.text = trimZeros(current.percent);
+    _feeMinController.text = trimZeros(current.min);
+
+    final saved = await showFormDialog<bool>(
+      context: context,
+      title: l10n.earlyPayoutFeeTitle,
+      subtitle: l10n.earlyPayoutFeeScope,
+      icon: Icons.bolt_rounded,
+      contentBuilder: (rebuild) {
+        final percent = double.tryParse(_feePercentController.text.trim());
+        final min = double.tryParse(_feeMinController.text.trim());
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _feePercentController,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              onChanged: (_) => rebuild(),
+              decoration: InputDecoration(
+                labelText: l10n.feePercentLabel,
+                suffixText: '%',
+              ),
+            ),
+            const SizedBox(height: AppSpace.md),
+            TextField(
+              controller: _feeMinController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              onChanged: (_) => rebuild(),
+              decoration: InputDecoration(labelText: l10n.feeMinLabel),
+            ),
+            if (percent != null && min != null && percent >= 0 && min >= 0) ...[
+              const SizedBox(height: AppSpace.md),
+              _FeePreview(percent: percent, min: min),
+            ],
+          ],
+        );
+      },
+      submitLabel: l10n.save,
+      cancelLabel: l10n.cancel,
+      onSubmit: (_) async {
+        final percent = double.tryParse(_feePercentController.text.trim());
+        final min = double.tryParse(_feeMinController.text.trim());
+        if (percent == null || percent < 0 || percent > 100) {
+          throw Exception(l10n.invalidFeePercent);
+        }
+        if (min == null || min < 0) throw Exception(l10n.invalidFeeMin);
+        final updated = await _repository.setEarlySettlementFee(
+          percent: percent,
+          min: min,
+        );
+        if (mounted) setState(() => _fee = updated);
+        return true;
+      },
+    );
+
+    if (saved == true && mounted) showSnack(context, l10n.feeUpdated);
+  }
+
+  Widget _feeStrip() {
+    final l10n = context.l10n;
+    final fee = _fee;
+    if (fee == null) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppSpace.gutter,
+        AppSpace.md,
+        AppSpace.gutter,
+        0,
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.bolt_rounded, size: 18, color: AppColors.amberInk),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.earlyPayoutFeeTitle, style: AppType.heading(14)),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.earlyPayoutFeeSummary(
+                    trimZeros(fee.percent),
+                    formatMoneyCompact(fee.min),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          TextButton.icon(
+            onPressed: _editFee,
+            icon: const Icon(Icons.tune_rounded, size: 16),
+            label: Text(l10n.edit),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -335,6 +484,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
       return DefaultTabController(
         length: 3,
         child: WebPageChrome(
+          forStaff: true,
           activeId: 'manage:/admin-app/settlements',
           sections: adminManageWebSections(context),
           pageTitle: l10n.settlementsTitle,
@@ -360,6 +510,13 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   }
 
   Widget _requestsList() {
+    // The fee sits above the queue it prices, not on a settings screen three
+    // clicks away: this is where an operator sees what early payouts are
+    // costing people and is therefore where they would think to change it.
+    return Column(children: [_feeStrip(), Expanded(child: _requestsQueue())]);
+  }
+
+  Widget _requestsQueue() {
     final l10n = context.l10n;
     return RefreshIndicator(
       color: AppColors.primary,
@@ -375,22 +532,11 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
                 ),
               ],
             )
-          : AppBreakpoints.isWebWide(context)
-          ? ResponsiveCardList(
-              // Natural heights for the same reason as the party grid: an
-              // early-payout request carries a fee breakdown that an ordinary
-              // one does not, so a single fixed height is wrong for one of
-              // the two shapes whichever number is chosen.
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.gutter,
-                AppSpace.md,
-                AppSpace.gutter,
-                AppSpace.xxl,
-              ),
-              itemExtent: 380,
-              itemCount: _pending.length,
-              itemBuilder: (context, i) => _requestCard(_pending[i]),
-            )
+          // A single column at every width, on request: a request queue is
+          // read top to bottom in priority order (early payouts first — see
+          // the sort in `_load`), which a multi-column grid breaks by
+          // scattering that order across rows. Capped and centred on wide
+          // windows so a 380px card is not stretched across a 1300px monitor.
           : ListView.separated(
               padding: EdgeInsets.fromLTRB(
                 AppSpace.gutter,
@@ -400,8 +546,21 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
               ),
               itemCount: _pending.length,
               separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
-              itemBuilder: (context, i) => _requestCard(_pending[i]),
+              itemBuilder: (context, i) => _centered(_requestCard(_pending[i])),
             ),
+    );
+  }
+
+  /// Caps a list row at a readable card width and centres it, so a single
+  /// column stays a column of cards rather than one card stretched full width
+  /// on a wide console window.
+  Widget _centered(Widget child) {
+    if (!AppBreakpoints.isWebWide(context)) return child;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
+        child: child,
+      ),
     );
   }
 
@@ -549,25 +708,11 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
                       ),
                     ],
                   )
-                : AppBreakpoints.isWebWide(context)
-                ? ResponsiveCardList(
-                    // Was a GridView with a hand-set `mainAxisExtent`, which
-                    // meant every change to the card had to be paid for in
-                    // pixels — and one already shipped as a 10px overflow
-                    // because driver cards carry an extra breakdown row.
-                    // ResponsiveCardList wraps to natural heights, so the
-                    // card can grow without anyone recomputing a constant.
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpace.gutter,
-                      AppSpace.md,
-                      AppSpace.gutter,
-                      AppSpace.xxl,
-                    ),
-                    itemExtent: 380,
-                    itemCount: parties.length,
-                    itemBuilder: (context, i) =>
-                        _partyCard(ownerType, isDriver, parties[i]),
-                  )
+                // A single column at every width, on request: whoever is owed
+                // most leads (see the sort above this method), which a
+                // multi-column grid would break into an out-of-order
+                // left-to-right, top-to-bottom read. Capped and centred on
+                // wide windows rather than stretched full width.
                 : ListView.separated(
                     padding: EdgeInsets.fromLTRB(
                       AppSpace.gutter,
@@ -579,7 +724,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
                     separatorBuilder: (_, _) =>
                         const SizedBox(height: AppSpace.sm),
                     itemBuilder: (context, i) =>
-                        _partyCard(ownerType, isDriver, parties[i]),
+                        _centered(_partyCard(ownerType, isDriver, parties[i])),
                   ),
           ),
         ],
@@ -739,4 +884,68 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
           ],
         ),
       );
+}
+
+/// What the entered fee schedule would actually cost, at three sizes.
+///
+/// The percent and the floor interact, and the interaction is the whole point
+/// of having two fields: on a small balance the floor is the fee and the
+/// percent is irrelevant, on a large one the reverse. Three worked examples
+/// show where the crossover falls without the operator doing the arithmetic —
+/// and show it before they save, not after a store complains.
+class _FeePreview extends StatelessWidget {
+  const _FeePreview({required this.percent, required this.min});
+
+  final double percent;
+  final double min;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: AppColors.neutralFill,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final payable in const [500.0, 2000.0, 10000.0])
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Builder(
+                builder: (_) {
+                  final q = EarlySettlementQuote.preview(
+                    payable: payable,
+                    percent: percent,
+                    min: min,
+                  );
+                  return Text(
+                    q.available
+                        ? l10n.feePreview(
+                            formatMoneyCompact(payable),
+                            formatMoneyCompact(q.fee),
+                            formatMoneyCompact(q.netPayout),
+                          )
+                        // Not an error: the floor simply exceeds the balance,
+                        // so nobody with this little owed is offered the deal.
+                        : '${formatMoneyCompact(payable)} — ${l10n.unavailable}',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: q.available
+                          ? AppColors.textSecondary
+                          : AppColors.textFaint,
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

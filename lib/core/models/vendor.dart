@@ -58,6 +58,7 @@ class Vendor extends Equatable {
     required this.isActive,
     required this.approvalStatus,
     required this.autoAccept,
+    this.aiMenuEnabled = false,
     required this.deliveryFee,
     required this.minOrderAmount,
     required this.avgPrepMinutes,
@@ -117,6 +118,11 @@ class Vendor extends Equatable {
   /// Platform approval lifecycle: 'pending' | 'active' | 'suspended'.
   final String approvalStatus;
   final bool autoAccept;
+
+  /// Whether this store may run AI menu extraction itself. Off by default —
+  /// each run costs a model call per photo — and switched on per store by an
+  /// admin. Admins can always import on a store's behalf regardless.
+  final bool aiMenuEnabled;
 
   bool get isPending => approvalStatus == 'pending';
   bool get isApproved => approvalStatus == 'active';
@@ -188,6 +194,7 @@ class Vendor extends Equatable {
     isActive: (map['is_active'] as bool?) ?? true,
     approvalStatus: (map['approval_status'] as String?) ?? 'active',
     autoAccept: (map['auto_accept'] as bool?) ?? false,
+    aiMenuEnabled: (map['ai_menu_enabled'] as bool?) ?? false,
     deliveryFee: ((map['delivery_fee'] as num?) ?? 0).toDouble(),
     minOrderAmount: ((map['min_order_amount'] as num?) ?? 0).toDouble(),
     avgPrepMinutes: ((map['avg_prep_minutes'] as num?) ?? 20).toInt(),
@@ -217,6 +224,7 @@ class Vendor extends Equatable {
     isActive,
     approvalStatus,
     autoAccept,
+    aiMenuEnabled,
     deliveryFee,
     minOrderAmount,
     avgPrepMinutes,

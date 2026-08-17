@@ -63,23 +63,27 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Center(child: KitchenInMark(size: 52)),
-            const SizedBox(height: AppSpace.xl),
-            Text(
-              l10n.addYourPhoneTitle,
-              textAlign: TextAlign.center,
-              style: AppType.display(24, color: AppColors.ink),
-            ),
-            const SizedBox(height: AppSpace.sm),
-            Text(
-              l10n.addYourPhoneBody,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13.5,
-                height: 1.5,
-                color: AppColors.textMuted,
+            // The brand panel carries the mark and the ask on web; repeating
+            // them here showed the same heading twice on one screen.
+            if (!AppBreakpoints.isWebWide(context)) ...[
+              const Center(child: KitchenInMark(size: 52)),
+              const SizedBox(height: AppSpace.xl),
+              Text(
+                l10n.addYourPhoneTitle,
+                textAlign: TextAlign.center,
+                style: AppType.display(24, color: AppColors.ink),
               ),
-            ),
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                l10n.addYourPhoneBody,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpace.xl),
             TextFormField(
               controller: _phone,

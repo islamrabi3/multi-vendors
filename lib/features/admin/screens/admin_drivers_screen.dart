@@ -301,6 +301,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
 
     if (webWide) {
       return WebPageChrome(
+        forStaff: true,
         activeId: 'manage:/admin-app/drivers',
         sections: adminManageWebSections(context),
         pageTitle: l10n.driverApprovals,

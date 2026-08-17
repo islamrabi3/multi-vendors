@@ -15,6 +15,7 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import 'package:multi_vendor/app/locale_cubit.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
 import '../vendor_shell.dart' show VendorWebNav;
+import 'menu_import_screen.dart';
 
 class VendorSettingsScreen extends StatefulWidget {
   const VendorSettingsScreen({super.key});
@@ -612,6 +613,28 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
               ),
             ]),
             const SizedBox(height: 20),
+
+            // Only when an admin has granted it. Hiding rather than
+            // disabling: a store that was never given the tool has no way to
+            // grant it to itself, so a permanently dead row would only raise
+            // a question support has to answer.
+            if (vendor.aiMenuEnabled) ...[
+              _sectionLabel(context.l10n.menu),
+              _card([
+                _navRow(
+                  Icons.document_scanner_outlined,
+                  context.l10n.aiMenuImport,
+                  context.l10n.aiMenuImportHint,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MenuImportScreen(vendorId: vendor.id),
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 20),
+            ],
 
             _sectionLabel(context.l10n.reviews),
             _card([

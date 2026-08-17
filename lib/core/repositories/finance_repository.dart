@@ -431,6 +431,45 @@ class FinanceRepository {
     return (fee: money(map['fee']), netPayout: money(map['net_payout']));
   }
 
+  /// The fee schedule every early payout is quoted against, for both stores
+  /// and drivers.
+  Future<({double percent, double min})> earlySettlementFeeConfig() async {
+    final data = await supabase.rpc('admin_early_settlement_fee');
+    final map = (data as Map).cast<String, dynamic>();
+    return (percent: money(map['fee_percent']), min: money(map['fee_min']));
+  }
+
+  /// Changes that schedule. Applies to future quotes only — a request already
+  /// pending was priced when it was opened and keeps the fee it was given.
+  Future<({double percent, double min})> setEarlySettlementFee({
+    required double percent,
+    required double min,
+  }) async {
+    final data = await supabase.rpc(
+      'admin_set_early_settlement_fee',
+      params: {'p_percent': percent, 'p_min': min},
+    );
+    final map = (data as Map).cast<String, dynamic>();
+    return (percent: money(map['fee_percent']), min: money(map['fee_min']));
+  }
+
+  /// The platform-wide delivery-fee split every settlement is priced at —
+  /// what a driver keeps, out of 100.
+  Future<double> driverShareConfig() async {
+    final data = await supabase.rpc('admin_driver_share_config');
+    return money((data as Map)['driver_share']);
+  }
+
+  /// Changes that split. Orders already settled keep the split they were
+  /// settled at — this only prices deliveries from here on.
+  Future<double> setDriverShare(double percent) async {
+    final data = await supabase.rpc(
+      'admin_set_driver_share',
+      params: {'p_share': percent},
+    );
+    return money((data as Map)['driver_share']);
+  }
+
   /// Splits any delivered orders that were missed — an outage, or orders that
   /// predate the ledger. Idempotent, so running it twice is harmless.
   Future<int> backfillSettlements() async {

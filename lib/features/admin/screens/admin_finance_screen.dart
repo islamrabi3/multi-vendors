@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/finance.dart';
 import '../../../core/repositories/finance_repository.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
@@ -36,9 +38,17 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
   CashReconciliation? _reconciliation;
   ({bool balanced, double net, int unsettledOrders})? _integrity;
   int _pendingRequests = 0;
+  double? _driverShare;
   bool _loading = true;
   String? _error;
   _Period _period = _Period.month;
+  final _driverShareController = TextEditingController();
+
+  @override
+  void dispose() {
+    _driverShareController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -69,6 +79,13 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         _repository.integrityCheck(),
         _repository.pendingSettlementRequests(),
       ]);
+      // A separate, non-fatal fetch: an admin whose role can view reports but
+      // not adjust finance still gets a working screen, just without the
+      // driver-share card, rather than an error over the whole tab.
+      final driverShare = await _repository.driverShareConfig().then<double?>(
+        (v) => v,
+        onError: (_) => null,
+      );
       if (!mounted) return;
       setState(() {
         _overview = results[0] as FinanceOverview;
@@ -76,6 +93,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         _integrity =
             results[2] as ({bool balanced, double net, int unsettledOrders});
         _pendingRequests = (results[3] as List<Settlement>).length;
+        _driverShare = driverShare;
         _loading = false;
       });
     } catch (error) {
@@ -85,6 +103,85 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         _loading = false;
       });
     }
+  }
+
+  /// Sets what a driver keeps out of every delivery fee, platform-wide.
+  ///
+  /// One field, not two: the driver's percent and the platform's are the same
+  /// number twice, and a form that let them be edited separately could be
+  /// saved not summing to 100.
+  Future<void> _editDriverShare() async {
+    final l10n = context.l10n;
+    final current = _driverShare;
+    if (current == null) return;
+    _driverShareController.text = trimZeros(current);
+
+    final saved = await showFormDialog<bool>(
+      context: context,
+      title: l10n.driverShareTitle,
+      subtitle: l10n.driverShareScope,
+      icon: Icons.two_wheeler_rounded,
+      contentBuilder: (rebuild) {
+        final driverPercent = double.tryParse(
+          _driverShareController.text.trim(),
+        );
+        final platformPercent = driverPercent == null
+            ? null
+            : (100 - driverPercent).clamp(0, 100).toDouble();
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _driverShareController,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              onChanged: (_) => rebuild(),
+              decoration: InputDecoration(
+                labelText: l10n.driverShareLabel,
+                suffixText: '%',
+              ),
+            ),
+            if (platformPercent != null) ...[
+              const SizedBox(height: AppSpace.md),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpace.md),
+                decoration: BoxDecoration(
+                  color: AppColors.neutralFill,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Text(
+                  l10n.platformShareResult(trimZeros(platformPercent)),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+      submitLabel: l10n.save,
+      cancelLabel: l10n.cancel,
+      onSubmit: (_) async {
+        final percent = double.tryParse(_driverShareController.text.trim());
+        if (percent == null || percent < 0 || percent > 100) {
+          throw Exception(l10n.invalidFeePercent);
+        }
+        final updated = await _repository.setDriverShare(percent);
+        if (mounted) setState(() => _driverShare = updated);
+        return true;
+      },
+    );
+
+    if (saved == true && mounted) showSnack(context, l10n.driverShareUpdated);
   }
 
   Future<void> _backfill() async {
@@ -133,6 +230,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
       return DefaultTabController(
         length: 2,
         child: WebPageChrome(
+          forStaff: true,
           activeId: 'manage:/admin-app/finance',
           sections: adminManageWebSections(context),
           pageTitle: l10n.financeTitle,
@@ -256,6 +354,11 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
           // on precisely one of them — so the figure can be read as a
           // breakdown rather than four unrelated numbers.
           _MoneyFlow(overview: o),
+
+          if (_driverShare != null) ...[
+            const SizedBox(height: AppSpace.lg),
+            _DriverShareCard(share: _driverShare!, onEdit: _editDriverShare),
+          ],
 
           const SizedBox(height: AppSpace.lg),
           _label(l10n.platformNet),
@@ -427,6 +530,72 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
 /// money screens (`AdminFinanceScreen`, `AdminSettlementsScreen`,
 /// `AdminDepositsScreen`, `AdminReportsScreen`) — none of which otherwise
 /// link to each other.
+/// The delivery-fee split, and the one control that changes it.
+///
+/// Sits beside the money-flow breakdown rather than on a separate settings
+/// screen: this number is what determines the driver-cost and delivery-margin
+/// rows right above it, so the control that changes it belongs where its
+/// effect is visible.
+class _DriverShareCard extends StatelessWidget {
+  const _DriverShareCard({required this.share, required this.onEdit});
+
+  final double share;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.two_wheeler_rounded,
+            size: 18,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.driverShareTitle, style: AppType.heading(14)),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.driverShareSummary(
+                    trimZeros(share),
+                    trimZeros(100 - share),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          TextButton.icon(
+            onPressed: onEdit,
+            icon: const Icon(Icons.tune_rounded, size: 16),
+            label: Text(l10n.edit),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PendingRequestsBanner extends StatelessWidget {
   const _PendingRequestsBanner({required this.count, required this.onTap});
 
@@ -559,15 +728,23 @@ class _MoneyFlow extends StatelessWidget {
             amount: o.platformDeliveryMargin,
             tone: AppColors.successInk,
           ),
+          if (o.earlySettlementFees != 0)
+            _FlowRow(
+              label: l10n.earlySettlementFees,
+              amount: o.earlySettlementFees,
+              tone: AppColors.successInk,
+            ),
           const Divider(height: AppSpace.lg, color: AppColors.borderSoft),
-          // Read straight off the platform's own ledger balance rather than
-          // computed from the rows above, so it can never drift from what the
-          // ledger says the platform actually holds.
+          // The three green rows above less the discount row — what the
+          // business kept. Deliberately *not* the platform ledger account's
+          // balance: that account is a clearing account (customer money lands
+          // in it and leaves again as settlements), so it trends to zero and
+          // would report a profitable period as EGP 0.00.
           _FlowRow(
-            label: l10n.platformNetLedger,
-            amount: o.platformRevenue,
+            label: l10n.platformEarnings,
+            amount: o.platformEarnings,
             emphasis: true,
-            tone: o.platformRevenue >= 0
+            tone: o.platformEarnings >= 0
                 ? AppColors.successInk
                 : AppColors.dangerInk,
           ),

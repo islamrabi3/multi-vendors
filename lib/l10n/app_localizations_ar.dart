@@ -532,7 +532,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get platformNetLedger => 'صافي المنصة (الدفتر)';
+  String get platformEarnings => 'أرباح المنصة';
+
+  @override
+  String get earlySettlementFees => 'رسوم الصرف المبكر';
 
   @override
   String get signupWebSubhead =>
@@ -653,6 +656,52 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get loadMore => 'تحميل المزيد';
+
+  @override
+  String get proofPhotoCancelled =>
+      'لم يتم التقاط صورة — ولم يتم تأكيد التوصيل.';
+
+  @override
+  String get uploadingProofPhoto => 'جارٍ رفع الصورة…';
+
+  @override
+  String get deliverWithoutPhoto => 'تأكيد بدون صورة';
+
+  @override
+  String sendTipAmount(String amount) {
+    return 'إرسال إكرامية $amount';
+  }
+
+  @override
+  String get aiMenuImport => 'استيراد المنيو بالذكاء الاصطناعي';
+
+  @override
+  String get aiMenuImportOn => 'يستطيع المتجر مسح صور منيوه بنفسه.';
+
+  @override
+  String get aiMenuImportOff => 'الإدارة فقط تستطيع استيراد منيو هذا المتجر.';
+
+  @override
+  String get aiMenuImportHint => 'امسح صور المنيو';
+
+  @override
+  String get newOrderTitle => 'طلب جديد';
+
+  @override
+  String get viewOrder => 'عرض الطلب';
+
+  @override
+  String itemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count صنف',
+      few: '$count أصناف',
+      two: 'صنفان',
+      one: 'صنف واحد',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get mobileWallet => 'محفظة إلكترونية';
@@ -3715,7 +3764,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get perMonthSuffix => '/شهرياً';
 
   @override
-  String get driverShareLabel => 'حصة السائق';
+  String get driverShareLabel => 'حصة السائق (%)';
 
   @override
   String get platformShareLabel => 'حصة المنصة';
@@ -4192,4 +4241,192 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get resolutionReply => 'رد الحل';
+
+  @override
+  String get earlyPayoutFeeTitle => 'رسوم الصرف المبكر';
+
+  @override
+  String earlyPayoutFeeSummary(String percent, String min) {
+    return '$percent% من المستحق، بحد أدنى $min';
+  }
+
+  @override
+  String get earlyPayoutFeeScope =>
+      'تُطبَّق على المتاجر والسائقين، وعلى الطلبات الجديدة فقط — أي طلب معلّق يحتفظ بالرسوم التي حُسبت له وقت تقديمه.';
+
+  @override
+  String get feePercentLabel => 'نسبة من المستحق (%)';
+
+  @override
+  String get feeMinLabel => 'الحد الأدنى للرسوم';
+
+  @override
+  String feePreview(String amount, String fee, String net) {
+    return 'على $amount: رسوم $fee، يستلم $net';
+  }
+
+  @override
+  String get feeUpdated => 'تم تحديث رسوم الصرف المبكر';
+
+  @override
+  String get invalidFeePercent => 'أدخل نسبة بين 0 و100.';
+
+  @override
+  String get invalidFeeMin => 'الحد الأدنى للرسوم لا يمكن أن يكون سالبًا.';
+
+  @override
+  String deleteUncategorizedAction(int count) {
+    return 'حذف كل الأصناف بدون قسم ($count)';
+  }
+
+  @override
+  String moveUncategorizedAction(int count) {
+    return 'نقل الكل ($count) إلى قسم';
+  }
+
+  @override
+  String deleteUncategorizedConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'حذف هذه الأصناف الـ$count نهائيًا؟',
+      one: 'حذف هذا الصنف نهائيًا؟',
+    );
+    return '$_temp0 سيتم مسحها من القائمة — على عكس حذف القسم الذي يُبقي أصنافه.';
+  }
+
+  @override
+  String moveItemsToSection(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'نقل $count صنف إلى',
+      one: 'نقل صنف واحد إلى',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String itemsDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'تم حذف $count صنف',
+      one: 'تم حذف صنف واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get selectItems => 'تحديد أصناف';
+
+  @override
+  String get selectAll => 'تحديد الكل';
+
+  @override
+  String selectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'محدد $count صنف',
+      one: 'محدد صنف واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteItemsConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'حذف هذه الأصناف الـ$count نهائيًا؟',
+      one: 'حذف هذا الصنف نهائيًا؟',
+    );
+    return '$_temp0 لا يمكن التراجع.';
+  }
+
+  @override
+  String showingOfTotal(int shown, int total) {
+    return 'معروض $shown من $total صنف';
+  }
+
+  @override
+  String get driverShareTitle => 'حصة السائق من رسوم التوصيل';
+
+  @override
+  String driverShareSummary(String driverPercent, String platformPercent) {
+    return 'السائق يأخذ $driverPercent% · المنصة تأخذ $platformPercent%';
+  }
+
+  @override
+  String get driverShareScope =>
+      'تُطبَّق على التوصيلات القادمة فقط — الطلبات المسوّاة بالفعل تحتفظ بالنسبة التي سُوّيت بها.';
+
+  @override
+  String platformShareResult(String percent) {
+    return 'المنصة تأخذ $percent%';
+  }
+
+  @override
+  String get driverShareUpdated => 'تم تحديث حصة السائق';
+
+  @override
+  String get enterValidEmail => 'أدخل بريدًا إلكترونيًا صحيحًا';
+
+  @override
+  String get passwordTooShort => 'يجب ألا تقل عن 6 أحرف';
+
+  @override
+  String get showPassword => 'إظهار كلمة المرور';
+
+  @override
+  String get hidePassword => 'إخفاء كلمة المرور';
+
+  @override
+  String get resetPasswordTitle => 'إعادة تعيين كلمة المرور';
+
+  @override
+  String get resetPasswordSubtitle => 'سنرسل رابطًا لتعيين كلمة مرور جديدة.';
+
+  @override
+  String get sendResetLink => 'إرسال الرابط';
+
+  @override
+  String get resetLinkSent =>
+      'إذا كان هذا البريد مسجّلًا، فرابط إعادة التعيين في طريقه إليه';
+
+  @override
+  String get setNewPasswordTitle => 'تعيين كلمة مرور جديدة';
+
+  @override
+  String get setNewPasswordSubtitle => 'اختر كلمة مرور لحسابك.';
+
+  @override
+  String get newPassword => 'كلمة المرور الجديدة';
+
+  @override
+  String get confirmNewPassword => 'تأكيد كلمة المرور الجديدة';
+
+  @override
+  String get passwordsDoNotMatch => 'كلمتا المرور غير متطابقتين';
+
+  @override
+  String get setNewPasswordAction => 'تعيين كلمة المرور';
+
+  @override
+  String get financialSummary => 'الملخص المالي';
+
+  @override
+  String get adPerformanceLabel => 'الأداء';
+
+  @override
+  String adPerformanceCompact(String views, String taps, String rate) {
+    return '$views · $taps نقرة · $rate%';
+  }
+
+  @override
+  String get scheduleLabel => 'الجدولة';
+
+  @override
+  String get adAlwaysOn => 'دائم';
 }
