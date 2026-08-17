@@ -209,6 +209,8 @@
   "adTapRate": "معدل النقر",
   "statusSettled": "تمت التسوية",
   "noArabicName": "لا يوجد اسم عربي",
+  "errMobileWalletUnavailable": "الدفع بالمحفظة الإلكترونية غير متاح حاليًا. من فضلك اختر وسيلة أخرى.",
+  "loadMore": "تحميل المزيد",
   "mobileWallet": "محفظة إلكترونية",
   "mobileWalletProviders": "فودافون كاش، اتصالات، أورنج",
   "languageChangeLaterHint": "يمكنك تغييرها في أي وقت من الإعدادات.",

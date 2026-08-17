@@ -146,290 +146,285 @@ class _CheckoutViewState extends State<_CheckoutView> {
               ? cart.vendor!.deliveryFee
               : 0.0;
           final total = cart.subtotal - discount + deliveryFee;
-          return ListView(
-            // The place-order button is the last item, so the list has to
-            // clear Android's gesture bar itself — this screen has no
-            // bottomNavigationBar for Scaffold to inset.
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              16 + MediaQuery.paddingOf(context).bottom,
-            ),
+          final placing = state.step == CheckoutStep.placing;
+          return Column(
             children: [
-              // Address section with mini map
-              if (state.addresses.isEmpty)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(
-                      Icons.add_location_alt_outlined,
-                      color: AppColors.primary,
-                    ),
-                    title: Text(context.l10n.addADeliveryAddress),
-                    onTap: () async {
-                      await context.push('/addresses');
-                      cubit.loadAddresses();
-                    },
-                  ),
-                )
-              else
-                _AddressCard(
-                  address: state.selectedAddress ?? state.addresses.first,
-                  onChange: () async {
-                    await context.push('/addresses');
-                    cubit.loadAddresses();
-                  },
-                ),
-
-              const SizedBox(height: AppSpace.md),
-              _OrderTypePicker(
-                state: state,
-                storeName: cart.vendor!.name,
-                onChanged: cubit.setOrderType,
-                onSchedule: cubit.setScheduledAt,
-              ),
-              const SizedBox(height: AppSpace.md),
-              // A scheduled order has a slot rather than an estimate, so the
-              // estimate would only contradict it.
-              if (!state.isScheduled)
-                _EtaCard(prepMinutes: cart.vendor!.totalPrepMinutes),
-
-              // Payment Section
-              const SizedBox(height: 18),
-              Text(
-                context.l10n.payment,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 11),
-              _PaymentSelectorCard(
-                emoji: '👛',
-                title: context.l10n.payWithWallet,
-                subtitle: state.walletBalance >= total
-                    ? '${formatMoney(state.walletBalance)} ${context.l10n.currentBalance}'
-                    : '${formatMoney(state.walletBalance)} (${context.l10n.insufficientWalletBalance})',
-                selected: state.paymentMethod == 'wallet',
-                disabled: state.walletBalance < total,
-                onTap: state.walletBalance >= total
-                    ? () => cubit.selectPaymentMethod('wallet')
-                    : null,
-              ),
-              const SizedBox(height: 9),
-              _PaymentSelectorCard(
-                emoji: '💵',
-                title: context.l10n.cashOnDelivery,
-                subtitle: context.l10n.payTheDriverInEgp,
-                selected: state.paymentMethod == 'cod',
-                onTap: () => cubit.selectPaymentMethod('cod'),
-              ),
-              const SizedBox(height: 9),
-              _PaymentSelectorCard(
-                emoji: '💳',
-                title: context.l10n.cardPaymob,
-                subtitle: context.l10n.visaMastercardMeeza,
-                // Both cards below are 'paymob'; the channel is what
-                // separates them, so neither may key its highlight off the
-                // method alone or the two would light up together.
-                selected:
-                    state.paymentMethod == 'paymob' &&
-                    state.paymobChannel == PaymobChannel.card,
-                onTap: () => cubit.selectPaymentMethod(
-                  'paymob',
-                  channel: PaymobChannel.card,
-                ),
-              ),
-              const SizedBox(height: 9),
-              _PaymentSelectorCard(
-                emoji: '📱',
-                title: context.l10n.mobileWallet,
-                subtitle: context.l10n.mobileWalletProviders,
-                selected:
-                    state.paymentMethod == 'paymob' &&
-                    state.paymobChannel == PaymobChannel.wallet,
-                onTap: () => cubit.selectPaymentMethod(
-                  'paymob',
-                  channel: PaymobChannel.wallet,
-                ),
-              ),
-
-              // Coupon section
-              const SizedBox(height: 18),
-              Text(
-                context.l10n.coupon,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 11),
-              if (state.couponDiscount != null)
-                // Applied Coupon Card
-                AppCard(
-                  attention: true,
-                  radius: AppRadii.md,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 13,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: AppColors.warmFill,
-                          borderRadius: BorderRadius.circular(9),
+              Expanded(
+                child: ListView(
+                  // Bottom padding is the pay bar's job now, not the list's.
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  children: [
+                    // Address section with mini map
+                    if (state.addresses.isEmpty)
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.add_location_alt_outlined,
+                            color: AppColors.primary,
+                          ),
+                          title: Text(context.l10n.addADeliveryAddress),
+                          onTap: () async {
+                            await context.push('/addresses');
+                            cubit.loadAddresses();
+                          },
                         ),
-                        alignment: Alignment.center,
-                        // Was `l10n.emptyString` — a literal "••••••••" glyph
-                        // standing in for an icon that was never drawn.
-                        child: const Icon(
-                          Icons.local_offer_rounded,
-                          size: 16,
-                          color: AppColors.primaryDark,
-                        ),
+                      )
+                    else
+                      _AddressCard(
+                        address: state.selectedAddress ?? state.addresses.first,
+                        onChange: () async {
+                          await context.push('/addresses');
+                          cubit.loadAddresses();
+                        },
                       ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                    const SizedBox(height: AppSpace.md),
+                    _OrderTypePicker(
+                      state: state,
+                      storeName: cart.vendor!.name,
+                      onChanged: cubit.setOrderType,
+                      onSchedule: cubit.setScheduledAt,
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    // A scheduled order has a slot rather than an estimate, so the
+                    // estimate would only contradict it.
+                    if (!state.isScheduled)
+                      _EtaCard(prepMinutes: cart.vendor!.totalPrepMinutes),
+
+                    // Payment Section
+                    const SizedBox(height: 18),
+                    Text(
+                      context.l10n.payment,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 11),
+                    _PaymentSelectorCard(
+                      icon: Icons.account_balance_wallet_rounded,
+                      title: context.l10n.payWithWallet,
+                      subtitle: state.walletBalance >= total
+                          ? '${formatMoney(state.walletBalance)} ${context.l10n.currentBalance}'
+                          : '${formatMoney(state.walletBalance)} (${context.l10n.insufficientWalletBalance})',
+                      selected: state.paymentMethod == 'wallet',
+                      disabled: state.walletBalance < total,
+                      onTap: state.walletBalance >= total
+                          ? () => cubit.selectPaymentMethod('wallet')
+                          : null,
+                    ),
+                    const SizedBox(height: 9),
+                    _PaymentSelectorCard(
+                      icon: Icons.payments_rounded,
+                      title: context.l10n.cashOnDelivery,
+                      subtitle: context.l10n.payTheDriverInEgp,
+                      selected: state.paymentMethod == 'cod',
+                      onTap: () => cubit.selectPaymentMethod('cod'),
+                    ),
+                    const SizedBox(height: 9),
+                    _PaymentSelectorCard(
+                      icon: Icons.credit_card_rounded,
+                      title: context.l10n.cardPaymob,
+                      subtitle: context.l10n.visaMastercardMeeza,
+                      // Both cards below are 'paymob'; the channel is what
+                      // separates them, so neither may key its highlight off the
+                      // method alone or the two would light up together.
+                      selected:
+                          state.paymentMethod == 'paymob' &&
+                          state.paymobChannel == PaymobChannel.card,
+                      onTap: () => cubit.selectPaymentMethod(
+                        'paymob',
+                        channel: PaymobChannel.card,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    _PaymentSelectorCard(
+                      icon: Icons.smartphone_rounded,
+                      title: context.l10n.mobileWallet,
+                      subtitle: context.l10n.mobileWalletProviders,
+                      selected:
+                          state.paymentMethod == 'paymob' &&
+                          state.paymobChannel == PaymobChannel.wallet,
+                      onTap: () => cubit.selectPaymentMethod(
+                        'paymob',
+                        channel: PaymobChannel.wallet,
+                      ),
+                    ),
+
+                    // Coupon section
+                    const SizedBox(height: 18),
+                    Text(
+                      context.l10n.coupon,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 11),
+                    if (state.couponDiscount != null)
+                      // Applied Coupon Card
+                      AppCard(
+                        attention: true,
+                        radius: AppRadii.md,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 15,
+                          vertical: 13,
+                        ),
+                        child: Row(
                           children: [
-                            Text(
-                              context.l10n.couponApplied(state.couponCode),
-                              style: AppType.mono(
-                                13.5,
-                                color: AppColors.ink,
-                                weight: FontWeight.w700,
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: AppColors.warmFill,
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              alignment: Alignment.center,
+                              // Was `l10n.emptyString` — a literal "••••••••" glyph
+                              // standing in for an icon that was never drawn.
+                              child: const Icon(
+                                Icons.local_offer_rounded,
+                                size: 16,
+                                color: AppColors.primaryDark,
                               ),
                             ),
-                            Text(
-                              context.l10n.youSavedAmount(
-                                formatMoney(state.couponDiscount!),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.l10n.couponApplied(
+                                      state.couponCode,
+                                    ),
+                                    style: AppType.mono(
+                                      13.5,
+                                      color: AppColors.ink,
+                                      weight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    context.l10n.youSavedAmount(
+                                      formatMoney(state.couponDiscount!),
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      color: AppColors.successInk,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: AppColors.successInk,
-                                fontWeight: FontWeight.w500,
+                            ),
+                            IconButton(
+                              onPressed: cubit.clearCoupon,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(
+                                Icons.close,
+                                color: AppColors.textFaint,
+                                size: 18,
                               ),
                             ),
                           ],
                         ),
+                      )
+                    else
+                      // Coupon Entry Form
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _coupon,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: InputDecoration(
+                                hintText: context.l10n.couponCode,
+                                fillColor: AppColors.surface,
+                                errorText: state.couponError != null
+                                    ? errorText(context, state.couponError!)
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: () => cubit.applyCoupon(
+                              _coupon.text,
+                              cart.vendor!.id,
+                              cart.subtotal,
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              minimumSize: const Size(0, 54),
+                            ),
+                            child: Text(context.l10n.apply),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        onPressed: cubit.clearCoupon,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(
-                          Icons.close,
-                          color: AppColors.textFaint,
-                          size: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                // Coupon Entry Form
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _coupon,
-                        textCapitalization: TextCapitalization.characters,
-                        decoration: InputDecoration(
-                          hintText: context.l10n.couponCode,
-                          fillColor: AppColors.surface,
-                          errorText: state.couponError != null
-                              ? errorText(context, state.couponError!)
-                              : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: () => cubit.applyCoupon(
-                        _coupon.text,
-                        cart.vendor!.id,
-                        cart.subtotal,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        minimumSize: const Size(0, 54),
-                      ),
-                      child: Text(context.l10n.apply),
-                    ),
-                  ],
-                ),
 
-              const Divider(height: 32),
-              TextField(
-                controller: _notes,
-                decoration: InputDecoration(
-                  labelText: context.l10n.orderNotesOptional,
-                  fillColor: AppColors.surface,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(AppRadii.xl),
-                ),
-                child: Column(
-                  children: [
-                    _SummaryRow(
-                      label: context.l10n.subtotal,
-                      value: cart.subtotal,
-                    ),
-                    if (state.chargesDelivery)
-                      _SummaryRow(
-                        label: context.l10n.deliveryFee,
-                        value: cart.vendor!.deliveryFee,
+                    const Divider(height: 32),
+                    TextField(
+                      controller: _notes,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.orderNotesOptional,
+                        fillColor: AppColors.surface,
                       ),
-                    if (discount > 0)
-                      _SummaryRow(
-                        label: context.l10n.discount,
-                        value: -discount,
-                        highlight: true,
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(AppRadii.xl),
                       ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Divider(),
+                      child: Column(
+                        children: [
+                          _SummaryRow(
+                            label: context.l10n.subtotal,
+                            value: cart.subtotal,
+                          ),
+                          if (state.chargesDelivery)
+                            _SummaryRow(
+                              label: context.l10n.deliveryFee,
+                              value: cart.vendor!.deliveryFee,
+                            ),
+                          if (discount > 0)
+                            _SummaryRow(
+                              label: context.l10n.discount,
+                              value: -discount,
+                              highlight: true,
+                            ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Divider(),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                context.l10n.total,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              PriceText(formatMoney(total), size: 18),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          context.l10n.total,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        PriceText(formatMoney(total), size: 18),
-                      ],
-                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed:
-                      state.step == CheckoutStep.placing ||
-                          state.selectedAddressId == null
-                      ? null
-                      : () => context.read<CheckoutCubit>().placeOrder(
-                          notes: _notes.text.trim().isEmpty
-                              ? null
-                              : _notes.text.trim(),
-                        ),
-                  child: state.step == CheckoutStep.placing
-                      ? const ButtonSpinner()
-                      : Text(
-                          state.paymentMethod == 'cod'
-                              ? context.l10n.placeOrder
-                              : context.l10n.placeOrderAndPay,
-                        ),
+              // Pinned rather than the last item in the list. Paying was the
+              // one action on the screen you had to scroll to the very end to
+              // reach, past the coupon box and the summary — and the total it
+              // commits you to was down there with it.
+              _PayBar(
+                total: total,
+                placing: placing,
+                enabled: !placing && state.selectedAddressId != null,
+                payNow: state.paymentMethod != 'cod',
+                onPressed: () => context.read<CheckoutCubit>().placeOrder(
+                  notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
                 ),
               ),
-              const SizedBox(height: 24),
             ],
           );
         },
@@ -675,8 +670,80 @@ class _CheckoutSkeleton extends StatelessWidget {
   }
 }
 
+/// The total and the one action, always on screen.
+class _PayBar extends StatelessWidget {
+  const _PayBar({
+    required this.total,
+    required this.placing,
+    required this.enabled,
+    required this.payNow,
+    required this.onPressed,
+  });
+
+  final double total;
+  final bool placing;
+  final bool enabled;
+
+  /// Cash on delivery places the order and stops; every other method hands
+  /// over to a payment page, and the button should say which is about to
+  /// happen before it is pressed.
+  final bool payNow;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        12 + MediaQuery.paddingOf(context).bottom,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.total,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              PriceText(formatMoney(total), size: 19),
+            ],
+          ),
+          const SizedBox(width: AppSpace.lg),
+          Expanded(
+            child: FilledButton(
+              onPressed: enabled ? onPressed : null,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
+              child: placing
+                  ? const ButtonSpinner()
+                  : Text(payNow ? l10n.placeOrderAndPay : l10n.placeOrder),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PaymentSelectorCard extends StatelessWidget {
-  final String emoji;
+  /// A real icon rather than an emoji. Emoji render differently on every
+  /// platform and font, so the payment picker — the one place a customer
+  /// decides whether to trust the screen with their money — looked different
+  /// on each device and matched nothing else in the app.
+  final IconData icon;
   final String title;
   final String subtitle;
   final bool selected;
@@ -684,7 +751,7 @@ class _PaymentSelectorCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const _PaymentSelectorCard({
-    required this.emoji,
+    required this.icon,
     required this.title,
     required this.subtitle,
     required this.selected,
@@ -702,11 +769,17 @@ class _PaymentSelectorCard extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: disabled ? AppColors.neutralFill : AppColors.surface,
+            // Tinted rather than thickened. A border that grows from 1px to
+            // 2px on selection nudges the row's contents by a pixel, so the
+            // list twitches every time the choice changes.
+            color: disabled
+                ? AppColors.neutralFill
+                : selected
+                ? AppColors.warmFill
+                : AppColors.surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected ? AppColors.primary : AppColors.border,
-              width: selected ? 2.0 : 1.0,
             ),
           ),
           child: Row(
@@ -719,7 +792,11 @@ class _PaymentSelectorCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: Text(emoji, style: const TextStyle(fontSize: 18)),
+                child: Icon(
+                  icon,
+                  size: 19,
+                  color: selected ? AppColors.primary : AppColors.textMuted,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

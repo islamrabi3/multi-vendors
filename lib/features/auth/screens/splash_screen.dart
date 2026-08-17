@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../app/splash_gate.dart';
 import '../../../app/tokens.dart';
 import '../../../core/widgets/brand_logo.dart';
-import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// The Kitchen IN splash.
 ///
@@ -153,20 +152,9 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                         ),
                         const SizedBox(height: 14),
+                        // The rule stays as the closing beat of the intro;
+                        // the tagline that used to follow it is gone.
                         _WipingRule(progress: _intro),
-                        const SizedBox(height: 16),
-                        _RisingFade(
-                          progress: _intro,
-                          interval: _at(1080, 280),
-                          child: Text(
-                            context.l10n.goodFoodFromTheInside,
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),

@@ -20,9 +20,11 @@
 // Secrets required:
 //   PAYMOB_SECRET_KEY, PAYMOB_PUBLIC_KEY, PAYMOB_INTEGRATION_ID
 // Optional:
-//   PAYMOB_WALLET_INTEGRATION_ID — without it a wallet request falls back to
-//   the card integration rather than failing, so a customer is never left
-//   unable to pay because a secret has not been set yet.
+//   PAYMOB_WALLET_INTEGRATION_ID — required only to offer the mobile-wallet
+//   option. Without it a wallet request is refused rather than quietly opened
+//   against the card integration: showing a card form to someone who picked
+//   Vodafone Cash looks like the app took the wrong payment, and in a payment
+//   flow that is the one thing worse than an error message.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const PAYMOB_BASE = "https://accept.paymob.com";
@@ -76,8 +78,11 @@ Deno.serve(async (req) => {
     // Anything other than an explicit "wallet" is a card, so an old client
     // that sends no channel at all keeps its current behaviour exactly.
     const channel = body.channel === "wallet" ? "wallet" : "card";
+    if (channel === "wallet" && !walletIntegrationId) {
+      return json({ error: "WALLET_NOT_CONFIGURED" }, 503);
+    }
     const chosenIntegrationId = channel === "wallet"
-      ? (walletIntegrationId ?? integrationId)
+      ? walletIntegrationId
       : integrationId;
 
     // amountEgp drives the intent row; amountCents is what Paymob is told.

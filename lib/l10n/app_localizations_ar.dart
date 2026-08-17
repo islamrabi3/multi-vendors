@@ -648,6 +648,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noArabicName => 'لا يوجد اسم عربي';
 
   @override
+  String get errMobileWalletUnavailable =>
+      'الدفع بالمحفظة الإلكترونية غير متاح حاليًا. من فضلك اختر وسيلة أخرى.';
+
+  @override
+  String get loadMore => 'تحميل المزيد';
+
+  @override
   String get mobileWallet => 'محفظة إلكترونية';
 
   @override

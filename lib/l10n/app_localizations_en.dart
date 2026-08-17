@@ -649,6 +649,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noArabicName => 'No Arabic name';
 
   @override
+  String get errMobileWalletUnavailable =>
+      'Mobile wallet payments are not available right now. Please choose another method.';
+
+  @override
+  String get loadMore => 'Load more';
+
+  @override
   String get mobileWallet => 'Mobile wallet';
 
   @override

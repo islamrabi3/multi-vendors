@@ -140,6 +140,7 @@ class AppFailure implements Exception {
     'NOT_FOUND': FailureKind.notFound,
     'TEMPLATE_NOT_FOUND': FailureKind.notFound,
     'PAYMOB_NOT_CONFIGURED': FailureKind.server,
+    'WALLET_NOT_CONFIGURED': FailureKind.server,
     'PAYMOB_INTENTION_FAILED': FailureKind.server,
     'PAYMENT_GATEWAY_UNAVAILABLE': FailureKind.server,
   };
@@ -186,6 +187,7 @@ class AppFailure implements Exception {
         'DRIVER_NOT_APPROVED' => l10n.errDriverNotApproved,
         'INSUFFICIENT_WALLET_BALANCE' => l10n.errInsufficientWallet,
         'PAYMOB_NOT_CONFIGURED' => l10n.errCardPaymentsUnavailable,
+        'WALLET_NOT_CONFIGURED' => l10n.errMobileWalletUnavailable,
         'PAYMOB_INTENTION_FAILED' => l10n.errPaymentPageFailed,
         'PAYMENT_GATEWAY_UNAVAILABLE' => l10n.errPaymentPageFailed,
         'ALREADY_PAID' => l10n.errAlreadyPaid,

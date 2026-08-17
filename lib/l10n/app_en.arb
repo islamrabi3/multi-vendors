@@ -213,6 +213,8 @@
   "adTapRate": "Tap rate",
   "statusSettled": "Settled",
   "noArabicName": "No Arabic name",
+  "errMobileWalletUnavailable": "Mobile wallet payments are not available right now. Please choose another method.",
+  "loadMore": "Load more",
   "mobileWallet": "Mobile wallet",
   "mobileWalletProviders": "Vodafone Cash, Etisalat, Orange",
   "languageChangeLaterHint": "You can change this any time in Settings.",

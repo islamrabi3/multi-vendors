@@ -1352,6 +1352,18 @@ abstract class AppLocalizations {
   /// **'No Arabic name'**
   String get noArabicName;
 
+  /// No description provided for @errMobileWalletUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile wallet payments are not available right now. Please choose another method.'**
+  String get errMobileWalletUnavailable;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get loadMore;
+
   /// No description provided for @mobileWallet.
   ///
   /// In en, this message translates to:

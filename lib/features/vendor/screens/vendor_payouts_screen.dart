@@ -7,6 +7,7 @@ import '../../../core/repositories/finance_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart' show ButtonSpinner;
 import '../../../core/widgets/finance_widgets.dart';
 
 /// What the store is owed, after the platform's cut, and when it arrives.
@@ -36,6 +37,14 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
   EarlySettlementQuote? _quote;
   List<LedgerEntry> _entries = const [];
   List<Settlement> _settlements = const [];
+
+  /// The settlements list was capped at 10 with no way past it, so a store
+  /// more than a couple of months old simply could not see its older
+  /// payouts — the screen looked complete while quietly hiding history.
+  static const _settlementsPage = 10;
+  bool _loadingMoreSettlements = false;
+  bool _hasMoreSettlements = false;
+
   bool _loading = true;
   bool _requestingSettlement = false;
   String? _error;
@@ -63,7 +72,7 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
         _repository.settlements(
           ownerType: LedgerOwner.vendor,
           ownerId: widget.vendorId,
-          limit: 10,
+          limit: _settlementsPage,
         ),
       ]);
       if (!mounted) return;
@@ -72,6 +81,9 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
         _quote = results[1] as EarlySettlementQuote;
         _entries = results[2] as List<LedgerEntry>;
         _settlements = results[3] as List<Settlement>;
+        // A full page means there is probably another; the next fetch
+        // settles it either way.
+        _hasMoreSettlements = _settlements.length == _settlementsPage;
         _loading = false;
       });
     } catch (error) {
@@ -80,6 +92,29 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
         _error = errorText(context, error);
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _loadMoreSettlements() async {
+    if (_loadingMoreSettlements || !_hasMoreSettlements) return;
+    setState(() => _loadingMoreSettlements = true);
+    try {
+      final page = await _repository.settlements(
+        ownerType: LedgerOwner.vendor,
+        ownerId: widget.vendorId,
+        limit: _settlementsPage,
+        offset: _settlements.length,
+      );
+      if (!mounted) return;
+      setState(() {
+        _settlements = [..._settlements, ...page];
+        _hasMoreSettlements = page.length == _settlementsPage;
+        _loadingMoreSettlements = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadingMoreSettlements = false);
+      showFailure(context, error, onRetry: _loadMoreSettlements);
     }
   }
 
@@ -193,6 +228,25 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
                     Text(l10n.settlementsTitle, style: AppType.heading(16)),
                     for (final settlement in _settlements)
                       SettlementTile(settlement: settlement),
+                    // A button rather than infinite scroll: this list sits in
+                    // the middle of a page that continues with the statement
+                    // below it, so loading on scroll would fight the section
+                    // underneath for the same gesture.
+                    if (_hasMoreSettlements)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpace.sm),
+                        child: Center(
+                          child: _loadingMoreSettlements
+                              ? const Padding(
+                                  padding: EdgeInsets.all(AppSpace.sm),
+                                  child: ButtonSpinner(size: 18),
+                                )
+                              : TextButton(
+                                  onPressed: _loadMoreSettlements,
+                                  child: Text(l10n.loadMore),
+                                ),
+                        ),
+                      ),
                   ],
                   const SizedBox(height: AppSpace.lg),
                   Text(l10n.statement, style: AppType.heading(16)),
