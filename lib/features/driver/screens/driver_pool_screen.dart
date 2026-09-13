@@ -501,7 +501,7 @@ class _PoolCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${context.l10n.ready} · ${DateFormat('h:mm a').format(order.createdAt)}',
+                      '${context.l10n.ready} · ${DateFormat('h:mm a', Localizations.localeOf(context).languageCode).format(order.createdAt)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

@@ -302,8 +302,7 @@ class AuthCubit extends Cubit<AppAuthState> {
   /// Releases the `/reset-password` gate once a new password is set — this is
   /// the only way out of it, since the redirect otherwise reroutes anything
   /// else straight back there.
-  void clearPasswordRecovery() =>
-      emit(state.copyWith(passwordRecovery: false));
+  void clearPasswordRecovery() => emit(state.copyWith(passwordRecovery: false));
 
   Future<void> setNewPassword(String password) async {
     emit(state.copyWith(busy: true, clearMessages: true));
@@ -461,6 +460,12 @@ class AuthCubit extends Cubit<AppAuthState> {
     _vendorSubscription?.cancel();
     _vendorSubscription = null;
     try {
+      // Before the session ends: clearing the token needs it. Bounded, so an
+      // offline sign-out is not held up by a request that cannot finish.
+      await NotificationService.instance.releaseDeviceToken().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {},
+      );
       await _repository.signOut();
       // onAuthStateChange normally drives _refresh, but emit immediately so the
       // router redirects without waiting on the stream.

@@ -393,7 +393,7 @@ class AdminRepository {
   Future<AppOrder> fetchOrder(String orderId) async {
     final data = await supabase
         .from('orders')
-        .select('*, vendors(name, logo_url), order_items(*)')
+        .select('*, vendors(name, logo_url, phone), order_items(*)')
         .eq('id', orderId)
         .single();
     return AppOrder.fromMap(data);
@@ -445,6 +445,45 @@ class AdminRepository {
           licenseBackUrl: signed[3],
         );
       }),
+    );
+  }
+
+  /// One driver, for the detail screen — signs only its own documents
+  /// rather than [fetchDrivers]' every-row-up-front pass.
+  Future<DriverAccount> fetchDriver(String driverId) async {
+    Map<String, dynamic> row;
+    try {
+      row = await supabase
+          .from('drivers')
+          .select(
+            'id, approval_status, is_online, vehicle_type,'
+            ' id_card_url, id_card_back_url, license_url, license_back_url,'
+            ' profiles(full_name, phone)',
+          )
+          .eq('id', driverId)
+          .single();
+    } catch (_) {
+      row = await supabase
+          .from('drivers')
+          .select(
+            'id, approval_status, is_online, vehicle_type,'
+            ' profiles(full_name, phone)',
+          )
+          .eq('id', driverId)
+          .single();
+    }
+    final driver = DriverAccount.fromMap(row);
+    final signed = await Future.wait([
+      signedDriverDocumentUrl(driver.idCardUrl),
+      signedDriverDocumentUrl(driver.idCardBackUrl),
+      signedDriverDocumentUrl(driver.licenseUrl),
+      signedDriverDocumentUrl(driver.licenseBackUrl),
+    ]);
+    return driver.copyWith(
+      idCardUrl: signed[0],
+      idCardBackUrl: signed[1],
+      licenseUrl: signed[2],
+      licenseBackUrl: signed[3],
     );
   }
 
@@ -562,6 +601,19 @@ class AdminRepository {
           'parent_id': parentId,
         })
         .eq('id', id);
+  }
+
+  /// Renumbers [ids] to `0, 1, 2…` in the order given. Callers pass one
+  /// sibling group at a time — the top-level list, or one parent's
+  /// children — since sort order is only ever compared within a group.
+  Future<void> reorderVendorCategories(List<String> ids) async {
+    await Future.wait([
+      for (var i = 0; i < ids.length; i++)
+        supabase
+            .from('vendor_categories')
+            .update({'sort_order': i})
+            .eq('id', ids[i]),
+    ]);
   }
 
   /// An empty box means "no translation", not "translated to nothing" — the
@@ -706,6 +758,23 @@ class AdminRepository {
   Future<String> uploadAdImage(Uint8List bytes, String filename) async {
     final path = 'ads/${DateTime.now().microsecondsSinceEpoch}-$filename';
     await supabase.storage.from('product-images').uploadBinary(path, bytes);
+    return supabase.storage.from('product-images').getPublicUrl(path);
+  }
+
+  /// Ad video, beside the artwork under `ads/`. The content type is set
+  /// explicitly: without it Storage serves `application/octet-stream`, which
+  /// browsers refuse to play.
+  Future<String> uploadAdVideo(Uint8List bytes, String filename) async {
+    final extension = filename.split('.').last.toLowerCase();
+    final contentType = switch (extension) {
+      'webm' => 'video/webm',
+      'mov' => 'video/quicktime',
+      _ => 'video/mp4',
+    };
+    final path = 'ads/${DateTime.now().microsecondsSinceEpoch}-$filename';
+    await supabase.storage
+        .from('product-images')
+        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType));
     return supabase.storage.from('product-images').getPublicUrl(path);
   }
 

@@ -16,6 +16,9 @@ import '../../../core/repositories/favorites_repository.dart';
 /// expresses a preference.
 enum VendorSort { recommended, nearest, rating, deliveryFee, prepTime }
 
+/// The carousels above the full store list, in the order they appear.
+enum HomeRail { recommended, nearest, favorites, topRated, freeDelivery }
+
 /// The customer's store filters. Sorting and the toggles are applied on the
 /// already-fetched list: the result set is one page of nearby stores, so
 /// re-querying per toggle would cost a round trip and gain nothing.
@@ -148,6 +151,56 @@ class HomeState extends Equatable {
             return byRank != 0 ? byRank : b.ratingAvg.compareTo(a.ratingAvg);
           });
     return promoted;
+  }
+
+  /// The home page's store rails, top to bottom.
+  ///
+  /// Each rail skips every store a rail above it already showed, so a small
+  /// marketplace no longer repeats the same two stores under "Recommended",
+  /// "Nearby" and the full list. A rail with fewer than two stores left is
+  /// dropped — a one-card carousel is just a worse list row.
+  List<({HomeRail rail, List<Vendor> vendors})> get rails {
+    const limit = 10;
+    final used = <String>{};
+    final result = <({HomeRail rail, List<Vendor> vendors})>[];
+
+    void add(HomeRail rail, Iterable<Vendor> candidates) {
+      final picked = candidates
+          .where((v) => !used.contains(v.id))
+          .take(limit)
+          .toList();
+      if (picked.length < 2) return;
+      used.addAll(picked.map((v) => v.id));
+      result.add((rail: rail, vendors: picked));
+    }
+
+    add(HomeRail.recommended, recommendedVendors);
+
+    final measured = <(Vendor, double)>[
+      for (final v in vendors)
+        if (v.isOpenNow())
+          if (distanceToVendor(v) case final km?) (v, km),
+    ]..sort((a, b) => a.$2.compareTo(b.$2));
+    add(HomeRail.nearest, measured.map((e) => e.$1));
+
+    add(
+      HomeRail.favorites,
+      vendors.where((v) => favoriteVendorIds.contains(v.id)),
+    );
+
+    add(
+      HomeRail.topRated,
+      vendors
+          .where((v) => v.isOpenNow() && v.ratingCount > 0 && v.ratingAvg >= 4)
+          .toList()
+        ..sort((a, b) => b.ratingAvg.compareTo(a.ratingAvg)),
+    );
+
+    add(
+      HomeRail.freeDelivery,
+      vendors.where((v) => v.isOpenNow() && v.deliveryFee == 0),
+    );
+    return result;
   }
 
   /// How far [vendor] is from where the order would actually go, in km.

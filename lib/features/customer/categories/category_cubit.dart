@@ -129,15 +129,23 @@ class CategoryCubit extends Cubit<CategoryState> {
 
   Future<void> load() async {
     emit(state.copyWith(loading: true, clearError: true));
+    final scope = state.selectedChildId ?? categoryId;
     try {
-      final results = await Future.wait([
+      // The picks go out with the page, not after it. Fetched second, they
+      // landed a beat after the store list and the rail pushed every card
+      // down under the customer's thumb. A failure still costs only the rail.
+      final results = await Future.wait<Object>([
         _catalog.fetchVendorCategories(),
         _catalog.fetchVendorsInCategory(categoryId),
+        _catalog
+            .fetchCategoryRecommendations(scope)
+            .then<List<Vendor>>((v) => v, onError: (_) => const <Vendor>[]),
       ]).timeout(_fetchTimeout);
       if (isClosed) return;
 
       final categories = results[0] as List<VendorCategory>;
       final vendors = results[1] as List<Vendor>;
+      final recommended = results[2] as List<Vendor>;
       VendorCategory? category;
       for (final c in categories) {
         if (c.id == categoryId) category = c;
@@ -152,13 +160,17 @@ class CategoryCubit extends Cubit<CategoryState> {
           category: category,
           children: children,
           vendors: vendors,
+          // A sub-category picked while this was in flight gets its own
+          // picks from selectChild; these would be the wrong ones.
+          recommended: (state.selectedChildId ?? categoryId) == scope
+              ? recommended
+              : null,
         ),
       );
     } catch (error) {
       if (isClosed) return;
       emit(state.copyWith(loading: false, error: error.toString()));
     }
-    _loadRecommended(state.selectedChildId ?? categoryId);
   }
 
   /// Narrows the list to one sub-category, or clears back to everything under

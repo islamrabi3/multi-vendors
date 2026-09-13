@@ -7,7 +7,6 @@ import '../../../core/repositories/finance_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
-import '../../../core/widgets/skeleton.dart' show ButtonSpinner;
 import '../../../core/widgets/finance_widgets.dart';
 
 /// What the store is owed, after the platform's cut, and when it arrives.
@@ -29,6 +28,8 @@ class VendorPayoutsScreen extends StatefulWidget {
   @override
   State<VendorPayoutsScreen> createState() => _VendorPayoutsScreenState();
 }
+
+enum _ActivityTab { statement, payouts }
 
 class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
   final _repository = FinanceRepository();
@@ -55,6 +56,7 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
   bool _loading = true;
   bool _requestingSettlement = false;
   String? _error;
+  _ActivityTab _tab = _ActivityTab.statement;
 
   @override
   void initState() {
@@ -64,7 +66,7 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      _loading = _wallet == null;
       _error = null;
     });
     try {
@@ -149,9 +151,25 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
     }
   }
 
+  /// Withdraw: pick free/standard or paid/faster, then run it.
+  Future<void> _withdraw() async {
+    final choice = await showWithdrawSheet(
+      context,
+      payable: _wallet!.payable,
+      quote: _quote!,
+    );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case WithdrawChoice.standard:
+        await _requestSettlement();
+      case WithdrawChoice.faster:
+        await _takeEarly();
+    }
+  }
+
   /// Same request→approve queue as [_requestSettlement], just with the fee
-  /// [_quote] quoted up front — nothing moves until an admin approves this
-  /// one either, the fee only buys a place in front of the free requests.
+  /// [_quote] quoted up front — confirmed once more, because this is the one
+  /// decision on the screen that costs the store money.
   Future<void> _takeEarly() async {
     final quote = _quote!;
     final l10n = context.l10n;
@@ -159,15 +177,13 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
 
     final confirmed = await showConfirmDialog(
       context: context,
-      title: l10n.earlyPayout,
-      // Both numbers and the date, so the trade is explicit: this is the one
-      // decision on the screen that costs the store money.
+      title: l10n.fasterPayout,
       message: l10n.confirmEarlyPayout(
         formatMoney(quote.netPayout),
         formatMoney(quote.payable),
         due == null ? '—' : '${due.day}/${due.month}',
       ),
-      confirmLabel: l10n.earlyPayout,
+      confirmLabel: l10n.fasterPayout,
       cancelLabel: l10n.cancel,
       icon: Icons.bolt_rounded,
       onConfirm: () async {
@@ -180,8 +196,7 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
   }
 
   /// The free alternative to [_takeEarly]: no fee, but nothing moves until an
-  /// admin approves it. Unlike Early Payout there is nothing to weigh — it
-  /// costs nothing — so it fires straight from the button, no confirm dialog.
+  /// admin approves it.
   Future<void> _requestSettlement() async {
     setState(() => _requestingSettlement = true);
     try {
@@ -204,124 +219,120 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: widget.embedded ? null : AppBar(title: Text(l10n.payouts)),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: _load,
-        child: _loading
-            ? const LoadingView()
-            : _error != null
-            ? ErrorView(message: _error!, onRetry: _load)
-            : ListView(
+      body: _loading
+          ? const LoadingView()
+          : _error != null && _wallet == null
+          ? ErrorView(message: _error!, onRetry: _load)
+          : RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
-                  AppSpace.gutter,
+                  AppSpace.lg,
                   AppSpace.md,
-                  AppSpace.gutter,
+                  AppSpace.lg,
                   AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
                 ),
-                children: [
-                  // A statement is a column of rows, and a row 1,300px wide
-                  // puts its label and its amount at opposite ends of the
-                  // monitor. Cap it and centre it; the console's own chrome
-                  // fills the rest.
-                  _capped(
-                    context,
-                    children: [
-                      WalletHeadline(wallet: _wallet!),
-                      const SizedBox(height: AppSpace.md),
-                      if (_pendingRequest != null)
-                        PendingSettlementTile(pending: _pendingRequest!)
-                      else ...[
-                        EarlyPayoutCard(quote: _quote!, onTake: _takeEarly),
-                        const SizedBox(height: AppSpace.md),
-                        SettlementRequestCard(
-                          title: l10n.requestSettlement,
-                          hint: l10n.requestSettlementHint,
-                          payable: _wallet!.payable,
-                          busy: _requestingSettlement,
-                          onRequest: _requestSettlement,
-                        ),
-                      ],
-                      const SizedBox(height: AppSpace.md),
-                      // Two totals that describe one running account, so they read
-                      // as consecutive lines rather than as a pair of unrelated
-                      // dashboard tiles sitting side by side.
-                      _SummaryRows(
-                        rows: [
-                          (
-                            label: l10n.totalEarningsLabel,
-                            value: formatMoney(_wallet!.totalEarnings),
-                            tone: AppColors.successInk,
-                          ),
-                          (
-                            label: l10n.totalSettlementsLabel,
-                            value: formatMoney(_wallet!.cashSettled),
-                            tone: null,
-                          ),
-                        ],
-                      ),
-                      if (_settlements.isNotEmpty) ...[
-                        const SizedBox(height: AppSpace.lg),
-                        _SectionHeader(
-                          title: l10n.settlementsTitle,
-                          count: _settlements.length,
-                          hasMore: _hasMoreSettlements,
-                        ),
-                        const SizedBox(height: AppSpace.xs),
-                        _ListCard(
-                          children: [
-                            for (final settlement in _settlements)
-                              SettlementTile(settlement: settlement),
-                          ],
-                        ),
-                        // A button rather than infinite scroll: this list sits in
-                        // the middle of a page that continues with the statement
-                        // below it, so loading on scroll would fight the section
-                        // underneath for the same gesture.
-                        if (_hasMoreSettlements)
-                          _LoadMore(
-                            busy: _loadingMoreSettlements,
-                            onPressed: _loadMoreSettlements,
-                          ),
-                      ],
-                      const SizedBox(height: AppSpace.lg),
-                      _SectionHeader(
-                        title: l10n.statement,
-                        count: _entries.length,
-                        hasMore: _hasMoreEntries,
-                      ),
-                      const SizedBox(height: AppSpace.xs),
-                      if (_entries.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: EmptyView(
-                            message: l10n.noTransactionsYet,
-                            icon: Icons.receipt_long_outlined,
-                          ),
-                        )
-                      else ...[
-                        _ListCard(
-                          children: [
-                            for (final entry in _entries)
-                              LedgerTile(entry: entry),
-                          ],
-                        ),
-                        if (_hasMoreEntries)
-                          _LoadMore(
-                            busy: _loadingMoreEntries,
-                            onPressed: _loadMoreEntries,
-                          ),
-                      ],
-                    ],
-                  ),
-                ],
+                // A statement is a column of rows, and a row 1,300px wide
+                // puts its label and its amount at opposite ends of the
+                // monitor. Cap it and centre it.
+                children: [_capped(context, children: _sections(context))],
               ),
-      ),
+            ),
     );
   }
 
+  List<Widget> _sections(BuildContext context) {
+    final l10n = context.l10n;
+    final wallet = _wallet!;
+    final pending = _pendingRequest;
+
+    return [
+      WalletHero(
+        wallet: wallet,
+        // One open request at a time — the server refuses a second.
+        onWithdraw: pending == null ? _withdraw : null,
+        withdrawBusy: _requestingSettlement,
+      ),
+      if (pending != null)
+        InReviewCard(
+          children: [
+            InReviewRow(
+              icon: pending.isEarly
+                  ? Icons.bolt_rounded
+                  : Icons.account_balance_rounded,
+              title: pending.isEarly ? l10n.fasterPayout : l10n.standardPayout,
+              subtitle: financeDayLabel(context, pending.createdAt),
+              amount: formatMoney(pending.amount),
+              onTap: () => showSettlementDetails(context, pending),
+            ),
+          ],
+        ),
+      FinanceSection(
+        title: l10n.summaryLabel,
+        child: FinanceCard(
+          children: [
+            FinanceRow(
+              icon: Icons.storefront_rounded,
+              label: l10n.totalEarningsLabel,
+              value: formatMoney(wallet.totalEarnings),
+              tone: AppColors.successInk,
+            ),
+            FinanceRow(
+              icon: Icons.account_balance_rounded,
+              label: l10n.settlementsPaidOut,
+              value: formatMoney(wallet.cashSettled),
+            ),
+          ],
+        ),
+      ),
+      FinanceSection(
+        title: l10n.activityLabel,
+        child: FinanceSegments<_ActivityTab>(
+          values: _ActivityTab.values,
+          selected: _tab,
+          labelOf: (t) => switch (t) {
+            _ActivityTab.statement => l10n.statement,
+            _ActivityTab.payouts => l10n.payouts,
+          },
+          onChanged: (t) => setState(() => _tab = t),
+        ),
+      ),
+      if (_tab == _ActivityTab.statement) ...[
+        LedgerActivity(entries: _entries),
+        if (_hasMoreEntries)
+          FinanceLoadMore(
+            busy: _loadingMoreEntries,
+            onPressed: _loadMoreEntries,
+          ),
+      ] else ...[
+        if (_settlements.isEmpty)
+          FinanceEmpty(
+            message: l10n.noTransactionsYet,
+            icon: Icons.account_balance_outlined,
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.md),
+            child: FinanceCard(
+              children: [
+                for (final settlement in _settlements)
+                  SettlementTile(settlement: settlement),
+              ],
+            ),
+          ),
+        if (_hasMoreSettlements)
+          FinanceLoadMore(
+            busy: _loadingMoreSettlements,
+            onPressed: _loadMoreSettlements,
+          ),
+      ],
+    ];
+  }
+
   /// One `ListView` child holding the page, so the cap applies to the content
-  /// without the scroll view itself being boxed — a `ConstrainedBox` around
-  /// the `ListView` would also narrow its scrollbar and its refresh gesture.
+  /// without the scroll view itself being boxed.
   Widget _capped(BuildContext context, {required List<Widget> children}) {
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -335,141 +346,4 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
       ),
     );
   }
-}
-
-/// Totals as consecutive rows in one card.
-///
-/// Replaces a two-cell `GridView`: on a phone those cells were half the width
-/// of a figure that can run to `EGP 123,456.78`, and in the web console they
-/// stretched to a third of the window each with nothing in them. A money
-/// figure wants a label on its left and nothing else on its line.
-class _SummaryRows extends StatelessWidget {
-  const _SummaryRows({required this.rows});
-
-  final List<({String label, String value, Color? tone})> rows;
-
-  @override
-  Widget build(BuildContext context) => _ListCard(
-    children: [
-      for (final row in rows)
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.md,
-            vertical: AppSpace.md,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  row.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpace.md),
-              Text(
-                row.value,
-                style: AppType.mono(
-                  16,
-                  weight: FontWeight.w800,
-                  color: row.tone ?? AppColors.ink,
-                ),
-              ),
-            ],
-          ),
-        ),
-    ],
-  );
-}
-
-/// A bordered container that hairlines between its children, so a run of rows
-/// reads as one list instead of as loose tiles on the page background.
-class _ListCard extends StatelessWidget {
-  const _ListCard({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0)
-              const Divider(
-                height: 1,
-                thickness: 1,
-                color: AppColors.borderSoft,
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-              child: children[i],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Section title with how many rows are under it.
-///
-/// The count carries a `+` while more pages exist, because "10" next to a list
-/// of ten is the exact claim the old screen made falsely — it had more and
-/// said nothing.
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.count,
-    required this.hasMore,
-  });
-
-  final String title;
-  final int count;
-  final bool hasMore;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(child: Text(title, style: AppType.heading(16))),
-      if (count > 0)
-        Text(
-          hasMore ? '$count+' : '$count',
-          style: AppType.mono(12.5, color: AppColors.textFaint),
-        ),
-    ],
-  );
-}
-
-class _LoadMore extends StatelessWidget {
-  const _LoadMore({required this.busy, required this.onPressed});
-
-  final bool busy;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: AppSpace.sm),
-    child: Center(
-      child: busy
-          ? const Padding(
-              padding: EdgeInsets.all(AppSpace.sm),
-              child: ButtonSpinner(size: 18),
-            )
-          : TextButton(
-              onPressed: onPressed,
-              child: Text(context.l10n.loadMore),
-            ),
-    ),
-  );
 }

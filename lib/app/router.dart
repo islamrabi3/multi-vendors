@@ -22,8 +22,8 @@ import '../features/admin/admin_shell.dart';
 import '../features/admin/screens/admin_complaints_screen.dart';
 import '../features/admin/screens/admin_content_screen.dart';
 import '../features/admin/screens/admin_dashboard_screen.dart';
+import '../features/admin/screens/admin_driver_detail_screen.dart';
 import '../features/admin/screens/admin_drivers_screen.dart';
-import '../features/admin/screens/admin_manage_screen.dart';
 import '../features/admin/screens/admin_menu_import_screen.dart';
 import '../features/admin/screens/admin_order_detail_screen.dart';
 import '../features/admin/screens/admin_orders_screen.dart';
@@ -115,7 +115,31 @@ String _roleHome(UserRole role) => switch (role) {
 /// Pages every role can open. Legal text and the about page belong to the
 /// platform, not to the customer app, so a vendor or driver reading them must
 /// not be bounced back to their own home.
-const _sharedPaths = {'/about', '/terms', '/privacy', '/support'};
+const _sharedPaths = {
+  '/about',
+  '/terms',
+  '/privacy',
+  '/support',
+  // Every shell draws the bell; vendors and drivers were bounced home.
+  '/notifications',
+};
+
+final _customerOrderLink = RegExp(r'^/order/([^/]+)(/chat)?$');
+
+/// Push payloads and inbox rows link to the customer's `/order/:id`. Each staff
+/// role has its own page for the same order, so the link is translated rather
+/// than refused — a tapped "new order" push used to land a vendor on home.
+String? _orderLinkForRole(UserRole role, String location) {
+  final match = _customerOrderLink.firstMatch(location);
+  if (match == null) return null;
+  final id = match.group(1)!;
+  return switch (role) {
+    UserRole.vendor => '/vendor-app/orders/$id',
+    UserRole.admin => '/admin-app/orders/$id',
+    UserRole.driver => '/driver-app/active',
+    _ => null,
+  };
+}
 
 bool _allowedForRole(UserRole role, String location) {
   if (_sharedPaths.contains(location)) return true;
@@ -211,6 +235,8 @@ GoRouter buildRouter(AuthCubit authCubit) {
         return location == '/vendor-onboarding' ? null : '/vendor-onboarding';
       }
       final role = auth.profile!.role;
+      final roleOrderLink = _orderLinkForRole(role, location);
+      if (roleOrderLink != null) return roleOrderLink;
       if (location == '/splash' ||
           location == '/choose-role' ||
           location == '/add-phone' ||
@@ -345,7 +371,13 @@ GoRouter buildRouter(AuthCubit authCubit) {
           fallbackTitle: context.l10n.privacyPolicy,
         ),
       ),
-      GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
+      GoRoute(
+        path: '/addresses',
+        // `extra` carries the selected id when checkout opens this to pick
+        // rather than to manage — see AddressesScreen's doc comment.
+        builder: (_, state) =>
+            AddressesScreen(selectedId: state.extra as String?),
+      ),
       GoRoute(path: '/favorites', builder: (_, _) => const FavoritesScreen()),
       GoRoute(
         path: '/notifications',
@@ -425,18 +457,12 @@ GoRouter buildRouter(AuthCubit authCubit) {
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/admin-app/manage',
-                builder: (_, _) => const AdminManageScreen(),
-              ),
-            ],
-          ),
         ],
       ),
 
-      // Reached from the Manage hub rather than the tab bar, so they push over
+      // Every management tool: a grid on Overview on mobile, a persistent
+      // sidebar on web — neither owns a shell branch, so each of these pushes
+      // over whichever shell is showing.
       // the shell instead of owning a branch.
       GoRoute(
         path: '/admin-app/promos',
@@ -501,6 +527,11 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/admin-app/drivers',
         builder: (_, _) => const AdminDriversScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/drivers/:id',
+        builder: (_, state) =>
+            AdminDriverDetailScreen(driverId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/admin-app/menu-import',

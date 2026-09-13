@@ -1,0 +1,13 @@
+-- restore_order_stock was created by the previous migration with no explicit
+-- grants, so Postgres left it at its default: EXECUTE granted to PUBLIC.
+-- Confirmed on this project — anon and authenticated could both call
+-- /rest/v1/rpc/restore_order_stock directly with any order_id, and the
+-- function does not check the order's status before crediting stock back, so
+-- this let anyone inflate any product's stock_quantity for any order, no
+-- account required.
+--
+-- It is only ever meant to run from inside another SECURITY DEFINER
+-- function (discard_unpaid_order, settle_payment_intent, the cancel
+-- trigger) — those calls execute with the *function's* privileges, not the
+-- caller's, so they need no grant here at all.
+revoke all on function public.restore_order_stock(uuid) from public, anon, authenticated;

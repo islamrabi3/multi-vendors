@@ -1,10 +1,13 @@
 import 'package:intl/intl.dart';
 
-final _egp = NumberFormat.currency(symbol: 'EGP ', decimalDigits: 2);
+// Pinned to `en`: the app sets `Intl.defaultLocale` to the UI language so
+// dates read in Arabic, and amounts must not change separators with it.
+
+final _egp = NumberFormat.currency(locale: 'en', symbol: 'EGP ', decimalDigits: 2);
 
 String formatMoney(num amount) => _egp.format(amount);
 
-final _egpWhole = NumberFormat.currency(symbol: 'EGP ', decimalDigits: 0);
+final _egpWhole = NumberFormat.currency(locale: 'en', symbol: 'EGP ', decimalDigits: 0);
 
 /// Drops the decimals when there are none to show: `EGP 5` rather than
 /// `EGP 5.00`.

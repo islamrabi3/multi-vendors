@@ -154,29 +154,35 @@ class _CheckoutViewState extends State<_CheckoutView> {
                   // Bottom padding is the pay bar's job now, not the list's.
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                   children: [
+                    // What is actually being paid for, before anything else:
+                    // the customer should never commit to a total without
+                    // seeing the items behind it.
+                    _OrderItemsCard(cart: cart),
+                    const SizedBox(height: AppSpace.md),
                     // Address section with mini map
-                    if (state.addresses.isEmpty)
-                      Card(
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.add_location_alt_outlined,
-                            color: AppColors.primary,
+                    // Pickup collects at the store, so there is nothing to
+                    // deliver to and no address to pick. Requiring one anyway
+                    // is why a pickup order used to be blocked at Place Order
+                    // with no visible reason.
+                    if (!state.isPickup) ...[
+                      if (state.addresses.isEmpty)
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.add_location_alt_outlined,
+                              color: AppColors.primary,
+                            ),
+                            title: Text(context.l10n.addADeliveryAddress),
+                            onTap: () => _pickAddress(context, cubit, state),
                           ),
-                          title: Text(context.l10n.addADeliveryAddress),
-                          onTap: () async {
-                            await context.push('/addresses');
-                            cubit.loadAddresses();
-                          },
+                        )
+                      else
+                        _AddressCard(
+                          address:
+                              state.selectedAddress ?? state.addresses.first,
+                          onChange: () => _pickAddress(context, cubit, state),
                         ),
-                      )
-                    else
-                      _AddressCard(
-                        address: state.selectedAddress ?? state.addresses.first,
-                        onChange: () async {
-                          await context.push('/addresses');
-                          cubit.loadAddresses();
-                        },
-                      ),
+                    ],
 
                     const SizedBox(height: AppSpace.md),
                     _OrderTypePicker(
@@ -189,7 +195,10 @@ class _CheckoutViewState extends State<_CheckoutView> {
                     // A scheduled order has a slot rather than an estimate, so the
                     // estimate would only contradict it.
                     if (!state.isScheduled)
-                      _EtaCard(prepMinutes: cart.vendor!.totalPrepMinutes),
+                      _EtaCard(
+                        prepMinutes: cart.vendor!.totalPrepMinutes,
+                        isPickup: state.isPickup,
+                      ),
 
                     // Payment Section
                     const SizedBox(height: 18),
@@ -214,7 +223,9 @@ class _CheckoutViewState extends State<_CheckoutView> {
                     _PaymentSelectorCard(
                       icon: Icons.payments_rounded,
                       title: context.l10n.cashOnDelivery,
-                      subtitle: context.l10n.payTheDriverInEgp,
+                      subtitle: state.isPickup
+                          ? context.l10n.payAtPickup
+                          : context.l10n.payTheDriverInEgp,
                       selected: state.paymentMethod == 'cod',
                       onTap: () => cubit.selectPaymentMethod('cod'),
                     ),
@@ -419,7 +430,10 @@ class _CheckoutViewState extends State<_CheckoutView> {
               _PayBar(
                 total: total,
                 placing: placing,
-                enabled: !placing && state.selectedAddressId != null,
+                enabled:
+                    !placing &&
+                    (state.isPickup || state.selectedAddressId != null) &&
+                    (!state.isScheduled || state.scheduledAt != null),
                 payNow: state.paymentMethod != 'cod',
                 onPressed: () => context.read<CheckoutCubit>().placeOrder(
                   notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
@@ -428,6 +442,168 @@ class _CheckoutViewState extends State<_CheckoutView> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _OrderItemsCard extends StatefulWidget {
+  const _OrderItemsCard({required this.cart});
+
+  final CartState cart;
+
+  @override
+  State<_OrderItemsCard> createState() => _OrderItemsCardState();
+}
+
+class _OrderItemsCardState extends State<_OrderItemsCard> {
+  static const _collapsedCount = 3;
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final language = Localizations.localeOf(context).languageCode;
+    final cart = widget.cart;
+    final vendor = cart.vendor!;
+    final items = cart.items;
+    final visible = _expanded || items.length <= _collapsedCount
+        ? items
+        : items.take(_collapsedCount).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
+            child: Row(
+              children: [
+                AppNetworkImage(
+                  url: vendor.logoUrl,
+                  width: 40,
+                  height: 40,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.yourOrderFrom(vendor.name),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.heading(15),
+                      ),
+                      Text(
+                        l10n.itemsCount(cart.itemCount),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  // Checkout is opened from the cart; editing is going back.
+                  onPressed: () =>
+                      context.canPop() ? context.pop() : context.go('/cart'),
+                  child: Text(l10n.edit),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.borderSoft),
+          for (final item in visible)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 30),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.warmFill,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${item.quantity}×',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.product.displayName(language),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        if (item.selectedOptions.isNotEmpty)
+                          Text(
+                            item.selectedOptions.map((o) => o.name).join('، '),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        if (item.notes?.isNotEmpty ?? false)
+                          Text(
+                            '"${item.notes!}"',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: AppColors.textFaint,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  PriceText(formatMoney(item.lineTotal), size: 13.5),
+                ],
+              ),
+            ),
+          if (items.length > _collapsedCount)
+            TextButton.icon(
+              onPressed: () => setState(() => _expanded = !_expanded),
+              icon: Icon(
+                _expanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                size: 18,
+              ),
+              label: Text(
+                _expanded ? l10n.showLess : l10n.showAllItems(items.length),
+              ),
+            )
+          else
+            const SizedBox(height: 12),
+        ],
       ),
     );
   }
@@ -466,6 +642,31 @@ class _SummaryRow extends StatelessWidget {
 /// the address actually carries coordinates. The previous version painted three
 /// grey lines and a pin at fixed pixel offsets — identical for every address in
 /// the country, which made "check your address" impossible to actually do.
+/// Opens the address list in pick mode, pre-marking whatever is already
+/// selected, and applies the result — either an existing address the
+/// customer tapped, or a brand-new one they just drew on the map.
+///
+/// Previously "Change" reopened the same manage-addresses list with no way
+/// to report a choice back, so the delivery address on checkout could never
+/// actually be changed once one existed.
+Future<void> _pickAddress(
+  BuildContext context,
+  CheckoutCubit cubit,
+  CheckoutState state,
+) async {
+  final pickedId = await context.push<String>(
+    '/addresses',
+    extra: state.selectedAddressId,
+  );
+  if (pickedId != null) {
+    cubit.selectAddress(pickedId);
+  } else {
+    // Nothing picked, but an address may have been edited or deleted while
+    // the list was open — refresh so the card reflects that.
+    cubit.loadAddresses();
+  }
+}
+
 class _AddressCard extends StatelessWidget {
   const _AddressCard({required this.address, required this.onChange});
 
@@ -583,15 +784,21 @@ class _AddressCard extends StatelessWidget {
 /// a fake choice. There is no scheduled-delivery feature to choose between, so
 /// the radio is gone and the numbers are now real.
 class _EtaCard extends StatelessWidget {
-  const _EtaCard({required this.prepMinutes});
+  const _EtaCard({required this.prepMinutes, required this.isPickup});
 
   final int prepMinutes;
 
+  /// Pickup has no delivery leg to add, and the arrival time below is the
+  /// customer's own trip, not the store's — the estimate over-promised by the
+  /// delivery buffer and then contradicted itself with a driver-shaped label.
+  final bool isPickup;
+
   @override
   Widget build(BuildContext context) {
-    // Prep, plus a delivery leg. The spread is the honest part of an estimate.
     final earliest = prepMinutes;
-    final latest = prepMinutes + 10;
+    // Prep, plus a delivery leg — skipped for pickup. The spread is the
+    // honest part of an estimate.
+    final latest = isPickup ? prepMinutes : prepMinutes + 10;
     final arrival = DateTime.now().add(Duration(minutes: latest));
 
     return Container(
@@ -868,7 +1075,11 @@ class _OrderTypePicker extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final ValueChanged<DateTime?> onSchedule;
 
-  Future<void> _pickSlot(BuildContext context) async {
+  /// [fallbackType] is where to land if the customer backs out of either
+  /// picker. Cancelling used to leave the segmented control on "Scheduled"
+  /// with no time chosen — Place Order stayed enabled, and the order would
+  /// have gone to the server as scheduled for nothing.
+  Future<void> _pickSlot(BuildContext context, String fallbackType) async {
     final now = DateTime.now();
     // The server refuses anything sooner than 45 minutes, so the picker does
     // not offer it — a rejection the customer could have been spared.
@@ -879,12 +1090,19 @@ class _OrderTypePicker extends StatelessWidget {
       firstDate: earliest,
       lastDate: now.add(const Duration(days: 7)),
     );
-    if (date == null || !context.mounted) return;
+    if (date == null) {
+      if (context.mounted) onChanged(fallbackType);
+      return;
+    }
+    if (!context.mounted) return;
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(earliest),
     );
-    if (time == null) return;
+    if (time == null) {
+      onChanged(fallbackType);
+      return;
+    }
 
     final slot = DateTime(
       date.year,
@@ -924,8 +1142,9 @@ class _OrderTypePicker extends StatelessWidget {
           selected: {state.orderType},
           onSelectionChanged: (selection) {
             final type = selection.first;
+            final previousType = state.orderType;
             onChanged(type);
-            if (type == 'scheduled') _pickSlot(context);
+            if (type == 'scheduled') _pickSlot(context, previousType);
           },
         ),
         if (state.isPickup) ...[
@@ -938,7 +1157,10 @@ class _OrderTypePicker extends StatelessWidget {
         if (state.isScheduled) ...[
           const SizedBox(height: AppSpace.sm),
           InkWell(
-            onTap: () => _pickSlot(context),
+            // Re-tapping the note has nothing sensible to fall back to but
+            // staying scheduled — the customer is already committed to this
+            // order type and is only here to fix or confirm the time.
+            onTap: () => _pickSlot(context, 'scheduled'),
             borderRadius: BorderRadius.circular(AppRadii.lg),
             child: _Note(
               icon: Icons.schedule_rounded,

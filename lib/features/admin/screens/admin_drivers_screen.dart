@@ -1,17 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../../app/tokens.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/l10n_extension.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/ui_kit.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../../auth/auth_cubit.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
-import '../../../core/widgets/web/adaptive_sheet.dart';
 
 enum DriverFilter { all, pending, active, suspended }
+
+/// The reviewer-facing name of a document column.
+String documentLabel(BuildContext context, String column) => switch (column) {
+  'id_card_url' => context.l10n.idFront,
+  'id_card_back_url' => context.l10n.idBack,
+  'license_url' => context.l10n.licenseFront,
+  'license_back_url' => context.l10n.licenseBack,
+  _ => column,
+};
+
+/// One place both the mobile card and the web row read a driver's status
+/// from, so the three colours and three labels can't drift apart between
+/// them the way they had — the mobile card used `Colors.red` for suspended
+/// while the web row used the kit's `AppColors.dangerInk`.
+({String label, Color fill, Color ink}) driverStatusTone(
+  BuildContext context,
+  DriverAccount driver,
+) {
+  final l10n = context.l10n;
+  if (driver.isPending) {
+    return (
+      label: l10n.statusPending,
+      fill: AppColors.amberFill,
+      ink: AppColors.amberInk,
+    );
+  }
+  if (driver.isApproved) {
+    return (
+      label: l10n.statusApproved,
+      fill: AppColors.successFill,
+      ink: AppColors.successInk,
+    );
+  }
+  return (
+    label: l10n.statusSuspended,
+    fill: AppColors.dangerFill,
+    ink: AppColors.dangerInk,
+  );
+}
 
 class AdminDriversScreen extends StatefulWidget {
   const AdminDriversScreen({super.key, this.embedded = false});
@@ -30,8 +74,9 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
   bool _loading = true;
   List<DriverAccount> _drivers = const [];
   DriverFilter _filter = DriverFilter.all;
+  String _query = '';
   String? _busyId;
-  String? _error;
+  Object? _error;
 
   @override
   void initState() {
@@ -55,7 +100,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = e;
       });
     }
   }
@@ -95,6 +140,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       showAdaptiveSheet(
         context: context,
+        showDragHandle: true,
         builder: (ctx) => SafeArea(
           child: Wrap(
             children: [
@@ -123,34 +169,32 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
     }
   }
 
+  /// The finance/documents view — "how much do they owe, how much are they
+  /// owed" had no screen at all before this, for either role.
+  void _openDetail(DriverAccount driver) =>
+      context.push('/admin-app/drivers/${driver.id}');
+
   Future<void> _setStatus(DriverAccount driver, String status) async {
+    final l10n = context.l10n;
     String? reason;
     if (status == 'suspended') {
       final controller = TextEditingController();
-      reason = await showDialog<String>(
+      final confirmed = await showFormDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(context.l10n.rejectSuspendDriver),
-          content: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              hintText: context.l10n.rejectionReasonHint,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, null),
-              child: Text(context.l10n.cancel),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: Text(context.l10n.reject),
-            ),
-          ],
+        title: l10n.rejectSuspendDriver,
+        icon: Icons.block_rounded,
+        tone: AppDialogTone.danger,
+        contentBuilder: (_) => TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(hintText: l10n.rejectionReasonHint),
         ),
+        submitLabel: l10n.reject,
+        cancelLabel: l10n.cancel,
+        onSubmit: (_) async => true,
       );
-      if (reason == null) return;
+      if (confirmed != true || !mounted) return;
+      reason = controller.text.trim();
     }
 
     setState(() => _busyId = driver.id);
@@ -158,9 +202,9 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
       await _repo.setDriverStatus(driver.id, status, reason: reason);
       if (!mounted) return;
       showSnack(context, switch (status) {
-        'active' => context.l10n.driverApproved,
-        'suspended' => context.l10n.driverSuspendedToast,
-        _ => context.l10n.driverRejected,
+        'active' => l10n.driverApproved,
+        'suspended' => l10n.driverSuspendedToast,
+        _ => l10n.driverRejected,
       });
       await _load();
     } catch (e) {
@@ -171,24 +215,31 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
   }
 
   List<DriverAccount> get _visibleDrivers {
-    switch (_filter) {
-      case DriverFilter.all:
-        return _drivers;
-      case DriverFilter.pending:
-        return _drivers.where((d) => d.isPending).toList();
-      case DriverFilter.active:
-        return _drivers.where((d) => d.isApproved).toList();
-      case DriverFilter.suspended:
-        return _drivers.where((d) => d.isSuspended).toList();
-    }
+    final byStatus = switch (_filter) {
+      DriverFilter.all => _drivers,
+      DriverFilter.pending => _drivers.where((d) => d.isPending),
+      DriverFilter.active => _drivers.where((d) => d.isApproved),
+      DriverFilter.suspended => _drivers.where((d) => d.isSuspended),
+    };
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return byStatus.toList();
+    return byStatus
+        .where(
+          (d) =>
+              d.name.toLowerCase().contains(query) ||
+              (d.phone?.toLowerCase().contains(query) ?? false),
+        )
+        .toList();
   }
 
   void _showImagePreview(String title, String imageUrl) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -197,23 +248,13 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
               automaticallyImplyLeading: false,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close_rounded),
                   onPressed: () => Navigator.pop(ctx),
                 ),
               ],
             ),
-            InteractiveViewer(
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(
-                    context.l10n.couldNotLoadDocument,
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ),
-              ),
+            Flexible(
+              child: InteractiveViewer(child: AppNetworkImage(url: imageUrl)),
             ),
           ],
         ),
@@ -230,45 +271,62 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
     final activeCount = _drivers.where((d) => d.isApproved).length;
     final suspendedCount = _drivers.where((d) => d.isSuspended).length;
 
-    final filterBar = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          FilterChip(
-            selectedColor: AppColors.attentionBorder,
-            label: Text(l10n.allWithCount(_drivers.length)),
-            selected: _filter == DriverFilter.all,
-            onSelected: (_) => setState(() => _filter = DriverFilter.all),
-          ),
-          const SizedBox(width: 8),
-          FilterChip(
-            label: Text(l10n.pendingWithCount(pendingCount)),
-            selected: _filter == DriverFilter.pending,
-            selectedColor: AppColors.amberFill,
-            onSelected: (_) => setState(() => _filter = DriverFilter.pending),
-          ),
-          const SizedBox(width: 8),
-          FilterChip(
-            label: Text(l10n.approvedWithCount(activeCount)),
-            selected: _filter == DriverFilter.active,
-            selectedColor: AppColors.successFill,
-            onSelected: (_) => setState(() => _filter = DriverFilter.active),
-          ),
-          const SizedBox(width: 8),
-          FilterChip(
-            label: Text(l10n.suspendedWithCount(suspendedCount)),
-            selected: _filter == DriverFilter.suspended,
-            selectedColor: Colors.red.shade100,
-            onSelected: (_) => setState(() => _filter = DriverFilter.suspended),
-          ),
-        ],
-      ),
+    final filterBar = AppFilterBar(
+      // The default gutter padding is right for the plain mobile Scaffold
+      // body below, which has none of its own; the embedded/web branches
+      // already sit inside a full page padding, so this would double it.
+      padding: widget.embedded || webWide
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+      children: [
+        AppFilterChip(
+          label: l10n.all,
+          count: _drivers.length,
+          selected: _filter == DriverFilter.all,
+          onTap: () => setState(() => _filter = DriverFilter.all),
+        ),
+        AppFilterChip(
+          label: l10n.statusPending,
+          count: pendingCount,
+          selected: _filter == DriverFilter.pending,
+          onTap: () => setState(() => _filter = DriverFilter.pending),
+        ),
+        AppFilterChip(
+          label: l10n.statusApproved,
+          count: activeCount,
+          selected: _filter == DriverFilter.active,
+          onTap: () => setState(() => _filter = DriverFilter.active),
+        ),
+        AppFilterChip(
+          label: l10n.statusSuspended,
+          count: suspendedCount,
+          selected: _filter == DriverFilter.suspended,
+          onTap: () => setState(() => _filter = DriverFilter.suspended),
+        ),
+      ],
     );
 
+    final searchField = _drivers.length > 5
+        ? Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.embedded || webWide ? 0 : AppSpace.gutter,
+            ),
+            child: TextField(
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: l10n.searchByName,
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          )
+        : null;
+
     final body = _loading
-        ? const Center(child: CircularProgressIndicator())
+        ? const _DriversSkeleton()
         : _error != null
-        ? ErrorView(message: _error!, onRetry: _load)
+        ? FailureView(error: _error!, onRetry: _load)
         : webWide
         ? _WebDriversTable(
             drivers: _visibleDrivers,
@@ -276,6 +334,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
             canApprove: canApprove,
             onDocumentTap: _onDocumentBoxTap,
             onSetStatus: _setStatus,
+            onOpenDetail: _openDetail,
           )
         : _MobileList(
             drivers: _visibleDrivers,
@@ -283,6 +342,7 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
             canApprove: canApprove,
             onDocumentTap: _onDocumentBoxTap,
             onSetStatus: _setStatus,
+            onOpenDetail: _openDetail,
           );
 
     if (widget.embedded) {
@@ -292,6 +352,10 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             filterBar,
+            if (searchField != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              searchField,
+            ],
             const SizedBox(height: AppSpace.lg),
             Expanded(child: body),
           ],
@@ -311,6 +375,10 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               filterBar,
+              if (searchField != null) ...[
+                const SizedBox(height: AppSpace.sm),
+                searchField,
+              ],
               const SizedBox(height: AppSpace.lg),
               Expanded(child: body),
             ],
@@ -326,14 +394,12 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
         top: false,
         child: Column(
           children: [
-            // Filter Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.gutter,
-                vertical: AppSpace.sm,
-              ),
-              child: filterBar,
-            ),
+            const SizedBox(height: AppSpace.sm),
+            filterBar,
+            if (searchField != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              searchField,
+            ],
             Expanded(
               child: RefreshIndicator(onRefresh: _load, child: body),
             ),
@@ -344,9 +410,24 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
   }
 }
 
-/// Mobile/narrow: the original vertical stack of full cards, each with an
-/// inline strip of document thumbnails. Unchanged behaviour from before this
-/// screen grew a web layout.
+/// Shaped like the real cards, so the list doesn't jump when drivers land.
+class _DriversSkeleton extends StatelessWidget {
+  const _DriversSkeleton();
+
+  @override
+  Widget build(BuildContext context) => SkeletonTheme(
+    child: SkeletonList(
+      padding: const EdgeInsets.all(AppSpace.gutter),
+      itemCount: 4,
+      separator: const SizedBox(height: AppSpace.md),
+      itemBuilder: (_) => const Skeleton.box(height: 220, radius: AppRadii.lg),
+    ),
+  );
+}
+
+/// Mobile/narrow: a full card per driver, with an inline strip of document
+/// thumbnails and the approve/suspend actions right below them — everything
+/// a reviewer needs is on one card, nothing behind another tap.
 class _MobileList extends StatelessWidget {
   const _MobileList({
     required this.drivers,
@@ -354,11 +435,13 @@ class _MobileList extends StatelessWidget {
     required this.canApprove,
     required this.onDocumentTap,
     required this.onSetStatus,
+    required this.onOpenDetail,
   });
 
   final List<DriverAccount> drivers;
   final String? busyId;
   final bool canApprove;
+  final void Function(DriverAccount driver) onOpenDetail;
   final void Function(
     DriverAccount driver,
     String docTitle,
@@ -372,6 +455,7 @@ class _MobileList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (drivers.isEmpty) {
       return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: 80),
           EmptyView(
@@ -381,50 +465,68 @@ class _MobileList extends StatelessWidget {
         ],
       );
     }
-    return ListView.builder(
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpace.gutter),
       itemCount: drivers.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpace.md),
       itemBuilder: (context, index) {
         final driver = drivers[index];
         final isBusy = busyId == driver.id;
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.grey.shade300),
+        final status = driverStatusTone(context, driver);
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: driver.isPending
+                  ? AppColors.attentionBorder
+                  : AppColors.border,
+            ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
+                onTap: () => onOpenDetail(driver),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                child: Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.warmFill,
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const BoxDecoration(
+                        color: AppColors.warmFill,
+                        shape: BoxShape.circle,
+                      ),
                       child: const Icon(
-                        Icons.two_wheeler,
+                        Icons.two_wheeler_rounded,
                         color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             driver.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15.5,
                             ),
                           ),
                           if (driver.phone != null)
                             Text(
                               driver.phone!,
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 13,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textMuted,
                               ),
                             ),
                           const SizedBox(height: 2),
@@ -447,144 +549,120 @@ class _MobileList extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: driver.isPending
-                            ? AppColors.amberFill
-                            : driver.isApproved
-                            ? AppColors.successFill
-                            : Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        // Not the raw column value: "ACTIVE" is a database
-                        // word, and it was never translated.
-                        driver.isPending
-                            ? context.l10n.statusPending
-                            : driver.isApproved
-                            ? context.l10n.statusApproved
-                            : context.l10n.statusSuspended,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: driver.isPending
-                              ? AppColors.amberInk
-                              : driver.isApproved
-                              ? AppColors.successInk
-                              : Colors.red,
-                        ),
-                      ),
+                    const SizedBox(width: AppSpace.sm),
+                    SoftBadge(
+                      label: status.label,
+                      fill: status.fill,
+                      ink: status.ink,
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textFaint,
                     ),
                   ],
                 ),
-                const Divider(height: 24),
-                Text(
-                  '${context.l10n.vehicleLabel}: '
-                  '${driver.vehicleType ?? '—'}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+              ),
+              const Divider(height: AppSpace.xl, color: AppColors.borderSoft),
+              Text(
+                '${context.l10n.vehicleLabel}: ${driver.vehicleType ?? '—'}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              Text(
+                context.l10n.submittedDocuments,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              // All four, because both sides are what verifies a document: a
+              // front shows a photo and a name, while the expiry and issuing
+              // details are on the back.
+              if (!driver.hasAnyDocument)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+                  child: Text(
+                    context.l10n.noDocumentsUploaded,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                )
+              else
+                // Horizontal: four documents side by side is how a reviewer
+                // compares them, and stacking them pushes the approve
+                // buttons off the screen.
+                SizedBox(
+                  height: 118,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: driver.documents.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(width: AppSpace.md),
+                    itemBuilder: (context, i) {
+                      final doc = driver.documents[i];
+                      final label = documentLabel(context, doc.column);
+                      return SizedBox(
+                        width: 150,
+                        child: _DocumentBox(
+                          title: label,
+                          imageUrl: doc.url,
+                          onTap: () =>
+                              onDocumentTap(driver, label, doc.column, doc.url),
+                        ),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  context.l10n.submittedDocuments,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // All four, because both sides are what verifies a document: a
-                // front shows a photo and a name, while the expiry and issuing
-                // details are on the back.
-                if (!driver.hasAnyDocument)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      context.l10n.noDocumentsUploaded,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.textMuted,
+              const SizedBox(height: AppSpace.lg),
+              if (isBusy)
+                const Center(child: ButtonSpinner())
+              // Approving and suspending are both `drivers.approve`; a role
+              // with only `drivers.view` sees the list and no buttons.
+              else if (canApprove)
+                Row(
+                  children: [
+                    if (!driver.isApproved)
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => onSetStatus(driver, 'active'),
+                          icon: const Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 18,
+                          ),
+                          label: Text(context.l10n.approve),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.successInk,
+                          ),
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  // Horizontal: four documents side by side is how a reviewer
-                  // compares them, and stacking them pushes the approve
-                  // buttons off the screen.
-                  SizedBox(
-                    height: 118,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: driver.documents.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 12),
-                      itemBuilder: (context, i) {
-                        final doc = driver.documents[i];
-                        final label = _documentLabel(context, doc.column);
-                        return SizedBox(
-                          width: 150,
-                          child: _DocumentBox(
-                            title: label,
-                            imageUrl: doc.url,
-                            onTap: () => onDocumentTap(
-                              driver,
-                              label,
-                              doc.column,
-                              doc.url,
-                            ),
+                    if (!driver.isApproved && !driver.isSuspended)
+                      const SizedBox(width: AppSpace.sm),
+                    if (!driver.isSuspended)
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => onSetStatus(driver, 'suspended'),
+                          icon: const Icon(Icons.cancel_outlined, size: 18),
+                          label: Text(
+                            driver.isApproved
+                                ? context.l10n.suspend
+                                : context.l10n.reject,
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                if (isBusy)
-                  const Center(child: CircularProgressIndicator())
-                // Approving and suspending are both `drivers.approve`; a role
-                // with only `drivers.view` sees the list and no buttons.
-                else if (canApprove)
-                  Row(
-                    children: [
-                      if (!driver.isApproved)
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: () => onSetStatus(driver, 'active'),
-                            icon: const Icon(
-                              Icons.check_circle_outline,
-                              size: 18,
-                            ),
-                            label: Text(context.l10n.approve),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.successInk,
-                            ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.dangerInk,
+                            side: const BorderSide(color: AppColors.dangerInk),
                           ),
                         ),
-                      if (!driver.isApproved && !driver.isSuspended)
-                        const SizedBox(width: 8),
-                      if (!driver.isSuspended)
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => onSetStatus(driver, 'suspended'),
-                            icon: const Icon(Icons.cancel_outlined, size: 18),
-                            label: Text(
-                              driver.isApproved
-                                  ? context.l10n.suspend
-                                  : context.l10n.reject,
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-              ],
-            ),
+                      ),
+                  ],
+                ),
+            ],
           ),
         );
       },
@@ -603,11 +681,13 @@ class _WebDriversTable extends StatelessWidget {
     required this.canApprove,
     required this.onDocumentTap,
     required this.onSetStatus,
+    required this.onOpenDetail,
   });
 
   final List<DriverAccount> drivers;
   final String? busyId;
   final bool canApprove;
+  final void Function(DriverAccount driver) onOpenDetail;
   final void Function(
     DriverAccount driver,
     String docTitle,
@@ -631,17 +711,20 @@ class _WebDriversTable extends StatelessWidget {
           WebTableColumn(label: l10n.driversTab, flex: 3),
           WebTableColumn(label: l10n.vehicleLabel, flex: 2),
           WebTableColumn(label: l10n.submittedDocuments, flex: 2),
-          const WebTableColumn(label: '', width: 90),
+          WebTableColumn(label: l10n.statusPending, width: 90),
+          const WebTableColumn(label: '', width: 190),
         ],
         rows: [
           for (final driver in drivers)
             WebTableRow.aligned(
               trailingWidth: 190,
+              onTap: () => onOpenDetail(driver),
               columns: [
                 WebTableColumn(label: '', flex: 3),
                 WebTableColumn(label: '', flex: 2),
                 WebTableColumn(label: '', flex: 2),
                 const WebTableColumn(label: '', width: 90),
+                const WebTableColumn(label: '', width: 190),
               ],
               cells: [
                 Row(
@@ -651,7 +734,7 @@ class _WebDriversTable extends StatelessWidget {
                       radius: 15,
                       backgroundColor: AppColors.warmFill,
                       child: Icon(
-                        Icons.two_wheeler,
+                        Icons.two_wheeler_rounded,
                         size: 16,
                         color: AppColors.primary,
                       ),
@@ -698,14 +781,14 @@ class _WebDriversTable extends StatelessWidget {
                         children: [
                           for (var i = 0; i < driver.documents.length; i++) ...[
                             _DocumentDot(
-                              label: _documentLabel(
+                              label: documentLabel(
                                 context,
                                 driver.documents[i].column,
                               ),
                               hasImage: driver.documents[i].url != null,
                               onTap: () => onDocumentTap(
                                 driver,
-                                _documentLabel(
+                                documentLabel(
                                   context,
                                   driver.documents[i].column,
                                 ),
@@ -727,22 +810,15 @@ class _WebDriversTable extends StatelessWidget {
                           color: AppColors.textMuted,
                         ),
                       ),
-                SoftBadge(
-                  label: driver.isPending
-                      ? l10n.statusPending
-                      : driver.isApproved
-                      ? l10n.statusApproved
-                      : l10n.statusSuspended,
-                  fill: driver.isPending
-                      ? AppColors.amberFill
-                      : driver.isApproved
-                      ? AppColors.successFill
-                      : AppColors.dangerFill,
-                  ink: driver.isPending
-                      ? AppColors.amberInk
-                      : driver.isApproved
-                      ? AppColors.successInk
-                      : AppColors.dangerInk,
+                Builder(
+                  builder: (context) {
+                    final status = driverStatusTone(context, driver);
+                    return SoftBadge(
+                      label: status.label,
+                      fill: status.fill,
+                      ink: status.ink,
+                    );
+                  },
                 ),
               ],
               trailing: busyId == driver.id
@@ -867,15 +943,6 @@ class _DocumentDot extends StatelessWidget {
   }
 }
 
-/// The reviewer-facing name of a document column.
-String _documentLabel(BuildContext context, String column) => switch (column) {
-  'id_card_url' => context.l10n.idFront,
-  'id_card_back_url' => context.l10n.idBack,
-  'license_url' => context.l10n.licenseFront,
-  'license_back_url' => context.l10n.licenseBack,
-  _ => column,
-};
-
 class _DocumentBox extends StatelessWidget {
   const _DocumentBox({required this.title, this.imageUrl, required this.onTap});
 
@@ -887,15 +954,15 @@ class _DocumentBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
       child: Container(
-        height: 110,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(10),
+          color: AppColors.canvas,
+          borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
-            color: hasImage ? AppColors.primary : Colors.grey.shade300,
+            color: hasImage ? AppColors.primary : AppColors.border,
             width: hasImage ? 1.5 : 1,
           ),
         ),
@@ -904,27 +971,23 @@ class _DocumentBox extends StatelessWidget {
             ? Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Center(
-                      child: Icon(Icons.broken_image, color: Colors.grey),
-                    ),
-                  ),
-                  Positioned(
+                  AppNetworkImage(url: imageUrl),
+                  PositionedDirectional(
                     bottom: 0,
-                    left: 0,
-                    right: 0,
+                    start: 0,
+                    end: 0,
                     child: Container(
-                      color: Colors.black54,
-                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      color: Colors.black.withValues(alpha: 0.55),
+                      padding: const EdgeInsets.symmetric(vertical: 3),
                       child: Text(
                         title,
                         textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -934,17 +997,25 @@ class _DocumentBox extends StatelessWidget {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.badge_outlined, color: Colors.grey.shade400),
+                  const Icon(Icons.badge_outlined, color: AppColors.textFaint),
                   const SizedBox(height: 4),
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     context.l10n.notUploaded,
-                    style: TextStyle(fontSize: 9, color: Colors.red.shade400),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: AppColors.dangerInk,
+                    ),
                   ),
                 ],
               ),

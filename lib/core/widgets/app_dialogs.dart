@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../app/tokens.dart';
 import 'common.dart' show errorText;
@@ -744,8 +745,10 @@ class AppDialogs {
     required BuildContext context,
     required String title,
     required String message,
-    String confirmText = 'Confirm',
-    String cancelText = 'Cancel',
+    // Null means the localized default. These were English literals, so the
+    // callers that did not pass them showed "Cancel" in the Arabic app.
+    String? confirmText,
+    String? cancelText,
     bool isDestructive = true,
     IconData icon = Icons.warning_amber_rounded,
   }) {
@@ -753,8 +756,8 @@ class AppDialogs {
       context: context,
       title: title,
       message: message,
-      confirmLabel: confirmText,
-      cancelLabel: cancelText,
+      confirmLabel: confirmText ?? context.l10n.confirm,
+      cancelLabel: cancelText ?? context.l10n.cancel,
       tone: isDestructive ? AppDialogTone.danger : AppDialogTone.primary,
       icon: icon,
     );

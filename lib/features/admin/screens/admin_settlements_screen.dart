@@ -80,9 +80,12 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
       // Not in the batch above: an admin who can settle but whose role
       // predates `finance.settle` still gets a working screen, just without
       // the fee control, rather than an error page over the whole tab.
-      final fee = await _repository.earlySettlementFeeConfig().then<
-        ({double percent, double min})?
-      >((v) => v, onError: (_) => null);
+      final fee = await _repository
+          .earlySettlementFeeConfig()
+          .then<({double percent, double min})?>(
+            (v) => v,
+            onError: (_) => null,
+          );
       if (!mounted) return;
       // Early ones cost the party a fee specifically for faster review, so
       // they lead the queue rather than sitting wherever their timestamp
@@ -133,7 +136,8 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
 
     final done = await showFormDialog<bool>(
       context: context,
-      title: '${l10n.recordSettlement} · ${party.name}',
+      title: l10n.recordSettlement,
+      subtitle: party.name,
       icon: Icons.handshake_outlined,
       contentBuilder: (rebuild) => Column(
         mainAxisSize: MainAxisSize.min,
@@ -145,27 +149,44 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
-            decoration: InputDecoration(labelText: l10n.depositAmount),
+            style: AppType.mono(18, weight: FontWeight.w800),
+            decoration: InputDecoration(
+              labelText: l10n.depositAmount,
+              suffixText: l10n.egp,
+            ),
           ),
           const SizedBox(height: AppSpace.md),
-          DropdownButtonFormField<String>(
-            initialValue: method,
-            isExpanded: true,
-            decoration: InputDecoration(labelText: l10n.depositMethod),
-            items: [
-              DropdownMenuItem(
-                value: 'cash',
-                child: Text(l10n.settlementMethodCash),
-              ),
-              DropdownMenuItem(
-                value: 'bank_transfer',
-                child: Text(l10n.settlementMethodBank),
-              ),
-            ],
-            onChanged: (value) {
-              method = value ?? method;
-              rebuild();
-            },
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<String>(
+              expandedInsets: EdgeInsets.zero,
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: 'cash',
+                  icon: const Icon(Icons.payments_outlined, size: 17),
+                  label: Text(
+                    l10n.settlementMethodCash,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                ButtonSegment(
+                  value: 'bank_transfer',
+                  icon: const Icon(Icons.account_balance_outlined, size: 17),
+                  label: Text(
+                    l10n.settlementMethodBank,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+              selected: {method},
+              onSelectionChanged: (value) {
+                method = value.first;
+                rebuild();
+              },
+            ),
           ),
           const SizedBox(height: AppSpace.md),
           TextField(
@@ -234,63 +255,116 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
     await _load();
   }
 
-  /// Every past hand-over behind [party]'s "total settlements" figure — each
-  /// row opens onto [showSettlementDetails] for the full record.
-  Future<void> _showHistory(LedgerOwner ownerType, PartyBalance party) async {
+  /// Everything about one party in a sheet: how the outstanding figure is
+  /// made up, the action, and past settlements. Keeps the list itself to one
+  /// line per party.
+  Future<void> _showParty(LedgerOwner ownerType, PartyBalance party) async {
     final l10n = context.l10n;
-    List<Settlement> history;
-    try {
-      history = await _repository.settlements(
-        ownerType: ownerType,
-        ownerId: party.ownerId,
-        limit: 50,
-      );
-    } catch (error) {
-      if (mounted) showFailure(context, error);
-      return;
-    }
+    final isDriver = ownerType == LedgerOwner.driver;
+    final outstanding = isDriver ? party.cashDue : party.payable;
+
+    // Errors are shown by showBlockingProgress; the sheet still opens with
+    // the balance breakdown, which needs no extra fetch.
+    final history = party.totalSettlements > 0
+        ? await showBlockingProgress(
+                context,
+                () => _repository.settlements(
+                  ownerType: ownerType,
+                  ownerId: party.ownerId,
+                  limit: 50,
+                ),
+              ) ??
+              const <Settlement>[]
+        : const <Settlement>[];
     if (!mounted) return;
 
     await showAdaptiveSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       backgroundColor: AppColors.canvas,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpace.xl,
-            0,
-            AppSpace.xl,
-            AppSpace.xl,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.85,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              0,
+              AppSpace.lg,
+              AppSpace.xl,
+            ),
             children: [
-              Text(
-                '${l10n.settlementsTitle} · ${party.name}',
-                style: AppType.heading(18),
+              Row(
+                children: [
+                  _PartyAvatar(isDriver: isDriver),
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: Text(
+                      party.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.heading(18),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpace.lg),
+              // Every figure is read straight off the RPC — nothing is
+              // recomputed on screen, so this can never disagree with the
+              // ledger.
+              FinanceCard(
+                children: [
+                  FinanceRow(
+                    label: l10n.totalEarned,
+                    value: formatMoney(party.totalEarnings),
+                  ),
+                  if (isDriver)
+                    FinanceRow(
+                      label: l10n.cashCollectedLabel,
+                      value: formatMoney(party.cashCollected),
+                    ),
+                  FinanceRow(
+                    label: l10n.alreadySettled,
+                    value: formatMoney(party.totalSettlements),
+                  ),
+                  FinanceRow(
+                    label: isDriver ? l10n.driverHolds : l10n.owedToStore,
+                    value: formatMoney(outstanding),
+                    emphasis: true,
+                    tone: outstanding > 0
+                        ? (isDriver ? AppColors.amberInk : AppColors.primary)
+                        : AppColors.textMuted,
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpace.md),
-              if (history.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: EmptyView(
-                    message: l10n.noTransactionsYet,
-                    icon: Icons.receipt_long_outlined,
-                  ),
-                )
-              else
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 420),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: history.length,
-                    itemBuilder: (_, i) =>
-                        SettlementTile(settlement: history[i]),
+              FilledButton.icon(
+                onPressed: outstanding <= 0
+                    ? null
+                    : () {
+                        Navigator.pop(sheetContext);
+                        _settle(ownerType, party);
+                      },
+                icon: const Icon(Icons.handshake_outlined, size: 19),
+                label: Text(l10n.recordSettlement),
+              ),
+              if (history.isNotEmpty)
+                FinanceSection(
+                  title: l10n.settlementHistory,
+                  child: FinanceCard(
+                    children: [
+                      for (final settlement in history)
+                        SettlementTile(
+                          settlement: settlement,
+                          partyName: party.name,
+                        ),
+                    ],
                   ),
                 ),
             ],
@@ -386,54 +460,29 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
     final l10n = context.l10n;
     final fee = _fee;
     if (fee == null) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(
-        AppSpace.gutter,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.lg,
         AppSpace.md,
-        AppSpace.gutter,
+        AppSpace.lg,
         0,
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpace.lg,
-        vertical: AppSpace.md,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.bolt_rounded, size: 18, color: AppColors.amberInk),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.earlyPayoutFeeTitle, style: AppType.heading(14)),
-                const SizedBox(height: 2),
-                Text(
-                  l10n.earlyPayoutFeeSummary(
-                    trimZeros(fee.percent),
-                    formatMoneyCompact(fee.min),
-                  ),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    height: 1.3,
-                  ),
-                ),
-              ],
+      child: _centered(
+        FinanceCard(
+          children: [
+            FinanceRow(
+              icon: Icons.bolt_rounded,
+              tone: AppColors.amberInk,
+              label: l10n.earlyPayoutFeeTitle,
+              note: l10n.earlyPayoutFeeSummary(
+                trimZeros(fee.percent),
+                formatMoneyCompact(fee.min),
+              ),
+              value: '${trimZeros(fee.percent)}%',
+              onTap: _editFee,
             ),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          TextButton.icon(
-            onPressed: _editFee,
-            icon: const Icon(Icons.tune_rounded, size: 16),
-            label: Text(l10n.edit),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -513,7 +562,12 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
     // The fee sits above the queue it prices, not on a settings screen three
     // clicks away: this is where an operator sees what early payouts are
     // costing people and is therefore where they would think to change it.
-    return Column(children: [_feeStrip(), Expanded(child: _requestsQueue())]);
+    return Column(
+      children: [
+        _feeStrip(),
+        Expanded(child: _requestsQueue()),
+      ],
+    );
   }
 
   Widget _requestsQueue() {
@@ -566,15 +620,20 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
 
   Widget _requestCard(Settlement request) {
     final l10n = context.l10n;
+    final isDriver = request.ownerType == LedgerOwner.driver;
     return Container(
       padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.attentionBorder),
+        border: Border.all(
+          color: request.isEarly
+              ? AppColors.amberInk.withValues(alpha: 0.35)
+              : AppColors.border,
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
             onTap: () => showSettlementDetails(
@@ -584,46 +643,92 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
             ),
             child: Row(
               children: [
-                Icon(
-                  request.ownerType == LedgerOwner.driver
-                      ? Icons.moped_outlined
-                      : Icons.storefront_outlined,
-                  size: 18,
-                  color: AppColors.textSecondary,
+                _PartyAvatar(isDriver: isDriver),
+                const SizedBox(width: AppSpace.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _partyName(request),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.heading(15),
+                      ),
+                      Text(
+                        [
+                          isDriver ? l10n.driverLabel : l10n.storeLabel,
+                          financeDayLabel(context, request.createdAt),
+                        ].join(' · '),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Text(
-                    _partyName(request),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.heading(15),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 140),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          formatMoney(request.amount),
+                          style: AppType.mono(17, weight: FontWeight.w800),
+                        ),
+                        if (request.isEarly)
+                          SoftBadge(
+                            label: l10n.earlySettlementTag,
+                            icon: Icons.bolt_rounded,
+                            fill: AppColors.amberFill,
+                            ink: AppColors.amberInk,
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                if (request.isEarly) ...[
-                  const Icon(
-                    Icons.bolt_rounded,
-                    size: 16,
-                    color: AppColors.amberInk,
-                  ),
-                  const SizedBox(width: 2),
-                ],
-                Text(
-                  formatMoney(request.amount),
-                  style: AppType.mono(16, weight: FontWeight.w800),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.settlementApprovalExternalNotice,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textFaint,
-              height: 1.3,
+          if (request.isEarly) ...[
+            const SizedBox(height: AppSpace.md),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpace.md,
+                vertical: AppSpace.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.canvas,
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+              ),
+              child: settlementFeeBreakdown(context, request),
             ),
+          ],
+          const SizedBox(height: AppSpace.md),
+          Row(
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: AppColors.textFaint,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  l10n.settlementApprovalExternalNotice,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.textMuted,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpace.md),
           Row(
@@ -640,6 +745,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
               ),
               const SizedBox(width: AppSpace.sm),
               Expanded(
+                flex: 2,
                 child: FilledButton(
                   onPressed: () => _reviewRequest(request, true),
                   child: Text(l10n.approve),
@@ -655,36 +761,47 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   Widget _list(LedgerOwner ownerType, List<PartyBalance> allParties) {
     final l10n = context.l10n;
     final isDriver = ownerType == LedgerOwner.driver;
+    double outstandingOf(PartyBalance p) => isDriver ? p.cashDue : p.payable;
+
     final query = (isDriver ? _driverQuery : _vendorQuery).trim().toLowerCase();
     final filtered = query.isEmpty
         ? allParties
         : allParties
               .where((p) => p.name.toLowerCase().contains(query))
               .toList();
-    // Whoever is owed most, first. Alphabetical order buried the one store
-    // waiting on money behind a screen of parties already settled to zero —
-    // and settling is the only reason to open this tab.
+    // Whoever is owed most, first — settling is the only reason to open this
+    // tab.
     final parties = [...filtered]
-      ..sort((a, b) {
-        final aOut = isDriver ? a.cashDue : a.payable;
-        final bOut = isDriver ? b.cashDue : b.payable;
-        return bOut.compareTo(aOut);
-      });
+      ..sort((a, b) => outstandingOf(b).compareTo(outstandingOf(a)));
+    final open = allParties.where((p) => outstandingOf(p) > 0).toList();
+    final total = open.fold<double>(0, (sum, p) => sum + outstandingOf(p));
 
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: _load,
-      child: Column(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          AppSpace.lg,
+          AppSpace.md,
+          AppSpace.lg,
+          AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
+        ),
         children: [
-          if (allParties.length > 5)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.gutter,
-                AppSpace.md,
-                AppSpace.gutter,
-                0,
-              ),
-              child: TextField(
+          _centered(
+            FinanceHero(
+              tone: isDriver ? FinanceHeroTone.warning : FinanceHeroTone.brand,
+              eyebrow: isDriver
+                  ? l10n.driverCashDueTotal
+                  : l10n.vendorPayableTotal,
+              amount: formatMoney(total),
+              caption: l10n.partiesWithBalance(open.length),
+            ),
+          ),
+          if (allParties.length > 5) ...[
+            const SizedBox(height: AppSpace.md),
+            _centered(
+              TextField(
                 onChanged: (v) => setState(
                   () => isDriver ? _driverQuery = v : _vendorQuery = v,
                 ),
@@ -696,194 +813,142 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
                 ),
               ),
             ),
-          Expanded(
-            child: parties.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      const SizedBox(height: 100),
-                      EmptyView(
-                        message: l10n.noReportData,
-                        icon: Icons.account_balance_wallet_outlined,
-                      ),
-                    ],
-                  )
-                // A single column at every width, on request: whoever is owed
-                // most leads (see the sort above this method), which a
-                // multi-column grid would break into an out-of-order
-                // left-to-right, top-to-bottom read. Capped and centred on
-                // wide windows rather than stretched full width.
-                : ListView.separated(
-                    padding: EdgeInsets.fromLTRB(
-                      AppSpace.gutter,
-                      AppSpace.md,
-                      AppSpace.gutter,
-                      AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
-                    ),
-                    itemCount: parties.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppSpace.sm),
-                    itemBuilder: (context, i) =>
-                        _centered(_partyCard(ownerType, isDriver, parties[i])),
-                  ),
-          ),
+          ],
+          const SizedBox(height: AppSpace.md),
+          if (parties.isEmpty)
+            _centered(
+              FinanceEmpty(
+                message: l10n.noReportData,
+                icon: Icons.account_balance_wallet_outlined,
+              ),
+            )
+          else
+            // A single column at every width: whoever is owed most leads,
+            // which a multi-column grid would scramble.
+            _centered(
+              FinanceCard(
+                children: [
+                  for (final party in parties)
+                    _partyRow(ownerType, isDriver, party),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _partyCard(LedgerOwner ownerType, bool isDriver, PartyBalance party) {
+  Widget _partyRow(LedgerOwner ownerType, bool isDriver, PartyBalance party) {
     final l10n = context.l10n;
     final outstanding = isDriver ? party.cashDue : party.payable;
     final settled = outstanding <= 0;
-    return Container(
-      padding: const EdgeInsets.all(AppSpace.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            party.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppType.heading(14),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          // The outstanding amount is the question this screen answers, so it
-          // leads the card instead of sitting at 16px beside the name. A
-          // settled party keeps its place in the list but stops competing for
-          // attention with the ones still owed money.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                formatMoney(outstanding),
-                style: AppType.mono(
-                  settled ? 20 : 26,
-                  weight: FontWeight.w800,
-                  color: settled
-                      ? AppColors.textMuted
-                      : (isDriver ? AppColors.amberInk : AppColors.successInk),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  settled
-                      ? l10n.statusSettled
-                      : (isDriver ? l10n.cashDue : l10n.owedToYou),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpace.md),
-          // Every figure here is read straight off the RPC — nothing is
-          // subtracted or recomputed on screen, so this can never disagree
-          // with the ledger.
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.md,
-              vertical: AppSpace.sm,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-            ),
-            child: Column(
-              children: [
-                _breakdownRow(
-                  l10n.totalEarned,
-                  formatMoney(party.totalEarnings),
-                ),
-                if (isDriver)
-                  _breakdownRow(
-                    l10n.cashCollectedLabel,
-                    formatMoney(party.cashCollected),
-                  ),
-                _breakdownRow(
-                  l10n.alreadySettled,
-                  formatMoney(party.totalSettlements),
-                ),
-                const Divider(height: AppSpace.md, color: AppColors.borderSoft),
-                _breakdownRow(
-                  l10n.outstandingNow,
-                  formatMoney(outstanding),
-                  emphasis: true,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (party.totalSettlements > 0) ...[
-                TextButton(
-                  onPressed: () => _showHistory(ownerType, party),
-                  child: Text(
-                    l10n.settlementHistory,
+    return InkWell(
+      onTap: () => _showParty(ownerType, party),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.lg,
+          vertical: AppSpace.md,
+        ),
+        child: Row(
+          children: [
+            _PartyAvatar(isDriver: isDriver, muted: settled),
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    party.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    settled
+                        ? l10n.statusSettled
+                        : (isDriver ? l10n.driverHolds : l10n.owedToStore),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 130),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerEnd,
+                child: Text(
+                  formatMoney(outstanding),
+                  style: AppType.mono(
+                    15,
+                    weight: FontWeight.w800,
+                    color: settled
+                        ? AppColors.textFaint
+                        : (isDriver ? AppColors.amberInk : AppColors.primary),
                   ),
                 ),
-                const SizedBox(width: AppSpace.sm),
-              ],
-              FilledButton.tonal(
-                // Nothing to settle is not an error, just nothing to do — so
-                // the button rests rather than disappearing.
-                onPressed: outstanding <= 0
-                    ? null
-                    : () => _settle(ownerType, party),
-                child: Text(
-                  l10n.recordSettlement,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            // The action is one tap from the list — no need to open the
+            // party first for the common case.
+            if (!settled)
+              IconButton.filledTonal(
+                tooltip: l10n.recordSettlement,
+                onPressed: () => _settle(ownerType, party),
+                icon: const Icon(Icons.handshake_outlined, size: 19),
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.all(AppSpace.sm),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textFaint,
                 ),
               ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _breakdownRow(String label, String value, {bool emphasis = false}) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: emphasis ? 12.5 : 11.5,
-                  fontWeight: emphasis ? FontWeight.w700 : FontWeight.w500,
-                  color: emphasis ? AppColors.ink : AppColors.textSecondary,
-                ),
-              ),
-            ),
-            Text(
-              value,
-              style: AppType.mono(
-                emphasis ? 13 : 11.5,
-                weight: emphasis ? FontWeight.w800 : FontWeight.w600,
-                color: emphasis ? AppColors.ink : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
+class _PartyAvatar extends StatelessWidget {
+  const _PartyAvatar({required this.isDriver, this.muted = false});
+
+  final bool isDriver;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = muted
+        ? AppColors.textFaint
+        : (isDriver ? AppColors.amberInk : AppColors.primary);
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        isDriver ? Icons.two_wheeler_rounded : Icons.storefront_rounded,
+        size: 20,
+        color: tone,
+      ),
+    );
+  }
 }
 
 /// What the entered fee schedule would actually cost, at three sizes.

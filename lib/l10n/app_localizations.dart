@@ -2033,7 +2033,7 @@ abstract class AppLocalizations {
   /// No description provided for @cardPaymob.
   ///
   /// In en, this message translates to:
-  /// **'Card · Paymob'**
+  /// **'Pay by card'**
   String get cardPaymob;
 
   /// No description provided for @yourCartIsEmpty.
@@ -3957,6 +3957,18 @@ abstract class AppLocalizations {
   /// **'No notifications yet'**
   String get noNotificationsYet;
 
+  /// No description provided for @notificationsLast24h.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 24 hours'**
+  String get notificationsLast24h;
+
+  /// No description provided for @noNotificationsLast24h.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications in the last 24 hours'**
+  String get noNotificationsLast24h;
+
   /// No description provided for @averageStoreRating.
   ///
   /// In en, this message translates to:
@@ -4062,7 +4074,7 @@ abstract class AppLocalizations {
   /// No description provided for @payWithPaymob.
   ///
   /// In en, this message translates to:
-  /// **'Pay via Paymob'**
+  /// **'Pay by card'**
   String get payWithPaymob;
 
   /// No description provided for @selectTopUpAmount.
@@ -6573,6 +6585,72 @@ abstract class AppLocalizations {
   /// **'Video URL'**
   String get adVideoUrl;
 
+  /// No description provided for @adMediaImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get adMediaImage;
+
+  /// No description provided for @uploadVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload video'**
+  String get uploadVideo;
+
+  /// No description provided for @uploadingVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading video…'**
+  String get uploadingVideo;
+
+  /// No description provided for @videoAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Video added'**
+  String get videoAdded;
+
+  /// No description provided for @replaceVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to replace'**
+  String get replaceVideo;
+
+  /// No description provided for @videoFormatsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'MP4 or WebM, up to 50 MB'**
+  String get videoFormatsHint;
+
+  /// No description provided for @videoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload a video or paste its link.'**
+  String get videoRequired;
+
+  /// No description provided for @videoCoverOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover image (optional, shown while the video loads)'**
+  String get videoCoverOptional;
+
+  /// No description provided for @adVideoUrlHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Or paste a direct link to a video file'**
+  String get adVideoUrlHelper;
+
+  /// No description provided for @videoTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Video is too large. Maximum {mb} MB.'**
+  String videoTooLarge(int mb);
+
+  /// No description provided for @videoHevcUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is HEVC (iPhone default), which Android phones and browsers can\'t play. Export it as H.264 MP4 — on iPhone: Settings › Camera › Formats › Most Compatible.'**
+  String get videoHevcUnsupported;
+
   /// No description provided for @adLinkUrl.
   ///
   /// In en, this message translates to:
@@ -6632,6 +6710,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ad created'**
   String get adCreated;
+
+  /// No description provided for @adUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad updated'**
+  String get adUpdated;
+
+  /// No description provided for @editAd.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit ad'**
+  String get editAd;
+
+  /// No description provided for @adFrequency.
+  ///
+  /// In en, this message translates to:
+  /// **'How often'**
+  String get adFrequency;
+
+  /// No description provided for @frequencyEverySession.
+  ///
+  /// In en, this message translates to:
+  /// **'Every app launch'**
+  String get frequencyEverySession;
+
+  /// No description provided for @frequencyDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Once a day'**
+  String get frequencyDaily;
+
+  /// No description provided for @frequencyOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Only once per device'**
+  String get frequencyOnce;
+
+  /// No description provided for @homeCravingPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like today?'**
+  String get homeCravingPrompt;
+
+  /// No description provided for @railRecommendedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand-picked places we love'**
+  String get railRecommendedHint;
+
+  /// No description provided for @railNearestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Closest to you'**
+  String get railNearestTitle;
+
+  /// No description provided for @railNearestHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest to reach your door'**
+  String get railNearestHint;
+
+  /// No description provided for @railFavoritesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your favourites'**
+  String get railFavoritesTitle;
+
+  /// No description provided for @railFavoritesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Order again from places you saved'**
+  String get railFavoritesHint;
+
+  /// No description provided for @railTopRatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Loved by customers'**
+  String get railTopRatedHint;
+
+  /// No description provided for @railFreeDeliveryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No delivery fee'**
+  String get railFreeDeliveryHint;
+
+  /// No description provided for @allStoresTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All stores'**
+  String get allStoresTitle;
+
+  /// No description provided for @filteredStoresTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get filteredStoresTitle;
+
+  /// No description provided for @newStoreBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get newStoreBadge;
+
+  /// No description provided for @deliveryTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery time'**
+  String get deliveryTimeLabel;
+
+  /// No description provided for @showLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get showLess;
+
+  /// No description provided for @yourOrderFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order from {store}'**
+  String yourOrderFrom(String store);
+
+  /// No description provided for @showAllItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all {count} items'**
+  String showAllItems(int count);
+
+  /// No description provided for @ratingsCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =1{1 rating} other{{count} ratings}}'**
+  String ratingsCountLabel(int count);
 
   /// No description provided for @adDeleted.
   ///
@@ -6938,6 +7148,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name (Arabic)'**
   String get categoryNameArabicLabel;
+
+  /// No description provided for @searchCategoriesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search categories'**
+  String get searchCategoriesHint;
+
+  /// No description provided for @subcategoriesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =0{No sub-categories} =1{1 sub-category} other{{count} sub-categories}}'**
+  String subcategoriesCount(int count);
+
+  /// No description provided for @reorderCategoriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reorder categories'**
+  String get reorderCategoriesTitle;
+
+  /// No description provided for @reorderCategoriesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to change the order shown to customers.'**
+  String get reorderCategoriesHint;
+
+  /// No description provided for @reorderScopeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reordering'**
+  String get reorderScopeLabel;
+
+  /// No description provided for @categoryCreatedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Category \"{name}\" created'**
+  String categoryCreatedMessage(String name);
+
+  /// No description provided for @categoryUpdatedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Category updated'**
+  String get categoryUpdatedMessage;
+
+  /// No description provided for @categoryDeletedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Category deleted'**
+  String get categoryDeletedMessage;
+
+  /// No description provided for @categoriesReordered.
+  ///
+  /// In en, this message translates to:
+  /// **'Order updated'**
+  String get categoriesReordered;
 
   /// No description provided for @pickupFromBranch.
   ///
@@ -7284,19 +7548,19 @@ abstract class AppLocalizations {
   /// No description provided for @youOweExplainer.
   ///
   /// In en, this message translates to:
-  /// **'Cash you collected from customers and still owe the platform.'**
+  /// **'Cash you collected from customers. Hand it over to clear your balance.'**
   String get youOweExplainer;
 
   /// No description provided for @owedToYouExplainer.
   ///
   /// In en, this message translates to:
-  /// **'Money the platform owes you.'**
+  /// **'Your earnings, ready to withdraw.'**
   String get owedToYouExplainer;
 
   /// No description provided for @requestDeposit.
   ///
   /// In en, this message translates to:
-  /// **'Deposit money'**
+  /// **'Hand over cash'**
   String get requestDeposit;
 
   /// No description provided for @depositAmount.
@@ -7308,7 +7572,7 @@ abstract class AppLocalizations {
   /// No description provided for @depositMethod.
   ///
   /// In en, this message translates to:
-  /// **'How you paid'**
+  /// **'How did you hand it over?'**
   String get depositMethod;
 
   /// No description provided for @referenceOptional.
@@ -7326,31 +7590,31 @@ abstract class AppLocalizations {
   /// No description provided for @depositRequested.
   ///
   /// In en, this message translates to:
-  /// **'Request sent. It is credited once an admin confirms the payment.'**
+  /// **'Hand-over submitted. It clears from your balance once an admin confirms receiving it.'**
   String get depositRequested;
 
   /// No description provided for @depositsAwaitingReview.
   ///
   /// In en, this message translates to:
-  /// **'Deposits'**
+  /// **'Cash hand-overs'**
   String get depositsAwaitingReview;
 
   /// No description provided for @noDepositsPending.
   ///
   /// In en, this message translates to:
-  /// **'No deposits waiting.'**
+  /// **'No hand-overs waiting.'**
   String get noDepositsPending;
 
   /// No description provided for @depositApproved.
   ///
   /// In en, this message translates to:
-  /// **'Deposit approved.'**
+  /// **'Hand-over confirmed.'**
   String get depositApproved;
 
   /// No description provided for @depositRejected.
   ///
   /// In en, this message translates to:
-  /// **'Deposit rejected.'**
+  /// **'Hand-over rejected.'**
   String get depositRejected;
 
   /// No description provided for @financeTitle.
@@ -8288,6 +8552,492 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Always on'**
   String get adAlwaysOn;
+
+  /// No description provided for @cashHandedOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash handed over'**
+  String get cashHandedOver;
+
+  /// No description provided for @handOverCashHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit the cash you collected so it clears from your balance. An admin confirms it.'**
+  String get handOverCashHint;
+
+  /// No description provided for @inReview.
+  ///
+  /// In en, this message translates to:
+  /// **'In review'**
+  String get inReview;
+
+  /// No description provided for @withdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdraw;
+
+  /// No description provided for @withdrawOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How do you want to get paid?'**
+  String get withdrawOptionsTitle;
+
+  /// No description provided for @standardPayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard payout'**
+  String get standardPayout;
+
+  /// No description provided for @standardPayoutDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Free. Paid on the next payout run.'**
+  String get standardPayoutDesc;
+
+  /// No description provided for @standardPayoutDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Free. Paid on the next payout run ({date}).'**
+  String standardPayoutDue(String date);
+
+  /// No description provided for @fasterPayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster payout'**
+  String get fasterPayout;
+
+  /// No description provided for @fasterPayoutDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed sooner. Fee {fee}.'**
+  String fasterPayoutDesc(String fee);
+
+  /// No description provided for @summaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get summaryLabel;
+
+  /// No description provided for @activityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityLabel;
+
+  /// No description provided for @yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get yesterday;
+
+  /// No description provided for @balanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get balanceLabel;
+
+  /// No description provided for @allSettledExplainer.
+  ///
+  /// In en, this message translates to:
+  /// **'All clear. Nothing is owed either way.'**
+  String get allSettledExplainer;
+
+  /// No description provided for @orderRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Order #{number}'**
+  String orderRef(String number);
+
+  /// No description provided for @activeDeliveryEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Active delivery'**
+  String get activeDeliveryEyebrow;
+
+  /// No description provided for @collectCashBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect cash'**
+  String get collectCashBadge;
+
+  /// No description provided for @paidOnlineBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid online'**
+  String get paidOnlineBadge;
+
+  /// No description provided for @walletTxTopUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet top-up'**
+  String get walletTxTopUp;
+
+  /// No description provided for @walletTxPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Order payment'**
+  String get walletTxPayment;
+
+  /// No description provided for @walletTxRefund.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund'**
+  String get walletTxRefund;
+
+  /// No description provided for @walletTxCashback.
+  ///
+  /// In en, this message translates to:
+  /// **'Cashback'**
+  String get walletTxCashback;
+
+  /// No description provided for @walletTxTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get walletTxTip;
+
+  /// No description provided for @topUpAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} added to your wallet'**
+  String topUpAdded(String amount);
+
+  /// No description provided for @topUpCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment cancelled. Your balance was not changed.'**
+  String get topUpCancelled;
+
+  /// No description provided for @topUpFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment failed. Your balance was not changed.'**
+  String get topUpFailed;
+
+  /// No description provided for @topUpPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Still confirming with the bank. Pull to refresh in a moment.'**
+  String get topUpPending;
+
+  /// No description provided for @topUpInvalidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount between 10 and 20,000 EGP.'**
+  String get topUpInvalidAmount;
+
+  /// No description provided for @topUpUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Card payments are not available right now. Try again later.'**
+  String get topUpUnavailable;
+
+  /// No description provided for @topUpOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the payment page. Please try again.'**
+  String get topUpOpenFailed;
+
+  /// No description provided for @walletSpendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay for orders with your balance at checkout.'**
+  String get walletSpendHint;
+
+  /// No description provided for @needsAttention.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get needsAttention;
+
+  /// No description provided for @nothingNeedsAttention.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing needs your attention.'**
+  String get nothingNeedsAttention;
+
+  /// No description provided for @pendingHandOversBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} cash hand-overs to confirm'**
+  String pendingHandOversBanner(int count);
+
+  /// No description provided for @openBalances.
+  ///
+  /// In en, this message translates to:
+  /// **'Open balances'**
+  String get openBalances;
+
+  /// No description provided for @moneyMovements.
+  ///
+  /// In en, this message translates to:
+  /// **'Money movements'**
+  String get moneyMovements;
+
+  /// No description provided for @driverHolds.
+  ///
+  /// In en, this message translates to:
+  /// **'Held by driver'**
+  String get driverHolds;
+
+  /// No description provided for @owedToStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Owed to store'**
+  String get owedToStore;
+
+  /// No description provided for @totalOutstanding.
+  ///
+  /// In en, this message translates to:
+  /// **'Total outstanding'**
+  String get totalOutstanding;
+
+  /// No description provided for @partiesWithBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} with an open balance'**
+  String partiesWithBalance(int count);
+
+  /// No description provided for @driverLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get driverLabel;
+
+  /// No description provided for @settlementsPaidOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlements paid'**
+  String get settlementsPaidOut;
+
+  /// No description provided for @loyaltyOrderReward.
+  ///
+  /// In en, this message translates to:
+  /// **'Order reward'**
+  String get loyaltyOrderReward;
+
+  /// No description provided for @pointsEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Points earned'**
+  String get pointsEarned;
+
+  /// No description provided for @pointsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pts'**
+  String pointsValue(String count);
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @cancelOrderConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this order? The store will be told right away.'**
+  String get cancelOrderConfirm;
+
+  /// No description provided for @keepOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep order'**
+  String get keepOrder;
+
+  /// No description provided for @payAtPickup.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay at pickup, in EGP'**
+  String get payAtPickup;
+
+  /// No description provided for @readyForPickupIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready for pickup in'**
+  String get readyForPickupIn;
+
+  /// No description provided for @customerNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note from customer'**
+  String get customerNotesLabel;
+
+  /// No description provided for @proofPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Proof photo'**
+  String get proofPhoto;
+
+  /// No description provided for @noProofAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'No proof photo attached'**
+  String get noProofAttached;
+
+  /// No description provided for @rejectReasonOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional, shown to the driver)'**
+  String get rejectReasonOptional;
+
+  /// No description provided for @confirmUnrestrictedAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant unrestricted access?'**
+  String get confirmUnrestrictedAccessTitle;
+
+  /// No description provided for @confirmUnrestrictedAccessCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'This login will have full admin access — every screen, every permission, nothing restricted. Pick a role instead unless that\'s really what you mean.'**
+  String get confirmUnrestrictedAccessCreate;
+
+  /// No description provided for @confirmPromoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to staff?'**
+  String get confirmPromoteTitle;
+
+  /// No description provided for @confirmPromoteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will be able to sign in to the admin console with the role you picked.'**
+  String confirmPromoteMessage(String name);
+
+  /// No description provided for @auditActionVendorStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Store status changed'**
+  String get auditActionVendorStatus;
+
+  /// No description provided for @auditActionDriverStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver status changed'**
+  String get auditActionDriverStatus;
+
+  /// No description provided for @auditActionPricesAdjusted.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices adjusted'**
+  String get auditActionPricesAdjusted;
+
+  /// No description provided for @auditActionWalletCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet credited'**
+  String get auditActionWalletCredit;
+
+  /// No description provided for @auditActionWalletDebit.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet debited'**
+  String get auditActionWalletDebit;
+
+  /// No description provided for @auditActionUserDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deleted'**
+  String get auditActionUserDelete;
+
+  /// No description provided for @auditActionEarlySettlementFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Early payout fee changed'**
+  String get auditActionEarlySettlementFee;
+
+  /// No description provided for @auditActionVendorRecommend.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended flag changed'**
+  String get auditActionVendorRecommend;
+
+  /// No description provided for @auditActionOrderAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver assigned to order'**
+  String get auditActionOrderAssign;
+
+  /// No description provided for @auditActionOrderRefund.
+  ///
+  /// In en, this message translates to:
+  /// **'Order refunded'**
+  String get auditActionOrderRefund;
+
+  /// No description provided for @auditActionStaffCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff login created'**
+  String get auditActionStaffCreate;
+
+  /// No description provided for @auditActionStaffGrant.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff role granted'**
+  String get auditActionStaffGrant;
+
+  /// No description provided for @auditActionStaffRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff access revoked'**
+  String get auditActionStaffRevoke;
+
+  /// No description provided for @viewDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get viewDetails;
+
+  /// No description provided for @areaInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get areaInactive;
+
+  /// No description provided for @activateArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate'**
+  String get activateArea;
+
+  /// No description provided for @deactivateArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate'**
+  String get deactivateArea;
+
+  /// No description provided for @deactivateAreaConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders from this area will stop being accepted. You can turn it back on any time.'**
+  String get deactivateAreaConfirm;
+
+  /// No description provided for @newCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New Category'**
+  String get newCategory;
+
+  /// No description provided for @editCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Category'**
+  String get editCategoryTitle;
+
+  /// No description provided for @removeRecommendationConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this store from the promoted rail?'**
+  String get removeRecommendationConfirm;
+
+  /// No description provided for @placementSplash.
+  ///
+  /// In en, this message translates to:
+  /// **'App splash (before launch)'**
+  String get placementSplash;
 }
 
 class _AppLocalizationsDelegate

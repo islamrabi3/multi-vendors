@@ -14,7 +14,15 @@ import '../../../core/widgets/skeleton.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class AddressesScreen extends StatefulWidget {
-  const AddressesScreen({super.key});
+  const AddressesScreen({super.key, this.selectedId});
+
+  /// Pick mode: tapping a row pops the screen with that address's id, and the
+  /// currently selected one is marked. Checkout is the only caller of this —
+  /// previously there was no way to pick an address at all, "Change" only
+  /// reopened this list to edit or delete from and returned nothing.
+  ///
+  /// Null (the normal "My addresses" screen) means rows open the editor.
+  final String? selectedId;
 
   @override
   State<AddressesScreen> createState() => _AddressesScreenState();
@@ -76,7 +84,21 @@ class _AddressesScreenState extends State<AddressesScreen> {
         ),
       ),
     );
-    if (changed == true) _load();
+    if (changed != true) return;
+    // In pick mode, adding a brand-new address is finishing the pick, not a
+    // reason to sit back on this list — the customer already told us where
+    // to deliver by drawing the pin.
+    if (widget.selectedId != null && address == null) {
+      final before = _addresses?.map((a) => a.id).toSet() ?? const {};
+      await _load();
+      final created = _addresses
+          ?.map((a) => a.id)
+          .where((id) => !before.contains(id))
+          .firstOrNull;
+      if (created != null && mounted) Navigator.of(context).pop(created);
+      return;
+    }
+    _load();
   }
 
   IconData _getIconForLabel(String label) {
@@ -144,10 +166,16 @@ class _AddressesScreenState extends State<AddressesScreen> {
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(AppRadii.xl),
                     border: Border.all(
-                      color: address.isDefault
+                      color: address.id == widget.selectedId
+                          ? AppColors.primary
+                          : address.isDefault
                           ? AppColors.primary.withValues(alpha: 0.3)
                           : AppColors.border,
-                      width: address.isDefault ? 1.5 : 1.0,
+                      width: address.id == widget.selectedId
+                          ? 2.0
+                          : address.isDefault
+                          ? 1.5
+                          : 1.0,
                     ),
                     boxShadow: AppShadows.card,
                   ),
@@ -156,7 +184,9 @@ class _AddressesScreenState extends State<AddressesScreen> {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => _edit(address),
+                        onTap: widget.selectedId == null
+                            ? () => _edit(address)
+                            : () => Navigator.of(context).pop(address.id),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
@@ -262,70 +292,84 @@ class _AddressesScreenState extends State<AddressesScreen> {
                               ),
                               const SizedBox(width: 8),
 
-                              // Actions
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  // Edit Button
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.canvas,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: AppColors.borderSoft,
-                                      ),
-                                    ),
-                                    child: IconButton(
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(
-                                        Icons.edit_outlined,
-                                        size: 16,
-                                      ),
-                                      color: AppColors.textSecondary,
-                                      onPressed: () => _edit(address),
-                                    ),
+                              if (widget.selectedId != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    address.id == widget.selectedId
+                                        ? Icons.radio_button_checked_rounded
+                                        : Icons.radio_button_off_rounded,
+                                    size: 22,
+                                    color: address.id == widget.selectedId
+                                        ? AppColors.primary
+                                        : AppColors.textFaint,
                                   ),
-                                  const SizedBox(height: 8),
-                                  // Delete Button
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.canvas,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: AppColors.borderSoft,
+                                )
+                              else
+                                // Actions
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    // Edit Button
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.canvas,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.borderSoft,
+                                        ),
+                                      ),
+                                      child: IconButton(
+                                        padding: EdgeInsets.zero,
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 16,
+                                        ),
+                                        color: AppColors.textSecondary,
+                                        onPressed: () => _edit(address),
                                       ),
                                     ),
-                                    child: IconButton(
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                        size: 16,
+                                    const SizedBox(height: 8),
+                                    // Delete Button
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.canvas,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.borderSoft,
+                                        ),
                                       ),
-                                      color: AppColors.dangerInk,
-                                      onPressed: () async {
-                                        final deleted = await showConfirmDialog(
-                                          context: context,
-                                          title: context.l10n.deleteAddress,
-                                          message: context
-                                              .l10n
-                                              .areYouSureYouWantToDeleteThisAddress,
-                                          confirmLabel: context.l10n.delete,
-                                          cancelLabel: context.l10n.cancel,
-                                          tone: AppDialogTone.danger,
-                                          icon: Icons.location_off_rounded,
-                                          onConfirm: () => _repository
-                                              .deleteAddress(address.id),
-                                        );
-                                        if (deleted) _load();
-                                      },
+                                      child: IconButton(
+                                        padding: EdgeInsets.zero,
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 16,
+                                        ),
+                                        color: AppColors.dangerInk,
+                                        onPressed: () async {
+                                          final deleted = await showConfirmDialog(
+                                            context: context,
+                                            title: context.l10n.deleteAddress,
+                                            message: context
+                                                .l10n
+                                                .areYouSureYouWantToDeleteThisAddress,
+                                            confirmLabel: context.l10n.delete,
+                                            cancelLabel: context.l10n.cancel,
+                                            tone: AppDialogTone.danger,
+                                            icon: Icons.location_off_rounded,
+                                            onConfirm: () => _repository
+                                                .deleteAddress(address.id),
+                                          );
+                                          if (deleted) _load();
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/admin_repository.dart';
+import '../../../core/utils/dialer.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
@@ -161,7 +162,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     future: _future,
     builder: (context, snap) {
       if (snap.connectionState != ConnectionState.done) {
-        return const LoadingView();
+        return const _OrderDetailSkeleton();
       }
       if (snap.hasError || !snap.hasData) {
         return ErrorView(
@@ -211,6 +212,53 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       backgroundColor: AppColors.canvas,
       body: SafeArea(bottom: false, child: _content()),
       bottomNavigationBar: _actionBar(),
+    );
+  }
+}
+
+/// Shaped like [_Body]: id row, timeline, two party cards, an items card.
+class _OrderDetailSkeleton extends StatelessWidget {
+  const _OrderDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          Row(
+            children: const [
+              Skeleton(width: 40, height: 40, radius: 12),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Skeleton.line(widthFactor: 0.4, height: 18),
+                    SizedBox(height: 6),
+                    Skeleton.line(widthFactor: 0.6, height: 11),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Skeleton.box(height: 64, radius: 16),
+          const SizedBox(height: 13),
+          Row(
+            children: const [
+              Expanded(child: Skeleton.box(height: 74, radius: 14)),
+              SizedBox(width: 9),
+              Expanded(child: Skeleton.box(height: 74, radius: 14)),
+            ],
+          ),
+          const SizedBox(height: 9),
+          const Skeleton.box(height: 56, radius: 14),
+          const SizedBox(height: 12),
+          const Skeleton.box(height: 160, radius: 14),
+        ],
+      ),
     );
   }
 }
@@ -394,23 +442,73 @@ class _Body extends StatelessWidget {
           children: [
             Expanded(
               child: _party(
+                context,
                 context.l10n.vendors.toUpperCase(),
                 order.vendorName ?? context.l10n.store,
                 order.addressSummary.isEmpty ? '—' : context.l10n.store,
+                phone: order.vendorPhone,
               ),
             ),
             const SizedBox(width: 9),
             Expanded(
               child: _party(
+                context,
                 context.l10n.customer.toUpperCase(),
                 order.customerName ?? context.l10n.customer,
                 order.addressSummary,
+                phone: order.customerPhone,
               ),
             ),
           ],
         ),
         const SizedBox(height: 9),
         _DriverRow(order: order, onAssign: onAssign),
+        const SizedBox(height: 12),
+        _ItemsCard(order: order),
+        if (order.customerNotes != null && order.customerNotes!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: AppColors.warmFill,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 16,
+                  color: AppColors.primaryDark,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.customerNotesLabel,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        order.customerNotes!,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (order.rejectionReason != null &&
             order.rejectionReason!.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -445,40 +543,227 @@ class _Body extends StatelessWidget {
     );
   }
 
-  Widget _party(String label, String name, String sub) => Container(
+  Widget _party(
+    BuildContext context,
+    String label,
+    String name,
+    String sub, {
+    String? phone,
+  }) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
     decoration: BoxDecoration(
       color: AppColors.surface,
       border: Border.all(color: AppColors.border),
       borderRadius: BorderRadius.circular(14),
     ),
-    child: Column(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textFaint,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textFaint,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.ink,
+                ),
+              ),
+              Text(
+                sub,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            color: AppColors.ink,
+        // An admin intervening on a stuck order needs to be able to actually
+        // reach the two people it involves — this card named them and gave no
+        // way to call either.
+        if (phone != null && phone.isNotEmpty) ...[
+          const SizedBox(width: 6),
+          Material(
+            color: AppColors.warmFill,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => callPhone(context, phone),
+              child: const Padding(
+                padding: EdgeInsets.all(7),
+                child: Icon(
+                  Icons.call_rounded,
+                  size: 15,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+/// What was ordered and what it came to. Previously the only figure on this
+/// whole screen was the total in the header row — an admin resolving a
+/// dispute or a short refund had no way to see what was actually in the bag.
+class _ItemsCard extends StatelessWidget {
+  const _ItemsCard({required this.order});
+
+  final AppOrder order;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(13, 11, 13, 4),
+            child: Text(
+              l10n.items,
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textFaint,
+              ),
+            ),
+          ),
+          if (order.items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(13, 0, 13, 11),
+              child: Text(
+                '—',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            )
+          else
+            for (final item in order.items)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(13, 4, 13, 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${item.quantity}×',
+                      style: AppType.mono(
+                        12.5,
+                        weight: FontWeight.w700,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.productName,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          if (item.optionNames.isNotEmpty)
+                            Text(
+                              item.optionNames.join(', '),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      formatMoney(item.lineTotal),
+                      style: AppType.mono(12.5, weight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 13),
+            child: Divider(height: 17, color: AppColors.borderSoft),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(13, 0, 13, 11),
+            child: Column(
+              children: [
+                _totalRow(l10n.subtotal, formatMoney(order.subtotal)),
+                if (order.deliveryFee > 0)
+                  _totalRow(l10n.deliveryFee, formatMoney(order.deliveryFee)),
+                if (order.discount > 0)
+                  _totalRow(
+                    l10n.discount,
+                    '-${formatMoney(order.discount)}',
+                    tone: AppColors.successInk,
+                  ),
+                if (order.driverTip > 0)
+                  _totalRow(l10n.tips, formatMoney(order.driverTip)),
+                _totalRow(l10n.total, formatMoney(order.total), emphasis: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _totalRow(
+    String label,
+    String value, {
+    bool emphasis = false,
+    Color? tone,
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: emphasis ? 13 : 12,
+              fontWeight: emphasis ? FontWeight.w800 : FontWeight.w500,
+              color: emphasis ? AppColors.ink : AppColors.textSecondary,
+            ),
           ),
         ),
         Text(
-          sub,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          value,
+          style: AppType.mono(
+            emphasis ? 13.5 : 12,
+            weight: emphasis ? FontWeight.w800 : FontWeight.w700,
+            color: tone ?? (emphasis ? AppColors.ink : AppColors.ink),
+          ),
         ),
       ],
     ),

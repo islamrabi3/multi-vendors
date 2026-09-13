@@ -93,8 +93,28 @@ class CartCubit extends Cubit<CartState> {
     } else {
       items.add(item);
     }
-    emit(CartState(vendor: vendor, items: items));
+    emit(_withItems(vendor, items));
     _persist();
+  }
+
+  /// The next state after an edit to [items]. Keeps the sold-out and repriced
+  /// flags for lines still in the cart: rebuilding a bare `CartState` here
+  /// dropped them, so one tap on a stepper hid the warning and re-enabled
+  /// checkout for an order the server was about to refuse.
+  CartState _withItems(Vendor? vendor, List<CartItem> items) {
+    if (items.isEmpty) return const CartState();
+    final ids = items.map((i) => i.product.id).toSet();
+    final sameStore = vendor?.id == state.vendor?.id;
+    return CartState(
+      vendor: vendor,
+      items: items,
+      unavailable: sameStore
+          ? state.unavailable.where(ids.contains).toList()
+          : const [],
+      repriced: sameStore
+          ? state.repriced.where(ids.contains).toList()
+          : const [],
+    );
   }
 
   void startNewCart(Vendor vendor, CartItem item) {
@@ -111,11 +131,7 @@ class CartCubit extends Cubit<CartState> {
     } else {
       items[index] = items[index].copyWith(quantity: quantity);
     }
-    emit(
-      items.isEmpty
-          ? const CartState()
-          : CartState(vendor: state.vendor, items: items),
-    );
+    emit(_withItems(state.vendor, items));
     _persist();
   }
 

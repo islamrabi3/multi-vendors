@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -100,6 +101,10 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
         },
         child: BlocBuilder<LocaleCubit, Locale>(
           builder: (context, locale) {
+            // Every `DateFormat` without an explicit locale follows the UI
+            // language. Without this, month names and AM/PM stayed English
+            // across the Arabic app. Money formats pin their own locale.
+            Intl.defaultLocale = locale.languageCode;
             return MaterialApp.router(
               onGenerateTitle: (context) => context.l10n.multiVendor,
               debugShowCheckedModeBanner: false,

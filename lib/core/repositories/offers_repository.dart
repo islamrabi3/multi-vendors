@@ -46,8 +46,10 @@ class OffersRepository {
     DateTime? startsAt,
     DateTime? endsAt,
     int sortOrder = 0,
+    String frequency = 'once',
   }) async {
     await supabase.from('banners').insert({
+      'frequency': frequency,
       'image_url': imageUrl,
       'banner_type': type.name,
       'placement': placement.wire,
@@ -123,6 +125,40 @@ class OffersRepository {
       // Reporting is not worth interrupting a customer for.
     }
   }
+
+  /// Rewrites everything the composer edits. Blank fields clear the column
+  /// rather than being skipped, so removing a coupon code actually removes it.
+  Future<void> edit(
+    String id, {
+    required String imageUrl,
+    required BannerType type,
+    required AdPlacement placement,
+    String? title,
+    String? subtitle,
+    String? code,
+    String? videoUrl,
+    String? linkUrl,
+    String? advertiser,
+    String audience = 'all',
+    DateTime? startsAt,
+    DateTime? endsAt,
+    String frequency = 'once',
+  }) => update(id, {
+    'frequency': frequency,
+    'image_url': imageUrl,
+    'banner_type': type.name,
+    'placement': placement.wire,
+    'media_type': (videoUrl?.isNotEmpty ?? false) ? 'video' : 'image',
+    'video_url': _clean(videoUrl),
+    'link_url': _clean(linkUrl),
+    'advertiser': _clean(advertiser),
+    'audience': audience,
+    'starts_at': startsAt?.toUtc().toIso8601String(),
+    'ends_at': endsAt?.toUtc().toIso8601String(),
+    'title': _clean(title),
+    'subtitle': _clean(subtitle),
+    'code': _clean(code),
+  });
 
   Future<void> update(String id, Map<String, dynamic> values) async {
     final rows = await supabase

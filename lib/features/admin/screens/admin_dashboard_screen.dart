@@ -14,6 +14,7 @@ import '../admin_dashboard_cubit.dart';
 import 'admin_order_detail_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../admin_shell.dart' show AdminWebNav;
+import 'admin_manage_screen.dart' show adminManageGroups;
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -112,7 +113,7 @@ class _DashboardViewState extends State<_DashboardView> {
                         children: [
                           _AttentionRow(stats: state.stats),
                           const SizedBox(height: 14),
-                          const _Shortcuts(),
+                          const _ManageGrid(),
                           const SizedBox(height: 18),
                           Row(
                             children: [
@@ -168,105 +169,85 @@ class _DashboardViewState extends State<_DashboardView> {
 /// four or five daily destinations cost two taps and a scan of a long list.
 /// These are the ones worth a shortcut, gated by permission so a scoped role
 /// is not shown a door it cannot open.
-class _Shortcuts extends StatelessWidget {
-  const _Shortcuts();
+/// Every occasional admin tool, grouped and shown as a grid right on
+/// Overview.
+///
+/// Previously a full bottom-tab of its own ("Manage") plus a smaller,
+/// hand-duplicated shortcuts strip up here that only ever covered six of the
+/// admin's ~17 tools and kept its own separate permission list to stay in
+/// sync with. One phone tab bar slot goes back to something daily (there
+/// were only four to begin with), and one list — [adminManageGroups], the
+/// same one the desktop sidebar already builds from — instead of two that
+/// could disagree.
+class _ManageGrid extends StatelessWidget {
+  const _ManageGrid();
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final auth = context.watch<AuthCubit>().state;
+    final groups = adminManageGroups(context);
+    if (groups.isEmpty) return const SizedBox.shrink();
 
-    final items = <(IconData, String, String, String)>[
-      (
-        Icons.query_stats_outlined,
-        l10n.financeTitle,
-        '/admin-app/finance',
-        'reports.view',
-      ),
-      (
-        Icons.handshake_outlined,
-        l10n.settlementsTitle,
-        '/admin-app/settlements',
-        'finance.settle',
-      ),
-      (
-        Icons.account_balance_outlined,
-        l10n.depositsAwaitingReview,
-        '/admin-app/deposits',
-        'finance.settle',
-      ),
-      (
-        Icons.support_agent_outlined,
-        l10n.supportChat,
-        '/admin-app/support',
-        'support.handle',
-      ),
-      (
-        Icons.delivery_dining_outlined,
-        l10n.driverApprovals,
-        '/admin-app/drivers',
-        'drivers.view',
-      ),
-      (
-        Icons.local_offer_outlined,
-        l10n.promos,
-        '/admin-app/promos',
-        'promos.manage',
-      ),
-    ].where((item) => auth.can(item.$4)).toList();
-
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    return SizedBox(
-      height: 92,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.zero,
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final (icon, label, route, _) = items[i];
-          return SizedBox(
-            width: 96,
-            child: Material(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadii.lg),
-              child: InkWell(
-                onTap: () => AdminWebNav.go(context, route),
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (title, items) in groups) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: Text(
+              title,
+              style: AppType.heading(14, color: AppColors.textSecondary),
+            ),
+          ),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.98,
+            children: [
+              for (final item in items)
+                Material(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                  child: InkWell(
+                    onTap: () => AdminWebNav.go(context, item.route),
                     borderRadius: BorderRadius.circular(AppRadii.lg),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, size: 22, color: AppColors.primary),
-                      const SizedBox(height: 6),
-                      Flexible(
-                        child: Text(
-                          label,
-                          maxLines: 2,
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            height: 1.2,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink,
-                          ),
-                        ),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(color: AppColors.border),
                       ),
-                    ],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(item.icon, size: 22, color: AppColors.primary),
+                          const SizedBox(height: 6),
+                          Flexible(
+                            child: Text(
+                              item.label,
+                              maxLines: 2,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                height: 1.2,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.lg),
+        ],
+      ],
     );
   }
 }
@@ -638,29 +619,11 @@ class _AvatarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Drivers and menu import used to hide in here because the tab bar was
-    // full; they now live in the Manage tab, which leaves this as the account
-    // menu it always looked like.
+    // Every management tool now lives on Overview as a grid — this is the
+    // plain account menu it always looked like.
     return PopupMenuButton<String>(
-      onSelected: (value) {
-        if (value == 'manage') {
-          context.go('/admin-app/manage');
-          return;
-        }
-        onSignOut();
-      },
+      onSelected: (_) => onSignOut(),
       itemBuilder: (_) => [
-        PopupMenuItem(
-          value: 'manage',
-          child: Row(
-            children: [
-              const Icon(Icons.tune_rounded, size: 18),
-              const SizedBox(width: AppSpace.sm),
-              Text(context.l10n.manage),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
         PopupMenuItem(value: 'signout', child: Text(context.l10n.signOut)),
       ],
       child: Container(

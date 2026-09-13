@@ -247,6 +247,36 @@ class NotificationService {
     }
   }
 
+  /// Detaches this device from the signed-in account. Call before signing out,
+  /// while the session still exists (RLS needs it to clear the column).
+  ///
+  /// Without this the token stayed on the old profile after sign-out, so a
+  /// shared or handed-over phone kept receiving the previous user's order,
+  /// chat and support pushes — and after switching accounts it carried
+  /// several users' notifications at once. Deleting the token too means the
+  /// next account gets a fresh one, and any stale copy still stored elsewhere
+  /// starts failing at FCM and is cleaned up by the senders.
+  Future<void> releaseDeviceToken() async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    try {
+      if (userId != null) {
+        await client
+            .from('profiles')
+            .update({'fcm_token': null})
+            .eq('id', userId);
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error clearing FCM token from profile: $e');
+    }
+    if (kIsWeb && !AppConfig.hasWebPush) return;
+    try {
+      await _fcm.deleteToken();
+    } catch (e) {
+      if (kDebugMode) print('Error deleting FCM token: $e');
+    }
+  }
+
   Future<void> _saveTokenToSupabase(String fcmToken) async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;

@@ -6,6 +6,7 @@ import '../../../app/tokens.dart';
 import '../../../core/models/finance.dart';
 import '../../../core/repositories/finance_repository.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/utils/settlement_format.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/finance_widgets.dart';
@@ -13,15 +14,21 @@ import '../../../core/widgets/finance_widgets.dart';
 /// The driver's own money.
 ///
 /// Read-only by construction: the tables grant `SELECT` and nothing else, so
-/// the only thing this screen can write is a *request* to deposit, which
-/// credits nothing until an admin confirms the payment. A driver cannot move
-/// their own balance from here, and there is no code path that would let them.
+/// the only things this screen can write are *requests* — a cash hand-over,
+/// which clears nothing until an admin confirms receiving the money, and a
+/// payout request, which an admin still has to approve.
+///
+/// Layout, top to bottom: where the driver stands and the one action that
+/// matches (hand over cash / withdraw), anything waiting on an admin, a short
+/// summary, then activity.
 class DriverWalletScreen extends StatefulWidget {
   const DriverWalletScreen({super.key});
 
   @override
   State<DriverWalletScreen> createState() => _DriverWalletScreenState();
 }
+
+enum _ActivityTab { statement, payouts }
 
 class _DriverWalletScreenState extends State<DriverWalletScreen> {
   final _repository = FinanceRepository();
@@ -41,14 +48,15 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
   WalletSummary? _wallet;
   EarlySettlementQuote? _quote;
   List<LedgerEntry> _entries = const [];
-  List<DepositRequest> _deposits = const [];
+  List<DepositRequest> _handOvers = const [];
   List<Settlement> _settlements = const [];
   double _tips = 0;
   bool _loading = true;
   bool _requestingPayout = false;
   String? _error;
+  _ActivityTab _tab = _ActivityTab.statement;
 
-  Settlement? get _pendingRequest =>
+  Settlement? get _pendingPayout =>
       _settlements.where((s) => s.status == 'pending').firstOrNull;
 
   @override
@@ -59,7 +67,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      _loading = _wallet == null;
       _error = null;
     });
     try {
@@ -75,7 +83,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       setState(() {
         _wallet = results[0] as WalletSummary;
         _entries = results[1] as List<LedgerEntry>;
-        _deposits = results[2] as List<DepositRequest>;
+        _handOvers = results[2] as List<DepositRequest>;
         _tips = results[3] as double;
         _settlements = results[4] as List<Settlement>;
         _quote = results[5] as EarlySettlementQuote;
@@ -90,8 +98,23 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     }
   }
 
-  /// Asking to be paid out the balance the platform owes — the opposite
-  /// direction of [_requestDeposit], which is cash the driver hands in.
+  /// Withdraw: pick free/standard or paid/faster, then run it.
+  Future<void> _withdraw() async {
+    final wallet = _wallet!;
+    final choice = await showWithdrawSheet(
+      context,
+      payable: wallet.payable,
+      quote: _quote!,
+    );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case WithdrawChoice.standard:
+        await _requestPayout();
+      case WithdrawChoice.faster:
+        await _takeEarly();
+    }
+  }
+
   Future<void> _requestPayout() async {
     setState(() => _requestingPayout = true);
     try {
@@ -105,9 +128,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     }
   }
 
-  /// The paid, faster-review alternative to [_requestPayout] — same queue,
-  /// same "an admin still has to approve it" reality, just with the fee
-  /// [_quote] spells out up front.
+  /// The paid, faster-review alternative — same queue, same "an admin still
+  /// has to approve it" reality, with the fee confirmed before it is taken.
   Future<void> _takeEarly() async {
     final quote = _quote!;
     final l10n = context.l10n;
@@ -115,13 +137,13 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
 
     final confirmed = await showConfirmDialog(
       context: context,
-      title: l10n.earlyPayout,
+      title: l10n.fasterPayout,
       message: l10n.confirmEarlyPayout(
         formatMoney(quote.netPayout),
         formatMoney(quote.payable),
         due == null ? '—' : '${due.day}/${due.month}',
       ),
-      confirmLabel: l10n.earlyPayout,
+      confirmLabel: l10n.fasterPayout,
       cancelLabel: l10n.cancel,
       icon: Icons.bolt_rounded,
       onConfirm: () async {
@@ -133,17 +155,23 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     await _load();
   }
 
-  Future<void> _requestDeposit() async {
-    _amountController.clear();
+  /// Hand over the cash collected from customers. Pre-filled with everything
+  /// the driver is holding, which is what is handed over almost every time.
+  Future<void> _handOverCash() async {
+    final l10n = context.l10n;
+    final due = _wallet?.cashDue ?? 0;
+    _amountController.text = due > 0 ? trimZeros(due) : '';
     _referenceController.clear();
-    var method = 'bank_transfer';
+    var method = 'cash';
 
-    final created = await showFormDialog<bool>(
+    final created = await showFormSheet<bool>(
       context: context,
-      title: context.l10n.requestDeposit,
-      icon: Icons.account_balance_outlined,
+      title: l10n.requestDeposit,
+      subtitle: l10n.handOverCashHint,
+      icon: Icons.move_to_inbox_rounded,
       contentBuilder: (rebuild) => Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             controller: _amountController,
@@ -152,45 +180,66 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
-            decoration: InputDecoration(labelText: context.l10n.depositAmount),
+            style: AppType.mono(18, weight: FontWeight.w800),
+            decoration: InputDecoration(
+              labelText: l10n.depositAmount,
+              suffixText: l10n.egp,
+            ),
           ),
-          const SizedBox(height: AppSpace.md),
-          DropdownButtonFormField<String>(
-            initialValue: method,
-            isExpanded: true,
-            decoration: InputDecoration(labelText: context.l10n.depositMethod),
-            items: [
-              DropdownMenuItem(
-                value: 'bank_transfer',
-                child: Text(context.l10n.settlementMethodBank),
-              ),
-              DropdownMenuItem(
+          const SizedBox(height: AppSpace.lg),
+          Text(
+            l10n.depositMethod,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          SegmentedButton<String>(
+            expandedInsets: EdgeInsets.zero,
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
                 value: 'cash',
-                child: Text(context.l10n.settlementMethodCash),
+                icon: const Icon(Icons.payments_outlined, size: 17),
+                label: Text(
+                  l10n.settlementMethodCash,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              ButtonSegment(
+                value: 'bank_transfer',
+                icon: const Icon(Icons.account_balance_outlined, size: 17),
+                label: Text(
+                  l10n.settlementMethodBank,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
-            onChanged: (value) {
-              method = value ?? method;
+            selected: {method},
+            onSelectionChanged: (value) {
+              method = value.first;
               rebuild();
             },
           ),
           const SizedBox(height: AppSpace.md),
           TextField(
             controller: _referenceController,
-            decoration: InputDecoration(
-              labelText: context.l10n.referenceOptional,
-            ),
+            decoration: InputDecoration(labelText: l10n.referenceOptional),
           ),
         ],
       ),
-      submitLabel: context.l10n.submitRequest,
-      cancelLabel: context.l10n.cancel,
+      submitLabel: l10n.requestDeposit,
+      cancelLabel: l10n.cancel,
       onSubmit: (_) async {
         final amount = double.tryParse(_amountController.text.trim());
         if (amount == null || amount <= 0) {
-          // Thrown rather than returned: the dialog shows it inline and keeps
+          // Thrown rather than returned: the form shows it inline and keeps
           // everything the driver typed.
-          throw Exception(context.l10n.amountRequired);
+          throw Exception(l10n.amountRequired);
         }
         await _repository.createDepositRequest(
           amount: amount,
@@ -204,7 +253,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     );
 
     if (created == true && mounted) {
-      showSnack(context, context.l10n.depositRequested);
+      showSnack(context, l10n.depositRequested);
       await _load();
     }
   }
@@ -212,132 +261,141 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final wallet = _wallet;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(l10n.wallet)),
-      floatingActionButton: wallet == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _requestDeposit,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(
-                l10n.requestDeposit,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+      body: _loading
+          ? const LoadingView()
+          : _error != null && _wallet == null
+          ? ErrorView(message: _error!, onRetry: _load)
+          : RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _load,
+              child: _content(context),
             ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: _load,
-        child: _loading
-            ? const LoadingView()
-            : _error != null
-            ? ErrorView(message: _error!, onRetry: _load)
-            : ListView(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpace.gutter,
-                  AppSpace.md,
-                  AppSpace.gutter,
-                  96 + MediaQuery.paddingOf(context).bottom,
-                ),
-                children: [
-                  WalletHeadline(wallet: wallet!),
-                  const SizedBox(height: AppSpace.md),
-                  if (_pendingRequest != null)
-                    PendingSettlementTile(pending: _pendingRequest!)
-                  else ...[
-                    EarlyPayoutCard(quote: _quote!, onTake: _takeEarly),
-                    const SizedBox(height: AppSpace.md),
-                    SettlementRequestCard(
-                      title: l10n.requestPayout,
-                      hint: l10n.requestPayoutHint,
-                      payable: wallet.payable,
-                      busy: _requestingPayout,
-                      onRequest: _requestPayout,
-                    ),
-                  ],
-                  const SizedBox(height: AppSpace.md),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 1.95,
-                    crossAxisSpacing: AppSpace.md,
-                    mainAxisSpacing: AppSpace.md,
-                    children: [
-                      MoneyTile(
-                        label: l10n.totalEarningsLabel,
-                        value: formatMoney(wallet.totalEarnings),
-                        tone: AppColors.successInk,
-                      ),
-                      MoneyTile(
-                        label: l10n.cashCollectedLabel,
-                        value: formatMoney(wallet.cashCollected),
-                      ),
-                      MoneyTile(
-                        label: l10n.totalSettlementsLabel,
-                        value: formatMoney(wallet.cashSettled),
-                      ),
-                      MoneyTile(
-                        label: l10n.requestDeposit,
-                        value: formatMoney(wallet.totalDeposited),
-                      ),
-                      // Paid into the in-app wallet by the customer, not owed
-                      // by the platform — so it sits beside the balance rather
-                      // than inside it.
-                      MoneyTile(
-                        label: l10n.tips,
-                        value: formatMoney(_tips),
-                        tone: AppColors.successInk,
-                      ),
-                    ],
-                  ),
-                  if (_deposits.any((d) => d.isPending)) ...[
-                    const SizedBox(height: AppSpace.lg),
-                    Text(
-                      l10n.depositsAwaitingReview,
-                      style: AppType.heading(16),
-                    ),
-                    for (final deposit in _deposits.where((d) => d.isPending))
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.hourglass_top_rounded,
-                          color: AppColors.amberInk,
-                        ),
-                        title: Text(formatMoney(deposit.amount)),
-                        subtitle: Text(
-                          l10n.depositRequested,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11.5),
-                        ),
-                      ),
-                  ],
-                  if (_settlements.isNotEmpty) ...[
-                    const SizedBox(height: AppSpace.lg),
-                    Text(l10n.settlementsTitle, style: AppType.heading(16)),
-                    for (final settlement in _settlements)
-                      SettlementTile(settlement: settlement),
-                  ],
-                  const SizedBox(height: AppSpace.lg),
-                  Text(l10n.statement, style: AppType.heading(16)),
-                  const SizedBox(height: AppSpace.xs),
-                  if (_entries.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: EmptyView(
-                        message: l10n.noTransactionsYet,
-                        icon: Icons.receipt_long_outlined,
-                      ),
-                    )
-                  else
-                    for (final entry in _entries) LedgerTile(entry: entry),
-                ],
-              ),
+    );
+  }
+
+  Widget _content(BuildContext context) {
+    final l10n = context.l10n;
+    final wallet = _wallet!;
+    final pendingHandOvers = _handOvers.where((d) => d.isPending).toList();
+    final pendingPayout = _pendingPayout;
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.lg,
+        AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
       ),
+      children: [
+        WalletHero(
+          wallet: wallet,
+          onHandOver: _handOverCash,
+          // One open payout at a time — the server refuses a second.
+          onWithdraw: pendingPayout == null ? _withdraw : null,
+          withdrawBusy: _requestingPayout,
+        ),
+
+        if (pendingHandOvers.isNotEmpty || pendingPayout != null)
+          InReviewCard(
+            children: [
+              for (final handOver in pendingHandOvers)
+                InReviewRow(
+                  icon: Icons.move_to_inbox_rounded,
+                  title: l10n.requestDeposit,
+                  subtitle: [
+                    settlementMethodLabel(context, handOver.paymentMethod),
+                    financeDayLabel(context, handOver.createdAt),
+                  ].join(' · '),
+                  amount: formatMoney(handOver.amount),
+                ),
+              if (pendingPayout != null)
+                InReviewRow(
+                  icon: pendingPayout.isEarly
+                      ? Icons.bolt_rounded
+                      : Icons.account_balance_rounded,
+                  title: pendingPayout.isEarly
+                      ? l10n.fasterPayout
+                      : l10n.standardPayout,
+                  subtitle: financeDayLabel(context, pendingPayout.createdAt),
+                  amount: formatMoney(pendingPayout.amount),
+                  onTap: () => showSettlementDetails(context, pendingPayout),
+                ),
+            ],
+          ),
+
+        FinanceSection(
+          title: l10n.summaryLabel,
+          child: FinanceCard(
+            children: [
+              FinanceRow(
+                icon: Icons.two_wheeler_rounded,
+                label: l10n.totalEarningsLabel,
+                value: formatMoney(wallet.totalEarnings),
+                tone: AppColors.successInk,
+              ),
+              // Paid into the in-app wallet by the customer, not owed by the
+              // platform — so it sits beside the balance rather than in it.
+              FinanceRow(
+                icon: Icons.volunteer_activism_rounded,
+                label: l10n.tips,
+                value: formatMoney(_tips),
+                tone: AppColors.successInk,
+              ),
+              FinanceRow(
+                icon: Icons.payments_rounded,
+                label: l10n.cashCollectedLabel,
+                value: formatMoney(wallet.cashCollected),
+              ),
+              FinanceRow(
+                icon: Icons.move_to_inbox_rounded,
+                label: l10n.cashHandedOver,
+                value: formatMoney(wallet.totalDeposited),
+              ),
+              FinanceRow(
+                icon: Icons.account_balance_rounded,
+                label: l10n.settlementsPaidOut,
+                value: formatMoney(wallet.cashSettled),
+              ),
+            ],
+          ),
+        ),
+
+        FinanceSection(
+          title: l10n.activityLabel,
+          child: FinanceSegments<_ActivityTab>(
+            values: _ActivityTab.values,
+            selected: _tab,
+            labelOf: (t) => switch (t) {
+              _ActivityTab.statement => l10n.statement,
+              _ActivityTab.payouts => l10n.payouts,
+            },
+            onChanged: (t) => setState(() => _tab = t),
+          ),
+        ),
+        switch (_tab) {
+          _ActivityTab.statement => LedgerActivity(entries: _entries),
+          _ActivityTab.payouts =>
+            _settlements.isEmpty
+                ? FinanceEmpty(
+                    message: l10n.noTransactionsYet,
+                    icon: Icons.account_balance_outlined,
+                  )
+                : Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.md),
+                    child: FinanceCard(
+                      children: [
+                        for (final settlement in _settlements)
+                          SettlementTile(settlement: settlement),
+                      ],
+                    ),
+                  ),
+        },
+      ],
     );
   }
 }

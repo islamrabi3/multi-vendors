@@ -1,7 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../services/notification_service.dart';
-
 class ReportRepository {
   final SupabaseClient _client;
   ReportRepository({SupabaseClient? client})
@@ -53,16 +51,12 @@ class ReportRepository {
         })
         .eq('id', reportId);
 
-    // Send push / in-app notification to customer
-    try {
-      NotificationService.instance.sendNotificationToUser(
-        userId: userId,
-        // Keyed, not literal: this goes to the customer, and the admin
-        // resolving it may not read the same language they do.
-        titleKey: 'report_resolved',
-        body: replyMessage,
-        data: {'report_id': reportId, 'status': 'resolved'},
-      );
-    } catch (_) {}
+    // No push call here: the `notify_report_event` trigger fires on this
+    // same status change and calls the report-notify function itself, with
+    // the customer's own locale. A second, client-side call to send-push
+    // used to sit here — it always failed (send-push requires `title`, and
+    // this passed only `title_key`, which it has never supported) and the
+    // failure was silently swallowed, so it never did anything but duplicate
+    // a notification that was already being sent correctly.
   }
 }

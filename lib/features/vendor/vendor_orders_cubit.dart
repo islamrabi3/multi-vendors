@@ -18,6 +18,7 @@ class VendorOrdersState extends Equatable {
     this.history = const [],
     this.loadingHistory = false,
     this.hasMoreHistory = true,
+    this.updatingOrderIds = const {},
   });
 
   final bool loading;
@@ -32,6 +33,15 @@ class VendorOrdersState extends Equatable {
   final List<AppOrder> history;
   final bool loadingHistory;
   final bool hasMoreHistory;
+
+  /// Orders with an accept/reject/ready/collected call in flight. A status
+  /// change is not idempotent — two quick taps on Accept fired two transitions
+  /// and the second came back as a server error — so the dashboard disables
+  /// exactly this order's buttons while its own call is running, and only
+  /// those.
+  final Set<String> updatingOrderIds;
+
+  bool isUpdating(String orderId) => updatingOrderIds.contains(orderId);
 
   List<AppOrder> get pending =>
       orders.where((o) => o.status == OrderStatus.pending).toList();
@@ -109,6 +119,7 @@ class VendorOrdersState extends Equatable {
     List<AppOrder>? history,
     bool? loadingHistory,
     bool? hasMoreHistory,
+    Set<String>? updatingOrderIds,
   }) => VendorOrdersState(
     loading: loading ?? this.loading,
     orders: orders ?? this.orders,
@@ -117,6 +128,7 @@ class VendorOrdersState extends Equatable {
     history: history ?? this.history,
     loadingHistory: loadingHistory ?? this.loadingHistory,
     hasMoreHistory: hasMoreHistory ?? this.hasMoreHistory,
+    updatingOrderIds: updatingOrderIds ?? this.updatingOrderIds,
   );
 
   @override
@@ -128,6 +140,7 @@ class VendorOrdersState extends Equatable {
     history,
     loadingHistory,
     hasMoreHistory,
+    updatingOrderIds,
   ];
 }
 
@@ -336,9 +349,16 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState>
     OrderStatus status, {
     String? reason,
   }) async {
+    // Already in flight for this order — a second tap while the first is
+    // still on the wire must not fire a second transition.
+    if (state.updatingOrderIds.contains(order.id)) return;
+    emit(
+      state.copyWith(updatingOrderIds: {...state.updatingOrderIds, order.id}),
+    );
     try {
       await _repository.updateStatus(order.id, status, reason: reason);
     } catch (error) {
+      if (isClosed) return;
       emit(
         state.copyWith(
           loading: false,
@@ -346,6 +366,14 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState>
           newOrderArrived: false,
         ),
       );
+    } finally {
+      if (!isClosed) {
+        emit(
+          state.copyWith(
+            updatingOrderIds: {...state.updatingOrderIds}..remove(order.id),
+          ),
+        );
+      }
     }
   }
 

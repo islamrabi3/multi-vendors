@@ -4,7 +4,11 @@ import '../../../app/tokens.dart';
 import '../../../core/models/wallet_transaction.dart';
 import '../../../core/repositories/payment_repository.dart';
 import '../../../core/repositories/wallet_repository.dart';
+import '../../../core/utils/money.dart';
+import '../../../core/utils/paging.dart';
 import '../../../core/widgets/app_dialogs.dart';
+import '../../../core/widgets/common.dart';
+import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../checkout/paymob_flow.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -22,6 +26,8 @@ class _WalletScreenState extends State<WalletScreen> {
   double _balance = 0.0;
   List<WalletTransaction> _transactions = [];
   bool _isLoading = true;
+  bool _hasMore = false;
+  bool _loadingMore = false;
 
   @override
   void initState() {
@@ -30,14 +36,45 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _loadWallet() async {
-    setState(() => _isLoading = true);
-    final balance = await _walletRepo.getBalance();
-    final txs = await _walletRepo.getTransactions();
-    setState(() {
-      _balance = balance;
-      _transactions = txs;
-      _isLoading = false;
-    });
+    try {
+      final results = await Future.wait([
+        _walletRepo.getBalance(),
+        _walletRepo.getTransactions(),
+      ]);
+      if (!mounted) return;
+      final txs = results[1] as List<WalletTransaction>;
+      setState(() {
+        _balance = results[0] as double;
+        _transactions = txs;
+        _hasMore = txs.length == kPageSize;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      showFailure(context, error, onRetry: _loadWallet);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _transactions.isEmpty) return;
+    setState(() => _loadingMore = true);
+    try {
+      final last = _transactions.last;
+      final page = await _walletRepo.getTransactions(
+        before: (createdAt: last.createdAt, id: last.id),
+      );
+      if (!mounted) return;
+      setState(() {
+        _transactions = [..._transactions, ...page];
+        _hasMore = page.length == kPageSize;
+        _loadingMore = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      showFailure(context, error, onRetry: _loadMore);
+    }
   }
 
   /// Opens Paymob's unified checkout for [amount]. The balance is credited by
@@ -46,6 +83,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _startTopUp(double amount, PaymobChannel channel) async {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
+    final l10n = context.l10n;
 
     void fail(String message) {
       if (!mounted) return;
@@ -64,10 +102,14 @@ class _WalletScreenState extends State<WalletScreen> {
         channel: channel,
       );
     } on PaymentException catch (error) {
-      fail(_topUpErrorMessage(error.code));
+      fail(switch (error.code) {
+        'INVALID_TOPUP_AMOUNT' => l10n.topUpInvalidAmount,
+        'PAYMOB_NOT_CONFIGURED' => l10n.topUpUnavailable,
+        _ => l10n.topUpOpenFailed,
+      });
       return;
     } catch (error) {
-      fail('Could not open the payment page: $error');
+      fail(l10n.topUpOpenFailed);
       return;
     }
     if (!mounted) return;
@@ -82,37 +124,19 @@ class _WalletScreenState extends State<WalletScreen> {
     switch (result) {
       case PaymobFlowResult.paid:
         messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Added ${amount.toStringAsFixed(2)} EGP to your wallet 🎉',
-            ),
-          ),
+          SnackBar(content: Text(l10n.topUpAdded(formatMoney(amount)))),
         );
         await _loadWallet();
       case PaymobFlowResult.cancelled:
-        fail('Payment cancelled. Your balance was not changed.');
+        fail(l10n.topUpCancelled);
       case PaymobFlowResult.failed:
-        fail('Payment failed. Your balance was not changed.');
+        fail(l10n.topUpFailed);
       case PaymobFlowResult.unresolved:
         if (!mounted) return;
         setState(() => _isLoading = false);
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Still confirming with the bank. Pull to refresh in a moment — '
-              'the balance updates once the payment is confirmed.',
-            ),
-          ),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(l10n.topUpPending)));
     }
   }
-
-  String _topUpErrorMessage(String code) => switch (code) {
-    'INVALID_TOPUP_AMOUNT' => 'Enter an amount between 10 and 20,000 EGP.',
-    'PAYMOB_NOT_CONFIGURED' =>
-      'Card payments are not available right now. Try again later.',
-    _ => 'Could not open the payment page. Please try again.',
-  };
 
   /// Amount picker. The quick-pick chips write into the text field and vice
   /// versa, which is exactly what `contentBuilder`'s `rebuild` callback is for —
@@ -156,16 +180,26 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
               const SizedBox(height: AppSpace.lg),
               SegmentedButton<PaymobChannel>(
+                expandedInsets: EdgeInsets.zero,
+                showSelectedIcon: false,
                 segments: [
                   ButtonSegment(
                     value: PaymobChannel.card,
                     icon: const Icon(Icons.credit_card_rounded, size: 17),
-                    label: Text(context.l10n.card),
+                    label: Text(
+                      context.l10n.card,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   ButtonSegment(
                     value: PaymobChannel.wallet,
                     icon: const Icon(Icons.smartphone_rounded, size: 17),
-                    label: Text(context.l10n.mobileWallet),
+                    label: Text(
+                      context.l10n.mobileWallet,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
                 selected: {channel},
@@ -203,140 +237,82 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.myWallet), elevation: 0),
+      backgroundColor: AppColors.canvas,
+      appBar: AppBar(title: Text(l10n.myWallet), elevation: 0),
       body: _isLoading
           ? const _WalletSkeleton()
           : RefreshIndicator(
+              color: AppColors.primary,
               onRefresh: _loadWallet,
               child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
-                  16,
-                  16,
-                  16,
-                  16 + MediaQuery.paddingOf(context).bottom,
+                  AppSpace.lg,
+                  AppSpace.md,
+                  AppSpace.lg,
+                  AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
                 ),
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primaryLight, AppColors.primaryDark],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(AppRadii.xl),
-                      boxShadow: AppShadows.raised,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.currentBalance,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${_balance.toStringAsFixed(2)} EGP',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppColors.primaryDark,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadii.md,
-                                  ),
-                                ),
-                              ),
-                              onPressed: _showTopUpDialog,
-                              icon: const Icon(Icons.add_circle_outline),
-                              label: Text(
-                                context.l10n.topUpWallet,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                  FinanceHero(
+                    eyebrow: l10n.currentBalance,
+                    amount: formatMoney(_balance),
+                    caption: l10n.walletSpendHint,
+                    action: FinanceHeroAction(
+                      label: l10n.topUpWallet,
+                      icon: Icons.add_rounded,
+                      onPressed: _showTopUpDialog,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    context.l10n.pointsHistory,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  FinanceSection(
+                    title: l10n.activityLabel,
+                    child: _transactions.isEmpty
+                        ? FinanceEmpty(message: l10n.noTransactions)
+                        : DayGroupedList<WalletTransaction>(
+                            items: _transactions,
+                            dateOf: (tx) => tx.createdAt,
+                            itemBuilder: (tx) => _TransactionTile(tx: tx),
+                          ),
                   ),
-                  const SizedBox(height: 12),
-                  if (_transactions.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Center(
-                        child: Text(
-                          context.l10n.noTransactions,
-                          style: const TextStyle(color: AppColors.textMuted),
-                        ),
-                      ),
-                    )
-                  else
-                    ..._transactions.map((tx) {
-                      final isPositive = tx.amount > 0;
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isPositive
-                                ? AppColors.successFill
-                                : AppColors.dangerFill,
-                            child: Icon(
-                              isPositive
-                                  ? Icons.arrow_downward
-                                  : Icons.arrow_upward,
-                              color: isPositive
-                                  ? AppColors.successInk
-                                  : AppColors.dangerInk,
-                            ),
-                          ),
-                          title: Text(tx.description ?? tx.type),
-                          subtitle: Text(
-                            '${tx.createdAt.day}/${tx.createdAt.month}/${tx.createdAt.year}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          trailing: Text(
-                            '${isPositive ? '+' : ''}${tx.amount.toStringAsFixed(2)} EGP',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: isPositive
-                                  ? AppColors.successInk
-                                  : AppColors.dangerInk,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
+                  if (_hasMore)
+                    FinanceLoadMore(busy: _loadingMore, onPressed: _loadMore),
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// One wallet movement, labelled by what it was rather than its raw type.
+class _TransactionTile extends StatelessWidget {
+  const _TransactionTile({required this.tx});
+
+  final WalletTransaction tx;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final (IconData icon, String? label) = switch (tx.type) {
+      'deposit' ||
+      'topup' ||
+      'top_up' => (Icons.add_card_rounded, l10n.walletTxTopUp),
+      'payment' => (Icons.shopping_bag_rounded, l10n.walletTxPayment),
+      'refund' => (Icons.undo_rounded, l10n.walletTxRefund),
+      'cashback' => (Icons.redeem_rounded, l10n.walletTxCashback),
+      'tip' => (Icons.volunteer_activism_rounded, l10n.walletTxTip),
+      _ => (Icons.receipt_long_rounded, null),
+    };
+    final title = label ?? tx.description ?? tx.type.replaceAll('_', ' ');
+    final time = TimeOfDay.fromDateTime(tx.createdAt).format(context);
+    return FinanceTxTile(
+      icon: icon,
+      title: title,
+      subtitle: label != null && (tx.description?.isNotEmpty ?? false)
+          ? '$time · ${tx.description}'
+          : time,
+      amount: formatMoney(tx.amount.abs()),
+      isCredit: tx.amount > 0,
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/favorites_repository.dart';
 import '../../../core/utils/category_emoji.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/vendor_card.dart';
 import 'category_cubit.dart';
 
@@ -55,7 +56,10 @@ class _CategoryView extends StatelessWidget {
           backgroundColor: AppColors.canvas,
           appBar: AppBar(title: Text(title, overflow: TextOverflow.ellipsis)),
           body: switch (state) {
-            CategoryState(loading: true) => const LoadingView(),
+            // Skeleton on the first load only. A pull-to-refresh keeps the
+            // list on screen under the refresh indicator instead of blanking.
+            CategoryState(loading: true) when state.vendors.isEmpty =>
+              _CategorySkeleton(hasChildren: state.children.isNotEmpty),
             CategoryState(error: final error?) when state.vendors.isEmpty =>
               ErrorView(message: error, onRetry: cubit.load),
             _ => RefreshIndicator(
@@ -361,6 +365,107 @@ class _SectionHeader extends StatelessWidget {
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             label: Text(context.l10n.openNow),
             onSelected: context.read<CategoryCubit>().setOpenOnly,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The category page while it loads, shaped like the real thing: the
+/// sub-category circles, a rail heading, the section header and store cards,
+/// at the same sizes so nothing jumps when data lands.
+class _CategorySkeleton extends StatelessWidget {
+  const _CategorySkeleton({required this.hasChildren});
+
+  /// Unknown on a first open; true on a retry that already knew the tree.
+  final bool hasChildren;
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 28),
+        children: [
+          SizedBox(
+            height: 112,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.gutter,
+                AppSpace.sm + 2.5,
+                AppSpace.gutter,
+                0,
+              ),
+              itemCount: 6,
+              separatorBuilder: (_, _) => const SizedBox(width: 14.5),
+              itemBuilder: (_, _) => const Column(
+                children: [
+                  Skeleton.circle(size: 62),
+                  SizedBox(height: 10),
+                  Skeleton(width: 46, height: 10),
+                ],
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.gutter,
+              AppSpace.md,
+              AppSpace.gutter,
+              AppSpace.sm,
+            ),
+            child: Skeleton.line(widthFactor: 0.5, height: 18),
+          ),
+          for (var i = 0; i < 2; i++) const _VendorCardSkeleton(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.gutter,
+              AppSpace.lg,
+              AppSpace.gutter,
+              AppSpace.sm,
+            ),
+            child: Row(
+              children: [
+                Expanded(child: Skeleton.line(widthFactor: 0.55, height: 18)),
+                SizedBox(width: AppSpace.md),
+                Skeleton(width: 84, height: 32, radius: AppRadii.md),
+              ],
+            ),
+          ),
+          for (var i = 0; i < 3; i++) const _VendorCardSkeleton(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mirrors [VendorCard]: thumbnail, title line, two meta lines.
+class _VendorCardSkeleton extends StatelessWidget {
+  const _VendorCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpace.gutter, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Skeleton(width: 92, height: 92, radius: AppRadii.md),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton.line(widthFactor: 0.55, height: 16),
+                SizedBox(height: 8),
+                Skeleton.line(widthFactor: 0.85, height: 12),
+                SizedBox(height: 8),
+                Skeleton.line(widthFactor: 0.35, height: 12),
+              ],
+            ),
           ),
         ],
       ),

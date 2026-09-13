@@ -122,6 +122,7 @@ class AppOrder extends Equatable {
     this.rejectionReason,
     this.vendorName,
     this.vendorLogoUrl,
+    this.vendorPhone,
     this.items = const [],
     this.orderType = 'delivery',
     this.scheduledAt,
@@ -156,6 +157,11 @@ class AppOrder extends Equatable {
   final String? rejectionReason;
   final String? vendorName;
   final String? vendorLogoUrl;
+
+  /// Only present when the caller joined it in (admin's order detail) — a
+  /// customer never gets the store's number this way; they message the
+  /// vendor through chat/support instead.
+  final String? vendorPhone;
   final List<OrderItem> items;
   final String orderType;
   final DateTime? scheduledAt;
@@ -227,6 +233,7 @@ class AppOrder extends Equatable {
       rejectionReason: map['rejection_reason'] as String?,
       vendorName: vendor is Map ? vendor['name'] as String? : null,
       vendorLogoUrl: vendor is Map ? vendor['logo_url'] as String? : null,
+      vendorPhone: vendor is Map ? vendor['phone'] as String? : null,
       items: ((map['order_items'] as List?) ?? [])
           .map((i) => OrderItem.fromMap(i as Map<String, dynamic>))
           .toList(),
@@ -255,6 +262,7 @@ class AppOrder extends Equatable {
     total,
     items,
     vendorName,
+    vendorPhone,
     orderType,
     scheduledAt,
     driverTip,

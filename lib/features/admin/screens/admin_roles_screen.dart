@@ -6,10 +6,12 @@ import '../../../app/tokens.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../../../core/models/admin_role.dart';
 import '../../../core/repositories/admin_roles_repository.dart';
+import '../../../core/utils/paging.dart';
 import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/responsive_list.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../auth/auth_cubit.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
@@ -167,6 +169,18 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
       ),
     );
     if (chosen == null || !mounted) return;
+    if (chosen.id == null) {
+      final confirmed = await showConfirmDialog(
+        context: context,
+        title: context.l10n.confirmUnrestrictedAccessTitle,
+        message: context.l10n.confirmUnrestrictedAccessCreate,
+        confirmLabel: context.l10n.confirm,
+        cancelLabel: context.l10n.cancel,
+        tone: AppDialogTone.danger,
+        icon: Icons.admin_panel_settings_rounded,
+      );
+      if (!confirmed || !mounted) return;
+    }
     try {
       await _repo.assignRole(userId, chosen.id);
       if (!mounted) return;
@@ -626,76 +640,164 @@ class _AuditTab extends StatefulWidget {
 
 class _AuditTabState extends State<_AuditTab> {
   final _repo = AdminRolesRepository();
-  late Future<List<AdminAuditEntry>> _future = _repo.fetchAuditLog();
+  final List<AdminAuditEntry> _entries = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await _repo.fetchAuditLog(limit: kPageSize);
+      if (!mounted) return;
+      setState(() {
+        _entries
+          ..clear()
+          ..addAll(page);
+        _hasMore = page.length == kPageSize;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final page = await _repo.fetchAuditLog(
+        limit: kPageSize,
+        offset: _entries.length,
+      );
+      if (!mounted) return;
+      setState(() {
+        _entries.addAll(page);
+        _hasMore = page.length == kPageSize;
+        _loadingMore = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      showFailure(context, error, onRetry: _loadMore);
+    }
+  }
+
+  /// A human label for the dotted verb the log stores (`vendor.status`,
+  /// `staff.grant`, …), falling back to a prettified version of it so a
+  /// future action type never renders as a blank row.
+  String _actionLabel(BuildContext context, String action) {
+    final l10n = context.l10n;
+    return switch (action) {
+      'vendor.status' => l10n.auditActionVendorStatus,
+      'driver.status' => l10n.auditActionDriverStatus,
+      'catalog.prices_adjusted' => l10n.auditActionPricesAdjusted,
+      'wallet.credit' => l10n.auditActionWalletCredit,
+      'wallet.debit' => l10n.auditActionWalletDebit,
+      'user.delete' => l10n.auditActionUserDelete,
+      'finance.early_settlement_fee' => l10n.auditActionEarlySettlementFee,
+      'vendor.recommend' => l10n.auditActionVendorRecommend,
+      'order.assign' => l10n.auditActionOrderAssign,
+      'order.refund' => l10n.auditActionOrderRefund,
+      'staff.create' => l10n.auditActionStaffCreate,
+      'staff.grant' => l10n.auditActionStaffGrant,
+      'staff.revoke' => l10n.auditActionStaffRevoke,
+      _ => action.replaceAll('.', ' ').replaceAll('_', ' '),
+    };
+  }
+
+  /// `{status: suspended, reason: fraud}` rather than Dart's own
+  /// `Map.toString()`, which is the same shape but with braces an admin
+  /// reading a log has no reason to parse past.
+  String _detailText(Map<String, dynamic> detail) =>
+      detail.entries.map((e) => '${e.key}: ${e.value}').join(', ');
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<AdminAuditEntry>>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const LoadingView();
-        }
-        if (snap.hasError) {
-          return FailureView(
-            error: snap.error!,
-            onRetry: () => setState(() {
-              _future = _repo.fetchAuditLog();
-            }),
-          );
-        }
-        final entries = snap.data ?? const <AdminAuditEntry>[];
-        if (entries.isEmpty) {
-          return EmptyView(
-            message: context.l10n.noAuditYet,
-            icon: Icons.history_rounded,
-          );
-        }
-        return RefreshIndicator(
-          // Awaits the new fetch rather than just swapping it in: a plain
-          // setState ends the pull on the same frame it began, so the spinner
-          // vanished while the log was still loading.
-          onRefresh: () {
-            final future = _repo.fetchAuditLog();
-            // Block body: an arrow closure returns the assigned value, and
-            // a closure returning a Future makes setState throw.
-            setState(() {
-              _future = future;
-            });
-            return future;
-          },
-          child: ListView.separated(
-            padding: const EdgeInsets.all(AppSpace.lg),
-            itemCount: entries.length,
-            separatorBuilder: (_, _) =>
-                const Divider(height: 1, color: AppColors.borderSoft),
-            itemBuilder: (context, i) {
-              final entry = entries[i];
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(
-                  entry.action,
-                  style: AppType.mono(13, color: AppColors.ink),
-                ),
-                subtitle: Text(
-                  [
-                    entry.actorName ?? '—',
-                    DateFormat.yMMMd().add_jm().format(entry.createdAt),
-                    if (entry.detail.isNotEmpty) entry.detail.toString(),
-                  ].join(' · '),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              );
-            },
+    if (_loading) {
+      return SkeletonTheme(
+        child: SkeletonList(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          itemCount: 8,
+          itemBuilder: (_) => const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpace.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton.line(widthFactor: 0.4, height: 13),
+                SizedBox(height: 6),
+                Skeleton.line(widthFactor: 0.7, height: 11),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      );
+    }
+    if (_error != null) {
+      return FailureView(error: _error!, onRetry: _load);
+    }
+    if (_entries.isEmpty) {
+      return EmptyView(
+        message: context.l10n.noAuditYet,
+        icon: Icons.history_rounded,
+      );
+    }
+    final language = Localizations.localeOf(context).languageCode;
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: InfiniteScroll(
+        onLoadMore: _loadMore,
+        child: ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpace.lg),
+          itemCount: _entries.length + 1,
+          separatorBuilder: (_, _) =>
+              const Divider(height: 1, color: AppColors.borderSoft),
+          itemBuilder: (context, i) {
+            if (i == _entries.length) {
+              return _hasMore
+                  ? PagingFooter(loading: _loadingMore, hasMore: _hasMore)
+                  : const SizedBox.shrink();
+            }
+            final entry = _entries[i];
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                _actionLabel(context, entry.action),
+                style: AppType.mono(13, color: AppColors.ink),
+              ),
+              subtitle: Text(
+                [
+                  entry.actorName ?? '—',
+                  DateFormat.yMMMd(language).add_jm().format(entry.createdAt),
+                  if (entry.detail.isNotEmpty) _detailText(entry.detail),
+                ].join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -885,6 +987,18 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
   List<StaffCandidate> _results = const [];
   bool _searching = false;
   bool _saving = false;
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Defaults to the first defined role rather than null ("Owner / full
+    // access"): the picker sat on the most dangerous option every time this
+    // sheet opened, and creating or promoting fired with no confirmation, so
+    // a fast click-through granted a brand-new full admin. A role is still
+    // one tap away in the same dropdown when that is genuinely what's meant.
+    if (widget.roles.isNotEmpty) _roleId = widget.roles.first.id;
+  }
 
   @override
   void dispose() {
@@ -899,6 +1013,22 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
       _email.text.contains('@') &&
       _password.text.length >= 8 &&
       _name.text.trim().isNotEmpty;
+
+  /// Unrestricted access is powerful enough to deserve its own confirmation,
+  /// separate from the generic "add to staff" one every grant gets.
+  Future<bool> _confirmIfUnrestricted() async {
+    if (_roleId != null) return true;
+    final l10n = context.l10n;
+    return showConfirmDialog(
+      context: context,
+      title: l10n.confirmUnrestrictedAccessTitle,
+      message: l10n.confirmUnrestrictedAccessCreate,
+      confirmLabel: l10n.confirm,
+      cancelLabel: l10n.cancel,
+      tone: AppDialogTone.danger,
+      icon: Icons.admin_panel_settings_rounded,
+    );
+  }
 
   Future<void> _runSearch(String query) async {
     if (query.trim().length < 3) {
@@ -917,6 +1047,7 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
   }
 
   Future<void> _create() async {
+    if (!await _confirmIfUnrestricted() || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final done = context.l10n.staffCreated;
     setState(() => _saving = true);
@@ -938,6 +1069,23 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
   }
 
   Future<void> _promote(StaffCandidate candidate) async {
+    final l10n = context.l10n;
+    // Every promotion is confirmed — this hands out access to the admin
+    // console, and the search result it's tapped from has room for exactly
+    // one line of context. Unrestricted access is confirmed a second time,
+    // by name, since it's the one choice here that costs the most to undo.
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: l10n.confirmPromoteTitle,
+      message: l10n.confirmPromoteMessage(
+        candidate.name.isEmpty ? (candidate.email ?? '—') : candidate.name,
+      ),
+      confirmLabel: l10n.confirm,
+      cancelLabel: l10n.cancel,
+      icon: Icons.person_add_alt_1_rounded,
+    );
+    if (!confirmed || !mounted) return;
+    if (!await _confirmIfUnrestricted() || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final done = context.l10n.staffPromoted;
     setState(() => _saving = true);
@@ -1026,10 +1174,22 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
                         const SizedBox(height: AppSpace.sm),
                         TextField(
                           controller: _password,
+                          obscureText: _obscurePassword,
                           onChanged: (_) => setState(() {}),
                           decoration: InputDecoration(
                             labelText: l10n.password,
                             helperText: l10n.passwordMin,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 20,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: AppSpace.md),

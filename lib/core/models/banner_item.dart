@@ -13,7 +13,12 @@ enum AdPlacement {
   orderTracking('order_tracking'),
 
   /// Full screen, over everything, with its own close control.
-  interstitial('interstitial');
+  interstitial('interstitial'),
+
+  /// Shown once, right after the branded splash animation and before the
+  /// app opens onto login or home — the one placement that runs before the
+  /// customer has done anything at all.
+  splash('splash');
 
   const AdPlacement(this.wire);
 
@@ -107,6 +112,15 @@ class BannerItem extends Equatable {
   final String frequency;
 
   bool get isVideo => (videoUrl?.isNotEmpty ?? false);
+
+  /// A still to show while a video loads. Null when a video ad was saved
+  /// without a cover — [imageUrl] then holds the video URL itself, which no
+  /// image widget can draw.
+  String? get poster {
+    if (posterUrl?.isNotEmpty ?? false) return posterUrl;
+    if (isVideo && imageUrl == videoUrl) return null;
+    return imageUrl;
+  }
 
   /// SVG artwork is rendered by a different widget from a raster image, and
   /// the URL is the only signal the database carries.

@@ -17,7 +17,11 @@ class DirectionalIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Transform.flip(
-        flipX: Directionality.of(context) == TextDirection.rtl,
+        // Material's arrows, chevrons and send already carry
+        // `matchTextDirection` and mirror themselves; flipping those again
+        // pointed them the wrong way in Arabic.
+        flipX: Directionality.of(context) == TextDirection.rtl &&
+            !icon.matchTextDirection,
         child: Icon(icon, size: size, color: color),
       );
 }

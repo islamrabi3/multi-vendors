@@ -8,6 +8,7 @@ import '../../../core/repositories/coupons_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../admin_coupons_cubit.dart';
@@ -56,7 +57,7 @@ class _PromosView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
-            _SectionLabel('Coupons'),
+            _SectionLabel(),
             SizedBox(height: 10),
             _CouponsSection(),
           ],
@@ -64,11 +65,16 @@ class _PromosView extends StatelessWidget {
       ),
     );
 
+    // The title on its own row duplicated whatever chrome already names this
+    // page — the AppBar on mobile, `WebPageChrome`'s own header on web —
+    // everywhere except `embedded`, which has no title anywhere else at all.
     final header = Row(
       children: [
-        Text(l10n.promos, style: AppType.display(26)),
-        const Spacer(),
-        _NewButton(),
+        if (embedded)
+          Expanded(child: Text(l10n.promos, style: AppType.display(26)))
+        else
+          const Spacer(),
+        const _NewButton(),
       ],
     );
 
@@ -108,13 +114,9 @@ class _PromosView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(l10n.promos),
-      ),
+      // Default leading rather than a hand-built `arrow_back_ios`: that
+      // glyph is the iOS chevron specifically and never mirrors for Arabic.
+      appBar: AppBar(title: Text(l10n.promos)),
       body: SafeArea(
         top: false,
         bottom: false,
@@ -136,41 +138,26 @@ class _PromosView extends StatelessWidget {
 /// One thing to create here now that banners live on the Ads screen, so this
 /// is a button rather than the two-item menu it used to open.
 class _NewButton extends StatelessWidget {
+  const _NewButton();
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showCouponForm(context, context.read<AdminCouponsCubit>()),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: AppShadows.primaryGlow,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add, size: 16, color: Colors.white),
-            SizedBox(width: 4),
-            Text(
-              context.l10n.newText,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
-              ),
-            ),
-          ],
-        ),
+    // The same shape as the "add" button on the categories and drivers
+    // screens, rather than a one-off pill with its own shadow recipe.
+    return FilledButton.icon(
+      onPressed: () =>
+          _showCouponForm(context, context.read<AdminCouponsCubit>()),
+      icon: const Icon(Icons.add_rounded, size: 18),
+      label: Text(context.l10n.newText),
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       ),
     );
   }
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-
-  final String text;
+  const _SectionLabel();
 
   @override
   Widget build(BuildContext context) {
@@ -180,26 +167,16 @@ class _SectionLabel extends StatelessWidget {
     final active = context.select(
       (AdminCouponsCubit c) => c.state.coupons.where((o) => o.isLive).length,
     );
-    return Row(
-      children: [
-        Text(
-          context.l10n.coupons.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
-            color: AppColors.textFaint,
-          ),
-        ),
-        Text(
-          '  ·  $active ${context.l10n.active}',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textFaint,
-          ),
-        ),
-      ],
+    // Plain case rather than upper-cased with letter-spacing: that combination
+    // is meant for Latin capitals and breaks the joins between Arabic letters
+    // instead of emphasising them.
+    return Text(
+      '${context.l10n.coupons} · $active ${context.l10n.active}',
+      style: const TextStyle(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textFaint,
+      ),
     );
   }
 }
@@ -212,9 +189,14 @@ class _CouponsSection extends StatelessWidget {
     return BlocBuilder<AdminCouponsCubit, AdminCouponsState>(
       builder: (context, state) {
         if (state.loading) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: LoadingView(),
+          return SkeletonTheme(
+            child: SkeletonList(
+              itemCount: 4,
+              padding: EdgeInsets.zero,
+              separator: const SizedBox(height: AppSpace.sm),
+              itemBuilder: (_) =>
+                  const Skeleton.box(height: 64, radius: AppRadii.lg),
+            ),
           );
         }
         if (state.coupons.isEmpty) {
@@ -298,7 +280,10 @@ class _CouponTable extends StatelessWidget {
               Text(
                 coupon.expiresAt == null
                     ? '—'
-                    : DateFormat('MMM d, y').format(coupon.expiresAt!),
+                    : DateFormat(
+                        'MMM d, y',
+                        Localizations.localeOf(context).languageCode,
+                      ).format(coupon.expiresAt!),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -639,27 +624,47 @@ class _CouponFormState extends State<_CouponForm> {
             TextField(
               controller: _code,
               textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(hintText: l10n.codeEgEaty40),
+              // labelText, not hintText: a hint disappears the moment typing
+              // starts, and "Code · e.g. EATY40" is the field's name, not a
+              // placeholder example to type over.
+              decoration: InputDecoration(labelText: l10n.codeEgEaty40),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: _title,
-              decoration: InputDecoration(hintText: l10n.couponTitleLabel),
+              decoration: InputDecoration(labelText: l10n.couponTitleLabel),
             ),
             const SizedBox(height: 12),
             SegmentedButton<_CouponKind>(
+              // Full width with a single-line, ellipsised label per segment:
+              // three Arabic labels ("نسبة مئوية" / "مبلغ ثابت (جنيه)" /
+              // "توصيل مجاني") had nowhere to go on a ~320px sheet and wrapped
+              // onto whatever room the segment happened to get.
+              expandedInsets: EdgeInsets.zero,
               segments: [
                 ButtonSegment(
                   value: _CouponKind.percentage,
-                  label: Text(l10n.percentage),
+                  label: Text(
+                    l10n.percentage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 ButtonSegment(
                   value: _CouponKind.fixed,
-                  label: Text(l10n.fixedEgp),
+                  label: Text(
+                    l10n.fixedEgp,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 ButtonSegment(
                   value: _CouponKind.freeDelivery,
-                  label: Text(l10n.couponTypeFreeDelivery),
+                  label: Text(
+                    l10n.couponTypeFreeDelivery,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
               selected: {_kind},
@@ -673,7 +678,7 @@ class _CouponFormState extends State<_CouponForm> {
                 controller: _value,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  hintText: _kind == _CouponKind.percentage
+                  labelText: _kind == _CouponKind.percentage
                       ? l10n.discountPercent
                       : l10n.discountAmountEgp,
                 ),
@@ -683,7 +688,7 @@ class _CouponFormState extends State<_CouponForm> {
             TextField(
               controller: _minOrder,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(hintText: l10n.minOrderOptional),
+              decoration: InputDecoration(labelText: l10n.minOrderOptional),
             ),
             if (_kind == _CouponKind.percentage) ...[
               const SizedBox(height: 10),
@@ -691,7 +696,7 @@ class _CouponFormState extends State<_CouponForm> {
                 controller: _maxDiscount,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  hintText: l10n.maxDiscountCapOptional,
+                  labelText: l10n.maxDiscountCapOptional,
                 ),
               ),
             ],
@@ -766,14 +771,11 @@ class _CouponFormState extends State<_CouponForm> {
             ),
             const SizedBox(height: 12),
             FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
               onPressed: _saving ? null : _submit,
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l10n.createCoupon),
+              child: _saving ? const ButtonSpinner() : Text(l10n.createCoupon),
             ),
           ],
         ),
@@ -863,7 +865,9 @@ class _DateField extends StatelessWidget {
         child: Text(
           value == null
               ? context.l10n.notSet
-              : DateFormat.yMMMd().format(value!),
+              : DateFormat.yMMMd(
+                  Localizations.localeOf(context).languageCode,
+                ).format(value!),
           style: const TextStyle(fontSize: 13),
         ),
       ),

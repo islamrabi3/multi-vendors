@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../utils/paging.dart';
+
 class LoyaltyRepository {
   final SupabaseClient _client;
   LoyaltyRepository({SupabaseClient? client})
@@ -19,7 +21,12 @@ class LoyaltyRepository {
     return ((res['points'] as num?) ?? 0).toInt();
   }
 
-  Future<List<Map<String, dynamic>>> getHistory() async {
+  /// One page of the caller's points history, newest first. Pass the last
+  /// row shown as [before] for the next page.
+  Future<List<Map<String, dynamic>>> getHistory({
+    FeedCursor? before,
+    int limit = kPageSize,
+  }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return [];
 
@@ -27,7 +34,10 @@ class LoyaltyRepository {
         .from('loyalty_history')
         .select()
         .eq('user_id', userId)
-        .order('created_at', ascending: false);
+        .olderThan(before)
+        .order('created_at', ascending: false)
+        .order('id', ascending: false)
+        .limit(limit);
 
     return (res as List).cast<Map<String, dynamic>>();
   }

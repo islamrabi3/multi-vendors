@@ -274,6 +274,28 @@ class CatalogRepository {
   /// to the same menu section so a store with no order history still has
   /// something to show. Full products are then loaded by id, because tapping a
   /// suggestion has to open its own sheet — which needs its option groups.
+  static final _relatedCache =
+      <String, ({DateTime at, Future<List<Product>> result})>{};
+  static const _relatedTtl = Duration(minutes: 10);
+
+  /// [relatedProducts], remembered per item for a few minutes. Opening the
+  /// same dish twice — or going back to it from a suggestion — is instant, and
+  /// the item sheet can start the fetch before its own opening animation.
+  Future<List<Product>> relatedProductsCached(String productId) {
+    final hit = _relatedCache[productId];
+    if (hit != null && DateTime.now().difference(hit.at) < _relatedTtl) {
+      return hit.result;
+    }
+    final result = relatedProducts(productId);
+    _relatedCache[productId] = (at: DateTime.now(), result: result);
+    // A failed lookup is not remembered, so the next open tries again.
+    result.catchError((Object _) {
+      _relatedCache.remove(productId);
+      return const <Product>[];
+    });
+    return result;
+  }
+
   Future<List<Product>> relatedProducts(
     String productId, {
     int limit = 6,

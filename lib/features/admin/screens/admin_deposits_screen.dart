@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../../app/tokens.dart';
@@ -6,9 +7,12 @@ import '../../../core/models/finance.dart';
 import '../../../core/repositories/finance_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
+import '../../../core/utils/settlement_format.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 
 /// Drivers claiming to have paid money in, and the decision on each.
@@ -65,39 +69,213 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
     }
   }
 
-  Future<void> _review(DepositRequest request, bool approve) async {
+  /// Approving moves money on the driver's word alone — the transfer itself
+  /// happens outside the app — so this is the one place that decision can be
+  /// made, and it always shows whatever proof the driver attached first.
+  /// There is no separate one-tap approve; every review opens here.
+  Future<void> _review(DepositRequest request) async {
     final l10n = context.l10n;
-    final confirmed = await showConfirmDialog(
+    final reasonController = TextEditingController();
+
+    Future<void> confirm(bool approve) async {
+      final confirmed = await showConfirmDialog(
+        context: context,
+        title: approve ? l10n.approve : l10n.reject,
+        message: approve
+            ? '${formatMoney(request.amount)} · ${request.driverName ?? ''}'
+            : (reasonController.text.trim().isEmpty
+                  ? l10n.depositRejected
+                  : reasonController.text.trim()),
+        confirmLabel: approve ? l10n.approve : l10n.reject,
+        cancelLabel: l10n.cancel,
+        tone: approve ? AppDialogTone.primary : AppDialogTone.danger,
+        icon: approve ? Icons.check_rounded : Icons.close_rounded,
+        onConfirm: () => _repository.reviewDeposit(
+          requestId: request.id,
+          approve: approve,
+          notes: approve ? null : reasonController.text.trim(),
+        ),
+      );
+      if (!confirmed || !mounted) return;
+      Navigator.of(context).pop(); // close the details sheet
+      showSnack(context, approve ? l10n.depositApproved : l10n.depositRejected);
+      await _load();
+    }
+
+    final webWide = AppBreakpoints.isWebWide(context);
+    // Centered dialog on web: a phone-style sheet pinned to the bottom of a
+    // desktop window hid most of the review below the fold.
+    await showAdaptiveSheet<void>(
       context: context,
-      title: approve ? l10n.approve : l10n.reject,
-      message: approve
-          ? '${formatMoney(request.amount)} · ${request.driverName ?? ''}'
-          : l10n.depositRejected,
-      confirmLabel: approve ? l10n.approve : l10n.reject,
-      cancelLabel: l10n.cancel,
-      tone: approve ? AppDialogTone.primary : AppDialogTone.danger,
-      icon: approve ? Icons.check_rounded : Icons.close_rounded,
-      onConfirm: () =>
-          _repository.reviewDeposit(requestId: request.id, approve: approve),
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      maxWidth: 520,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            webWide ? AppSpace.xl : 0,
+            AppSpace.xl,
+            AppSpace.xl + MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      request.driverName ?? l10n.driverLabel,
+                      style: AppType.heading(18),
+                    ),
+                  ),
+                  Text(
+                    formatMoney(request.amount),
+                    style: AppType.mono(20, weight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                [
+                  settlementMethodLabel(context, request.paymentMethod),
+                  financeDayLabel(context, request.createdAt),
+                ].join(' · '),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Text(
+                l10n.proofPhoto,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textFaint,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              if (request.proofUrl == null || request.proofUrl!.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpace.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.canvas,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: Text(
+                    l10n.noProofAttached,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                )
+              else
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  child: GestureDetector(
+                    onTap: () => showDialog<void>(
+                      context: sheetContext,
+                      builder: (_) => Dialog(
+                        insetPadding: const EdgeInsets.all(AppSpace.lg),
+                        child: InteractiveViewer(
+                          child: AppNetworkImage(url: request.proofUrl),
+                        ),
+                      ),
+                    ),
+                    child: AppNetworkImage(
+                      url: request.proofUrl,
+                      height: 220,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+              if (request.reference != null &&
+                  request.reference!.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.md),
+                _detail(l10n.settlementReference, request.reference!),
+              ],
+              if (request.notes != null && request.notes!.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.md),
+                _detail(l10n.settlementNotes, request.notes!),
+              ],
+              if (request.isPending) ...[
+                const SizedBox(height: AppSpace.lg),
+                TextField(
+                  controller: reasonController,
+                  decoration: InputDecoration(
+                    labelText: l10n.rejectReasonOptional,
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => confirm(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.dangerInk,
+                          side: const BorderSide(color: AppColors.dangerInk),
+                        ),
+                        child: Text(l10n.reject),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: () => confirm(true),
+                        child: Text(l10n.approve),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const SizedBox(height: AppSpace.lg),
+                _StatusBadge(request: request),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
-    if (!confirmed || !mounted) return;
-    showSnack(context, approve ? l10n.depositApproved : l10n.depositRejected);
-    await _load();
   }
+
+  Widget _detail(String label, String value) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textFaint,
+        ),
+      ),
+      const SizedBox(height: 2),
+      Text(value, style: const TextStyle(fontSize: 13, color: AppColors.ink)),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final webWide = AppBreakpoints.isWebWide(context);
 
-    // A stock `FilterChip` here rendered as an unlabeled dark pill — its
-    // selected-state text colour collided with this app's chip theme. A
-    // small explicit toggle sidesteps that theme entirely instead of
-    // fighting it, and reads more deliberately "designed" either way.
-    final filter = _PendingToggle(
+    final filter = FinanceSegments<bool>(
+      values: const [true, false],
       selected: _pendingOnly,
-      label: l10n.pending,
+      labelOf: (pendingOnly) => pendingOnly ? l10n.pending : l10n.all,
       onChanged: (value) {
+        if (value == _pendingOnly) return;
         setState(() => _pendingOnly = value);
         _load();
       },
@@ -136,7 +314,10 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              filter,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: filter,
+              ),
               const SizedBox(height: AppSpace.lg),
               Expanded(child: body),
             ],
@@ -156,67 +337,14 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpace.gutter,
-                AppSpace.sm,
+                AppSpace.md,
                 AppSpace.gutter,
                 0,
               ),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: filter,
-              ),
+              child: filter,
             ),
             Expanded(child: body),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PendingToggle extends StatelessWidget {
-  const _PendingToggle({
-    required this.selected,
-    required this.label,
-    required this.onChanged,
-  });
-
-  final bool selected;
-  final String label;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? AppColors.ink : AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        onTap: () => onChanged(!selected),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            border: Border.all(
-              color: selected ? AppColors.ink : AppColors.border,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (selected) ...[
-                const Icon(Icons.check_rounded, size: 15, color: Colors.white),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? Colors.white : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -227,34 +355,38 @@ class _WebDepositsTable extends StatelessWidget {
   const _WebDepositsTable({required this.requests, required this.onReview});
 
   final List<DepositRequest> requests;
-  final void Function(DepositRequest request, bool approve) onReview;
+  final void Function(DepositRequest request) onReview;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final language = Localizations.localeOf(context).languageCode;
+    // One list for header and rows, so every column has a label and the
+    // body can never drift out of line with it.
+    final columns = [
+      WebTableColumn(label: l10n.driverLabel, flex: 3),
+      WebTableColumn(label: l10n.settlementMethod, flex: 2),
+      WebTableColumn(label: l10n.dateLabel, width: 130),
+      WebTableColumn(label: l10n.amountValue, width: 130),
+      WebTableColumn(label: l10n.statusLabel, width: 120),
+    ];
     return SingleChildScrollView(
       child: WebTable(
-        trailingWidth: 190,
+        trailingWidth: 90,
         emptyState: EmptyView(
           message: l10n.noDepositsPending,
           icon: Icons.account_balance_outlined,
         ),
-        columns: [
-          WebTableColumn(label: l10n.driversTab, flex: 3),
-          WebTableColumn(label: l10n.depositMethod, flex: 2),
-          WebTableColumn(label: l10n.dateLabel, width: 90),
-          const WebTableColumn(label: '', width: 110),
-        ],
+        columns: columns,
         rows: [
           for (final request in requests)
             WebTableRow.aligned(
-              trailingWidth: 190,
-              columns: [
-                WebTableColumn(label: '', flex: 3),
-                WebTableColumn(label: '', flex: 2),
-                const WebTableColumn(label: '', width: 90),
-                const WebTableColumn(label: '', width: 110),
-              ],
+              trailingWidth: 90,
+              // A tap opens the review sheet — proof photo and notes first,
+              // approve/reject inside it — rather than a one-tap approve on
+              // the driver's word alone right here in the row.
+              onTap: () => onReview(request),
+              columns: columns,
               cells: [
                 Text(
                   request.driverName ?? l10n.driversTab,
@@ -263,9 +395,7 @@ class _WebDepositsTable extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  request.paymentMethod == 'cash'
-                      ? l10n.settlementMethodCash
-                      : l10n.settlementMethodBank,
+                  settlementMethodLabel(context, request.paymentMethod),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -274,7 +404,9 @@ class _WebDepositsTable extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${request.createdAt.day}/${request.createdAt.month}',
+                  DateFormat.yMMMd(language).format(request.createdAt),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 12.5,
                     color: AppColors.textMuted,
@@ -282,36 +414,24 @@ class _WebDepositsTable extends StatelessWidget {
                 ),
                 Text(
                   formatMoney(request.amount),
-                  textAlign: TextAlign.right,
+                  maxLines: 1,
                   style: AppType.mono(14, weight: FontWeight.w800),
+                ),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: _StatusBadge(request: request),
                 ),
               ],
               trailing: request.isPending
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _MiniButton(
-                          label: l10n.reject,
-                          tone: AppColors.dangerInk,
-                          onTap: () => onReview(request, false),
-                        ),
-                        const SizedBox(width: 6),
-                        _MiniButton(
-                          label: l10n.approve,
-                          tone: AppColors.primary,
-                          filled: true,
-                          onTap: () => onReview(request, true),
-                        ),
-                      ],
+                  ? _MiniButton(
+                      label: l10n.review,
+                      tone: AppColors.primary,
+                      filled: true,
+                      onTap: () => onReview(request),
                     )
-                  : SoftBadge(
-                      label: request.isApproved ? l10n.approve : l10n.reject,
-                      fill: request.isApproved
-                          ? AppColors.successFill
-                          : AppColors.dangerFill,
-                      ink: request.isApproved
-                          ? AppColors.successInk
-                          : AppColors.dangerInk,
+                  : const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textFaint,
                     ),
             ),
         ],
@@ -365,7 +485,7 @@ class _MobileList extends StatelessWidget {
   const _MobileList({required this.requests, required this.onReview});
 
   final List<DepositRequest> requests;
-  final void Function(DepositRequest request, bool approve) onReview;
+  final void Function(DepositRequest request) onReview;
 
   @override
   Widget build(BuildContext context) {
@@ -397,103 +517,150 @@ class _MobileList extends StatelessWidget {
 
   Widget _card(BuildContext context, DepositRequest request) {
     final l10n = context.l10n;
-    return Container(
-      padding: const EdgeInsets.all(AppSpace.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: InkWell(
+        onTap: () => onReview(request),
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(
-          color: request.isPending
-              ? AppColors.attentionBorder
-              : AppColors.border,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.moped_outlined,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: AppSpace.sm),
-              Expanded(
-                child: Text(
-                  request.driverName ?? l10n.driversTab,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppType.heading(15),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                formatMoney(request.amount),
-                style: AppType.mono(16, weight: FontWeight.w800),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            [
-              request.paymentMethod == 'cash'
-                  ? l10n.settlementMethodCash
-                  : l10n.settlementMethodBank,
-              if (request.reference != null && request.reference!.isNotEmpty)
-                request.reference!,
-              '${request.createdAt.day}/${request.createdAt.month}',
-            ].join(' · '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
-          ),
-          if (!request.isPending) ...[
-            const SizedBox(height: AppSpace.sm),
-            SoftBadge(
-              label: request.isApproved ? l10n.approve : l10n.reject,
-              fill: request.isApproved
-                  ? AppColors.successFill
-                  : AppColors.dangerFill,
-              ink: request.isApproved
-                  ? AppColors.successInk
-                  : AppColors.dangerInk,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: request.isPending
+                  ? AppColors.attentionBorder
+                  : AppColors.border,
             ),
-          ],
-          if (request.isPending) ...[
-            const SizedBox(height: AppSpace.md),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => onReview(request, false),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.dangerInk,
-                      side: const BorderSide(color: AppColors.dangerInk),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.amberInk.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
                     ),
-                    child: Text(
-                      l10n.reject,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: const Icon(
+                      Icons.move_to_inbox_rounded,
+                      size: 20,
+                      color: AppColors.amberInk,
                     ),
                   ),
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          request.driverName ?? l10n.driverLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.heading(15),
+                        ),
+                        Text(
+                          [
+                            settlementMethodLabel(
+                              context,
+                              request.paymentMethod,
+                            ),
+                            financeDayLabel(context, request.createdAt),
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 140),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            formatMoney(request.amount),
+                            style: AppType.mono(17, weight: FontWeight.w800),
+                          ),
+                          if (!request.isPending)
+                            _StatusBadge(request: request),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (request.reference != null &&
+                  request.reference!.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.md,
+                    vertical: AppSpace.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.canvas,
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Text(
+                    '${l10n.settlementReference}: ${request.reference}',
+                    style: AppType.mono(12, color: AppColors.textSecondary),
+                  ),
                 ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => onReview(request, true),
-                    child: Text(
-                      l10n.approve,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              ],
+              if (request.isPending) ...[
+                const SizedBox(height: AppSpace.md),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Text(
+                    l10n.review,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
               ],
-            ),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+/// Approved / rejected — the outcome, not the verb that produced it.
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.request});
+
+  final DepositRequest request;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (request.isPending) {
+      return SoftBadge(
+        label: l10n.statusPending,
+        fill: AppColors.amberFill,
+        ink: AppColors.amberInk,
+      );
+    }
+    return SoftBadge(
+      label: request.isApproved ? l10n.statusApproved : l10n.rejected,
+      fill: request.isApproved ? AppColors.successFill : AppColors.dangerFill,
+      ink: request.isApproved ? AppColors.successInk : AppColors.dangerInk,
     );
   }
 }

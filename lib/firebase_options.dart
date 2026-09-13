@@ -57,7 +57,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDPrUxsX_t3lSA4XPbJUjiFdgmWaeibu8E',
-    appId: '1:696253376957:android:bc98b2619307ebca49cad4',
+    appId: '1:696253376957:android:3116b13534cbdc2e49cad4',
     messagingSenderId: '696253376957',
     projectId: 'multi-rest-app',
     storageBucket: 'multi-rest-app.firebasestorage.app',
@@ -65,11 +65,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCF3QWTdEgl9i9xsFArO6upe4TpQ2x2flk',
-    appId: '1:696253376957:ios:29c4866df93de75549cad4',
+    appId: '1:696253376957:ios:a8f8f797a820539649cad4',
     messagingSenderId: '696253376957',
     projectId: 'multi-rest-app',
     storageBucket: 'multi-rest-app.firebasestorage.app',
-    iosBundleId: 'com.multiVendors.app',
+    iosBundleId: 'com.kitchenin.app',
   );
 
 }

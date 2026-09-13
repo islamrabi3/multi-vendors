@@ -1450,6 +1450,10 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Recomputed on every rebuild of the list above, which already happens on
+    // every cubit emit — including the one that flips this while the call for
+    // this exact order is in flight.
+    final busy = cubit.state.isUpdating(order.id);
     final child = switch (order.status) {
       OrderStatus.pending => Row(
         children: [
@@ -1462,7 +1466,7 @@ class _ActionRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.lg),
                 ),
               ),
-              onPressed: () => _rejectWithReason(context),
+              onPressed: busy ? null : () => _rejectWithReason(context),
               child: Text(context.l10n.reject),
             ),
           ),
@@ -1477,8 +1481,10 @@ class _ActionRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.lg),
                 ),
               ),
-              onPressed: () => cubit.accept(order),
-              child: Text(context.l10n.acceptOrder),
+              onPressed: busy ? null : () => cubit.accept(order),
+              child: busy
+                  ? const ButtonSpinner()
+                  : Text(context.l10n.acceptOrder),
             ),
           ),
         ],
@@ -1490,8 +1496,8 @@ class _ActionRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
         ),
-        onPressed: () => cubit.startPreparing(order),
-        child: Text(context.l10n.startPreparing),
+        onPressed: busy ? null : () => cubit.startPreparing(order),
+        child: busy ? const ButtonSpinner() : Text(context.l10n.startPreparing),
       ),
       OrderStatus.preparing => FilledButton(
         style: FilledButton.styleFrom(
@@ -1500,8 +1506,10 @@ class _ActionRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
         ),
-        onPressed: () => cubit.markReady(order),
-        child: Text(context.l10n.markReadyForPickup),
+        onPressed: busy ? null : () => cubit.markReady(order),
+        child: busy
+            ? const ButtonSpinner()
+            : Text(context.l10n.markReadyForPickup),
       ),
       // Nobody is coming for a collection order, so "waiting for a driver"
       // would be a lie the store could never act on.
@@ -1512,8 +1520,10 @@ class _ActionRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
         ),
-        onPressed: () => cubit.markCollected(order),
-        icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+        onPressed: busy ? null : () => cubit.markCollected(order),
+        icon: busy
+            ? const ButtonSpinner()
+            : const Icon(Icons.shopping_bag_outlined, size: 18),
         label: Text(context.l10n.markCollected),
       ),
       OrderStatus.readyForPickup => Padding(

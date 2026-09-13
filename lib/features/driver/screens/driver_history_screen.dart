@@ -340,7 +340,7 @@ class _TripTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 PriceText(
                   '${order.orderNumber} · '
-                  '${DateFormat('d MMM, h:mm a').format(order.createdAt)}',
+                  '${DateFormat('d MMM, h:mm a', Localizations.localeOf(context).languageCode).format(order.createdAt)}',
                   size: 11,
                   color: AppColors.textMuted,
                   weight: FontWeight.w500,

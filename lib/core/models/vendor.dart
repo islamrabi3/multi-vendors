@@ -45,6 +45,15 @@ class VendorCategory extends Equatable {
     sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
   );
 
+  VendorCategory copyWith({int? sortOrder}) => VendorCategory(
+    id: id,
+    name: name,
+    nameAr: nameAr,
+    imageUrl: imageUrl,
+    parentId: parentId,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+
   @override
   List<Object?> get props => [id, name, nameAr, imageUrl, parentId, sortOrder];
 }

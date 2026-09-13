@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' show DateFormat;
@@ -10,6 +11,7 @@ import '../../../core/repositories/offers_repository.dart';
 import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../../auth/auth_cubit.dart';
@@ -36,33 +38,51 @@ class AdminAdsScreen extends StatefulWidget {
 
 class _AdminAdsScreenState extends State<AdminAdsScreen> {
   final _repo = OffersRepository();
-  late Future<List<BannerItem>> _future = _repo.fetchAll();
+  List<BannerItem>? _ads;
+  bool _loading = true;
+  Object? _error;
 
-  // Block body, not an arrow. `setState(() => _future = ...)` returns the
-  // assigned value from the closure, and a closure that returns a Future makes
-  // setState throw -- so the rebuild never happened and the list stayed on
-  // screen until the page was reopened.
-  //
-  // It also returns the future, so pull-to-refresh can hold its spinner until
-  // the fetch finishes instead of ending on the same frame it started.
-  Future<void> _reload() {
-    final future = _repo.fetchAll();
-    setState(() {
-      _future = future;
-    });
-    return future;
+  @override
+  void initState() {
+    super.initState();
+    _load();
   }
 
-  Future<void> _compose() async {
-    final created = await showAdaptiveSheet<bool>(
+  Future<void> _load() async {
+    // No `_loading = true` on a refresh — that was what blanked the whole
+    // table to a spinner on every toggle and every delete, when only one
+    // row had actually changed. The list stays on screen; only the first
+    // load, with nothing to show yet, gets the skeleton.
+    setState(() => _error = null);
+    try {
+      final ads = await _repo.fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _ads = ads;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _compose({BannerItem? ad}) async {
+    final saved = await showAdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _AdComposer(repo: _repo),
+      builder: (_) => _AdComposer(repo: _repo, ad: ad),
     );
-    if (created != true || !mounted) return;
-    _reload();
-    showSnack(context, context.l10n.adCreated);
+    if (saved != true || !mounted) return;
+    _load();
+    showSnack(
+      context,
+      ad == null ? context.l10n.adCreated : context.l10n.adUpdated,
+    );
   }
 
   Future<void> _delete(BannerItem ad) async {
@@ -81,7 +101,7 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
     } catch (error) {
       if (mounted) showFailure(context, error);
     } finally {
-      if (mounted) _reload();
+      if (mounted) _load();
     }
   }
 
@@ -94,32 +114,27 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
 
     final webWide = AppBreakpoints.isWebWide(context);
 
-    final body = FutureBuilder<List<BannerItem>>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const LoadingView();
-        }
-        if (snap.hasError) {
-          return FailureView(error: snap.error!, onRetry: _reload);
-        }
-        final ads = snap.data ?? const <BannerItem>[];
-        if (ads.isEmpty) {
-          return EmptyView(
-            message: l10n.noAdsYet,
-            icon: Icons.campaign_outlined,
-          );
-        }
+    Widget body;
+    if (_loading) {
+      body = const _AdsSkeleton();
+    } else if (_error != null) {
+      body = FailureView(error: _error!, onRetry: _load);
+    } else {
+      final ads = _ads ?? const <BannerItem>[];
+      if (ads.isEmpty) {
+        body = EmptyView(message: l10n.noAdsYet, icon: Icons.campaign_outlined);
+      } else {
         // Live ones first — that is the question an operator opens this
         // screen to answer — then grouped by surface, so placement still
         // reads as neighbourhoods even without a section header for each.
-        final sorted = [...ads]..sort((a, b) {
-          final live = (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0);
-          if (live != 0) return live;
-          final placement = a.placement.index.compareTo(b.placement.index);
-          if (placement != 0) return placement;
-          return b.sortOrder.compareTo(a.sortOrder);
-        });
+        final sorted = [...ads]
+          ..sort((a, b) {
+            final live = (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0);
+            if (live != 0) return live;
+            final placement = a.placement.index.compareTo(b.placement.index);
+            if (placement != 0) return placement;
+            return b.sortOrder.compareTo(a.sortOrder);
+          });
 
         Future<void> toggle(BannerItem ad) async {
           try {
@@ -127,29 +142,33 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
           } catch (error) {
             if (context.mounted) showFailure(context, error);
           } finally {
-            if (context.mounted) _reload();
+            if (context.mounted) _load();
           }
         }
 
-        return RefreshIndicator(
-          onRefresh: () async => _reload(),
+        body = RefreshIndicator(
+          onRefresh: _load,
           child: webWide
               ? SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: AppSpace.xl),
                   child: _AdTable(
                     ads: sorted,
                     canManage: canManage,
                     onToggle: toggle,
                     onDelete: _delete,
+                    onEdit: (ad) => _compose(ad: ad),
                   ),
                 )
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
                     AppSpace.lg,
                     AppSpace.lg,
                     AppSpace.lg,
-                    // Room for the floating "New ad" button.
-                    96,
+                    // Room for the floating "New ad" button, plus the gesture
+                    // bar on a phone with no physical home button.
+                    96 + MediaQuery.paddingOf(context).bottom,
                   ),
                   children: [
                     Container(
@@ -168,6 +187,7 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
                               last: i == sorted.length - 1,
                               onToggle: () => toggle(sorted[i]),
                               onDelete: () => _delete(sorted[i]),
+                              onEdit: () => _compose(ad: sorted[i]),
                             ),
                         ],
                       ),
@@ -175,8 +195,8 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
                   ],
                 ),
         );
-      },
-    );
+      }
+    }
 
     // A floating action button belongs to a Scaffold and reads as a phone
     // affordance on a desktop pane; the same action becomes an ordinary
@@ -234,6 +254,22 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
   }
 }
 
+/// Shaped like a run of table/list rows, so the ads don't jump when they
+/// land.
+class _AdsSkeleton extends StatelessWidget {
+  const _AdsSkeleton();
+
+  @override
+  Widget build(BuildContext context) => SkeletonTheme(
+    child: SkeletonList(
+      padding: const EdgeInsets.all(AppSpace.lg),
+      itemCount: 5,
+      separator: const SizedBox(height: AppSpace.sm),
+      itemBuilder: (_) => const Skeleton.box(height: 60, radius: AppRadii.lg),
+    ),
+  );
+}
+
 String placementLabel(BuildContext context, AdPlacement placement) =>
     switch (placement) {
       AdPlacement.homeCarousel => context.l10n.placementHomeCarousel,
@@ -242,6 +278,7 @@ String placementLabel(BuildContext context, AdPlacement placement) =>
       AdPlacement.cart => context.l10n.placementCart,
       AdPlacement.orderTracking => context.l10n.placementOrderTracking,
       AdPlacement.interstitial => context.l10n.placementInterstitial,
+      AdPlacement.splash => context.l10n.placementSplash,
     };
 
 /// Why an ad is or is not running, in one badge — the first thing an
@@ -309,12 +346,14 @@ class _AdThumb extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(AppRadii.sm),
-          child: AppNetworkImage(
-            url: ad.posterUrl ?? ad.imageUrl,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-          ),
+          child: ad.poster == null
+              ? Container(width: size, height: size, color: AppColors.ink)
+              : AppNetworkImage(
+                  url: ad.poster,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                ),
         ),
         if (ad.isVideo)
           PositionedDirectional(
@@ -332,16 +371,21 @@ class _AdThumb extends StatelessWidget {
   }
 }
 
-/// `Aug 12 → Sep 1`, or "always on" once neither end is set. Read straight
+/// `Aug 12 - Sep 1`, or "always on" once neither end is set. Read straight
 /// off the row rather than reformatted per caller, so the table cell and the
 /// mobile subtitle can never disagree about what a blank date means.
+///
+/// A plain dash, not an arrow: the two dates are already in order (start,
+/// then end), and an arrow glyph implies a direction that flips with the
+/// reading direction while the dates it points between do not.
 String _adSchedule(BuildContext context, BannerItem ad) {
+  final language = Localizations.localeOf(context).languageCode;
   final parts = [
-    if (ad.startsAt != null) DateFormat.MMMd().format(ad.startsAt!),
-    if (ad.endsAt != null) DateFormat.MMMd().format(ad.endsAt!),
+    if (ad.startsAt != null) DateFormat.MMMd(language).format(ad.startsAt!),
+    if (ad.endsAt != null) DateFormat.MMMd(language).format(ad.endsAt!),
   ];
   if (parts.isEmpty) return context.l10n.adAlwaysOn;
-  return parts.join(' → ');
+  return parts.join(' - ');
 }
 
 /// Web/wide: ads as a real table.
@@ -358,12 +402,14 @@ class _AdTable extends StatelessWidget {
     required this.canManage,
     required this.onToggle,
     required this.onDelete,
+    required this.onEdit,
   });
 
   final List<BannerItem> ads;
   final bool canManage;
   final ValueChanged<BannerItem> onToggle;
   final ValueChanged<BannerItem> onDelete;
+  final ValueChanged<BannerItem> onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -378,12 +424,13 @@ class _AdTable extends StatelessWidget {
 
     return WebTable(
       columns: columns,
-      trailingWidth: 96,
+      trailingWidth: 132,
       rows: [
         for (final ad in ads)
           WebTableRow.aligned(
             columns: columns,
-            trailingWidth: 96,
+            trailingWidth: 132,
+            onTap: canManage ? () => onEdit(ad) : null,
             cells: [
               Row(
                 children: [
@@ -463,11 +510,21 @@ class _AdTable extends StatelessWidget {
                             // its end date has passed, and toggling would
                             // look like it worked while the server kept it
                             // hidden.
-                            onChanged: ad.hasEnded
-                                ? null
-                                : (_) => onToggle(ad),
+                            onChanged: ad.hasEnded ? null : (_) => onToggle(ad),
                           ),
                         ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.edit,
+                        onPressed: () => onEdit(ad),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        color: AppColors.textMuted,
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                        padding: EdgeInsets.zero,
                       ),
                       IconButton(
                         tooltip: l10n.delete,
@@ -502,6 +559,7 @@ class _AdRow extends StatelessWidget {
     required this.last,
     required this.onToggle,
     required this.onDelete,
+    required this.onEdit,
   });
 
   final BannerItem ad;
@@ -509,6 +567,7 @@ class _AdRow extends StatelessWidget {
   final bool last;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -523,6 +582,7 @@ class _AdRow extends StatelessWidget {
       child: Opacity(
         opacity: dim ? 0.72 : 1,
         child: ListTile(
+          onTap: canManage ? onEdit : null,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 4,
@@ -556,6 +616,15 @@ class _AdRow extends StatelessWidget {
                       onChanged: ad.hasEnded ? null : (_) => onToggle(),
                     ),
                     IconButton(
+                      tooltip: l10n.edit,
+                      onPressed: onEdit,
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.textMuted,
+                        size: 20,
+                      ),
+                    ),
+                    IconButton(
                       tooltip: l10n.delete,
                       onPressed: onDelete,
                       icon: const Icon(
@@ -572,6 +641,7 @@ class _AdRow extends StatelessWidget {
     );
   }
 }
+
 /// 12400 -> 12.4k. A view count in the tens of thousands should not push the
 /// two figures beside it off the card.
 String _compact(int value) {
@@ -586,9 +656,12 @@ String _compact(int value) {
 
 /// Create an ad: artwork, where it goes, when it runs, who sees it.
 class _AdComposer extends StatefulWidget {
-  const _AdComposer({required this.repo});
+  const _AdComposer({required this.repo, this.ad});
 
   final OffersRepository repo;
+
+  /// Set to edit an existing ad; null composes a new one.
+  final BannerItem? ad;
 
   @override
   State<_AdComposer> createState() => _AdComposerState();
@@ -604,11 +677,55 @@ class _AdComposerState extends State<_AdComposer> {
 
   AdPlacement _placement = AdPlacement.homeCarousel;
   String _audience = 'all';
+
+  /// Full-screen placements only; `null` means "not chosen yet", resolved to
+  /// the placement's default at save.
+  String? _frequency;
+
+  bool get _isFullScreen =>
+      _placement == AdPlacement.splash ||
+      _placement == AdPlacement.interstitial;
+
+  /// A splash ad is expected at every launch; an interstitial mid-session is
+  /// easier to overdo, so it defaults to once a day.
+  String get _effectiveFrequency =>
+      _frequency ??
+      (_placement == AdPlacement.splash ? 'every_session' : 'daily');
   DateTime? _startsAt;
   DateTime? _endsAt;
   String? _imageUrl;
   bool _uploading = false;
   bool _saving = false;
+
+  /// Image ad or video ad. A video ad's image is only its cover.
+  bool _isVideo = false;
+  String? _videoName;
+  bool _uploadingVideo = false;
+
+  /// Storage's default per-file cap on the free tier.
+  static const _maxVideoBytes = 50 * 1024 * 1024;
+
+  @override
+  void initState() {
+    super.initState();
+    final ad = widget.ad;
+    if (ad == null) return;
+    _title.text = ad.title ?? '';
+    _subtitle.text = ad.subtitle ?? '';
+    _code.text = ad.code ?? '';
+    _linkUrl.text = ad.linkUrl ?? '';
+    _advertiser.text = ad.advertiser ?? '';
+    _placement = ad.placement;
+    _audience = ad.audience;
+    _frequency = ad.frequency;
+    _startsAt = ad.startsAt;
+    _endsAt = ad.endsAt;
+    _isVideo = ad.isVideo;
+    _videoUrl.text = ad.videoUrl ?? '';
+    // A cover-less video ad stores the video URL as its image; that is not a
+    // picture the artwork box can show.
+    _imageUrl = ad.poster;
+  }
 
   @override
   void dispose() {
@@ -642,6 +759,62 @@ class _AdComposerState extends State<_AdComposer> {
     }
   }
 
+  /// iPhones record HEVC by default. iOS plays it; most Android phones and
+  /// Chrome do not, so the ad would silently never appear for them. The codec
+  /// tag sits in the file's `stsd` box as plain ASCII.
+  static bool _isHevc(List<int> bytes) {
+    const tags = [
+      [0x68, 0x76, 0x63, 0x31], // hvc1
+      [0x68, 0x65, 0x76, 0x31], // hev1
+    ];
+    for (var i = 0; i + 4 <= bytes.length; i++) {
+      for (final tag in tags) {
+        if (bytes[i] == tag[0] &&
+            bytes[i + 1] == tag[1] &&
+            bytes[i + 2] == tag[2] &&
+            bytes[i + 3] == tag[3]) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  Future<void> _pickVideo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+      withData: true,
+    );
+    final file = result?.files.single;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null || !mounted) return;
+    if (bytes.length > _maxVideoBytes) {
+      showSnack(
+        context,
+        context.l10n.videoTooLarge(_maxVideoBytes ~/ (1024 * 1024)),
+        error: true,
+      );
+      return;
+    }
+    if (_isHevc(bytes)) {
+      showSnack(context, context.l10n.videoHevcUnsupported, error: true);
+      return;
+    }
+    setState(() => _uploadingVideo = true);
+    try {
+      final url = await AdminRepository().uploadAdVideo(bytes, file.name);
+      if (!mounted) return;
+      setState(() {
+        _videoUrl.text = url;
+        _videoName = file.name;
+      });
+    } catch (error) {
+      if (mounted) showFailure(context, error);
+    } finally {
+      if (mounted) setState(() => _uploadingVideo = false);
+    }
+  }
+
   Future<void> _pickDate({required bool start}) async {
     final now = DateTime.now();
     final initial = (start ? _startsAt : _endsAt) ?? now;
@@ -664,30 +837,66 @@ class _AdComposerState extends State<_AdComposer> {
   }
 
   Future<void> _save() async {
-    // Artwork is required even for video: it is the poster, and the fallback
-    // wherever autoplay is refused.
-    if (_imageUrl == null) {
+    final videoUrl = _videoUrl.text.trim();
+    if (_isVideo && videoUrl.isEmpty) {
+      showSnack(context, context.l10n.videoRequired, error: true);
+      return;
+    }
+    if (!_isVideo && _imageUrl == null) {
       showSnack(context, context.l10n.artworkRequired, error: true);
       return;
     }
     setState(() => _saving = true);
     try {
-      await widget.repo.create(
-        imageUrl: _imageUrl!,
-        type: _code.text.trim().isNotEmpty
-            ? BannerType.coupon
-            : BannerType.event,
-        placement: _placement,
-        title: _title.text,
-        subtitle: _subtitle.text,
-        code: _code.text,
-        videoUrl: _videoUrl.text,
-        linkUrl: _linkUrl.text,
-        advertiser: _advertiser.text,
-        audience: _audience,
-        startsAt: _startsAt,
-        endsAt: _endsAt,
-      );
+      final existing = widget.ad;
+      if (existing == null) {
+        await widget.repo.create(
+          // The column is required; a video ad with no cover stores the video
+          // URL there, and `BannerItem.poster` knows not to draw it.
+          imageUrl: _isVideo ? (_imageUrl ?? videoUrl) : _imageUrl!,
+          type: _code.text.trim().isNotEmpty
+              ? BannerType.coupon
+              // A store ad has no field here; editing must not demote it.
+              : (widget.ad?.type == BannerType.vendor
+                    ? BannerType.vendor
+                    : BannerType.event),
+          placement: _placement,
+          title: _title.text,
+          subtitle: _subtitle.text,
+          code: _code.text,
+          videoUrl: _isVideo ? videoUrl : null,
+          linkUrl: _linkUrl.text,
+          advertiser: _advertiser.text,
+          audience: _audience,
+          startsAt: _startsAt,
+          endsAt: _endsAt,
+          frequency: _isFullScreen ? _effectiveFrequency : 'once',
+        );
+      } else {
+        await widget.repo.edit(
+          existing.id,
+          // The column is required; a video ad with no cover stores the video
+          // URL there, and `BannerItem.poster` knows not to draw it.
+          imageUrl: _isVideo ? (_imageUrl ?? videoUrl) : _imageUrl!,
+          type: _code.text.trim().isNotEmpty
+              ? BannerType.coupon
+              // A store ad has no field here; editing must not demote it.
+              : (widget.ad?.type == BannerType.vendor
+                    ? BannerType.vendor
+                    : BannerType.event),
+          placement: _placement,
+          title: _title.text,
+          subtitle: _subtitle.text,
+          code: _code.text,
+          videoUrl: _isVideo ? videoUrl : null,
+          linkUrl: _linkUrl.text,
+          advertiser: _advertiser.text,
+          audience: _audience,
+          startsAt: _startsAt,
+          endsAt: _endsAt,
+          frequency: _isFullScreen ? _effectiveFrequency : 'once',
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
@@ -712,8 +921,64 @@ class _AdComposerState extends State<_AdComposer> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            Text(l10n.newAd, style: AppType.heading(18)),
+            Text(
+              widget.ad == null ? l10n.newAd : l10n.editAd,
+              style: AppType.heading(18),
+            ),
             const SizedBox(height: AppSpace.md),
+
+            SegmentedButton<bool>(
+              expandedInsets: EdgeInsets.zero,
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: false,
+                  icon: const Icon(Icons.image_outlined),
+                  label: Text(l10n.adMediaImage),
+                ),
+                ButtonSegment(
+                  value: true,
+                  icon: const Icon(Icons.videocam_outlined),
+                  label: Text(l10n.adVideo),
+                ),
+              ],
+              selected: {_isVideo},
+              onSelectionChanged: (value) =>
+                  setState(() => _isVideo = value.first),
+            ),
+            const SizedBox(height: AppSpace.md),
+
+            if (_isVideo) ...[
+              _VideoPickerTile(
+                uploading: _uploadingVideo,
+                fileName: _videoName,
+                hasVideo: _videoUrl.text.trim().isNotEmpty,
+                onPick: _uploadingVideo ? null : _pickVideo,
+                onClear: () => setState(() {
+                  _videoUrl.clear();
+                  _videoName = null;
+                }),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              TextField(
+                controller: _videoUrl,
+                onChanged: (_) => setState(() => _videoName = null),
+                decoration: InputDecoration(
+                  labelText: l10n.adVideoUrl,
+                  helperText: l10n.adVideoUrlHelper,
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              Text(
+                l10n.videoCoverOptional,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: AppSpace.xs),
+            ],
 
             // Artwork
             AspectRatio(
@@ -771,6 +1036,30 @@ class _AdComposerState extends State<_AdComposer> {
               onChanged: (value) =>
                   setState(() => _placement = value ?? _placement),
             ),
+            if (_isFullScreen) ...[
+              const SizedBox(height: AppSpace.sm),
+              DropdownButtonFormField<String>(
+                key: ValueKey(_placement),
+                initialValue: _effectiveFrequency,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: l10n.adFrequency),
+                items: [
+                  DropdownMenuItem(
+                    value: 'every_session',
+                    child: Text(l10n.frequencyEverySession),
+                  ),
+                  DropdownMenuItem(
+                    value: 'daily',
+                    child: Text(l10n.frequencyDaily),
+                  ),
+                  DropdownMenuItem(
+                    value: 'once',
+                    child: Text(l10n.frequencyOnce),
+                  ),
+                ],
+                onChanged: (value) => setState(() => _frequency = value),
+              ),
+            ],
             const SizedBox(height: AppSpace.sm),
             TextField(
               controller: _title,
@@ -788,13 +1077,6 @@ class _AdComposerState extends State<_AdComposer> {
               controller: _code,
               textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(labelText: l10n.couponCode),
-            ),
-            TextField(
-              controller: _videoUrl,
-              decoration: InputDecoration(
-                labelText: l10n.adVideoUrl,
-                helperText: l10n.adVideo,
-              ),
             ),
             TextField(
               controller: _linkUrl,
@@ -848,12 +1130,8 @@ class _AdComposerState extends State<_AdComposer> {
                 minimumSize: const Size.fromHeight(50),
               ),
               child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l10n.save),
+                  ? const ButtonSpinner()
+                  : Text(widget.ad == null ? l10n.save : l10n.saveChanges),
             ),
           ],
         ),
@@ -897,8 +1175,107 @@ class _DateField extends StatelessWidget {
         child: Text(
           value == null
               ? context.l10n.notSet
-              : DateFormat.yMMMd().format(value!),
+              : DateFormat.yMMMd(
+                  Localizations.localeOf(context).languageCode,
+                ).format(value!),
           style: const TextStyle(fontSize: 13),
+        ),
+      ),
+    );
+  }
+}
+
+class _VideoPickerTile extends StatelessWidget {
+  const _VideoPickerTile({
+    required this.uploading,
+    required this.fileName,
+    required this.hasVideo,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final bool uploading;
+  final String? fileName;
+  final bool hasVideo;
+  final VoidCallback? onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return InkWell(
+      onTap: onPick,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.md),
+        decoration: BoxDecoration(
+          color: hasVideo ? AppColors.successFill : AppColors.neutralFill,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.ink,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: uploading
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      hasVideo
+                          ? Icons.play_arrow_rounded
+                          : Icons.video_call_outlined,
+                      color: Colors.white,
+                    ),
+            ),
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    uploading
+                        ? l10n.uploadingVideo
+                        : hasVideo
+                        ? (fileName ?? l10n.videoAdded)
+                        : l10n.uploadVideo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasVideo ? l10n.replaceVideo : l10n.videoFormatsHint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (hasVideo && !uploading)
+              IconButton(
+                onPressed: onClear,
+                icon: const Icon(Icons.close_rounded),
+                color: AppColors.textMuted,
+              ),
+          ],
         ),
       ),
     );

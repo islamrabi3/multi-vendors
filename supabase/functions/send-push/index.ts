@@ -2,7 +2,16 @@
 // account never ships in the app, and the recipient's fcm_token is read
 // with the service role (client RLS can only see the caller's own profile).
 //
-// Request (authenticated): { user_id, title, body, data? }
+// Request (authenticated admin with `notifications.send`): { user_id, title,
+// body, data? }
+//
+// Restricted to admins holding the same permission send-campaign requires.
+// Every event-triggered push in this app (order status, chat, support,
+// settlements, reports) goes through its own *-notify function, called by a
+// database trigger with a shared secret rather than a user's JWT — this
+// function is for an admin messaging one person directly, and previously had
+// no such check: any signed-in user could push arbitrary title/body/data,
+// including a deep-link route, to any user id.
 //
 // Secrets required:
 //   FIREBASE_SA_B64 — base64 of the service-account JSON
@@ -38,10 +47,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Caller must be signed in; pushes are app-to-app event alerts.
     const jwt = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
     const { data: userData, error: userError } = await admin.auth.getUser(jwt);
     if (userError || !userData.user) return json({ error: "UNAUTHORIZED" }, 401);
+
+    // The caller's own permission decides this, not the service role the
+    // function runs with — otherwise any signed-in user could reach it.
+    const caller = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } },
+    );
+    const { data: allowed } = await caller.rpc("has_permission", {
+      p_key: "notifications.send",
+    });
+    if (allowed !== true) return json({ error: "FORBIDDEN" }, 403);
 
     const body = await req.json().catch(() => ({}));
     const userId = body.user_id;

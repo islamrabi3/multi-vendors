@@ -130,7 +130,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ],
                     ),
                     child: FilledButton(
-                      onPressed: () => context.go('/'),
+                      onPressed: () => context.go('/home'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(horizontal: 28),

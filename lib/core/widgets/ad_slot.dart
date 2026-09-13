@@ -136,7 +136,7 @@ class _AdSlotState extends State<AdSlot> {
                     if (ad.isVideo)
                       _AdVideo(
                         url: ad.videoUrl!,
-                        poster: ad.posterUrl ?? ad.imageUrl,
+                        poster: ad.poster,
                       )
                     else
                       AppNetworkImage(url: ad.imageUrl, fit: BoxFit.cover),
@@ -212,7 +212,7 @@ class _AdVideo extends StatefulWidget {
   const _AdVideo({required this.url, required this.poster});
 
   final String url;
-  final String poster;
+  final String? poster;
 
   @override
   State<_AdVideo> createState() => _AdVideoState();
@@ -233,7 +233,10 @@ class _AdVideoState extends State<_AdVideo> {
     _controller = controller;
     try {
       await controller.initialize();
+      // Scrolled away while loading: the controller is already disposed.
+      if (!mounted) return;
       await controller.setVolume(0);
+      if (!mounted) return;
       await controller.setLooping(true);
       await controller.play();
       if (mounted) setState(() => _ready = true);
@@ -252,7 +255,16 @@ class _AdVideoState extends State<_AdVideo> {
   Widget build(BuildContext context) {
     final controller = _controller;
     if (!_ready || controller == null) {
-      return AppNetworkImage(url: widget.poster, fit: BoxFit.cover);
+      final poster = widget.poster;
+      if (poster == null) {
+        return const ColoredBox(
+          color: Colors.black,
+          child: Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        );
+      }
+      return AppNetworkImage(url: poster, fit: BoxFit.cover);
     }
     return FittedBox(
       fit: BoxFit.cover,

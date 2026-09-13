@@ -1022,7 +1022,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cashOnDelivery => 'الدفع عند الاستلام';
 
   @override
-  String get cardPaymob => 'بطاقة · باي موب';
+  String get cardPaymob => 'الدفع بالفيزا';
 
   @override
   String get yourCartIsEmpty => 'سلة التسوق فارغة';
@@ -2019,6 +2019,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noNotificationsYet => 'لا توجد إشعارات حالياً';
 
   @override
+  String get notificationsLast24h => 'آخر 24 ساعة';
+
+  @override
+  String get noNotificationsLast24h => 'لا توجد إشعارات خلال آخر 24 ساعة';
+
+  @override
   String get averageStoreRating => 'متوسط تقييم المتجر';
 
   @override
@@ -2071,7 +2077,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get topUpWallet => 'شحن المحفظة';
 
   @override
-  String get payWithPaymob => 'الدفع بواسطة بايموب';
+  String get payWithPaymob => 'الدفع بالفيزا';
 
   @override
   String get selectTopUpAmount => 'اختر أو أدخل مبلغ الشحن:';
@@ -3432,6 +3438,43 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adVideoUrl => 'رابط الفيديو';
 
   @override
+  String get adMediaImage => 'صورة';
+
+  @override
+  String get uploadVideo => 'رفع فيديو';
+
+  @override
+  String get uploadingVideo => 'جارٍ رفع الفيديو…';
+
+  @override
+  String get videoAdded => 'تمت إضافة الفيديو';
+
+  @override
+  String get replaceVideo => 'اضغط للاستبدال';
+
+  @override
+  String get videoFormatsHint => 'MP4 أو WebM، حتى 50 ميجابايت';
+
+  @override
+  String get videoRequired => 'ارفع فيديو أو الصق رابطه.';
+
+  @override
+  String get videoCoverOptional =>
+      'صورة الغلاف (اختيارية، تظهر أثناء تحميل الفيديو)';
+
+  @override
+  String get adVideoUrlHelper => 'أو الصق رابطًا مباشرًا لملف الفيديو';
+
+  @override
+  String videoTooLarge(int mb) {
+    return 'الفيديو كبير جدًا. الحد الأقصى $mb ميجابايت.';
+  }
+
+  @override
+  String get videoHevcUnsupported =>
+      'هذا الفيديو بصيغة HEVC (الافتراضية في الآيفون) ولا تعمل على هواتف أندرويد والمتصفحات. صدّره بصيغة H.264 MP4 — في الآيفون: الإعدادات › الكاميرا › التنسيقات › الأكثر توافقًا.';
+
+  @override
   String get adLinkUrl => 'رابط عند الضغط (اختياري)';
 
   @override
@@ -3462,6 +3505,86 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get adCreated => 'تم إنشاء الإعلان';
+
+  @override
+  String get adUpdated => 'تم تحديث الإعلان';
+
+  @override
+  String get editAd => 'تعديل الإعلان';
+
+  @override
+  String get adFrequency => 'عدد مرات الظهور';
+
+  @override
+  String get frequencyEverySession => 'عند كل فتح للتطبيق';
+
+  @override
+  String get frequencyDaily => 'مرة يوميًا';
+
+  @override
+  String get frequencyOnce => 'مرة واحدة فقط لكل جهاز';
+
+  @override
+  String get homeCravingPrompt => 'ماذا تحب أن تطلب اليوم؟';
+
+  @override
+  String get railRecommendedHint => 'أماكن مختارة بعناية';
+
+  @override
+  String get railNearestTitle => 'الأقرب إليك';
+
+  @override
+  String get railNearestHint => 'الأسرع وصولًا إلى بابك';
+
+  @override
+  String get railFavoritesTitle => 'مفضلاتك';
+
+  @override
+  String get railFavoritesHint => 'اطلب مجددًا من أماكنك المحفوظة';
+
+  @override
+  String get railTopRatedHint => 'الأعلى تقييمًا من العملاء';
+
+  @override
+  String get railFreeDeliveryHint => 'بدون رسوم توصيل';
+
+  @override
+  String get allStoresTitle => 'كل المتاجر';
+
+  @override
+  String get filteredStoresTitle => 'النتائج';
+
+  @override
+  String get newStoreBadge => 'جديد';
+
+  @override
+  String get deliveryTimeLabel => 'وقت التوصيل';
+
+  @override
+  String get showLess => 'عرض أقل';
+
+  @override
+  String yourOrderFrom(String store) {
+    return 'طلبك من $store';
+  }
+
+  @override
+  String showAllItems(int count) {
+    return 'عرض كل العناصر ($count)';
+  }
+
+  @override
+  String ratingsCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count تقييم',
+      few: '$count تقييمات',
+      two: 'تقييمان',
+      one: 'تقييم واحد',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get adDeleted => 'تم حذف الإعلان';
@@ -3638,6 +3761,47 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get categoryNameArabicLabel => 'الاسم (بالعربية)';
+
+  @override
+  String get searchCategoriesHint => 'بحث في التصنيفات';
+
+  @override
+  String subcategoriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count فئة فرعية',
+      many: '$count فئة فرعية',
+      few: '$count فئات فرعية',
+      two: 'فئتان فرعيتان',
+      one: 'فئة فرعية واحدة',
+      zero: 'لا توجد فئات فرعية',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get reorderCategoriesTitle => 'إعادة ترتيب التصنيفات';
+
+  @override
+  String get reorderCategoriesHint => 'اسحب لتغيير الترتيب الذي يظهر للعملاء.';
+
+  @override
+  String get reorderScopeLabel => 'ترتيب';
+
+  @override
+  String categoryCreatedMessage(String name) {
+    return 'تم إنشاء تصنيف \"$name\"';
+  }
+
+  @override
+  String get categoryUpdatedMessage => 'تم تحديث التصنيف';
+
+  @override
+  String get categoryDeletedMessage => 'تم حذف التصنيف';
+
+  @override
+  String get categoriesReordered => 'تم تحديث الترتيب';
 
   @override
   String get pickupFromBranch => 'استلام من الفرع';
@@ -3836,19 +4000,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get youOweExplainer =>
-      'نقدية حصّلتها من العملاء وما زالت مستحقة للمنصة.';
+      'نقدية حصّلتها من العملاء. قم بتوريدها لتصفية حسابك.';
 
   @override
-  String get owedToYouExplainer => 'أموال المنصة مدينة لك بها.';
+  String get owedToYouExplainer => 'أرباحك، جاهزة للسحب.';
 
   @override
-  String get requestDeposit => 'إيداع مبلغ';
+  String get requestDeposit => 'توريد النقدية';
 
   @override
   String get depositAmount => 'المبلغ';
 
   @override
-  String get depositMethod => 'طريقة الدفع';
+  String get depositMethod => 'طريقة التوريد';
 
   @override
   String get referenceOptional => 'رقم مرجعي (اختياري)';
@@ -3858,19 +4022,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get depositRequested =>
-      'تم إرسال الطلب. يُضاف الرصيد بعد تأكيد الإدارة للدفع.';
+      'تم إرسال التوريد. يُخصم من المستحق عليك بعد تأكيد الإدارة استلام المبلغ.';
 
   @override
-  String get depositsAwaitingReview => 'الإيداعات';
+  String get depositsAwaitingReview => 'توريدات النقدية';
 
   @override
-  String get noDepositsPending => 'لا توجد إيداعات في الانتظار.';
+  String get noDepositsPending => 'لا توجد توريدات في الانتظار.';
 
   @override
-  String get depositApproved => 'تم اعتماد الإيداع.';
+  String get depositApproved => 'تم تأكيد استلام التوريد.';
 
   @override
-  String get depositRejected => 'تم رفض الإيداع.';
+  String get depositRejected => 'تم رفض التوريد.';
 
   @override
   String get financeTitle => 'الحسابات';
@@ -4429,4 +4593,267 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get adAlwaysOn => 'دائم';
+
+  @override
+  String get cashHandedOver => 'نقدية مورّدة';
+
+  @override
+  String get handOverCashHint =>
+      'سجّل النقدية التي حصّلتها ليتم خصمها من المستحق عليك بعد تأكيد الإدارة.';
+
+  @override
+  String get inReview => 'قيد المراجعة';
+
+  @override
+  String get withdraw => 'سحب الرصيد';
+
+  @override
+  String get withdrawOptionsTitle => 'كيف تريد استلام أموالك؟';
+
+  @override
+  String get standardPayout => 'صرف عادي';
+
+  @override
+  String get standardPayoutDesc => 'مجاناً. يُصرف في موعد الصرف القادم.';
+
+  @override
+  String standardPayoutDue(String date) {
+    return 'مجاناً. يُصرف في موعد الصرف القادم ($date).';
+  }
+
+  @override
+  String get fasterPayout => 'صرف سريع';
+
+  @override
+  String fasterPayoutDesc(String fee) {
+    return 'مراجعة أسرع. رسوم $fee.';
+  }
+
+  @override
+  String get summaryLabel => 'الملخص';
+
+  @override
+  String get activityLabel => 'الحركات';
+
+  @override
+  String get yesterday => 'أمس';
+
+  @override
+  String get balanceLabel => 'الرصيد';
+
+  @override
+  String get allSettledExplainer => 'لا توجد مستحقات لك أو عليك.';
+
+  @override
+  String orderRef(String number) {
+    return 'طلب #$number';
+  }
+
+  @override
+  String get activeDeliveryEyebrow => 'توصيلة جارية';
+
+  @override
+  String get collectCashBadge => 'تحصيل نقدي';
+
+  @override
+  String get paidOnlineBadge => 'مدفوع مسبقاً';
+
+  @override
+  String get walletTxTopUp => 'شحن المحفظة';
+
+  @override
+  String get walletTxPayment => 'دفع طلب';
+
+  @override
+  String get walletTxRefund => 'استرداد';
+
+  @override
+  String get walletTxCashback => 'كاش باك';
+
+  @override
+  String get walletTxTip => 'إكرامية';
+
+  @override
+  String topUpAdded(String amount) {
+    return 'تمت إضافة $amount إلى محفظتك';
+  }
+
+  @override
+  String get topUpCancelled => 'تم إلغاء الدفع. لم يتغير رصيدك.';
+
+  @override
+  String get topUpFailed => 'فشل الدفع. لم يتغير رصيدك.';
+
+  @override
+  String get topUpPending => 'جارٍ التأكيد مع البنك. اسحب للتحديث بعد قليل.';
+
+  @override
+  String get topUpInvalidAmount => 'أدخل مبلغاً بين 10 و20,000 جنيه.';
+
+  @override
+  String get topUpUnavailable => 'الدفع بالبطاقة غير متاح حالياً. حاول لاحقاً.';
+
+  @override
+  String get topUpOpenFailed => 'تعذّر فتح صفحة الدفع. حاول مرة أخرى.';
+
+  @override
+  String get walletSpendHint => 'ادفع طلباتك من رصيدك عند إتمام الطلب.';
+
+  @override
+  String get needsAttention => 'يحتاج إلى إجراء';
+
+  @override
+  String get nothingNeedsAttention => 'لا يوجد ما يحتاج إلى إجراء.';
+
+  @override
+  String pendingHandOversBanner(int count) {
+    return '$count توريدات نقدية بانتظار التأكيد';
+  }
+
+  @override
+  String get openBalances => 'الأرصدة المفتوحة';
+
+  @override
+  String get moneyMovements => 'حركة الأموال';
+
+  @override
+  String get driverHolds => 'بحوزة السائق';
+
+  @override
+  String get owedToStore => 'مستحق للمتجر';
+
+  @override
+  String get totalOutstanding => 'إجمالي المستحق';
+
+  @override
+  String partiesWithBalance(int count) {
+    return '$count لديهم رصيد مفتوح';
+  }
+
+  @override
+  String get driverLabel => 'سائق';
+
+  @override
+  String get settlementsPaidOut => 'تسويات مدفوعة';
+
+  @override
+  String get loyaltyOrderReward => 'مكافأة طلب';
+
+  @override
+  String get pointsEarned => 'نقاط مكتسبة';
+
+  @override
+  String pointsValue(String count) {
+    return '$count نقطة';
+  }
+
+  @override
+  String get confirm => 'تأكيد';
+
+  @override
+  String get cancelOrderConfirm => 'إلغاء هذا الطلب؟ سيتم إبلاغ المتجر فوراً.';
+
+  @override
+  String get keepOrder => 'الإبقاء على الطلب';
+
+  @override
+  String get payAtPickup => 'ادفع عند الاستلام، بالجنيه';
+
+  @override
+  String get readyForPickupIn => 'جاهز للاستلام خلال';
+
+  @override
+  String get customerNotesLabel => 'ملاحظة من العميل';
+
+  @override
+  String get proofPhoto => 'صورة إثبات الدفع';
+
+  @override
+  String get noProofAttached => 'لم يتم إرفاق صورة إثبات';
+
+  @override
+  String get rejectReasonOptional => 'السبب (اختياري، يظهر للسائق)';
+
+  @override
+  String get confirmUnrestrictedAccessTitle => 'منح صلاحية غير مقيدة؟';
+
+  @override
+  String get confirmUnrestrictedAccessCreate =>
+      'سيكون لهذا الحساب وصول كامل كمدير — كل الشاشات وكل الصلاحيات، بلا قيود. اختر دوراً بدلاً من ذلك إن لم يكن هذا مقصوداً.';
+
+  @override
+  String get confirmPromoteTitle => 'إضافة إلى فريق الإدارة؟';
+
+  @override
+  String confirmPromoteMessage(String name) {
+    return 'سيتمكّن $name من الدخول إلى لوحة الإدارة بالدور الذي اخترته.';
+  }
+
+  @override
+  String get auditActionVendorStatus => 'تغيير حالة المتجر';
+
+  @override
+  String get auditActionDriverStatus => 'تغيير حالة السائق';
+
+  @override
+  String get auditActionPricesAdjusted => 'تعديل الأسعار';
+
+  @override
+  String get auditActionWalletCredit => 'إضافة رصيد للمحفظة';
+
+  @override
+  String get auditActionWalletDebit => 'خصم من المحفظة';
+
+  @override
+  String get auditActionUserDelete => 'حذف الحساب';
+
+  @override
+  String get auditActionEarlySettlementFee => 'تعديل رسوم الصرف السريع';
+
+  @override
+  String get auditActionVendorRecommend => 'تغيير حالة التوصية';
+
+  @override
+  String get auditActionOrderAssign => 'تعيين سائق للطلب';
+
+  @override
+  String get auditActionOrderRefund => 'استرداد الطلب';
+
+  @override
+  String get auditActionStaffCreate => 'إنشاء حساب موظف';
+
+  @override
+  String get auditActionStaffGrant => 'منح دور لموظف';
+
+  @override
+  String get auditActionStaffRevoke => 'سحب صلاحية موظف';
+
+  @override
+  String get viewDetails => 'عرض التفاصيل';
+
+  @override
+  String get areaInactive => 'غير مفعّلة';
+
+  @override
+  String get activateArea => 'تفعيل';
+
+  @override
+  String get deactivateArea => 'إيقاف';
+
+  @override
+  String get deactivateAreaConfirm =>
+      'لن يتم قبول طلبات من هذه المنطقة. يمكنك إعادة تفعيلها في أي وقت.';
+
+  @override
+  String get newCategory => 'تصنيف جديد';
+
+  @override
+  String get editCategoryTitle => 'تعديل التصنيف';
+
+  @override
+  String get removeRecommendationConfirm =>
+      'إزالة هذا المتجر من قائمة التوصية؟';
+
+  @override
+  String get placementSplash => 'شاشة البداية (قبل فتح التطبيق)';
 }

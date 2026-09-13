@@ -4,33 +4,44 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/models/vendor.dart';
 import '../../core/repositories/admin_repository.dart';
 
+/// What just succeeded, so the UI can localize its own toast instead of the
+/// cubit carrying a hardcoded English sentence.
+enum CategoryEvent { created, updated, deleted, reordered }
+
 class AdminCategoriesState extends Equatable {
   const AdminCategoriesState({
     this.loading = true,
     this.categories = const [],
     this.error,
-    this.successMessage,
+    this.event,
+    this.eventCategoryName,
   });
 
   final bool loading;
   final List<VendorCategory> categories;
   final String? error;
-  final String? successMessage;
+  final CategoryEvent? event;
+
+  /// The name to interpolate into [CategoryEvent.created]'s toast. Unused by
+  /// every other event.
+  final String? eventCategoryName;
 
   AdminCategoriesState copyWith({
     bool? loading,
     List<VendorCategory>? categories,
     String? error,
-    String? successMessage,
+    CategoryEvent? event,
+    String? eventCategoryName,
     bool clearError = false,
-    bool clearSuccess = false,
+    bool clearEvent = false,
   }) => AdminCategoriesState(
     loading: loading ?? this.loading,
     categories: categories ?? this.categories,
     error: clearError ? null : (error ?? this.error),
-    successMessage: clearSuccess
+    event: clearEvent ? null : (event ?? this.event),
+    eventCategoryName: clearEvent
         ? null
-        : (successMessage ?? this.successMessage),
+        : (eventCategoryName ?? this.eventCategoryName),
   );
 
   /// The kinds of shop — what the customer home page shows.
@@ -47,7 +58,13 @@ class AdminCategoriesState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [loading, categories, error, successMessage];
+  List<Object?> get props => [
+    loading,
+    categories,
+    error,
+    event,
+    eventCategoryName,
+  ];
 }
 
 class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
@@ -58,7 +75,7 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
   final AdminRepository _repository;
 
   Future<void> load() async {
-    emit(state.copyWith(loading: true, clearError: true, clearSuccess: true));
+    emit(state.copyWith(loading: true, clearError: true));
     try {
       final list = await _repository.fetchVendorCategories();
       emit(state.copyWith(loading: false, categories: list));
@@ -77,7 +94,7 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
     List<int>? imageBytes,
     String? fileExtension,
   }) async {
-    emit(state.copyWith(loading: true, clearError: true, clearSuccess: true));
+    emit(state.copyWith(loading: true, clearError: true, clearEvent: true));
     try {
       String? imageUrl;
       if (imageBytes != null && fileExtension != null) {
@@ -95,9 +112,7 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
         parentId: parentId,
       );
       emit(
-        state.copyWith(
-          successMessage: 'Category "$name" created successfully!',
-        ),
+        state.copyWith(event: CategoryEvent.created, eventCategoryName: name),
       );
       await load();
       return true;
@@ -116,7 +131,7 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
     String? fileExtension,
     String? existingImageUrl,
   }) async {
-    emit(state.copyWith(loading: true, clearError: true, clearSuccess: true));
+    emit(state.copyWith(loading: true, clearError: true, clearEvent: true));
     try {
       String? imageUrl = existingImageUrl;
       if (imageBytes != null && fileExtension != null) {
@@ -134,7 +149,7 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
         imageUrl: imageUrl,
         parentId: parentId,
       );
-      emit(state.copyWith(successMessage: 'Category updated successfully!'));
+      emit(state.copyWith(event: CategoryEvent.updated));
       await load();
       return true;
     } catch (e) {
@@ -144,14 +159,41 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
   }
 
   Future<bool> deleteCategory(String id) async {
-    emit(state.copyWith(loading: true, clearError: true, clearSuccess: true));
+    emit(state.copyWith(loading: true, clearError: true, clearEvent: true));
     try {
       await _repository.deleteVendorCategory(id);
-      emit(state.copyWith(successMessage: 'Category deleted successfully!'));
+      emit(state.copyWith(event: CategoryEvent.deleted));
       await load();
       return true;
     } catch (e) {
       emit(state.copyWith(loading: false, error: e.toString()));
+      return false;
+    }
+  }
+
+  /// Renumbers one sibling group — pass [state.topLevel] or a single
+  /// parent's [state.childrenOf] result, reordered. Applied optimistically so
+  /// the drag doesn't snap back while the write is in flight.
+  Future<bool> reorderCategories(List<VendorCategory> ordered) async {
+    final renumbered = [
+      for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i),
+    ];
+    final byId = {for (final c in renumbered) c.id: c};
+    emit(
+      state.copyWith(
+        clearError: true,
+        categories: [for (final c in state.categories) byId[c.id] ?? c],
+      ),
+    );
+    try {
+      await _repository.reorderVendorCategories(
+        renumbered.map((c) => c.id).toList(),
+      );
+      emit(state.copyWith(event: CategoryEvent.reordered));
+      return true;
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+      await load();
       return false;
     }
   }

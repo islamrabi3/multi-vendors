@@ -1,6 +1,7 @@
 import '../models/support.dart';
 import '../services/attachment_service.dart';
 import '../supabase_client.dart';
+import '../utils/live_count.dart';
 
 /// Support conversations. RLS keeps a user to their own threads and gives
 /// admins the whole inbox, so neither side is filtered here.
@@ -24,10 +25,10 @@ class SupportRepository {
   /// (`touch_support_thread` reopens a thread the moment its owner posts to
   /// it), so this is just a count over what the inbox screen already filters
   /// on with `openOnly: true`.
-  Stream<int> watchOpenThreadCount() => supabase
-      .from('support_threads')
-      .stream(primaryKey: ['id'])
-      .map((rows) => rows.where((r) => r['status'] == 'open').length);
+  Stream<int> watchOpenThreadCount() => liveCount(
+    table: 'support_threads',
+    count: () => supabase.from('support_threads').count().eq('status', 'open'),
+  );
 
   /// The admin inbox. Open threads first, then by activity — an admin works
   /// the queue, and a resolved thread is not the queue.
@@ -64,8 +65,7 @@ class SupportRepository {
       .from('support_threads')
       .stream(primaryKey: ['id'])
       .eq('id', threadId)
-      .map((rows) =>
-          rows.isEmpty ? null : SupportThread.fromMap(rows.first));
+      .map((rows) => rows.isEmpty ? null : SupportThread.fromMap(rows.first));
 
   /// Reuses the caller's open thread when there is one, so a user with a
   /// running conversation does not silently start a second.
@@ -81,10 +81,7 @@ class SupportRepository {
 
     final created = await supabase
         .from('support_threads')
-        .insert({
-          'user_id': supabase.auth.currentUser!.id,
-          'subject': subject,
-        })
+        .insert({'user_id': supabase.auth.currentUser!.id, 'subject': subject})
         .select()
         .single();
     return SupportThread.fromMap(created);
@@ -97,23 +94,24 @@ class SupportRepository {
     required String message,
     required bool fromAdmin,
     ChatAttachment? attachment,
-  }) =>
-      supabase.from('support_messages').insert({
-        'thread_id': threadId,
-        'sender_id': supabase.auth.currentUser!.id,
-        'is_from_admin': fromAdmin,
-        'message': message,
-        if (attachment != null) ...{
-          'attachment_url': attachment.path,
-          'attachment_name': attachment.name,
-          'attachment_type': attachment.type,
-        },
-      });
+  }) => supabase.from('support_messages').insert({
+    'thread_id': threadId,
+    'sender_id': supabase.auth.currentUser!.id,
+    'is_from_admin': fromAdmin,
+    'message': message,
+    if (attachment != null) ...{
+      'attachment_url': attachment.path,
+      'attachment_name': attachment.name,
+      'attachment_type': attachment.type,
+    },
+  });
 
   /// The one-tap reasons offered when a thread opens.
   Future<List<SupportTemplate>> fetchTemplates() async {
-    final data =
-        await supabase.from('support_templates').select().order('sort_order');
+    final data = await supabase
+        .from('support_templates')
+        .select()
+        .order('sort_order');
     return (data as List)
         .map((e) => SupportTemplate.fromMap(e as Map<String, dynamic>))
         .toList();
@@ -129,14 +127,17 @@ class SupportRepository {
     required String threadId,
     required String key,
     required String languageCode,
-  }) =>
-      supabase.rpc('support_send_template', params: {
-        'p_thread_id': threadId,
-        'p_key': key,
-        'p_locale': languageCode == 'ar' ? 'ar' : 'en',
-      });
+  }) => supabase.rpc(
+    'support_send_template',
+    params: {
+      'p_thread_id': threadId,
+      'p_key': key,
+      'p_locale': languageCode == 'ar' ? 'ar' : 'en',
+    },
+  );
 
   Future<void> setStatus(String threadId, String status) => supabase
       .from('support_threads')
-      .update({'status': status}).eq('id', threadId);
+      .update({'status': status})
+      .eq('id', threadId);
 }

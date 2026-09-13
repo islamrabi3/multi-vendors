@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../models/banner_item.dart';
 import '../repositories/offers_repository.dart';
@@ -65,10 +67,20 @@ class InterstitialAds {
   static Future<void> maybeShow(
     BuildContext context, {
     required OffersRepository repository,
+    AdPlacement placement = AdPlacement.interstitial,
+
+    /// Bounds only the lookup. The ad itself stays up until it is closed —
+    /// a timeout around the whole call used to tear the dialog down under
+    /// the viewer as soon as the splash moved on.
+    Duration? fetchTimeout,
   }) async {
-    if (_shownSinceLaunch) return;
+    // Full-screen ads are a mobile-app format only.
+    if (kIsWeb || _shownSinceLaunch) return;
     try {
-      final ads = await repository.activeAds(AdPlacement.interstitial);
+      final lookup = repository.activeAds(placement);
+      final ads = await (fetchTimeout == null
+          ? lookup
+          : lookup.timeout(fetchTimeout));
       if (ads.isEmpty) return;
 
       for (final ad in ads) {
@@ -76,7 +88,7 @@ class InterstitialAds {
         if (!context.mounted) return;
 
         _shownSinceLaunch = true;
-        await _markSeen(ad);
+        _shownThisSession.add(ad.id);
         unawaited(repository.recordEvent(ad.id, click: false));
 
         if (!context.mounted) return;
@@ -90,6 +102,9 @@ class InterstitialAds {
           useSafeArea: false,
           builder: (_) => _InterstitialDialog(ad: ad, repository: repository),
         );
+        // Only once it has actually been on screen and closed does it count
+        // as seen for `once` / `daily`.
+        await _markSeen(ad);
         return;
       }
     } catch (_) {
@@ -181,47 +196,59 @@ class _InterstitialDialogState extends State<_InterstitialDialog> {
       // or `dismissible: false` means nothing.
       canPop: _canClose,
       child: Dialog.fullscreen(
-        backgroundColor: Colors.transparent,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  // The whole artwork is tappable when there is no button, so
-                  // artwork carrying its own call to action still works.
-                  onTap: ad.ctaLabel == null ? _act : null,
-                  child: _Artwork(ad: ad),
+        backgroundColor: ad.isVideo ? Colors.black : Colors.transparent,
+        // Edge to edge: the artwork runs under the status bar and home
+        // indicator; only the controls keep clear of them.
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                // The whole artwork is tappable when there is no button, so
+                // artwork carrying its own call to action still works.
+                onTap: ad.ctaLabel == null ? _act : null,
+                child: _Artwork(
+                  ad: ad,
+                  // A video that cannot play and has no cover leaves nothing
+                  // to look at; close quietly instead of showing a spinner.
+                  onUnplayable: () {
+                    if (mounted) Navigator.of(context).maybePop();
+                  },
+                  // Played through to the end: the ad is over, so the app
+                  // carries on by itself.
+                  onFinished: () {
+                    if (mounted) Navigator.of(context).maybePop();
+                  },
                 ),
               ),
+            ),
+            PositionedDirectional(
+              top: MediaQuery.paddingOf(context).top + 12,
+              end: 12,
+              child: _CloseButton(
+                canClose: _canClose,
+                remaining: _remaining,
+                dismissible: ad.dismissible,
+                onClose: _close,
+              ),
+            ),
+            if (ad.ctaLabel != null)
               PositionedDirectional(
-                top: 12,
-                end: 12,
-                child: _CloseButton(
-                  canClose: _canClose,
-                  remaining: _remaining,
-                  dismissible: ad.dismissible,
-                  onClose: _close,
-                ),
-              ),
-              if (ad.ctaLabel != null)
-                PositionedDirectional(
-                  bottom: 28,
-                  start: 24,
-                  end: 24,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                    ),
-                    onPressed: _act,
-                    child: Text(
-                      ad.ctaLabel!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                bottom: MediaQuery.paddingOf(context).bottom + 28,
+                start: 24,
+                end: 24,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                  ),
+                  onPressed: _act,
+                  child: Text(
+                    ad.ctaLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -234,26 +261,187 @@ class _InterstitialDialogState extends State<_InterstitialDialog> {
 /// with text in it — cropping one to fill a phone cuts the message off, which
 /// is worse than letterboxing it.
 class _Artwork extends StatelessWidget {
-  const _Artwork({required this.ad});
+  const _Artwork({
+    required this.ad,
+    required this.onUnplayable,
+    required this.onFinished,
+  });
 
   final BannerItem ad;
+  final VoidCallback onUnplayable;
+  final VoidCallback onFinished;
 
   @override
   Widget build(BuildContext context) {
-    if (ad.isSvg) {
-      return SvgPicture.network(
-        ad.imageUrl,
-        fit: BoxFit.contain,
-        placeholderBuilder: (_) => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+    // Video first: `videoUrl` set is what makes a splash or interstitial ad a
+    // video ad at all. This used to fall through to the static image even
+    // when a video was attached, so a video URL an admin uploaded here never
+    // actually played.
+    if (ad.isVideo) {
+      return _FullScreenAdVideo(
+        url: ad.videoUrl!,
+        poster: ad.poster,
+        onUnplayable: onUnplayable,
+        onFinished: onFinished,
       );
     }
-    return AppNetworkImage(
-      url: ad.imageUrl,
-      fit: BoxFit.contain,
-      width: double.infinity,
-      height: double.infinity,
+    // A still ad is a card floating over the dimmed app, not a raw image
+    // pinned to the screen edges: inset, with rounded corners.
+    final artwork = ad.isSvg
+        ? SvgPicture.network(
+            ad.imageUrl,
+            fit: BoxFit.contain,
+            placeholderBuilder: (_) => const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          )
+        : AppNetworkImage(url: ad.imageUrl, fit: BoxFit.contain);
+    final insets = MediaQuery.paddingOf(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        insets.top + 64,
+        20,
+        insets.bottom + (ad.ctaLabel == null ? 40 : 100),
+      ),
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: artwork,
+        ),
+      ),
+    );
+  }
+}
+
+/// A full-screen video ad: fills the screen, plays once with sound, and
+/// closes itself when it ends.
+class _FullScreenAdVideo extends StatefulWidget {
+  const _FullScreenAdVideo({
+    required this.url,
+    required this.poster,
+    required this.onUnplayable,
+    required this.onFinished,
+  });
+
+  final String url;
+  final String? poster;
+  final VoidCallback onUnplayable;
+  final VoidCallback onFinished;
+
+  @override
+  State<_FullScreenAdVideo> createState() => _FullScreenAdVideoState();
+}
+
+class _FullScreenAdVideoState extends State<_FullScreenAdVideo> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+  bool _muted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepare();
+  }
+
+  Future<void> _prepare() async {
+    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _controller = controller;
+    try {
+      // A codec the platform cannot decode (HEVC in Chrome, say) may never
+      // report an error at all, so it gets a deadline.
+      await controller.initialize().timeout(const Duration(seconds: 8));
+      // Closed while still loading: the controller is on its way out.
+      if (!mounted) return;
+      // Full screen and chosen to open the app with, so it plays with sound;
+      // the viewer can mute it. Inline ads elsewhere stay silent.
+      await controller.setVolume(1);
+      if (!mounted) return;
+      controller.addListener(_watchForEnd);
+      await controller.play();
+      if (mounted) setState(() => _ready = true);
+    } catch (_) {
+      // Falls back to the poster, which is what a still ad would have been.
+      if (mounted && widget.poster == null) widget.onUnplayable();
+    }
+  }
+
+  bool _finished = false;
+
+  void _watchForEnd() {
+    final value = _controller?.value;
+    if (_finished || value == null || !value.isCompleted) return;
+    _finished = true;
+    widget.onFinished();
+  }
+
+  @override
+  void dispose() {
+    final controller = _controller;
+    controller?.removeListener(_watchForEnd);
+    // On completion video_player runs `pause().then(seekTo(end))` itself, and
+    // that seek writes to the controller when it returns. Closing the ad on
+    // completion disposes this widget in between, so the controller is
+    // disposed a moment later instead of immediately.
+    if (controller != null) {
+      unawaited(controller.pause().catchError((_) {}));
+      Future<void>.delayed(const Duration(seconds: 1), controller.dispose);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (!_ready || controller == null) {
+      final poster = widget.poster;
+      if (poster == null) {
+        return const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        );
+      }
+      return AppNetworkImage(
+        url: poster,
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+      );
+    }
+    final size = controller.value.size;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Cover, not contain: fills the whole screen, trimming the edges
+        // rather than letterboxing.
+        FittedBox(
+          fit: BoxFit.cover,
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox(
+            width: size.width,
+            height: size.height,
+            child: VideoPlayer(controller),
+          ),
+        ),
+        PositionedDirectional(
+          bottom: MediaQuery.paddingOf(context).bottom + 20,
+          start: 16,
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.55),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              color: Colors.white,
+              icon: Icon(
+                _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+              ),
+              onPressed: () {
+                setState(() => _muted = !_muted);
+                controller.setVolume(_muted ? 0 : 1);
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -291,7 +479,11 @@ class _CloseButton extends StatelessWidget {
             height: 38,
             child: Center(
               child: canClose
-                  ? const Icon(Icons.close_rounded, size: 20, color: Colors.white)
+                  ? const Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color: Colors.white,
+                    )
                   : Text(
                       '$remaining',
                       style: const TextStyle(

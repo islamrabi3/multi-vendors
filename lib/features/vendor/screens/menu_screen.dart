@@ -1383,9 +1383,14 @@ class _ManageSectionsSheet extends StatelessWidget {
                           ),
                         ),
                         title: Text(category.displayName(language)),
+                        // "3 items", not a bare "3" — the number alone read as
+                        // a rank or an id rather than what it actually counts.
                         subtitle: Text(
-                          '${state.productsIn(category.id).length}',
-                          style: AppType.mono(11.5, color: AppColors.textFaint),
+                          l10n.itemsCount(state.productsIn(category.id).length),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textFaint,
+                          ),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,

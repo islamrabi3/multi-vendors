@@ -665,30 +665,36 @@ class _Sheet extends StatelessWidget {
             // Order Identity Row
             Row(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'ACTIVE DELIVERY',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                        color: AppColors.textMuted,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.activeDeliveryEyebrow,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: AppColors.textMuted,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Order #${order.orderNumber}',
-                      style: AppType.mono(
-                        14.5,
-                        color: AppColors.ink,
-                        weight: FontWeight.w700,
+                      const SizedBox(height: 3),
+                      Text(
+                        context.l10n.orderRef(order.orderNumber),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.mono(
+                          14.5,
+                          color: AppColors.ink,
+                          weight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: AppSpace.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -701,6 +707,7 @@ class _Sheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         order.isCod
@@ -713,7 +720,9 @@ class _Sheet extends StatelessWidget {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        order.isCod ? 'Collect Cash' : 'Paid Online',
+                        order.isCod
+                            ? context.l10n.collectCashBadge
+                            : context.l10n.paidOnlineBadge,
                         style: TextStyle(
                           color: order.isCod
                               ? AppColors.amberInk
@@ -806,133 +815,97 @@ class _Sheet extends StatelessWidget {
             ),
             const SizedBox(height: 18),
 
-            // Actions Row
+            // Secondary actions: a row of equal-width icon buttons rather
+            // than fixed 48px tiles crowding the primary CTA on the same
+            // line. Four tiles plus "Mark delivered" in one Row ran out of
+            // room on a 360px phone and squeezed the one button that matters
+            // down to a sliver.
             Row(
               children: [
-                if (order.customerPhone != null) ...[
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: IconButton(
-                      onPressed: () => _call(context),
-                      icon: const Icon(
-                        Icons.phone_in_talk_rounded,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
+                if (order.customerPhone != null)
+                  Expanded(
+                    child: _ActionIcon(
+                      icon: Icons.phone_in_talk_rounded,
+                      color: AppColors.primary,
                       tooltip: context.l10n.callCustomer,
+                      onPressed: () => _call(context),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                ],
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: IconButton(
-                    onPressed: () => _callVendor(context),
-                    icon: const Icon(
-                      Icons.storefront_rounded,
-                      color: AppColors.ink,
-                      size: 20,
-                    ),
+                Expanded(
+                  child: _ActionIcon(
+                    icon: Icons.storefront_rounded,
+                    color: AppColors.ink,
                     tooltip: context.l10n.callStore,
+                    onPressed: () => _callVendor(context),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: IconButton(
+                Expanded(
+                  child: _ActionIcon(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    color: Colors.orange,
+                    tooltip: context.l10n.liveChat,
                     onPressed: () => showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
                       builder: (_) => OrderChatSheet(orderId: order.id),
                     ),
-                    icon: const Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
-                    tooltip: context.l10n.liveChat,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: IconButton(
-                    onPressed: () async {
-                      if (destination != null) {
-                        final url = Uri.parse(
-                          'https://www.google.com/maps/search/?api=1&query=${destination!.latitude},${destination!.longitude}',
-                        );
-                        await launchUrl(
-                          url,
-                          mode: LaunchMode.externalApplication,
-                        );
-                      }
-                    },
-                    icon: const Icon(
-                      Icons.navigation_rounded,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                    tooltip: context.l10n.openInMaps,
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Expanded(
-                  child: Container(
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.success.withValues(alpha: 0.25),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.lg),
-                        ),
-                      ),
-                      onPressed: busy ? null : onDelivered,
-                      icon: busy
-                          ? const SizedBox.shrink()
-                          : const Icon(Icons.done_all_rounded, size: 20),
-                      label: busy
-                          ? const ButtonSpinner()
-                          : Text(context.l10n.markDelivered),
-                    ),
+                  child: _ActionIcon(
+                    icon: Icons.navigation_rounded,
+                    color: Colors.blue,
+                    tooltip: context.l10n.openInMaps,
+                    // Disabled rather than a silent tap: no destination means
+                    // there is nowhere to send the driver, which used to be
+                    // indistinguishable from the button not responding.
+                    onPressed: destination == null
+                        ? null
+                        : () => launchUrl(
+                            Uri.parse(
+                              'https://www.google.com/maps/search/?api=1'
+                              '&query=${destination!.latitude},${destination!.longitude}',
+                            ),
+                            mode: LaunchMode.externalApplication,
+                          ),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            // The one action that matters on this screen, full width and on
+            // its own line so it is never squeezed by anything beside it.
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.success.withValues(alpha: 0.25),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                  ),
+                  onPressed: busy ? null : onDelivered,
+                  icon: busy
+                      ? const SizedBox.shrink()
+                      : const Icon(Icons.done_all_rounded, size: 20),
+                  label: busy
+                      ? const ButtonSpinner()
+                      : Text(context.l10n.markDelivered),
+                ),
+              ),
             ),
           ],
         ),
@@ -997,6 +970,49 @@ class _Sheet extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One secondary action in the row above "Mark delivered": a bordered white
+/// tile that fills whatever share of the row its [Expanded] parent gives it,
+/// rather than a fixed 48px square. Disabled ([onPressed] null) renders faint
+/// instead of vanishing, so a driver taps it once and sees why it did nothing.
+class _ActionIcon extends StatelessWidget {
+  const _ActionIcon({
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(
+            icon,
+            color: enabled ? color : AppColors.textFaint,
+            size: 20,
+          ),
+          tooltip: tooltip,
+        ),
+      ),
     );
   }
 }

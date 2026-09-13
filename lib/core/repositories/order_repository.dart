@@ -178,17 +178,6 @@ class OrderRepository {
       .eq('id', orderId)
       .map((rows) => rows.isEmpty ? null : AppOrder.fromMap(rows.first));
 
-  /// Realtime stream of the signed-in customer's orders.
-  Stream<List<AppOrder>> myOrdersStream() {
-    final userId = supabase.auth.currentUser!.id;
-    return supabase
-        .from('orders')
-        .stream(primaryKey: ['id'])
-        .eq('customer_id', userId)
-        .order('created_at')
-        .map((rows) => rows.map(AppOrder.fromMap).toList());
-  }
-
   /// Deletes an unpaid card order after a failed or abandoned payment, so it
   /// never reaches the restaurant. No-op once the order has been paid.
   Future<bool> discardUnpaidOrder(String orderId) async {
@@ -203,29 +192,44 @@ class OrderRepository {
     }
   }
 
-  /// Realtime stream of all orders for a vendor (dashboard).
+  /// Statuses an order passes through before it is finished.
+  static const _liveStatuses = [
+    'pending',
+    'accepted',
+    'preparing',
+    'ready_for_pickup',
+    'out_for_delivery',
+  ];
+
+  /// Whether a vendor should see [order] at all. A scheduled order is withheld
+  /// until `released_at` is stamped, and an online-payment draft until it is
+  /// paid. The live stream and the reconcile poll both apply this — the poll
+  /// once skipped it, so unpaid drafts flashed onto the dashboard every 45 s
+  /// and fired the new-order alert.
+  static bool _vendorCanSee(AppOrder o) =>
+      o.isReleased &&
+      (o.paymentMethod == 'cod' ||
+          o.paymentMethod == 'wallet' ||
+          o.isPaid ||
+          o.paymentStatus == 'paid');
+
+  /// How many of a store's newest orders the dashboard keeps live. Enough for
+  /// every open order and a full day's trade at a busy branch; finished orders
+  /// beyond it are read a page at a time from history instead of streamed.
+  static const _vendorLiveWindow = 150;
+
+  /// Realtime stream of a vendor's recent orders (dashboard).
   ///
-  /// A scheduled order is withheld until `released_at` is stamped — a job
-  /// does that shortly before its slot, and that write is itself a row change
-  /// the stream carries, so the order appears on the dashboard by itself.
+  /// Bounded: an unbounded stream re-sent the store's entire order history on
+  /// every change. The release job's `released_at` write is itself a row
+  /// change, so a scheduled order appears here by itself.
   Stream<List<AppOrder>> vendorOrdersStream(String vendorId) => supabase
       .from('orders')
       .stream(primaryKey: ['id'])
       .eq('vendor_id', vendorId)
-      .order('created_at')
-      .map(
-        (rows) => rows
-            .map(AppOrder.fromMap)
-            .where(
-              (o) =>
-                  o.isReleased &&
-                  (o.paymentMethod == 'cod' ||
-                      o.paymentMethod == 'wallet' ||
-                      o.isPaid ||
-                      o.paymentStatus == 'paid'),
-            )
-            .toList(),
-      );
+      .order('created_at', ascending: false)
+      .limit(_vendorLiveWindow)
+      .map((rows) => rows.map(AppOrder.fromMap).where(_vendorCanSee).toList());
 
   /// Realtime stream of unclaimed ready_for_pickup orders (driver pool).
   ///
@@ -245,26 +249,43 @@ class OrderRepository {
             .toList(),
       );
 
-  /// Realtime stream of the driver's own orders (active + history).
+  /// Realtime stream of the driver's recent orders — the active delivery and
+  /// today's trips. Bounded to the newest 30: the full history pages through
+  /// [fetchDriverHistory] and no longer rides on every change.
   Stream<List<AppOrder>> driverOrdersStream() {
     final userId = supabase.auth.currentUser!.id;
     return supabase
         .from('orders')
         .stream(primaryKey: ['id'])
         .eq('driver_id', userId)
-        .order('created_at')
+        .order('created_at', ascending: false)
+        .limit(30)
         .map((rows) => rows.map(AppOrder.fromMap).toList());
   }
 
-  /// One-shot fetch of a vendor's orders (pull-to-refresh).
+  /// One-shot fetch of what the vendor dashboard shows: every open order plus
+  /// everything placed today (for the day's totals). Pull-to-refresh and the
+  /// reconcile poll call this, so it must never pull the whole history.
   Future<List<AppOrder>> fetchVendorOrders(String vendorId) async {
+    final now = DateTime.now();
+    final startOfToday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).toUtc().toIso8601String();
     final data = await supabase
         .from('orders')
         .select(_vendorJoin)
         .eq('vendor_id', vendorId)
-        .order('created_at');
+        .or(
+          'status.in.(${_liveStatuses.join(',')}),'
+          'created_at.gte.$startOfToday',
+        )
+        .order('created_at', ascending: false)
+        .limit(500);
     return (data as List)
         .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
+        .where(_vendorCanSee)
         .toList();
   }
 
@@ -282,14 +303,16 @@ class OrderRepository {
         .toList();
   }
 
-  /// One-shot fetch of the driver's own orders (pull-to-refresh).
+  /// One-shot fetch of the driver's delivery in progress (pull-to-refresh).
+  /// Only `out_for_delivery` rows: that is all the caller looks for.
   Future<List<AppOrder>> fetchDriverOrders() async {
     final userId = supabase.auth.currentUser!.id;
     final data = await supabase
         .from('orders')
         .select(_vendorJoin)
         .eq('driver_id', userId)
-        .order('created_at');
+        .eq('status', 'out_for_delivery')
+        .order('created_at', ascending: false);
     return (data as List)
         .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
         .toList();
@@ -403,6 +426,7 @@ class OrderRepository {
         .from('orders')
         .select('*, order_items(*), vendors(name, logo_url)')
         .eq('customer_id', userId)
+        .inFilter('status', _liveStatuses)
         .order('created_at', ascending: false);
     return (data as List)
         .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
@@ -411,12 +435,19 @@ class OrderRepository {
   }
 
   /// Stream of active (non-terminal) customer orders.
+  ///
+  /// A stream takes one filter, so the status rule stays client-side; the
+  /// window keeps it to the customer's newest orders instead of re-sending
+  /// every order they ever placed on each change. An order still open is
+  /// always among the newest 30.
   Stream<List<AppOrder>> myActiveOrdersStream() {
     final userId = supabase.auth.currentUser!.id;
     return supabase
         .from('orders')
         .stream(primaryKey: ['id'])
         .eq('customer_id', userId)
+        .order('created_at', ascending: false)
+        .limit(30)
         .map(
           (rows) => rows
               .map(AppOrder.fromMap)

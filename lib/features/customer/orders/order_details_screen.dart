@@ -262,7 +262,21 @@ class _OrderDetailsView extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: state.busy
                         ? null
-                        : () => context.read<OrderDetailsCubit>().cancelOrder(),
+                        : () async {
+                            final cubit = context.read<OrderDetailsCubit>();
+                            // Cancelling cannot be undone, and the button sits
+                            // right under the thumb on the tracking screen.
+                            final confirmed = await showConfirmDialog(
+                              context: context,
+                              title: context.l10n.cancelOrder,
+                              message: context.l10n.cancelOrderConfirm,
+                              confirmLabel: context.l10n.cancelOrder,
+                              cancelLabel: context.l10n.keepOrder,
+                              tone: AppDialogTone.danger,
+                              icon: Icons.cancel_outlined,
+                            );
+                            if (confirmed) cubit.cancelOrder();
+                          },
                     child: Text(context.l10n.cancelOrder),
                   ),
                 ),

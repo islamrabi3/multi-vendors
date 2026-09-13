@@ -61,15 +61,33 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
       centre = picked.point;
     }
 
-    await Navigator.of(context).push<bool>(
+    final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>
             _ServiceAreaEditor(repository: _repo, area: area, centre: centre!),
       ),
     );
+    // A save with nothing to show for it: the editor popped `true` and the
+    // list already updates itself off the realtime stream, but that gave the
+    // admin no confirmation their edit actually went through.
+    if (saved == true && mounted) {
+      showSnack(context, context.l10n.serviceAreaSaved);
+    }
   }
 
   Future<void> _toggle(ServiceArea area) async {
+    // Only deactivating needs a pause: it can stop orders across a whole
+    // region, and previously fired on a single tap with no way to reconsider.
+    if (area.isActive) {
+      final confirmed = await AppDialogs.showConfirmDialog(
+        context: context,
+        title: context.l10n.deactivateArea,
+        message: context.l10n.deactivateAreaConfirm,
+        confirmText: context.l10n.deactivateArea,
+        isDestructive: true,
+      );
+      if (confirmed != true) return;
+    }
     setState(() => _busyId = area.id);
     try {
       await _repo.setActive(area.id, !area.isActive);
@@ -145,15 +163,18 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
     // WebPageChrome has no floating-action-button slot of its own, so
     // embedded/wide both get their own small inner Scaffold just to keep the
     // "add area" affordance — the map/list content itself (`list`) is the
-    // exact same widget in every branch.
+    // exact same widget in every branch. One [fab] rather than three copies
+    // of the same button, so the icon and label can't drift between them.
+    final fab = FloatingActionButton.extended(
+      onPressed: () => _edit(),
+      icon: const Icon(Icons.add_location_alt_outlined),
+      label: Text(l10n.addServiceArea),
+    );
+
     if (widget.embedded) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _edit(),
-          icon: const Icon(Icons.add_location_alt_outlined),
-          label: Text(l10n.addServiceArea),
-        ),
+        floatingActionButton: fab,
         body: list,
       );
     }
@@ -166,11 +187,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
         pageTitle: l10n.serviceAreas,
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _edit(),
-            icon: const Icon(Icons.add_location_alt_outlined),
-            label: Text(l10n.addServiceArea),
-          ),
+          floatingActionButton: fab,
           body: list,
         ),
       );
@@ -179,11 +196,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(l10n.serviceAreas)),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _edit(),
-        icon: const Icon(Icons.add_location_alt_outlined),
-        label: Text(l10n.addServiceArea),
-      ),
+      floatingActionButton: fab,
       body: SafeArea(top: false, child: list),
     );
   }
@@ -260,9 +273,11 @@ class _AreaCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
+        // Border alone: paired with a drop shadow this was the "ghost card"
+        // look the rest of the kit deliberately avoids (see the driver pool
+        // card, which made the same call for the same reason).
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        boxShadow: AppShadows.card,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -335,7 +350,11 @@ class _AreaCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(AppRadii.xs),
                       ),
                       child: Text(
-                        area.isActive ? l10n.active : l10n.suspended,
+                        // Not `l10n.suspended`: that word is for a vendor or
+                        // driver account under punitive action, and reused
+                        // here for a plain switched-off area it read as a
+                        // penalty nobody applied.
+                        area.isActive ? l10n.active : l10n.areaInactive,
                         style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
@@ -378,7 +397,12 @@ class _AreaCard extends StatelessWidget {
                       const SizedBox(width: AppSpace.sm),
                       IconButton(
                         onPressed: onToggle,
-                        tooltip: area.isActive ? l10n.suspended : l10n.active,
+                        // The action this button takes, not the state it's
+                        // already in — it showed "Active" as the tooltip on
+                        // an already-active area, describing nothing useful.
+                        tooltip: area.isActive
+                            ? l10n.deactivateArea
+                            : l10n.activateArea,
                         icon: Icon(
                           area.isActive
                               ? Icons.pause_circle_outline

@@ -187,12 +187,21 @@ ThemeData buildTheme() {
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.surface,
       selectedColor: AppColors.ink,
+      // A selected chip is an [AppColors.ink] pill, so its label and tick must
+      // flip to white. With a fixed ink label every selected FilterChip and
+      // ChoiceChip rendered dark-on-dark — tapping one looked like nothing
+      // happened.
+      checkmarkColor: Colors.white,
       side: const BorderSide(color: AppColors.border),
       labelStyle: _clipping(
         GoogleFonts.cairo(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: AppColors.ink,
+          color: WidgetStateColor.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? Colors.white
+                : AppColors.ink,
+          ),
         ),
       ),
       secondaryLabelStyle: _clipping(

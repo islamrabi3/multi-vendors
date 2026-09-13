@@ -1026,7 +1026,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cashOnDelivery => 'Cash on delivery';
 
   @override
-  String get cardPaymob => 'Card · Paymob';
+  String get cardPaymob => 'Pay by card';
 
   @override
   String get yourCartIsEmpty => 'Your cart is empty';
@@ -2027,6 +2027,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noNotificationsYet => 'No notifications yet';
 
   @override
+  String get notificationsLast24h => 'Last 24 hours';
+
+  @override
+  String get noNotificationsLast24h => 'No notifications in the last 24 hours';
+
+  @override
   String get averageStoreRating => 'Average Store Rating';
 
   @override
@@ -2079,7 +2085,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get topUpWallet => 'Top Up Wallet';
 
   @override
-  String get payWithPaymob => 'Pay via Paymob';
+  String get payWithPaymob => 'Pay by card';
 
   @override
   String get selectTopUpAmount => 'Select or enter top-up amount:';
@@ -3457,6 +3463,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adVideoUrl => 'Video URL';
 
   @override
+  String get adMediaImage => 'Image';
+
+  @override
+  String get uploadVideo => 'Upload video';
+
+  @override
+  String get uploadingVideo => 'Uploading video…';
+
+  @override
+  String get videoAdded => 'Video added';
+
+  @override
+  String get replaceVideo => 'Tap to replace';
+
+  @override
+  String get videoFormatsHint => 'MP4 or WebM, up to 50 MB';
+
+  @override
+  String get videoRequired => 'Upload a video or paste its link.';
+
+  @override
+  String get videoCoverOptional =>
+      'Cover image (optional, shown while the video loads)';
+
+  @override
+  String get adVideoUrlHelper => 'Or paste a direct link to a video file';
+
+  @override
+  String videoTooLarge(int mb) {
+    return 'Video is too large. Maximum $mb MB.';
+  }
+
+  @override
+  String get videoHevcUnsupported =>
+      'This video is HEVC (iPhone default), which Android phones and browsers can\'t play. Export it as H.264 MP4 — on iPhone: Settings › Camera › Formats › Most Compatible.';
+
+  @override
   String get adLinkUrl => 'Link on tap (optional)';
 
   @override
@@ -3487,6 +3530,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adCreated => 'Ad created';
+
+  @override
+  String get adUpdated => 'Ad updated';
+
+  @override
+  String get editAd => 'Edit ad';
+
+  @override
+  String get adFrequency => 'How often';
+
+  @override
+  String get frequencyEverySession => 'Every app launch';
+
+  @override
+  String get frequencyDaily => 'Once a day';
+
+  @override
+  String get frequencyOnce => 'Only once per device';
+
+  @override
+  String get homeCravingPrompt => 'What would you like today?';
+
+  @override
+  String get railRecommendedHint => 'Hand-picked places we love';
+
+  @override
+  String get railNearestTitle => 'Closest to you';
+
+  @override
+  String get railNearestHint => 'Fastest to reach your door';
+
+  @override
+  String get railFavoritesTitle => 'Your favourites';
+
+  @override
+  String get railFavoritesHint => 'Order again from places you saved';
+
+  @override
+  String get railTopRatedHint => 'Loved by customers';
+
+  @override
+  String get railFreeDeliveryHint => 'No delivery fee';
+
+  @override
+  String get allStoresTitle => 'All stores';
+
+  @override
+  String get filteredStoresTitle => 'Results';
+
+  @override
+  String get newStoreBadge => 'New';
+
+  @override
+  String get deliveryTimeLabel => 'Delivery time';
+
+  @override
+  String get showLess => 'Show less';
+
+  @override
+  String yourOrderFrom(String store) {
+    return 'Your order from $store';
+  }
+
+  @override
+  String showAllItems(int count) {
+    return 'Show all $count items';
+  }
+
+  @override
+  String ratingsCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ratings',
+      one: '1 rating',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get adDeleted => 'Ad deleted';
@@ -3667,6 +3788,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoryNameArabicLabel => 'Name (Arabic)';
+
+  @override
+  String get searchCategoriesHint => 'Search categories';
+
+  @override
+  String subcategoriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sub-categories',
+      one: '1 sub-category',
+      zero: 'No sub-categories',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get reorderCategoriesTitle => 'Reorder categories';
+
+  @override
+  String get reorderCategoriesHint =>
+      'Drag to change the order shown to customers.';
+
+  @override
+  String get reorderScopeLabel => 'Reordering';
+
+  @override
+  String categoryCreatedMessage(String name) {
+    return 'Category \"$name\" created';
+  }
+
+  @override
+  String get categoryUpdatedMessage => 'Category updated';
+
+  @override
+  String get categoryDeletedMessage => 'Category deleted';
+
+  @override
+  String get categoriesReordered => 'Order updated';
 
   @override
   String get pickupFromBranch => 'Pickup from branch';
@@ -3865,19 +4025,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get youOweExplainer =>
-      'Cash you collected from customers and still owe the platform.';
+      'Cash you collected from customers. Hand it over to clear your balance.';
 
   @override
-  String get owedToYouExplainer => 'Money the platform owes you.';
+  String get owedToYouExplainer => 'Your earnings, ready to withdraw.';
 
   @override
-  String get requestDeposit => 'Deposit money';
+  String get requestDeposit => 'Hand over cash';
 
   @override
   String get depositAmount => 'Amount';
 
   @override
-  String get depositMethod => 'How you paid';
+  String get depositMethod => 'How did you hand it over?';
 
   @override
   String get referenceOptional => 'Reference (optional)';
@@ -3887,19 +4047,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get depositRequested =>
-      'Request sent. It is credited once an admin confirms the payment.';
+      'Hand-over submitted. It clears from your balance once an admin confirms receiving it.';
 
   @override
-  String get depositsAwaitingReview => 'Deposits';
+  String get depositsAwaitingReview => 'Cash hand-overs';
 
   @override
-  String get noDepositsPending => 'No deposits waiting.';
+  String get noDepositsPending => 'No hand-overs waiting.';
 
   @override
-  String get depositApproved => 'Deposit approved.';
+  String get depositApproved => 'Hand-over confirmed.';
 
   @override
-  String get depositRejected => 'Deposit rejected.';
+  String get depositRejected => 'Hand-over rejected.';
 
   @override
   String get financeTitle => 'Money';
@@ -4463,4 +4623,272 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adAlwaysOn => 'Always on';
+
+  @override
+  String get cashHandedOver => 'Cash handed over';
+
+  @override
+  String get handOverCashHint =>
+      'Submit the cash you collected so it clears from your balance. An admin confirms it.';
+
+  @override
+  String get inReview => 'In review';
+
+  @override
+  String get withdraw => 'Withdraw';
+
+  @override
+  String get withdrawOptionsTitle => 'How do you want to get paid?';
+
+  @override
+  String get standardPayout => 'Standard payout';
+
+  @override
+  String get standardPayoutDesc => 'Free. Paid on the next payout run.';
+
+  @override
+  String standardPayoutDue(String date) {
+    return 'Free. Paid on the next payout run ($date).';
+  }
+
+  @override
+  String get fasterPayout => 'Faster payout';
+
+  @override
+  String fasterPayoutDesc(String fee) {
+    return 'Reviewed sooner. Fee $fee.';
+  }
+
+  @override
+  String get summaryLabel => 'Summary';
+
+  @override
+  String get activityLabel => 'Activity';
+
+  @override
+  String get yesterday => 'Yesterday';
+
+  @override
+  String get balanceLabel => 'Balance';
+
+  @override
+  String get allSettledExplainer => 'All clear. Nothing is owed either way.';
+
+  @override
+  String orderRef(String number) {
+    return 'Order #$number';
+  }
+
+  @override
+  String get activeDeliveryEyebrow => 'Active delivery';
+
+  @override
+  String get collectCashBadge => 'Collect cash';
+
+  @override
+  String get paidOnlineBadge => 'Paid online';
+
+  @override
+  String get walletTxTopUp => 'Wallet top-up';
+
+  @override
+  String get walletTxPayment => 'Order payment';
+
+  @override
+  String get walletTxRefund => 'Refund';
+
+  @override
+  String get walletTxCashback => 'Cashback';
+
+  @override
+  String get walletTxTip => 'Tip';
+
+  @override
+  String topUpAdded(String amount) {
+    return '$amount added to your wallet';
+  }
+
+  @override
+  String get topUpCancelled =>
+      'Payment cancelled. Your balance was not changed.';
+
+  @override
+  String get topUpFailed => 'Payment failed. Your balance was not changed.';
+
+  @override
+  String get topUpPending =>
+      'Still confirming with the bank. Pull to refresh in a moment.';
+
+  @override
+  String get topUpInvalidAmount => 'Enter an amount between 10 and 20,000 EGP.';
+
+  @override
+  String get topUpUnavailable =>
+      'Card payments are not available right now. Try again later.';
+
+  @override
+  String get topUpOpenFailed =>
+      'Could not open the payment page. Please try again.';
+
+  @override
+  String get walletSpendHint => 'Pay for orders with your balance at checkout.';
+
+  @override
+  String get needsAttention => 'Needs attention';
+
+  @override
+  String get nothingNeedsAttention => 'Nothing needs your attention.';
+
+  @override
+  String pendingHandOversBanner(int count) {
+    return '$count cash hand-overs to confirm';
+  }
+
+  @override
+  String get openBalances => 'Open balances';
+
+  @override
+  String get moneyMovements => 'Money movements';
+
+  @override
+  String get driverHolds => 'Held by driver';
+
+  @override
+  String get owedToStore => 'Owed to store';
+
+  @override
+  String get totalOutstanding => 'Total outstanding';
+
+  @override
+  String partiesWithBalance(int count) {
+    return '$count with an open balance';
+  }
+
+  @override
+  String get driverLabel => 'Driver';
+
+  @override
+  String get settlementsPaidOut => 'Settlements paid';
+
+  @override
+  String get loyaltyOrderReward => 'Order reward';
+
+  @override
+  String get pointsEarned => 'Points earned';
+
+  @override
+  String pointsValue(String count) {
+    return '$count pts';
+  }
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
+  String get cancelOrderConfirm =>
+      'Cancel this order? The store will be told right away.';
+
+  @override
+  String get keepOrder => 'Keep order';
+
+  @override
+  String get payAtPickup => 'Pay at pickup, in EGP';
+
+  @override
+  String get readyForPickupIn => 'Ready for pickup in';
+
+  @override
+  String get customerNotesLabel => 'Note from customer';
+
+  @override
+  String get proofPhoto => 'Proof photo';
+
+  @override
+  String get noProofAttached => 'No proof photo attached';
+
+  @override
+  String get rejectReasonOptional => 'Reason (optional, shown to the driver)';
+
+  @override
+  String get confirmUnrestrictedAccessTitle => 'Grant unrestricted access?';
+
+  @override
+  String get confirmUnrestrictedAccessCreate =>
+      'This login will have full admin access — every screen, every permission, nothing restricted. Pick a role instead unless that\'s really what you mean.';
+
+  @override
+  String get confirmPromoteTitle => 'Add to staff?';
+
+  @override
+  String confirmPromoteMessage(String name) {
+    return '$name will be able to sign in to the admin console with the role you picked.';
+  }
+
+  @override
+  String get auditActionVendorStatus => 'Store status changed';
+
+  @override
+  String get auditActionDriverStatus => 'Driver status changed';
+
+  @override
+  String get auditActionPricesAdjusted => 'Prices adjusted';
+
+  @override
+  String get auditActionWalletCredit => 'Wallet credited';
+
+  @override
+  String get auditActionWalletDebit => 'Wallet debited';
+
+  @override
+  String get auditActionUserDelete => 'Account deleted';
+
+  @override
+  String get auditActionEarlySettlementFee => 'Early payout fee changed';
+
+  @override
+  String get auditActionVendorRecommend => 'Recommended flag changed';
+
+  @override
+  String get auditActionOrderAssign => 'Driver assigned to order';
+
+  @override
+  String get auditActionOrderRefund => 'Order refunded';
+
+  @override
+  String get auditActionStaffCreate => 'Staff login created';
+
+  @override
+  String get auditActionStaffGrant => 'Staff role granted';
+
+  @override
+  String get auditActionStaffRevoke => 'Staff access revoked';
+
+  @override
+  String get viewDetails => 'View details';
+
+  @override
+  String get areaInactive => 'Inactive';
+
+  @override
+  String get activateArea => 'Activate';
+
+  @override
+  String get deactivateArea => 'Deactivate';
+
+  @override
+  String get deactivateAreaConfirm =>
+      'Orders from this area will stop being accepted. You can turn it back on any time.';
+
+  @override
+  String get newCategory => 'New Category';
+
+  @override
+  String get editCategoryTitle => 'Edit Category';
+
+  @override
+  String get removeRecommendationConfirm =>
+      'Remove this store from the promoted rail?';
+
+  @override
+  String get placementSplash => 'App splash (before launch)';
 }

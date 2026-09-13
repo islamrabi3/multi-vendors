@@ -1,8 +1,15 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/splash_gate.dart';
 import '../../../app/tokens.dart';
+import '../../../core/models/banner_item.dart';
+import '../../../core/repositories/offers_repository.dart';
 import '../../../core/widgets/brand_logo.dart';
+import '../../../core/models/profile.dart';
+import '../../../core/widgets/interstitial_ad.dart';
+import '../auth_cubit.dart';
 
 /// The Kitchen IN splash.
 ///
@@ -45,14 +52,70 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
+  final _offers = OffersRepository();
+  bool _introFinished = false;
+
   late final AnimationController _intro =
       AnimationController(vsync: this, duration: _timeline)
         ..addStatusListener((status) {
           // The router holds the app here until this fires. Without it a cached
           // session resolved in ~200 ms and the redirect cut the arch off
           // mid-draw, so a warm start never showed the brand.
-          if (status == AnimationStatus.completed) SplashGate.markIntroDone();
+          if (status == AnimationStatus.completed) _finishIntro();
         });
+
+  /// Runs once, right as the brand animation reaches its last frame: checks
+  /// for a splash-placement ad and shows it if there is one, then releases
+  /// the gate. [InterstitialAds] already caps the whole app at one full-screen
+  /// ad per launch, so a splash ad here means the home screen's own
+  /// interstitial check later in the session finds nothing left to show —
+  /// which is the point, not a bug.
+  ///
+  /// Bounded by a hard timeout: this is the one caller of [InterstitialAds]
+  /// that gates the app opening at all, so a slow network must never be able
+  /// to strand somebody on the branded splash indefinitely.
+  Future<void> _finishIntro() async {
+    if (_introFinished) return;
+    _introFinished = true;
+    if (mounted && !kIsWeb && await _isSignedInCustomer()) {
+      if (!mounted) {
+        SplashGate.markIntroDone();
+        return;
+      }
+      try {
+        await InterstitialAds.maybeShow(
+          context,
+          repository: _offers,
+          placement: AdPlacement.splash,
+          fetchTimeout: const Duration(seconds: 4),
+        );
+      } catch (_) {
+        // A promo is never worth blocking the app over.
+      }
+    }
+    SplashGate.markIntroDone();
+  }
+
+  /// Splash ads are for customers only. The session may still be resolving
+  /// when the intro ends, so this waits for it — briefly. Signed-out visitors
+  /// are skipped too: at that point nobody knows whether they are a customer,
+  /// a driver or a store owner.
+  Future<bool> _isSignedInCustomer() async {
+    final cubit = context.read<AuthCubit>();
+    var state = cubit.state;
+    try {
+      if (state.status == AuthStatus.unknown) {
+        state = await cubit.stream
+            .firstWhere((s) => s.status != AuthStatus.unknown)
+            .timeout(const Duration(seconds: 4));
+      }
+    } catch (_) {
+      return false;
+    }
+    return state.status == AuthStatus.authenticated &&
+        state.profile?.role == UserRole.customer &&
+        !state.needsRoleChoice;
+  }
 
   /// The two decorative circles drift ~40 px over 18–22 s. Separate from
   /// [_intro] because it outlives it and repeats.
@@ -81,7 +144,12 @@ class _SplashScreenState extends State<SplashScreen>
       // Setting `value` lands the final frame without ever reporting
       // `completed`, so the gate has to be released by hand — otherwise
       // "reduce motion" would strand the app on the splash forever.
+      //
+      // Skips the splash-ad check too, rather than routing through
+      // [_finishIntro]: a full-screen takeover — video or not — is exactly
+      // the kind of imposed motion this setting is asking the app not to add.
       _intro.value = 1;
+      _introFinished = true;
       SplashGate.markIntroDone();
       _drift.stop();
       _drift.value = 0.5;

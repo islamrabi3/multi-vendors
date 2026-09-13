@@ -146,18 +146,28 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
     final l10n = context.l10n;
     final webWide = AppBreakpoints.isWebWide(context);
 
-    final filterBar = SegmentedButton<String>(
-      segments: [
-        ButtonSegment(value: 'all', label: Text(l10n.all)),
-        ButtonSegment(value: 'pending', label: Text(l10n.pendingLabel)),
-        ButtonSegment(value: 'resolved', label: Text(l10n.resolvedLabel)),
-      ],
-      selected: {_filterStatus},
-      onSelectionChanged: (set) {
-        setState(() => _filterStatus = set.first);
-        _load();
-      },
-    );
+    // [expanded] fills a phone's width with equal segments. Without it the
+    // Arabic labels plus the selected check ran past a 358px screen.
+    Widget buildFilterBar({bool expanded = false}) {
+      Text label(String text) =>
+          Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+      return SegmentedButton<String>(
+        expandedInsets: expanded ? EdgeInsets.zero : null,
+        showSelectedIcon: !expanded,
+        segments: [
+          ButtonSegment(value: 'all', label: label(l10n.all)),
+          ButtonSegment(value: 'pending', label: label(l10n.pendingLabel)),
+          ButtonSegment(value: 'resolved', label: label(l10n.resolvedLabel)),
+        ],
+        selected: {_filterStatus},
+        onSelectionChanged: (set) {
+          setState(() => _filterStatus = set.first);
+          _load();
+        },
+      );
+    }
+
+    final filterBar = buildFilterBar();
 
     final body = _loading
         ? const Center(child: CircularProgressIndicator())
@@ -229,7 +239,7 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
                 horizontal: AppSpace.gutter,
                 vertical: AppSpace.sm,
               ),
-              child: Row(children: [filterBar]),
+              child: buildFilterBar(expanded: true),
             ),
             Expanded(child: body),
           ],

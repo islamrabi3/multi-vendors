@@ -39,11 +39,9 @@ class AdminShell extends StatelessWidget {
     return AdaptiveShell(
       shell: shell,
       maxContentWidth: 1200,
-      // Four destinations, not six. A phone tab bar stops reading at a glance
-      // past four or five labels, and the admin area kept gaining tools —
-      // drivers and menu import were already hidden in an avatar menu because
-      // there was nowhere left to put them. Daily work keeps its tabs;
-      // everything occasional moved behind "Manage".
+      // Three destinations: daily work only. Every occasional tool used to
+      // sit behind a fourth "Manage" tab; it now shows as a grid on Overview
+      // instead, so the tab bar keeps only what an admin opens every day.
       destinations: [
         AdaptiveDestination(
           icon: Icons.grid_view_outlined,
@@ -59,11 +57,6 @@ class AdminShell extends StatelessWidget {
           icon: Icons.storefront_outlined,
           selectedIcon: Icons.storefront,
           label: context.l10n.vendors,
-        ),
-        AdaptiveDestination(
-          icon: Icons.tune_outlined,
-          selectedIcon: Icons.tune_rounded,
-          label: context.l10n.manage,
         ),
       ],
     );

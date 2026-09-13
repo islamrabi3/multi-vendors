@@ -9,6 +9,7 @@ import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../admin_categories_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -42,6 +43,15 @@ class _CategoriesView extends StatefulWidget {
 }
 
 class _CategoriesViewState extends State<_CategoriesView> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -51,11 +61,37 @@ class _CategoriesViewState extends State<_CategoriesView> {
       listener: (context, state) {
         if (state.error != null) {
           showFailure(context, state.error!);
-        } else if (state.successMessage != null) {
-          showSnack(context, state.successMessage!);
+          return;
+        }
+        switch (state.event) {
+          case CategoryEvent.created:
+            showSnack(
+              context,
+              l10n.categoryCreatedMessage(state.eventCategoryName ?? ''),
+            );
+          case CategoryEvent.updated:
+            showSnack(context, l10n.categoryUpdatedMessage);
+          case CategoryEvent.deleted:
+            showSnack(context, l10n.categoryDeletedMessage);
+          case CategoryEvent.reordered:
+            showSnack(context, l10n.categoriesReordered);
+          case null:
+            break;
         }
       },
       builder: (context, state) {
+        final query = _query.trim().toLowerCase();
+        final searching = query.isNotEmpty;
+        final matches = searching
+            ? state.categories
+                  .where(
+                    (c) =>
+                        c.name.toLowerCase().contains(query) ||
+                        (c.nameAr?.toLowerCase().contains(query) ?? false),
+                  )
+                  .toList()
+            : const <VendorCategory>[];
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -63,8 +99,29 @@ class _CategoriesViewState extends State<_CategoriesView> {
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
               child: Row(
                 children: [
-                  Text(l10n.categoriesTab, style: AppType.display(26)),
-                  const Spacer(),
+                  // The title duplicated whatever chrome already named this
+                  // page — the AppBar on mobile, `WebPageChrome`'s own header
+                  // on web — everywhere except `embedded`, which has no title
+                  // anywhere else at all.
+                  if (widget.embedded)
+                    Expanded(
+                      child: Text(
+                        l10n.categoriesTab,
+                        style: AppType.display(26),
+                      ),
+                    )
+                  else
+                    const Spacer(),
+                  if (state.categories.length > 4) ...[
+                    IconButton.outlined(
+                      onPressed: state.categories.isEmpty
+                          ? null
+                          : () => _showReorder(context),
+                      icon: const Icon(Icons.swap_vert_rounded),
+                      tooltip: l10n.reorderCategoriesTitle,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   IconButton.filled(
                     onPressed: () => _showEditor(context),
                     style: IconButton.styleFrom(
@@ -76,13 +133,68 @@ class _CategoriesViewState extends State<_CategoriesView> {
                 ],
               ),
             ),
+            if (state.categories.length > 6)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: InputDecoration(
+                    hintText: l10n.searchCategoriesHint,
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: searching
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => setState(() {
+                              _searchController.clear();
+                              _query = '';
+                            }),
+                          )
+                        : null,
+                    isDense: true,
+                  ),
+                ),
+              ),
             if (state.loading && state.categories.isEmpty)
-              const Expanded(child: LoadingView())
+              const Expanded(child: _CategoriesSkeleton())
+            else if (state.error != null && state.categories.isEmpty)
+              // Distinct from "no categories yet": a failed load previously
+              // rendered identically to a store with none configured, and the
+              // only sign anything went wrong was a snackbar that had already
+              // disappeared by the time anyone looked.
+              Expanded(
+                child: FailureView(
+                  error: state.error!,
+                  onRetry: () => context.read<AdminCategoriesCubit>().load(),
+                ),
+              )
             else if (state.categories.isEmpty)
               Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () => context.read<AdminCategoriesCubit>().load(),
+                  // Scrollable even though it has one child: pull-to-refresh
+                  // needs something to drag against, and a bare `EmptyView`
+                  // has no scroll surface at all to catch the gesture.
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.sizeOf(context).height * 0.5,
+                        child: EmptyView(
+                          message: l10n.noCategoriesYet,
+                          icon: Icons.grid_view_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (searching && matches.isEmpty)
+              Expanded(
                 child: EmptyView(
-                  message: l10n.noCategoriesYet,
-                  icon: Icons.grid_view_rounded,
+                  message: l10n.noResultsFor(_query.trim()),
+                  icon: Icons.search_off_rounded,
                 ),
               )
             else
@@ -90,32 +202,61 @@ class _CategoriesViewState extends State<_CategoriesView> {
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: () => context.read<AdminCategoriesCubit>().load(),
-                  child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    // Fixed at 2 columns this stretched every card to half a
-                    // 1200px web shell — a portrait tile meant to be glanced
-                    // at, filling most of the screen. More columns on wide
-                    // web is the same fix `_moneyGrid` uses in
-                    // admin_finance_screen.dart.
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: webWide ? 5 : 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.85,
-                    ),
-                    itemCount: state.categories.length,
-                    itemBuilder: (context, index) {
-                      final category = state.categories[index];
-                      return _CategoryCard(
-                        category: category,
-                        onEdit: () => _showEditor(context, category: category),
-                        onDelete: () => _confirmDelete(context, category),
-                        onRecommendations: () =>
-                            _showRecommendations(context, category),
-                      );
-                    },
-                  ),
+                  child: searching
+                      ? ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: matches.length,
+                          itemBuilder: (context, index) {
+                            final category = matches[index];
+                            final parent = category.parentId == null
+                                ? null
+                                : state.categories
+                                      .where((c) => c.id == category.parentId)
+                                      .firstOrNull;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.lg,
+                                ),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: _CategoryRow(
+                                category: category,
+                                subtitle: parent == null
+                                    ? l10n.subcategoriesCount(
+                                        state.childrenOf(category.id).length,
+                                      )
+                                    : parent.name,
+                                onEdit: () =>
+                                    _showEditor(context, category: category),
+                                onDelete: () =>
+                                    _confirmDelete(context, category),
+                                onRecommendations: () =>
+                                    _showRecommendations(context, category),
+                              ),
+                            );
+                          },
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: state.topLevel.length,
+                          itemBuilder: (context, index) {
+                            final parent = state.topLevel[index];
+                            return _CategorySection(
+                              parent: parent,
+                              children: state.childrenOf(parent.id),
+                              onEdit: (c) => _showEditor(context, category: c),
+                              onDelete: (c) => _confirmDelete(context, c),
+                              onRecommendations: (c) =>
+                                  _showRecommendations(context, c),
+                            );
+                          },
+                        ),
                 ),
               ),
           ],
@@ -137,13 +278,11 @@ class _CategoriesViewState extends State<_CategoriesView> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(l10n.categoriesTab),
-      ),
+      // Default leading rather than a hand-built `arrow_back_ios`: that glyph
+      // is the iOS chevron specifically and never mirrors for Arabic, where
+      // `Icons.arrow_back` (which every other admin screen uses) does both
+      // correctly on its own.
+      appBar: AppBar(title: Text(l10n.categoriesTab)),
       body: SafeArea(top: false, bottom: false, child: content),
     );
   }
@@ -194,30 +333,66 @@ class _CategoriesViewState extends State<_CategoriesView> {
       cubit.deleteCategory(category.id);
     }
   }
+
+  void _showReorder(BuildContext context) {
+    final cubit = context.read<AdminCategoriesCubit>();
+    showAdaptiveSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+      ),
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: const _ReorderCategoriesSheet(),
+      ),
+    );
+  }
 }
 
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({
-    required this.category,
+/// Shaped like the real list, so it doesn't jump when the categories land.
+class _CategoriesSkeleton extends StatelessWidget {
+  const _CategoriesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonTheme(
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 4,
+        separatorBuilder: (_, _) => const SizedBox(height: 16),
+        itemBuilder: (_, _) =>
+            const Skeleton.box(height: 180, radius: AppRadii.lg),
+      ),
+    );
+  }
+}
+
+/// One kind-of-shop and its cuisines as a single bordered list: the parent
+/// row on top, its sub-categories indented beneath it.
+class _CategorySection extends StatelessWidget {
+  const _CategorySection({
+    required this.parent,
+    required this.children,
     required this.onEdit,
     required this.onDelete,
     required this.onRecommendations,
   });
 
-  final VendorCategory category;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onRecommendations;
+  final VendorCategory parent;
+  final List<VendorCategory> children;
+  final ValueChanged<VendorCategory> onEdit;
+  final ValueChanged<VendorCategory> onDelete;
+  final ValueChanged<VendorCategory> onRecommendations;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        // A 1px border and a soft drop shadow on the same element is the
-        // "ghost card" look — pick one. The border reads better against the
-        // canvas here, and 16 is the radius the rest of the console uses;
-        // 20 made these tiles noticeably rounder than everything beside them.
         borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: AppColors.border),
       ),
@@ -225,133 +400,296 @@ class _CategoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (category.imageUrl != null && category.imageUrl!.isNotEmpty)
-                  AppNetworkImage(url: category.imageUrl!)
-                else
-                  Container(
-                    color: AppColors.warmFill,
-                    child: const Icon(
-                      Icons.grid_view_rounded,
-                      size: 36,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                // The sort order decides where this sits on the customer's
-                // home screen and is editable, but was invisible here — so
-                // reordering meant opening each card to find out where it
-                // already was.
-                PositionedDirectional(
-                  top: 8,
-                  start: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.ink.withValues(alpha: 0.62),
-                      borderRadius: BorderRadius.circular(AppRadii.xs),
-                    ),
-                    child: Text(
-                      '#${category.sortOrder}',
-                      style: AppType.mono(
-                        10.5,
-                        weight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          _CategoryRow(
+            category: parent,
+            subtitle: context.l10n.subcategoriesCount(children.length),
+            onEdit: () => onEdit(parent),
+            onDelete: () => onDelete(parent),
+            onRecommendations: () => onRecommendations(parent),
+          ),
+          for (final child in children) ...[
+            const Divider(
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: AppColors.borderSoft,
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-            child: Column(
-              // Start-aligned like every other list in the console. Centred
-              // text reads as a tile in a picker rather than a row in an
-              // editor, and the names are ragged lengths anyway.
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  category.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14.5,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                // The Arabic name is what half the customers actually see, so
-                // an admin checking a category should not have to open the
-                // editor to find out whether it has one.
-                Text(
-                  (category.nameAr?.trim().isNotEmpty ?? false)
-                      ? category.nameAr!
-                      : context.l10n.noArabicName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: (category.nameAr?.trim().isNotEmpty ?? false)
-                        ? AppColors.textSecondary
-                        : AppColors.textFaint,
-                    fontStyle: (category.nameAr?.trim().isNotEmpty ?? false)
-                        ? FontStyle.normal
-                        : FontStyle.italic,
-                  ),
-                ),
-              ],
+            _CategoryRow(
+              category: child,
+              isChild: true,
+              onEdit: () => onEdit(child),
+              onDelete: () => onDelete(child),
+              onRecommendations: () => onRecommendations(child),
             ),
-          ),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          // Off the artwork. Three translucent circles sitting on the image
-          // obscured the one thing the card exists to show, and a hit target
-          // floating over a photo is guesswork on a trackpad.
-          Row(
-            children: [
-              _footerAction(
-                icon: Icons.auto_awesome_rounded,
-                color: AppColors.primary,
-                onTap: onRecommendations,
-              ),
-              _footerAction(
-                icon: Icons.edit_outlined,
-                color: AppColors.textMuted,
-                onTap: onEdit,
-              ),
-              const Spacer(),
-              _footerAction(
-                icon: Icons.delete_outline_rounded,
-                color: AppColors.dangerInk,
-                onTap: onDelete,
-              ),
-            ],
-          ),
+          ],
         ],
       ),
     );
   }
+}
 
-  Widget _footerAction({
+/// A category as one list row: thumbnail, both names, and its actions.
+/// Tapping the row edits it.
+class _CategoryRow extends StatelessWidget {
+  const _CategoryRow({
+    required this.category,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onRecommendations,
+    this.subtitle,
+    this.isChild = false,
+  });
+
+  final VendorCategory category;
+  final String? subtitle;
+  final bool isChild;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onRecommendations;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final arabic = category.nameAr?.trim() ?? '';
+    final thumb = isChild ? 38.0 : 48.0;
+    final secondLine = [
+      arabic.isEmpty ? l10n.noArabicName : arabic,
+      ?subtitle,
+    ].join(' · ');
+
+    return InkWell(
+      onTap: onEdit,
+      child: Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(isChild ? 36 : 12, 10, 4, 10),
+        child: Row(
+          children: [
+            if (isChild)
+              const Padding(
+                padding: EdgeInsetsDirectional.only(end: 10),
+                child: Icon(
+                  Icons.subdirectory_arrow_right_rounded,
+                  size: 18,
+                  color: AppColors.textFaint,
+                ),
+              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              child: SizedBox(
+                width: thumb,
+                height: thumb,
+                child: (category.imageUrl?.isNotEmpty ?? false)
+                    ? AppNetworkImage(url: category.imageUrl!)
+                    : Container(
+                        color: AppColors.warmFill,
+                        child: Icon(
+                          Icons.grid_view_rounded,
+                          size: thumb * 0.45,
+                          color: AppColors.primary,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    category.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: isChild
+                        ? const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: AppColors.ink,
+                          )
+                        : AppType.heading(15.5),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    secondLine,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: arabic.isEmpty
+                          ? AppColors.textFaint
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _action(
+              icon: Icons.auto_awesome_rounded,
+              color: AppColors.primary,
+              tooltip: l10n.recommendedIn(category.name),
+              onTap: onRecommendations,
+            ),
+            _action(
+              icon: Icons.edit_outlined,
+              color: AppColors.textMuted,
+              tooltip: l10n.edit,
+              onTap: onEdit,
+            ),
+            _action(
+              icon: Icons.delete_outline_rounded,
+              color: AppColors.dangerInk,
+              tooltip: l10n.delete,
+              onTap: onDelete,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _action({
     required IconData icon,
     required Color color,
+    required String tooltip,
     required VoidCallback onTap,
   }) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(icon, size: 17),
+      tooltip: tooltip,
+      icon: Icon(icon, size: 19),
       color: color,
       visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints.tightFor(width: 36, height: 34),
-      padding: EdgeInsets.zero,
+    );
+  }
+}
+
+/// Reorders one sibling group at a time — the top-level list, or one
+/// parent's cuisines — since `sortOrder` is only ever compared within a
+/// group. Mirrors the vendor side's own manage-sections sheet.
+class _ReorderCategoriesSheet extends StatefulWidget {
+  const _ReorderCategoriesSheet();
+
+  @override
+  State<_ReorderCategoriesSheet> createState() =>
+      _ReorderCategoriesSheetState();
+}
+
+class _ReorderCategoriesSheetState extends State<_ReorderCategoriesSheet> {
+  /// Null means "the top-level list"; otherwise a parent's id.
+  String? _scope;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final language = Localizations.localeOf(context).languageCode;
+    return BlocBuilder<AdminCategoriesCubit, AdminCategoriesState>(
+      builder: (context, state) {
+        final cubit = context.read<AdminCategoriesCubit>();
+        final parentsWithChildren = state.topLevel
+            .where((p) => state.childrenOf(p.id).isNotEmpty)
+            .toList();
+        final scope = _scope;
+        final list = scope == null ? state.topLevel : state.childrenOf(scope);
+
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                  child: Text(
+                    l10n.reorderCategoriesTitle,
+                    style: AppType.heading(18),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Text(
+                    l10n.reorderCategoriesHint,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+                if (parentsWithChildren.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                    child: DropdownButtonFormField<String?>(
+                      initialValue: _scope,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: l10n.reorderScopeLabel,
+                        prefixIcon: const Icon(Icons.account_tree_outlined),
+                      ),
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(l10n.noParentTopLevel),
+                        ),
+                        for (final parent in parentsWithChildren)
+                          DropdownMenuItem<String?>(
+                            value: parent.id,
+                            child: Text(
+                              parent.label(language),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _scope = value),
+                    ),
+                  ),
+                Flexible(
+                  child: ReorderableListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    itemCount: list.length,
+                    onReorder: (from, to) {
+                      final moved = [...list];
+                      moved.insert(
+                        to > from ? to - 1 : to,
+                        moved.removeAt(from),
+                      );
+                      cubit.reorderCategories(moved);
+                    },
+                    itemBuilder: (context, i) {
+                      final category = list[i];
+                      return ListTile(
+                        key: ValueKey(category.id),
+                        contentPadding: const EdgeInsetsDirectional.only(
+                          start: 8,
+                          end: 0,
+                        ),
+                        leading: ReorderableDragStartListener(
+                          index: i,
+                          child: const Icon(
+                            Icons.drag_indicator_rounded,
+                            color: AppColors.textFaint,
+                          ),
+                        ),
+                        title: Text(
+                          category.label(language),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -469,7 +807,7 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
             ),
           ),
           Text(
-            isNew ? 'New Category' : 'Edit Category',
+            isNew ? context.l10n.newCategory : context.l10n.editCategoryTitle,
             style: AppType.heading(19, color: AppColors.ink),
           ),
           const SizedBox(height: 20),
@@ -646,7 +984,7 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
                     ),
                     onPressed: _busy ? null : _save,
                     child: _busy
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const ButtonSpinner()
                         : Text(context.l10n.save),
                   ),
                 ),
@@ -757,6 +1095,18 @@ class _CategoryRecommendationsSheetState
   }
 
   Future<void> _remove(Vendor vendor) async {
+    // Removing costs the store a placement it may be paying for — one tap
+    // with no way back was too cheap a way to lose it by accident.
+    final confirmed = await AppDialogs.showConfirmDialog(
+      context: context,
+      title: vendor.name,
+      message: context.l10n.removeRecommendationConfirm,
+      confirmText: context.l10n.delete,
+      cancelText: context.l10n.cancel,
+      isDestructive: true,
+    );
+    if (confirmed != true) return;
+
     setState(() => _busy = true);
     try {
       await _repository.removeCategoryRecommendation(
@@ -840,7 +1190,7 @@ class _CategoryRecommendationsSheetState
                           onPressed: _busy ? null : () => _remove(pick.vendor),
                           icon: const Icon(
                             Icons.remove_circle_outline_rounded,
-                            color: Colors.redAccent,
+                            color: AppColors.dangerInk,
                           ),
                         ),
                       ),
