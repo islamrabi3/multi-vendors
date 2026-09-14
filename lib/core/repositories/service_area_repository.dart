@@ -54,17 +54,18 @@ class ServiceAreaRepository {
     final data = id == null
         ? await supabase.from('service_areas').insert(values).select().single()
         : await supabase
-            .from('service_areas')
-            .update(values)
-            .eq('id', id)
-            .select()
-            .single();
+              .from('service_areas')
+              .update(values)
+              .eq('id', id)
+              .select()
+              .single();
     return ServiceArea.fromMap(data);
   }
 
   Future<void> setActive(String id, bool isActive) => supabase
       .from('service_areas')
-      .update({'is_active': isActive}).eq('id', id);
+      .update({'is_active': isActive})
+      .eq('id', id);
 
   /// Nothing references an area by foreign key, so this is a plain delete. It
   /// used to first clear a `vendor_service_areas` join table that was never

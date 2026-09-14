@@ -7,19 +7,18 @@ import '../../../core/models/address.dart';
 import '../../../core/models/service_area.dart';
 import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/service_area_repository.dart';
+import '../../../core/utils/address_format.dart';
+import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/location_picker.dart';
 import '../../../core/widgets/skeleton.dart';
-import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class AddressesScreen extends StatefulWidget {
   const AddressesScreen({super.key, this.selectedId});
 
   /// Pick mode: tapping a row pops the screen with that address's id, and the
-  /// currently selected one is marked. Checkout is the only caller of this —
-  /// previously there was no way to pick an address at all, "Change" only
-  /// reopened this list to edit or delete from and returned nothing.
+  /// currently selected one is marked. Checkout is the only caller.
   ///
   /// Null (the normal "My addresses" screen) means rows open the editor.
   final String? selectedId;
@@ -28,11 +27,16 @@ class AddressesScreen extends StatefulWidget {
   State<AddressesScreen> createState() => _AddressesScreenState();
 }
 
+enum _AddressAction { edit, makeDefault, delete }
+
 class _AddressesScreenState extends State<AddressesScreen> {
   final _repository = AddressRepository();
   final _areaRepository = ServiceAreaRepository();
   List<Address>? _addresses;
+  Object? _error;
   List<ServiceArea> _coverage = const [];
+
+  bool get _picking => widget.selectedId != null;
 
   @override
   void initState() {
@@ -44,9 +48,16 @@ class _AddressesScreenState extends State<AddressesScreen> {
   Future<void> _load() async {
     try {
       final addresses = await _repository.fetchAddresses();
-      if (mounted) setState(() => _addresses = addresses);
-    } catch (_) {
-      if (mounted) setState(() => _addresses = []);
+      if (mounted) {
+        setState(() {
+          _addresses = addresses;
+          _error = null;
+        });
+      }
+    } catch (error) {
+      // A failed load is not "no addresses": saying so would invite the
+      // customer to re-enter addresses they already have.
+      if (mounted) setState(() => _error = error);
     }
   }
 
@@ -56,9 +67,14 @@ class _AddressesScreenState extends State<AddressesScreen> {
     try {
       final areas = await _areaRepository.fetchActive();
       if (mounted) setState(() => _coverage = areas);
-    } catch (_) {
-      // Leave coverage empty; the order RPC still enforces the real rule.
+    } catch (_) {}
+  }
+
+  bool _isCovered(Address address) {
+    if (_coverage.isEmpty || address.lat == null || address.lng == null) {
+      return true;
     }
+    return _coverage.any((a) => a.contains(address.lat!, address.lng!));
   }
 
   Future<void> _edit([Address? address]) async {
@@ -81,14 +97,14 @@ class _AddressesScreenState extends State<AddressesScreen> {
           address: address,
           coverage: _coverage,
           picked: picked,
+          // The first address is the default whether or not anyone says so.
+          firstAddress: (_addresses ?? const []).isEmpty,
         ),
       ),
     );
     if (changed != true) return;
-    // In pick mode, adding a brand-new address is finishing the pick, not a
-    // reason to sit back on this list — the customer already told us where
-    // to deliver by drawing the pin.
-    if (widget.selectedId != null && address == null) {
+    // In pick mode, adding a brand-new address finishes the pick.
+    if (_picking && address == null) {
       final before = _addresses?.map((a) => a.id).toSet() ?? const {};
       await _load();
       final created = _addresses
@@ -101,297 +117,303 @@ class _AddressesScreenState extends State<AddressesScreen> {
     _load();
   }
 
-  IconData _getIconForLabel(String label) {
-    final lower = label.toLowerCase();
-    if (lower.contains('home')) {
-      return Icons.home_rounded;
-    } else if (lower.contains('work') ||
-        lower.contains('office') ||
-        lower.contains('business')) {
-      return Icons.business_rounded;
-    } else if (lower.contains('partner') ||
-        lower.contains('love') ||
-        lower.contains('friend')) {
-      return Icons.favorite_rounded;
+  Future<void> _onAction(Address address, _AddressAction action) async {
+    final l10n = context.l10n;
+    switch (action) {
+      case _AddressAction.edit:
+        await _edit(address);
+      case _AddressAction.makeDefault:
+        try {
+          await _repository.saveAddress({'is_default': true}, id: address.id);
+          if (mounted) showSnack(context, l10n.defaultAddressUpdated);
+          await _load();
+        } catch (error) {
+          if (mounted) showFailure(context, error);
+        }
+      case _AddressAction.delete:
+        final deleted = await showConfirmDialog(
+          context: context,
+          title: l10n.deleteAddress,
+          message: l10n.areYouSureYouWantToDeleteThisAddress,
+          confirmLabel: l10n.delete,
+          cancelLabel: l10n.cancel,
+          tone: AppDialogTone.danger,
+          icon: Icons.location_off_rounded,
+          onConfirm: () => _repository.deleteAddress(address.id),
+        );
+        if (deleted) _load();
     }
-    return Icons.location_on_rounded;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final addresses = _addresses;
+
+    Widget body;
+    if (addresses == null && _error != null) {
+      body = FailureView(error: _error!, onRetry: _load);
+    } else if (addresses == null) {
+      body = const _AddressesSkeleton();
+    } else if (addresses.isEmpty) {
+      body = _EmptyAddresses(onAdd: () => _edit());
+    } else {
+      body = RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _load,
+        child: ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          itemCount: addresses.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final address = addresses[index];
+            return _AddressTile(
+              address: address,
+              covered: _isCovered(address),
+              selected: address.id == widget.selectedId,
+              picking: _picking,
+              onTap: _picking
+                  ? () => Navigator.of(context).pop(address.id)
+                  : () => _edit(address),
+              onAction: (action) => _onAction(address, action),
+            );
+          },
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(
-          context.l10n.myAddresses,
-          style: AppType.display(22, color: AppColors.ink),
-        ),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back, size: 22),
-                onPressed: () => Navigator.of(context).pop(),
-              )
-            : null,
+        title: Text(_picking ? l10n.chooseDeliveryAddress : l10n.myAddresses),
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          boxShadow: AppShadows.primaryGlow,
-        ),
-        child: FloatingActionButton(
-          onPressed: () => _edit(),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-          ),
-          child: const Icon(Icons.add, size: 28),
-        ),
-      ),
-      body: addresses == null
-          ? const _AddressesSkeleton()
-          : addresses.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: addresses.length,
-              itemBuilder: (context, index) {
-                final address = addresses[index];
-                final icon = _getIconForLabel(address.label);
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadii.xl),
-                    border: Border.all(
-                      color: address.id == widget.selectedId
-                          ? AppColors.primary
-                          : address.isDefault
-                          ? AppColors.primary.withValues(alpha: 0.3)
-                          : AppColors.border,
-                      width: address.id == widget.selectedId
-                          ? 2.0
-                          : address.isDefault
-                          ? 1.5
-                          : 1.0,
-                    ),
-                    boxShadow: AppShadows.card,
+      body: body,
+      // One clear way to add, pinned where the thumb is — a floating "+" gave
+      // no hint of what it would add.
+      bottomNavigationBar: (addresses?.isEmpty ?? true)
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: FilledButton.icon(
+                  onPressed: () => _edit(),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadii.xl),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: widget.selectedId == null
-                            ? () => _edit(address)
-                            : () => Navigator.of(context).pop(address.id),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Icon
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: address.isDefault
-                                      ? AppColors.warmFill
-                                      : AppColors.canvas,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  icon,
-                                  color: address.isDefault
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                  size: 22,
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-
-                              // Text Content
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          address.label,
-                                          style: AppType.heading(
-                                            16,
-                                            color: AppColors.ink,
-                                          ),
-                                        ),
-                                        if (address.isDefault) ...[
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.successFill,
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    AppRadii.pill,
-                                                  ),
-                                            ),
-                                            child: Text(
-                                              context.l10n.defaultAddress,
-                                              style: const TextStyle(
-                                                color: AppColors.successInk,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      address.summary,
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 13.5,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                    if (address.notes != null &&
-                                        address.notes!.isNotEmpty) ...[
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.chat_bubble_outline_rounded,
-                                            size: 14,
-                                            color: AppColors.textMuted,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              address.notes!,
-                                              style: const TextStyle(
-                                                color: AppColors.textMuted,
-                                                fontSize: 12,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-
-                              if (widget.selectedId != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Icon(
-                                    address.id == widget.selectedId
-                                        ? Icons.radio_button_checked_rounded
-                                        : Icons.radio_button_off_rounded,
-                                    size: 22,
-                                    color: address.id == widget.selectedId
-                                        ? AppColors.primary
-                                        : AppColors.textFaint,
-                                  ),
-                                )
-                              else
-                                // Actions
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    // Edit Button
-                                    Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.canvas,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: AppColors.borderSoft,
-                                        ),
-                                      ),
-                                      child: IconButton(
-                                        padding: EdgeInsets.zero,
-                                        icon: const Icon(
-                                          Icons.edit_outlined,
-                                          size: 16,
-                                        ),
-                                        color: AppColors.textSecondary,
-                                        onPressed: () => _edit(address),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    // Delete Button
-                                    Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.canvas,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: AppColors.borderSoft,
-                                        ),
-                                      ),
-                                      child: IconButton(
-                                        padding: EdgeInsets.zero,
-                                        icon: const Icon(
-                                          Icons.delete_outline_rounded,
-                                          size: 16,
-                                        ),
-                                        color: AppColors.dangerInk,
-                                        onPressed: () async {
-                                          final deleted = await showConfirmDialog(
-                                            context: context,
-                                            title: context.l10n.deleteAddress,
-                                            message: context
-                                                .l10n
-                                                .areYouSureYouWantToDeleteThisAddress,
-                                            confirmLabel: context.l10n.delete,
-                                            cancelLabel: context.l10n.cancel,
-                                            tone: AppDialogTone.danger,
-                                            icon: Icons.location_off_rounded,
-                                            onConfirm: () => _repository
-                                                .deleteAddress(address.id),
-                                          );
-                                          if (deleted) _load();
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+                  icon: const Icon(Icons.add_location_alt_rounded),
+                  label: Text(l10n.addNewAddress),
+                ),
+              ),
             ),
     );
   }
+}
 
-  Widget _buildEmptyState() {
+class _AddressTile extends StatelessWidget {
+  const _AddressTile({
+    required this.address,
+    required this.covered,
+    required this.selected,
+    required this.picking,
+    required this.onTap,
+    required this.onAction,
+  });
+
+  final Address address;
+  final bool covered;
+  final bool selected;
+  final bool picking;
+  final VoidCallback onTap;
+  final ValueChanged<_AddressAction> onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final highlighted = selected || (!picking && address.isDefault);
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        child: Container(
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 14, 4, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: highlighted ? AppColors.warmFill : AppColors.canvas,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  addressIcon(address.label),
+                  color: highlighted
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          addressLabelText(context, address.label),
+                          style: AppType.heading(15.5),
+                        ),
+                        if (address.isDefault)
+                          SoftBadge(
+                            label: l10n.defaultAddress,
+                            fill: AppColors.successFill,
+                            ink: AppColors.successInk,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      addressSummaryText(context, address),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13.5,
+                        height: 1.4,
+                      ),
+                    ),
+                    if (address.notes?.isNotEmpty ?? false) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.sticky_note_2_outlined,
+                            size: 14,
+                            color: AppColors.textFaint,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              address.notes!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (!covered) ...[
+                      const SizedBox(height: 8),
+                      SoftBadge(
+                        label: l10n.outsideServiceArea,
+                        fill: AppColors.dangerFill,
+                        ink: AppColors.dangerInk,
+                        icon: Icons.block_rounded,
+                      ),
+                    ] else if (address.lat == null) ...[
+                      const SizedBox(height: 8),
+                      SoftBadge(
+                        label: l10n.addressNeedsPin,
+                        fill: AppColors.amberFill,
+                        ink: AppColors.amberInk,
+                        icon: Icons.push_pin_outlined,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (picking)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 10, top: 10),
+                  child: Icon(
+                    selected
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    color: selected ? AppColors.primary : AppColors.textFaint,
+                  ),
+                )
+              else
+                PopupMenuButton<_AddressAction>(
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: AppColors.textMuted,
+                  ),
+                  onSelected: onAction,
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: _AddressAction.edit,
+                      child: _menuRow(Icons.edit_outlined, l10n.edit),
+                    ),
+                    if (!address.isDefault)
+                      PopupMenuItem(
+                        value: _AddressAction.makeDefault,
+                        child: _menuRow(
+                          Icons.check_circle_outline_rounded,
+                          l10n.setAsDefault,
+                        ),
+                      ),
+                    PopupMenuItem(
+                      value: _AddressAction.delete,
+                      child: _menuRow(
+                        Icons.delete_outline_rounded,
+                        l10n.delete,
+                        color: AppColors.dangerInk,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menuRow(IconData icon, String label, {Color? color}) => Row(
+    children: [
+      Icon(icon, size: 19, color: color ?? AppColors.textSecondary),
+      const SizedBox(width: 10),
+      Text(label, style: TextStyle(color: color ?? AppColors.ink)),
+    ],
+  );
+}
+
+class _EmptyAddresses extends StatelessWidget {
+  const _EmptyAddresses({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: 96,
+              height: 96,
               decoration: const BoxDecoration(
                 color: AppColors.warmFill,
                 shape: BoxShape.circle,
@@ -399,44 +421,31 @@ class _AddressesScreenState extends State<AddressesScreen> {
               child: const Icon(
                 Icons.map_rounded,
                 color: AppColors.primary,
-                size: 48,
+                size: 46,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
             Text(
-              context.l10n.whereShouldWeDeliver,
-              style: AppType.heading(20, color: AppColors.ink),
+              l10n.whereShouldWeDeliver,
+              style: AppType.heading(20),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
-              context
-                  .l10n
-                  .addYourDeliveryAddressesToOrderDeliciousFoodAndTrackItStraightToYourDoorstep,
+              l10n.addYourDeliveryAddressesToOrderDeliciousFoodAndTrackItStraightToYourDoorstep,
               style: const TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 14,
-                height: 1.4,
+                height: 1.45,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _edit(),
+            FilledButton.icon(
+              onPressed: onAdd,
+              style: FilledButton.styleFrom(minimumSize: const Size(220, 52)),
               icon: const Icon(Icons.add_location_alt_rounded),
-              label: Text(context.l10n.saveAddress),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                ),
-                elevation: 0,
-              ),
+              label: Text(l10n.addNewAddress),
             ),
           ],
         ),
@@ -451,6 +460,7 @@ class _AddressEditor extends StatefulWidget {
     this.address,
     this.coverage = const [],
     this.picked,
+    this.firstAddress = false,
   });
 
   final AddressRepository repository;
@@ -459,6 +469,7 @@ class _AddressEditor extends StatefulWidget {
 
   /// Set when the location was picked before this screen opened (new address).
   final PickedLocation? picked;
+  final bool firstAddress;
 
   @override
   State<_AddressEditor> createState() => _AddressEditorState();
@@ -466,8 +477,13 @@ class _AddressEditor extends StatefulWidget {
 
 class _AddressEditorState extends State<_AddressEditor> {
   final _formKey = GlobalKey<FormState>();
-  late final _label = TextEditingController(
-    text: widget.address?.label ?? 'Home',
+  late AddressKind _kind = addressKindOf(widget.address?.label ?? 'home');
+  late final _customLabel = TextEditingController(
+    text:
+        _kind == AddressKind.other &&
+            (widget.address?.label.trim().toLowerCase() ?? 'other') != 'other'
+        ? widget.address?.label
+        : null,
   );
   late final _street = TextEditingController(
     text: widget.address?.street ?? widget.picked?.address,
@@ -478,7 +494,7 @@ class _AddressEditorState extends State<_AddressEditor> {
     text: widget.address?.apartment,
   );
   late final _notes = TextEditingController(text: widget.address?.notes);
-  late bool _isDefault = widget.address?.isDefault ?? false;
+  late bool _isDefault = widget.address?.isDefault ?? widget.firstAddress;
   late LatLng _pin =
       widget.picked?.point ??
       (widget.address?.lat != null
@@ -492,7 +508,14 @@ class _AddressEditorState extends State<_AddressEditor> {
 
   @override
   void dispose() {
-    for (final c in [_label, _street, _building, _floor, _apartment, _notes]) {
+    for (final c in [
+      _customLabel,
+      _street,
+      _building,
+      _floor,
+      _apartment,
+      _notes,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -516,12 +539,19 @@ class _AddressEditorState extends State<_AddressEditor> {
     });
   }
 
+  String get _labelValue => switch (_kind) {
+    AddressKind.home => 'Home',
+    AddressKind.work => 'Work',
+    AddressKind.other =>
+      _customLabel.text.trim().isEmpty ? 'Other' : _customLabel.text.trim(),
+  };
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
       await widget.repository.saveAddress({
-        'label': _label.text.trim(),
+        'label': _labelValue,
         'street': _street.text.trim(),
         'building': _building.text.trim(),
         'floor': _floor.text.trim(),
@@ -542,123 +572,136 @@ class _AddressEditorState extends State<_AddressEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
         title: Text(
-          widget.address == null
-              ? context.l10n.addAddress
-              : context.l10n.editAddress,
-          style: AppType.heading(20, color: AppColors.ink),
+          widget.address == null ? l10n.addAddress : l10n.editAddress,
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 22),
-          onPressed: () => Navigator.pop(context),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: FilledButton(
+            onPressed: _saving ? null : _save,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+            child: _saving ? const ButtonSpinner() : Text(l10n.saveAddress),
+          ),
         ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          // Save sits at the end of the list, so the list clears Android's
-          // gesture bar itself.
-          padding: EdgeInsets.fromLTRB(
-            16,
-            12,
-            16,
-            12 + MediaQuery.paddingOf(context).bottom,
-          ),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             // The pin is chosen on a dedicated full-screen map; here it is a
-            // read-only preview with one way back to it. A small inline map
-            // fights the scrolling form for gestures and is hard to aim at.
+            // read-only preview with one way back to it.
             _LocationCard(
               pin: _pin,
               covered: _isCovered,
               onChange: _changeLocation,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
-            _sectionHeader(context.l10n.addressLocation),
+            _sectionHeaderText(l10n.saveAddressAs),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (final kind in AddressKind.values) ...[
+                  if (kind != AddressKind.home) const SizedBox(width: 8),
+                  Expanded(
+                    child: _KindChip(
+                      icon: addressIcon(
+                        kind == AddressKind.other ? '' : kind.name,
+                      ),
+                      label: switch (kind) {
+                        AddressKind.home => l10n.addressHome,
+                        AddressKind.work => l10n.work,
+                        AddressKind.other => l10n.other,
+                      },
+                      selected: _kind == kind,
+                      onTap: () => setState(() => _kind = kind),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (_kind == AddressKind.other) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _customLabel,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: l10n.customAddressLabel,
+                  prefixIcon: const Icon(
+                    Icons.label_outline_rounded,
+                    color: AppColors.textFaint,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 22),
+
+            _sectionHeaderText(l10n.addressLocation),
             const SizedBox(height: 10),
             TextFormField(
               controller: _street,
+              textInputAction: TextInputAction.next,
               decoration: InputDecoration(
-                labelText: context.l10n.street,
+                labelText: l10n.street,
                 prefixIcon: const Icon(
                   Icons.route_outlined,
                   color: AppColors.textFaint,
                 ),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? context.l10n.required
-                  : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? l10n.required : null,
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _label,
-              decoration: InputDecoration(
-                labelText: context.l10n.labelHomeWork,
-                prefixIcon: const Icon(
-                  Icons.tag_rounded,
-                  color: AppColors.textFaint,
-                ),
-              ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? context.l10n.required
-                  : null,
-            ),
-            const SizedBox(height: 24),
-
-            _sectionHeader(context.l10n.apartmentDetails),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: TextFormField(
                     controller: _building,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.building,
-                      alignLabelWithHint: true,
-                    ),
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(labelText: l10n.building),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextFormField(
                     controller: _floor,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.floor,
-                      alignLabelWithHint: true,
-                    ),
+                    textInputAction: TextInputAction.next,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: l10n.floor),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextFormField(
                     controller: _apartment,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.apt,
-                      alignLabelWithHint: true,
-                    ),
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(labelText: l10n.apt),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
-            _sectionHeader(context.l10n.deliveryInstructions),
+            _sectionHeaderText(l10n.deliveryInstructions),
             const SizedBox(height: 10),
             TextFormField(
               controller: _notes,
+              maxLines: 2,
               decoration: InputDecoration(
-                labelText: context.l10n.deliveryNotes,
-                prefixIcon: const Icon(
-                  Icons.note_alt_outlined,
-                  color: AppColors.textFaint,
-                ),
+                labelText: l10n.deliveryNotes,
+                alignLabelWithHint: true,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             Container(
               decoration: BoxDecoration(
@@ -668,7 +711,7 @@ class _AddressEditorState extends State<_AddressEditor> {
               ),
               child: SwitchListTile(
                 title: Text(
-                  context.l10n.defaultAddress,
+                  l10n.defaultAddress,
                   style: const TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
@@ -676,32 +719,14 @@ class _AddressEditorState extends State<_AddressEditor> {
                   ),
                 ),
                 subtitle: Text(
-                  context.l10n.useThisAsPrimaryDeliveryOption,
+                  l10n.useThisAsPrimaryDeliveryOption,
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textMuted,
                   ),
                 ),
                 value: _isDefault,
-                activeThumbColor: Colors.white,
-                activeTrackColor: AppColors.success,
-                inactiveThumbColor: Colors.white,
-                inactiveTrackColor: AppColors.border,
                 onChanged: (v) => setState(() => _isDefault = v),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-                boxShadow: AppShadows.primaryGlow,
-              ),
-              child: FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const ButtonSpinner()
-                    : Text(context.l10n.saveAddress),
               ),
             ),
           ],
@@ -709,8 +734,62 @@ class _AddressEditorState extends State<_AddressEditor> {
       ),
     );
   }
+}
 
-  Widget _sectionHeader(String title) => _sectionHeaderText(title);
+class _KindChip extends StatelessWidget {
+  const _KindChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.warmFill : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: selected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? AppColors.primaryDark : AppColors.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// A read-only map preview of the saved pin, with the single action that
@@ -823,13 +902,13 @@ class _LocationCard extends StatelessWidget {
   }
 }
 
+// Not upper-cased: that does nothing in Arabic and shouts in English.
 Widget _sectionHeaderText(String title) => Text(
-  title.toUpperCase(),
+  title,
   style: const TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w800,
-    letterSpacing: 1.2,
-    color: AppColors.textMuted,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textSecondary,
   ),
 );
 

@@ -50,30 +50,36 @@ class PlaceSearchService {
     double? nearLng,
   }) async {
     if (!isAvailable || input.trim().length < 3) return const [];
-    final uri =
-        Uri.https('maps.googleapis.com', '/maps/api/place/autocomplete/json', {
-      'input': input.trim(),
-      'key': AppConfig.googleMapsApiKey,
-      'language': languageCode,
-      if (nearLat != null && nearLng != null) 'location': '$nearLat,$nearLng',
-      if (nearLat != null && nearLng != null) 'radius': '50000',
-    });
+    final uri = Uri.https(
+      'maps.googleapis.com',
+      '/maps/api/place/autocomplete/json',
+      {
+        'input': input.trim(),
+        'key': AppConfig.googleMapsApiKey,
+        'language': languageCode,
+        if (nearLat != null && nearLng != null) 'location': '$nearLat,$nearLng',
+        if (nearLat != null && nearLng != null) 'radius': '50000',
+      },
+    );
     final body = await _get(uri);
     if (body == null) return const [];
     final predictions = body['predictions'];
     if (predictions is! List) return const [];
-    return predictions.map((p) {
-      final formatting = p['structured_formatting'];
-      return PlaceSuggestion(
-        placeId: (p['place_id'] as String?) ?? '',
-        primary: formatting is Map
-            ? (formatting['main_text'] as String?) ?? ''
-            : (p['description'] as String?) ?? '',
-        secondary: formatting is Map
-            ? (formatting['secondary_text'] as String?) ?? ''
-            : '',
-      );
-    }).where((s) => s.placeId.isNotEmpty).toList();
+    return predictions
+        .map((p) {
+          final formatting = p['structured_formatting'];
+          return PlaceSuggestion(
+            placeId: (p['place_id'] as String?) ?? '',
+            primary: formatting is Map
+                ? (formatting['main_text'] as String?) ?? ''
+                : (p['description'] as String?) ?? '',
+            secondary: formatting is Map
+                ? (formatting['secondary_text'] as String?) ?? ''
+                : '',
+          );
+        })
+        .where((s) => s.placeId.isNotEmpty)
+        .toList();
   }
 
   /// Turns a suggestion into coordinates.
@@ -84,21 +90,23 @@ class PlaceSearchService {
     if (!isAvailable) return null;
     final uri =
         Uri.https('maps.googleapis.com', '/maps/api/place/details/json', {
-      'place_id': suggestion.placeId,
-      'fields': 'geometry,formatted_address',
-      'key': AppConfig.googleMapsApiKey,
-      'language': languageCode,
-    });
+          'place_id': suggestion.placeId,
+          'fields': 'geometry,formatted_address',
+          'key': AppConfig.googleMapsApiKey,
+          'language': languageCode,
+        });
     final body = await _get(uri);
     final location = body?['result']?['geometry']?['location'];
     if (location is! Map) return null;
     return PlaceLocation(
       lat: (location['lat'] as num).toDouble(),
       lng: (location['lng'] as num).toDouble(),
-      address: (body?['result']?['formatted_address'] as String?) ??
-          [suggestion.primary, suggestion.secondary]
-              .where((s) => s.isNotEmpty)
-              .join(', '),
+      address:
+          (body?['result']?['formatted_address'] as String?) ??
+          [
+            suggestion.primary,
+            suggestion.secondary,
+          ].where((s) => s.isNotEmpty).join(', '),
     );
   }
 

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../models/finance.dart';
 import '../supabase_client.dart';
 
@@ -177,6 +179,7 @@ class FinanceRepository {
     String? reference,
     String? notes,
     String? idempotencyKey,
+    String? proofPath,
   }) async {
     final data = await supabase.rpc(
       'admin_record_settlement',
@@ -191,6 +194,10 @@ class FinanceRepository {
       },
     );
     final map = (data as Map).cast<String, dynamic>();
+    final settlementId = map['settlement_id'] as String?;
+    if (proofPath != null && settlementId != null) {
+      await attachSettlementProof(settlementId, proofPath);
+    }
     return WalletSummary(
       ownerType: ownerType,
       ownerId: ownerId,
@@ -200,7 +207,58 @@ class FinanceRepository {
     );
   }
 
+  static const _proofBucket = 'settlement-proofs';
+
+  /// The admin's proof of payment, filed under the party it was paid to.
+  /// Returns the storage path to attach to the settlement.
+  Future<String> uploadSettlementProof({
+    required LedgerOwner ownerType,
+    required String ownerId,
+    required List<int> bytes,
+    required String fileName,
+  }) async {
+    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final path =
+        '${ownerType.name}/$ownerId/${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    await supabase.storage
+        .from(_proofBucket)
+        .uploadBinary(path, Uint8List.fromList(bytes));
+    return path;
+  }
+
+  Future<void> attachSettlementProof(String settlementId, String path) =>
+      supabase.rpc(
+        'admin_attach_settlement_proof',
+        params: {'p_settlement_id': settlementId, 'p_path': path},
+      );
+
+  /// A short-lived link to a settlement's proof photo, for whoever may see it.
+  Future<String?> settlementProofUrl(String? path) async {
+    if (path == null || path.isEmpty) return null;
+    try {
+      return await supabase.storage
+          .from(_proofBucket)
+          .createSignedUrl(path, 3600);
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ===== Deposits =====
+
+  /// A hand-over receipt photo, in the driver's own folder of the private
+  /// documents bucket. Returns the storage path; admins read it through a
+  /// signed URL, and nobody else can.
+  Future<String> uploadDepositProof(List<int> bytes, String fileName) async {
+    final userId = supabase.auth.currentUser!.id;
+    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final path =
+        '$userId/deposits/${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    await supabase.storage
+        .from('driver-documents')
+        .uploadBinary(path, Uint8List.fromList(bytes));
+    return path;
+  }
 
   /// The driver claims to have paid money in. Credits nothing on its own.
   Future<String> createDepositRequest({

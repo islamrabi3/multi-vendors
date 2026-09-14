@@ -88,7 +88,8 @@ class AttachmentService {
     // The uploader's id has to be the first path segment — the storage policy
     // checks exactly that. The rest is unguessable, which is what keeps the
     // object private in a bucket every signed-in user may read from.
-    final key = '$userId/${DateTime.now().microsecondsSinceEpoch}'
+    final key =
+        '$userId/${DateTime.now().microsecondsSinceEpoch}'
         '-${bytes.length}${extension.isEmpty ? '' : '.$extension'}';
     await supabase.storage.from(bucket).uploadBinary(key, bytes);
     return ChatAttachment(path: key, name: name, isImage: isImage);

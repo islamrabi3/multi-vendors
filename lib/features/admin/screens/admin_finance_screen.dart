@@ -5,6 +5,7 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/finance.dart';
 import '../../../core/repositories/finance_repository.dart';
+import '../../../core/repositories/platform_settings_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
@@ -39,6 +40,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
   ({bool balanced, double net, int unsettledOrders})? _integrity;
   int _pendingRequests = 0;
   double? _driverShare;
+  ServiceFeeRule? _serviceFee;
   bool _loading = true;
   String? _error;
   _Period _period = _Period.month;
@@ -87,8 +89,12 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         (v) => v,
         onError: (_) => null,
       );
+      final serviceFee = await PlatformSettingsRepository()
+          .serviceFee()
+          .then<ServiceFeeRule?>((v) => v, onError: (_) => null);
       if (!mounted) return;
       setState(() {
+        _serviceFee = serviceFee;
         _overview = results[0] as FinanceOverview;
         _reconciliation = results[1] as CashReconciliation;
         _integrity =
@@ -104,6 +110,105 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         _loading = false;
       });
     }
+  }
+
+  /// The platform's own fee on every order: off, a fixed amount, or a
+  /// percentage of the subtotal with an optional cap.
+  Future<void> _editServiceFee() async {
+    final l10n = context.l10n;
+    final current = _serviceFee ?? const ServiceFeeRule();
+    var type = current.isOff ? 'fixed' : current.type;
+    final value = TextEditingController(
+      text: current.isOff ? '' : trimZeros(current.value),
+    );
+    final cap = TextEditingController(
+      text: current.max == null ? '' : trimZeros(current.max!),
+    );
+
+    final saved = await showFormDialog<bool>(
+      context: context,
+      title: l10n.serviceFeeSettings,
+      subtitle: l10n.serviceFeeHint,
+      icon: Icons.receipt_long_rounded,
+      contentBuilder: (rebuild) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SegmentedButton<String>(
+            expandedInsets: EdgeInsets.zero,
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: 'fixed',
+                label: Text(
+                  l10n.serviceFeeFixed,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              ButtonSegment(
+                value: 'percent',
+                label: Text(
+                  l10n.serviceFeePercent,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+            selected: {type},
+            onSelectionChanged: (v) {
+              type = v.first;
+              rebuild();
+            },
+          ),
+          const SizedBox(height: AppSpace.md),
+          TextField(
+            controller: value,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            decoration: InputDecoration(
+              labelText: type == 'percent'
+                  ? l10n.serviceFeePercentLabel
+                  : l10n.serviceFeeValueLabel,
+              suffixText: type == 'percent' ? '%' : null,
+            ),
+          ),
+          if (type == 'percent') ...[
+            const SizedBox(height: AppSpace.md),
+            TextField(
+              controller: cap,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              decoration: InputDecoration(labelText: l10n.serviceFeeMaxLabel),
+            ),
+          ],
+        ],
+      ),
+      submitLabel: l10n.save,
+      cancelLabel: l10n.cancel,
+      onSubmit: (_) async {
+        final amount = double.tryParse(value.text.trim()) ?? 0;
+        final max = type == 'percent' ? double.tryParse(cap.text.trim()) : null;
+        if (amount < 0 || (type == 'percent' && amount > 100)) {
+          throw Exception(l10n.invalidFeePercent);
+        }
+        final repo = PlatformSettingsRepository();
+        await repo.setServiceFee(type: type, value: amount, max: max);
+        final updated = await repo.serviceFee();
+        if (mounted) setState(() => _serviceFee = updated);
+        return true;
+      },
+    );
+    value.dispose();
+    cap.dispose();
+    if (saved == true && mounted) showSnack(context, l10n.serviceFeeSaved);
   }
 
   /// Sets what a driver keeps out of every delivery fee, platform-wide.
@@ -469,6 +574,8 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                   ),
                   _signedRow(l10n.platformCommission, o.platformCommission),
                   _signedRow(l10n.platformShareLabel, o.platformDeliveryMargin),
+                  if (o.platformServiceFees != 0)
+                    _signedRow(l10n.serviceFee, o.platformServiceFees),
                   if (o.earlySettlementFees != 0)
                     _signedRow(l10n.earlySettlementFees, o.earlySettlementFees),
                   FinanceRow(
@@ -539,6 +646,30 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
 
             // The number that decides the driver-cost and delivery-share rows
             // above, so its control sits on the same page.
+            if (_serviceFee != null)
+              FinanceSection(
+                title: l10n.serviceFee,
+                child: FinanceCard(
+                  children: [
+                    FinanceRow(
+                      icon: Icons.receipt_long_rounded,
+                      label: _serviceFee!.isOff
+                          ? l10n.serviceFeeOff
+                          : _serviceFee!.isPercent
+                          ? l10n.serviceFeeSummaryPercent(
+                              trimZeros(_serviceFee!.value),
+                            )
+                          : l10n.serviceFeeFixed,
+                      value: _serviceFee!.isOff
+                          ? '—'
+                          : _serviceFee!.isPercent
+                          ? '${trimZeros(_serviceFee!.value)}%'
+                          : formatMoney(_serviceFee!.value),
+                      onTap: _editServiceFee,
+                    ),
+                  ],
+                ),
+              ),
             if (_driverShare != null)
               FinanceSection(
                 title: l10n.driverShareTitle,

@@ -92,12 +92,44 @@ class PaymentRepository {
     );
   }
 
+  /// Hands Paymob's signed redirect to the server, which verifies the HMAC and
+  /// settles the payment if the webhook has not. Returns the intent status the
+  /// server reports, or null when it could not be confirmed this way.
+  ///
+  /// Never throws: the webhook remains the other path to settlement, and the
+  /// caller polls the intent either way.
+  Future<String?> confirmFromRedirect(
+    String reference,
+    Map<String, String> params,
+  ) async {
+    if (!params.containsKey('hmac')) return null;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        final response = await supabase.functions.invoke(
+          'paymob-confirm',
+          body: {'reference': reference, 'params': params},
+        );
+        final data = response.data;
+        if (data is Map && data['status'] is String) {
+          return data['status'] as String;
+        }
+        return null;
+      } catch (_) {
+        await Future<void>.delayed(Duration(seconds: attempt + 1));
+      }
+    }
+    return null;
+  }
+
   /// Blocks until the webhook has settled [reference], or the wait times out.
   ///
   /// The redirect back from Paymob is only a hint — the transaction is not
   /// trusted until the HMAC-verified webhook has written the intent's status.
-  Future<PaymentOutcome> awaitSettlement(String reference) async {
-    final deadline = DateTime.now().add(_settleTimeout);
+  Future<PaymentOutcome> awaitSettlement(
+    String reference, {
+    Duration timeout = _settleTimeout,
+  }) async {
+    final deadline = DateTime.now().add(timeout);
 
     while (DateTime.now().isBefore(deadline)) {
       final status = await _fetchStatus(reference);

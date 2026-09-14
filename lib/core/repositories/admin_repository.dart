@@ -774,7 +774,11 @@ class AdminRepository {
     final path = 'ads/${DateTime.now().microsecondsSinceEpoch}-$filename';
     await supabase.storage
         .from('product-images')
-        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType));
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType),
+        );
     return supabase.storage.from('product-images').getPublicUrl(path);
   }
 

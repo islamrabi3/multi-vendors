@@ -109,6 +109,7 @@ class AppOrder extends Equatable {
     required this.status,
     required this.subtotal,
     required this.deliveryFee,
+    this.serviceFee = 0,
     required this.discount,
     required this.total,
     required this.paymentMethod,
@@ -145,6 +146,7 @@ class AppOrder extends Equatable {
   final OrderStatus status;
   final double subtotal;
   final double deliveryFee;
+  final double serviceFee;
   final double discount;
   final double total;
   final String paymentMethod;
@@ -220,6 +222,7 @@ class AppOrder extends Equatable {
       status: OrderStatus.fromName(map['status'] as String?),
       subtotal: ((map['subtotal'] as num?) ?? 0).toDouble(),
       deliveryFee: ((map['delivery_fee'] as num?) ?? 0).toDouble(),
+      serviceFee: ((map['service_fee'] as num?) ?? 0).toDouble(),
       discount: ((map['discount'] as num?) ?? 0).toDouble(),
       total: ((map['total'] as num?) ?? 0).toDouble(),
       paymentMethod: (map['payment_method'] as String?) ?? 'cod',

@@ -5,6 +5,7 @@ import '../../../core/models/address.dart';
 import '../../../core/repositories/address_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/payment_repository.dart';
+import '../../../core/repositories/platform_settings_repository.dart';
 
 import '../../../core/repositories/wallet_repository.dart';
 
@@ -29,6 +30,7 @@ class CheckoutState extends Equatable {
     this.placedOrderId,
     this.paymobCheckoutUrl,
     this.walletBalance = 0.0,
+    this.serviceFee = const ServiceFeeRule(),
   });
 
   final bool loading;
@@ -73,6 +75,9 @@ class CheckoutState extends Equatable {
   final String? paymobCheckoutUrl;
   final double walletBalance;
 
+  /// Charged on every order by the platform; see [ServiceFeeRule].
+  final ServiceFeeRule serviceFee;
+
   Address? get selectedAddress =>
       addresses.where((address) => address.id == selectedAddressId).firstOrNull;
 
@@ -95,6 +100,7 @@ class CheckoutState extends Equatable {
     String? placedOrderId,
     String? paymobCheckoutUrl,
     double? walletBalance,
+    ServiceFeeRule? serviceFee,
     bool clearCoupon = false,
     bool clearError = false,
     bool clearPlacedOrder = false,
@@ -124,6 +130,7 @@ class CheckoutState extends Equatable {
         ? null
         : (paymobCheckoutUrl ?? this.paymobCheckoutUrl),
     walletBalance: walletBalance ?? this.walletBalance,
+    serviceFee: serviceFee ?? this.serviceFee,
   );
 
   @override
@@ -145,6 +152,7 @@ class CheckoutState extends Equatable {
     placedOrderId,
     paymobCheckoutUrl,
     walletBalance,
+    serviceFee,
   ];
 }
 
@@ -168,13 +176,22 @@ class CheckoutCubit extends Cubit<CheckoutState> {
   Future<void> loadAddresses() async {
     emit(state.copyWith(loading: true, clearError: true));
     try {
-      final addresses = await _addresses.fetchAddresses();
-      final walletBalance = await _wallet.getBalance();
+      final results = await Future.wait<Object>([
+        _addresses.fetchAddresses(),
+        _wallet.getBalance(),
+        // The fee is shown, not charged, here — a failed lookup must not block
+        // checkout, and the server adds the real fee regardless.
+        PlatformSettingsRepository().serviceFee().catchError(
+          (Object _) => const ServiceFeeRule(),
+        ),
+      ]);
+      final addresses = results[0] as List<Address>;
       emit(
         state.copyWith(
           loading: false,
           addresses: addresses,
-          walletBalance: walletBalance,
+          walletBalance: results[1] as double,
+          serviceFee: results[2] as ServiceFeeRule,
           selectedAddressId:
               state.selectedAddressId ??
               (addresses.isEmpty ? null : addresses.first.id),

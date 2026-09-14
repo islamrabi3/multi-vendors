@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/widgets/chat_unread_badge.dart';
+import 'package:multi_vendor/core/widgets/swipe_to_confirm.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
@@ -448,26 +450,28 @@ class _ActiveDeliveryView extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
+              // The last thing to get right at the door: take the money, or
+              // know there is none to take.
+              _CollectBanner(order: order),
+              const SizedBox(height: 18),
               // Option 1: Take Photo (Optional)
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                child: FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(sheetCtx);
                     _deliverWithPhoto(context, cubit, order.id);
                   },
-                  icon: const Icon(
-                    Icons.photo_camera_rounded,
-                    color: AppColors.primary,
-                  ),
+                  icon: const Icon(Icons.photo_camera_rounded),
                   label: Text(
-                    context.l10n.addPhotoProof,
+                    context.l10n.finishWithPhoto,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: AppColors.primary),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(54),
                   ),
                 ),
               ),
@@ -475,27 +479,88 @@ class _ActiveDeliveryView extends StatelessWidget {
               // Option 2: Skip & Mark Delivered
               SizedBox(
                 width: double.infinity,
-                child: FilledButton.icon(
+                child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(sheetCtx);
                     cubit.markDelivered();
                   },
                   icon: const Icon(Icons.done_all_rounded, size: 20),
                   label: Text(
-                    context.l10n.skipAndDeliver,
+                    context.l10n.finishWithoutPhoto,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
                   ),
                 ),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetCtx),
+                child: Text(context.l10n.notYet),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _CollectBanner extends StatelessWidget {
+  const _CollectBanner({required this.order});
+
+  final AppOrder order;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cash = order.paymentMethod == 'cod';
+    final fill = cash ? AppColors.amberFill : AppColors.successFill;
+    final ink = cash ? AppColors.amberInk : AppColors.successInk;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            cash ? Icons.payments_rounded : Icons.verified_rounded,
+            color: ink,
+            size: 26,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  cash
+                      ? l10n.collectCashLabel
+                      : l10n.paidOnlineNothingToCollect,
+                  style: TextStyle(
+                    color: ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
+                ),
+                if (cash)
+                  Text(
+                    formatMoney(order.total),
+                    style: AppType.mono(
+                      22,
+                      color: ink,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -840,14 +905,19 @@ class _Sheet extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: _ActionIcon(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    color: Colors.orange,
-                    tooltip: context.l10n.liveChat,
-                    onPressed: () => showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (_) => OrderChatSheet(orderId: order.id),
+                  child: ChatUnreadBadge(
+                    orderId: order.id,
+                    top: -4,
+                    end: 2,
+                    child: _ActionIcon(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      color: Colors.orange,
+                      tooltip: context.l10n.liveChat,
+                      onPressed: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => OrderChatSheet(orderId: order.id),
+                      ),
                     ),
                   ),
                 ),
@@ -873,39 +943,13 @@ class _Sheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            // The one action that matters on this screen, full width and on
-            // its own line so it is never squeezed by anything beside it.
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.success.withValues(alpha: 0.25),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                    ),
-                  ),
-                  onPressed: busy ? null : onDelivered,
-                  icon: busy
-                      ? const SizedBox.shrink()
-                      : const Icon(Icons.done_all_rounded, size: 20),
-                  label: busy
-                      ? const ButtonSpinner()
-                      : Text(context.l10n.markDelivered),
-                ),
-              ),
+            // A swipe rather than a tap: delivery cannot be undone, and a
+            // full-width button was easy to hit by accident in a pocket or on
+            // a bike.
+            SwipeToConfirm(
+              label: context.l10n.swipeWhenDelivered,
+              busy: busy,
+              onConfirmed: onDelivered,
             ),
           ],
         ),

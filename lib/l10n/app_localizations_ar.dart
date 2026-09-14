@@ -1175,8 +1175,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get inCash => 'نقداً';
 
   @override
-  String get paidOnlineNothingToCollect =>
-      'مدفوع عبر الإنترنت - لا يوجد شيء لتحصيله';
+  String get paidOnlineNothingToCollect => 'مدفوع أونلاين — لا يوجد تحصيل';
 
   @override
   String get egp => 'ج.م';
@@ -3564,6 +3563,353 @@ class AppLocalizationsAr extends AppLocalizations {
   String get showLess => 'عرض أقل';
 
   @override
+  String get serviceFee => 'رسوم الخدمة';
+
+  @override
+  String get work => 'العمل';
+
+  @override
+  String get adWhenTapped => 'عند الضغط على الإعلان';
+
+  @override
+  String get adTapNothing => 'لا شيء';
+
+  @override
+  String get adTapNothingHint =>
+      'الإعلان للعرض فقط؛ الضغط عليه لا يفتح شيئًا (إعلان الكوبون يعرض الكود).';
+
+  @override
+  String get adTapAppPage => 'صفحة داخل التطبيق';
+
+  @override
+  String get adTapExternalLink => 'رابط خارجي';
+
+  @override
+  String get adPickStore => 'ابحث عن المتجر بالاسم';
+
+  @override
+  String get adSearchStoreHint => 'اسم المتجر';
+
+  @override
+  String get adPickStoreRequired => 'اختر المتجر الذي يفتحه الإعلان.';
+
+  @override
+  String get adPickPageRequired => 'اختر الصفحة التي يفتحها الإعلان.';
+
+  @override
+  String get adLinkInvalid => 'أدخل رابطًا كاملًا يبدأ بـ https://';
+
+  @override
+  String get searchPageLabel => 'البحث';
+
+  @override
+  String get cartPageLabel => 'السلة';
+
+  @override
+  String conversationRemoved(String order) {
+    return 'تم حذف محادثة $order';
+  }
+
+  @override
+  String get swipeToRemoveHint =>
+      'اسحب المحادثة لحذفها. ستظهر مجددًا عند وصول رسالة جديدة.';
+
+  @override
+  String get undo => 'تراجع';
+
+  @override
+  String get chatWithStore => 'تواصل مع المتجر';
+
+  @override
+  String get messagesTitle => 'الرسائل';
+
+  @override
+  String get orderChats => 'محادثات الطلبات';
+
+  @override
+  String get noConversationsYet =>
+      'لا توجد محادثات بعد. ستظهر هنا محادثات طلباتك.';
+
+  @override
+  String get youLabel => 'أنت';
+
+  @override
+  String get supportInboxHint => 'تواصل مع فريق الدعم';
+
+  @override
+  String newMessageFrom(String order) {
+    return 'رسالة جديدة · $order';
+  }
+
+  @override
+  String get openChat => 'فتح المحادثة';
+
+  @override
+  String get availableItems => 'متاح';
+
+  @override
+  String get buildYourMenu => 'ابدأ بناء قائمتك';
+
+  @override
+  String stockLeft(int count) {
+    return 'متبقي $count';
+  }
+
+  @override
+  String get completedOrders => 'مكتملة';
+
+  @override
+  String get noReviewsForFilter => 'لا توجد تقييمات بهذا الفلتر حتى الآن.';
+
+  @override
+  String get positiveReviewsShare => 'تقييمات 4 و5 نجوم';
+
+  @override
+  String get criticalReviews => 'تحتاج اهتمام';
+
+  @override
+  String get positiveReviews => 'إيجابية';
+
+  @override
+  String get withComments => 'بتعليقات';
+
+  @override
+  String get ratingWithoutComment => 'تقييم بدون تعليق';
+
+  @override
+  String get openThisDay => 'مفتوح في هذا اليوم';
+
+  @override
+  String get applyToAllDays => 'تطبيق نفس المواعيد على كل الأيام';
+
+  @override
+  String get todayHours => 'مواعيد اليوم';
+
+  @override
+  String get locationPinSet => 'تم تحديد الموقع';
+
+  @override
+  String get ordersSettingsTitle => 'الطلبات';
+
+  @override
+  String get noMinimum => 'بدون حد أدنى';
+
+  @override
+  String get planAndFees => 'الباقة والرسوم';
+
+  @override
+  String get setByPlatformFooter => 'تحددها المنصة. تواصل مع الدعم لتغييرها.';
+
+  @override
+  String get signOutConfirm =>
+      'لن تصلك طلبات جديدة على هذا الجهاز حتى تسجل الدخول مرة أخرى.';
+
+  @override
+  String get changeCover => 'تغيير الغلاف';
+
+  @override
+  String get payAction => 'الدفع';
+
+  @override
+  String get attachPaymentProof => 'أرفق إثبات الدفع';
+
+  @override
+  String get attachPaymentProofHint =>
+      'صورة التحويل أو إيصال استلام نقدي موقّع';
+
+  @override
+  String get paymentProofRequired => 'أرفق صورة إثبات الدفع.';
+
+  @override
+  String get paymentProof => 'إثبات الدفع';
+
+  @override
+  String earlyPayoutFeeNote(String fee) {
+    return 'صرف سريع · رسوم $fee';
+  }
+
+  @override
+  String get attachProofPhoto => 'أرفق صورة الإيصال';
+
+  @override
+  String get attachProofHint =>
+      'إيصال التحويل أو ورقة التسليم — يساعد على اعتماده أسرع';
+
+  @override
+  String get changePhoto => 'تغيير الصورة';
+
+  @override
+  String get proofRequiredForBank => 'أرفق صورة إيصال التحويل.';
+
+  @override
+  String get permOrdersView => 'عرض الطلبات';
+
+  @override
+  String get permOrdersCancel => 'إلغاء الطلبات';
+
+  @override
+  String get permOrdersAssign => 'تعيين مندوب للطلب';
+
+  @override
+  String get permVendorsView => 'عرض المتاجر';
+
+  @override
+  String get permVendorsApprove => 'اعتماد وإيقاف المتاجر';
+
+  @override
+  String get permVendorsPromote => 'ترويج المتاجر';
+
+  @override
+  String get permVendorsTerms => 'تحديد رسوم وعمولة المتاجر';
+
+  @override
+  String get permCatalogManage => 'إدارة التصنيفات والقوائم';
+
+  @override
+  String get permContentManage => 'إدارة محتوى التطبيق';
+
+  @override
+  String get permPromosManage => 'إدارة الكوبونات والعروض';
+
+  @override
+  String get permAdsManage => 'إدارة الإعلانات';
+
+  @override
+  String get permDriversView => 'عرض المندوبين';
+
+  @override
+  String get permDriversApprove => 'اعتماد وإيقاف المندوبين';
+
+  @override
+  String get permUsersBlock => 'حظر المستخدمين';
+
+  @override
+  String get permUsersDelete => 'حذف المستخدمين';
+
+  @override
+  String get permStaffManage => 'إدارة الموظفين والأدوار';
+
+  @override
+  String get permSupportHandle => 'التعامل مع الدعم والشكاوى';
+
+  @override
+  String get permNotificationsSend => 'إرسال الإشعارات';
+
+  @override
+  String get permReportsView => 'عرض التقارير والمالية';
+
+  @override
+  String get permPaymentsRefund => 'استرداد المدفوعات';
+
+  @override
+  String get permWalletsAdjust => 'تعديل محافظ العملاء';
+
+  @override
+  String get permFinanceSettle => 'تسوية المستحقات والتوريدات';
+
+  @override
+  String get permFinanceAdjust => 'تغيير الرسوم ونسبة المندوب';
+
+  @override
+  String get takings => 'المبيعات';
+
+  @override
+  String get previousDay => 'اليوم السابق';
+
+  @override
+  String get nextDay => 'اليوم التالي';
+
+  @override
+  String get pickAnotherDay => 'اختر يومًا آخر';
+
+  @override
+  String get swipeWhenDelivered => 'اسحب عند التسليم';
+
+  @override
+  String get collectCashLabel => 'حصّل نقدًا';
+
+  @override
+  String get finishWithPhoto => 'التقط صورة وأنهِ الطلب';
+
+  @override
+  String get finishWithoutPhoto => 'إنهاء بدون صورة';
+
+  @override
+  String get notYet => 'ليس بعد';
+
+  @override
+  String get addressHome => 'المنزل';
+
+  @override
+  String get saveAddressAs => 'حفظ العنوان باسم';
+
+  @override
+  String get customAddressLabel => 'اسم العنوان (مثلاً: بيت العيلة)';
+
+  @override
+  String get setAsDefault => 'تعيين كافتراضي';
+
+  @override
+  String get defaultAddressUpdated => 'تم تحديث العنوان الافتراضي';
+
+  @override
+  String get chooseDeliveryAddress => 'اختر عنوان التوصيل';
+
+  @override
+  String get addNewAddress => 'إضافة عنوان جديد';
+
+  @override
+  String get addressNeedsPin => 'لم يُحدد الموقع على الخريطة';
+
+  @override
+  String buildingWithValue(String value) {
+    return 'عمارة $value';
+  }
+
+  @override
+  String floorWithValue(String value) {
+    return 'الدور $value';
+  }
+
+  @override
+  String aptWithValue(String value) {
+    return 'شقة $value';
+  }
+
+  @override
+  String get serviceFeeSettings => 'رسوم الخدمة على كل طلب';
+
+  @override
+  String get serviceFeeOff => 'بدون رسوم خدمة';
+
+  @override
+  String get serviceFeeFixed => 'مبلغ ثابت';
+
+  @override
+  String get serviceFeePercent => 'نسبة من قيمة الطلب';
+
+  @override
+  String get serviceFeeValueLabel => 'المبلغ';
+
+  @override
+  String get serviceFeePercentLabel => 'النسبة';
+
+  @override
+  String get serviceFeeMaxLabel => 'الحد الأقصى للرسوم (اختياري)';
+
+  @override
+  String get serviceFeeHint =>
+      'تُضاف إلى إجمالي العميل في كل طلب وتحتفظ بها المنصة. اجعلها 0 لإيقافها.';
+
+  @override
+  String get serviceFeeSaved => 'تم تحديث رسوم الخدمة';
+
+  @override
+  String serviceFeeSummaryPercent(String percent) {
+    return '$percent% من قيمة الطلب';
+  }
+
+  @override
   String yourOrderFrom(String store) {
     return 'طلبك من $store';
   }
@@ -4856,4 +5202,114 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get placementSplash => 'شاشة البداية (قبل فتح التطبيق)';
+
+  @override
+  String get couponAppliesTo => 'ينطبق على';
+
+  @override
+  String get couponAllStores => 'كل المتاجر';
+
+  @override
+  String get couponFundedBy => 'من يتحمل الخصم';
+
+  @override
+  String get couponFundedPlatform => 'المنصة تتحمل';
+
+  @override
+  String get couponFundedStore => 'المتجر يتحمل';
+
+  @override
+  String get couponShowOnStorePage => 'إظهار الكود في صفحة المتجر';
+
+  @override
+  String couponShowOnStorePageDesc(String store) {
+    return 'يظهر للعملاء في صفحة $store فقط.';
+  }
+
+  @override
+  String get storeOffersTitle => 'عروض المتجر';
+
+  @override
+  String get storeOfferTapToCopy => 'اضغط للنسخ';
+
+  @override
+  String storeOfferExpires(String date) {
+    return 'حتى $date';
+  }
+
+  @override
+  String get myComplaints => 'شكاواي';
+
+  @override
+  String get myComplaintsHint => 'تابع الشكاوى التي قدمتها';
+
+  @override
+  String get myComplaintsEmpty => 'لم تقدم أي شكوى.';
+
+  @override
+  String get myComplaintsEmptyHint =>
+      'للإبلاغ عن مشكلة افتح الطلب واختر الإبلاغ عن مشكلة، وتابعها من هنا.';
+
+  @override
+  String get complaintDetails => 'تفاصيل الشكوى';
+
+  @override
+  String get complaintNotFound => 'تعذر العثور على هذه الشكوى.';
+
+  @override
+  String get complaintSupportTeam => 'فريق الدعم';
+
+  @override
+  String get complaintThreadEmpty =>
+      'سيرد فريق الدعم هنا، ويمكنك إضافة أي تفاصيل في أي وقت.';
+
+  @override
+  String get complaintThreadEmptyAdmin =>
+      'لا توجد ردود بعد. سيصل ردك للعميل كإشعار.';
+
+  @override
+  String get complaintResolvedNotice =>
+      'تم حل هذه الشكوى. لو المشكلة ما زالت موجودة، اكتب رداً وستُعاد فتحها.';
+
+  @override
+  String get complaintResolvedNoticeAdmin =>
+      'تم الحل. أي رد من العميل يعيد فتحها.';
+
+  @override
+  String complaintFiledAt(String time) {
+    return 'قُدمت $time';
+  }
+
+  @override
+  String get complaintYouWrote => 'شكواك';
+
+  @override
+  String get complaintCustomerWrote => 'شكوى العميل';
+
+  @override
+  String get complaintCustomerReplied => 'رد العميل';
+
+  @override
+  String get complaintSupportReplied => 'رد الدعم';
+
+  @override
+  String get complaintInReview => 'قيد المراجعة';
+
+  @override
+  String get complaintReplyReopens => 'اكتب رداً لإعادة فتح الشكوى...';
+
+  @override
+  String get complaintAddDetails => 'أضف تفاصيل أو رداً...';
+
+  @override
+  String get complaintTrack => 'متابعة';
+
+  @override
+  String get complaintSelectHint => 'اختر شكوى لعرض المحادثة';
+
+  @override
+  String get paymentConfirmingTitle => 'جاري تأكيد الدفع';
+
+  @override
+  String get paymentConfirmingBody => 'ثوانٍ قليلة، من فضلك لا تغلق التطبيق.';
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
+import 'package:multi_vendor/core/utils/address_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -47,6 +49,11 @@ class _CheckoutViewState extends State<_CheckoutView> {
   final _coupon = TextEditingController();
   final _notes = TextEditingController();
 
+  /// The order exists and the Paymob session is being opened. The cubit is
+  /// already `placed` by then, so without this the pay button went idle for
+  /// the seconds it takes Paymob to answer — and looked like nothing happened.
+  bool _openingGateway = false;
+
   @override
   void dispose() {
     _coupon.dispose();
@@ -81,6 +88,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
       showSnack(context, message, error: true);
     }
 
+    setState(() => _openingGateway = true);
     PaymobCheckout checkout;
     try {
       checkout = await PaymentRepository().createOrderCheckout(
@@ -88,12 +96,20 @@ class _CheckoutViewState extends State<_CheckoutView> {
         channel: state.paymobChannel,
       );
     } catch (error) {
+      if (mounted) setState(() => _openingGateway = false);
       await discard(AppFailure.from(error).message(l10n));
       return;
     }
     if (!mounted) return;
 
-    final result = await runPaymobCheckout(router, checkout);
+    // Stays busy while the gateway is open and while the payment is confirmed
+    // after it closes, so the button never offers a second tap mid-payment.
+    final PaymobFlowResult result;
+    try {
+      result = await runPaymobCheckout(router, checkout);
+    } finally {
+      if (mounted) setState(() => _openingGateway = false);
+    }
     if (!mounted) return;
 
     switch (result) {
@@ -145,8 +161,12 @@ class _CheckoutViewState extends State<_CheckoutView> {
           final deliveryFee = state.chargesDelivery
               ? cart.vendor!.deliveryFee
               : 0.0;
-          final total = cart.subtotal - discount + deliveryFee;
-          final placing = state.step == CheckoutStep.placing;
+          final serviceFee = state.serviceFee.feeFor(cart.subtotal);
+          // Same order of operations as place_order: the discount can never
+          // push the goods below zero, and the service fee sits on top.
+          final goods = cart.subtotal - discount + deliveryFee;
+          final total = (goods < 0 ? 0.0 : goods) + serviceFee;
+          final placing = state.step == CheckoutStep.placing || _openingGateway;
           return Column(
             children: [
               Expanded(
@@ -396,6 +416,11 @@ class _CheckoutViewState extends State<_CheckoutView> {
                               label: context.l10n.deliveryFee,
                               value: cart.vendor!.deliveryFee,
                             ),
+                          if (serviceFee > 0)
+                            _SummaryRow(
+                              label: context.l10n.serviceFee,
+                              value: serviceFee,
+                            ),
                           if (discount > 0)
                             _SummaryRow(
                               label: context.l10n.discount,
@@ -435,9 +460,16 @@ class _CheckoutViewState extends State<_CheckoutView> {
                     (state.isPickup || state.selectedAddressId != null) &&
                     (!state.isScheduled || state.scheduledAt != null),
                 payNow: state.paymentMethod != 'cod',
-                onPressed: () => context.read<CheckoutCubit>().placeOrder(
-                  notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-                ),
+                onPressed: () async {
+                  final checkout = context.read<CheckoutCubit>();
+                  final cartCubit = context.read<CartCubit>();
+                  final notes = _notes.text.trim();
+                  setState(() => _openingGateway = true);
+                  await cartCubit.syncToServer();
+                  if (!mounted) return;
+                  setState(() => _openingGateway = false);
+                  checkout.placeOrder(notes: notes.isEmpty ? null : notes);
+                },
               ),
             ],
           );
@@ -748,7 +780,7 @@ class _AddressCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        address.summary,
+                        addressSummaryText(context, address),
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textMuted,
@@ -825,7 +857,7 @@ class _EtaCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  DateFormat.jm().format(arrival),
+                  formatClock(context, arrival),
                   style: AppType.mono(
                     12,
                     color: AppColors.textMuted,
@@ -1167,7 +1199,13 @@ class _OrderTypePicker extends StatelessWidget {
               text: state.scheduledAt == null
                   ? '${l10n.scheduleForLater} · ${l10n.scheduleHint}'
                   : l10n.scheduledFor(
-                      DateFormat.MMMEd().add_jm().format(state.scheduledAt!),
+                      formatDateTime(
+                        context,
+                        state.scheduledAt!,
+                        date: DateFormat.MMMEd(
+                          Localizations.localeOf(context).languageCode,
+                        ),
+                      ),
                     ),
             ),
           ),

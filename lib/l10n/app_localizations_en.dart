@@ -3589,6 +3589,354 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showLess => 'Show less';
 
   @override
+  String get serviceFee => 'Service fee';
+
+  @override
+  String get work => 'Work';
+
+  @override
+  String get adWhenTapped => 'When tapped';
+
+  @override
+  String get adTapNothing => 'Nothing';
+
+  @override
+  String get adTapNothingHint =>
+      'The ad is only shown; tapping does nothing (a coupon ad still shows its code).';
+
+  @override
+  String get adTapAppPage => 'Page in the app';
+
+  @override
+  String get adTapExternalLink => 'External link';
+
+  @override
+  String get adPickStore => 'Search for a store by name';
+
+  @override
+  String get adSearchStoreHint => 'Store name';
+
+  @override
+  String get adPickStoreRequired => 'Choose the store this ad opens.';
+
+  @override
+  String get adPickPageRequired => 'Choose the page this ad opens.';
+
+  @override
+  String get adLinkInvalid => 'Enter a full link starting with https://';
+
+  @override
+  String get searchPageLabel => 'Search';
+
+  @override
+  String get cartPageLabel => 'Cart';
+
+  @override
+  String conversationRemoved(String order) {
+    return 'Conversation $order removed';
+  }
+
+  @override
+  String get swipeToRemoveHint =>
+      'Swipe a conversation to remove it. It comes back if a new message arrives.';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get chatWithStore => 'Chat with the store';
+
+  @override
+  String get messagesTitle => 'Messages';
+
+  @override
+  String get orderChats => 'Order chats';
+
+  @override
+  String get noConversationsYet =>
+      'No conversations yet. Chats about your orders will appear here.';
+
+  @override
+  String get youLabel => 'You';
+
+  @override
+  String get supportInboxHint => 'Chat with our support team';
+
+  @override
+  String newMessageFrom(String order) {
+    return 'New message · $order';
+  }
+
+  @override
+  String get openChat => 'Open chat';
+
+  @override
+  String get availableItems => 'Available';
+
+  @override
+  String get buildYourMenu => 'Build your menu';
+
+  @override
+  String stockLeft(int count) {
+    return '$count left';
+  }
+
+  @override
+  String get completedOrders => 'Completed';
+
+  @override
+  String get noReviewsForFilter => 'No reviews match this filter yet.';
+
+  @override
+  String get positiveReviewsShare => 'Rated 4 or 5 stars';
+
+  @override
+  String get criticalReviews => 'Needs attention';
+
+  @override
+  String get positiveReviews => 'Positive';
+
+  @override
+  String get withComments => 'With comments';
+
+  @override
+  String get ratingWithoutComment => 'Rated without a comment';
+
+  @override
+  String get openThisDay => 'Open this day';
+
+  @override
+  String get applyToAllDays => 'Apply these hours to every day';
+
+  @override
+  String get todayHours => 'Today\'s hours';
+
+  @override
+  String get locationPinSet => 'Pin set';
+
+  @override
+  String get ordersSettingsTitle => 'Orders';
+
+  @override
+  String get noMinimum => 'No minimum';
+
+  @override
+  String get planAndFees => 'Plan & fees';
+
+  @override
+  String get setByPlatformFooter =>
+      'Set by the platform. Contact support to change them.';
+
+  @override
+  String get signOutConfirm =>
+      'You will stop receiving new orders on this device until you sign in again.';
+
+  @override
+  String get changeCover => 'Change cover';
+
+  @override
+  String get payAction => 'Pay';
+
+  @override
+  String get attachPaymentProof => 'Attach proof of payment';
+
+  @override
+  String get attachPaymentProofHint =>
+      'Transfer screenshot or signed cash receipt';
+
+  @override
+  String get paymentProofRequired => 'Attach a photo of the payment proof.';
+
+  @override
+  String get paymentProof => 'Proof of payment';
+
+  @override
+  String earlyPayoutFeeNote(String fee) {
+    return 'Fast payout · fee $fee';
+  }
+
+  @override
+  String get attachProofPhoto => 'Attach a photo of the receipt';
+
+  @override
+  String get attachProofHint =>
+      'Transfer receipt or cash hand-over slip — helps approve it faster';
+
+  @override
+  String get changePhoto => 'Change photo';
+
+  @override
+  String get proofRequiredForBank => 'Attach the transfer receipt photo.';
+
+  @override
+  String get permOrdersView => 'View orders';
+
+  @override
+  String get permOrdersCancel => 'Cancel orders';
+
+  @override
+  String get permOrdersAssign => 'Assign drivers to orders';
+
+  @override
+  String get permVendorsView => 'View stores';
+
+  @override
+  String get permVendorsApprove => 'Approve & suspend stores';
+
+  @override
+  String get permVendorsPromote => 'Promote stores';
+
+  @override
+  String get permVendorsTerms => 'Set store fees & commission';
+
+  @override
+  String get permCatalogManage => 'Manage categories & menus';
+
+  @override
+  String get permContentManage => 'Manage app content';
+
+  @override
+  String get permPromosManage => 'Manage coupons & offers';
+
+  @override
+  String get permAdsManage => 'Manage ads';
+
+  @override
+  String get permDriversView => 'View drivers';
+
+  @override
+  String get permDriversApprove => 'Approve & suspend drivers';
+
+  @override
+  String get permUsersBlock => 'Block users';
+
+  @override
+  String get permUsersDelete => 'Delete users';
+
+  @override
+  String get permStaffManage => 'Manage staff & roles';
+
+  @override
+  String get permSupportHandle => 'Handle support & complaints';
+
+  @override
+  String get permNotificationsSend => 'Send notifications';
+
+  @override
+  String get permReportsView => 'View reports & finance';
+
+  @override
+  String get permPaymentsRefund => 'Refund payments';
+
+  @override
+  String get permWalletsAdjust => 'Adjust customer wallets';
+
+  @override
+  String get permFinanceSettle => 'Settle payouts & hand-overs';
+
+  @override
+  String get permFinanceAdjust => 'Change fees & driver share';
+
+  @override
+  String get takings => 'Sales';
+
+  @override
+  String get previousDay => 'Previous day';
+
+  @override
+  String get nextDay => 'Next day';
+
+  @override
+  String get pickAnotherDay => 'Pick another day';
+
+  @override
+  String get swipeWhenDelivered => 'Swipe when delivered';
+
+  @override
+  String get collectCashLabel => 'Collect in cash';
+
+  @override
+  String get finishWithPhoto => 'Take photo & finish';
+
+  @override
+  String get finishWithoutPhoto => 'Finish without photo';
+
+  @override
+  String get notYet => 'Not yet';
+
+  @override
+  String get addressHome => 'Home';
+
+  @override
+  String get saveAddressAs => 'Save address as';
+
+  @override
+  String get customAddressLabel => 'Label name (e.g. Mom\'s house)';
+
+  @override
+  String get setAsDefault => 'Set as default';
+
+  @override
+  String get defaultAddressUpdated => 'Default address updated';
+
+  @override
+  String get chooseDeliveryAddress => 'Choose delivery address';
+
+  @override
+  String get addNewAddress => 'Add new address';
+
+  @override
+  String get addressNeedsPin => 'Pin not set on map';
+
+  @override
+  String buildingWithValue(String value) {
+    return 'Building $value';
+  }
+
+  @override
+  String floorWithValue(String value) {
+    return 'Floor $value';
+  }
+
+  @override
+  String aptWithValue(String value) {
+    return 'Apt $value';
+  }
+
+  @override
+  String get serviceFeeSettings => 'Service fee on every order';
+
+  @override
+  String get serviceFeeOff => 'No service fee';
+
+  @override
+  String get serviceFeeFixed => 'Fixed amount';
+
+  @override
+  String get serviceFeePercent => '% of subtotal';
+
+  @override
+  String get serviceFeeValueLabel => 'Amount';
+
+  @override
+  String get serviceFeePercentLabel => 'Percentage';
+
+  @override
+  String get serviceFeeMaxLabel => 'Maximum fee (optional)';
+
+  @override
+  String get serviceFeeHint =>
+      'Added to the customer\'s total on every order and kept by the platform. Set 0 to turn it off.';
+
+  @override
+  String get serviceFeeSaved => 'Service fee updated';
+
+  @override
+  String serviceFeeSummaryPercent(String percent) {
+    return '$percent% of subtotal';
+  }
+
+  @override
   String yourOrderFrom(String store) {
     return 'Your order from $store';
   }
@@ -4891,4 +5239,116 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get placementSplash => 'App splash (before launch)';
+
+  @override
+  String get couponAppliesTo => 'Applies to';
+
+  @override
+  String get couponAllStores => 'All stores';
+
+  @override
+  String get couponFundedBy => 'Who pays the discount';
+
+  @override
+  String get couponFundedPlatform => 'Platform pays';
+
+  @override
+  String get couponFundedStore => 'Store pays';
+
+  @override
+  String get couponShowOnStorePage => 'Show the code on the store page';
+
+  @override
+  String couponShowOnStorePageDesc(String store) {
+    return 'Customers see it only on $store\'s page.';
+  }
+
+  @override
+  String get storeOffersTitle => 'Offers from this store';
+
+  @override
+  String get storeOfferTapToCopy => 'Tap to copy';
+
+  @override
+  String storeOfferExpires(String date) {
+    return 'Until $date';
+  }
+
+  @override
+  String get myComplaints => 'My complaints';
+
+  @override
+  String get myComplaintsHint => 'Follow up on complaints you filed';
+
+  @override
+  String get myComplaintsEmpty => 'You haven\'t filed any complaints.';
+
+  @override
+  String get myComplaintsEmptyHint =>
+      'To report a problem, open the order and use the report option. You can follow it up here.';
+
+  @override
+  String get complaintDetails => 'Complaint';
+
+  @override
+  String get complaintNotFound => 'This complaint could not be found.';
+
+  @override
+  String get complaintSupportTeam => 'Support team';
+
+  @override
+  String get complaintThreadEmpty =>
+      'Support will reply here. You can add more details any time.';
+
+  @override
+  String get complaintThreadEmptyAdmin =>
+      'No replies yet. Your reply reaches the customer as a notification.';
+
+  @override
+  String get complaintResolvedNotice =>
+      'This complaint is resolved. If the problem is still there, reply and it reopens.';
+
+  @override
+  String get complaintResolvedNoticeAdmin =>
+      'Resolved. A reply from the customer reopens it.';
+
+  @override
+  String complaintFiledAt(String time) {
+    return 'Filed $time';
+  }
+
+  @override
+  String get complaintYouWrote => 'Your complaint';
+
+  @override
+  String get complaintCustomerWrote => 'Customer\'s complaint';
+
+  @override
+  String get complaintCustomerReplied => 'Customer replied';
+
+  @override
+  String get complaintSupportReplied => 'Support replied';
+
+  @override
+  String get complaintInReview => 'Under review';
+
+  @override
+  String get complaintReplyReopens => 'Reply to reopen the complaint...';
+
+  @override
+  String get complaintAddDetails => 'Add details or reply...';
+
+  @override
+  String get complaintTrack => 'Track';
+
+  @override
+  String get complaintSelectHint =>
+      'Select a complaint to see the conversation';
+
+  @override
+  String get paymentConfirmingTitle => 'Confirming your payment';
+
+  @override
+  String get paymentConfirmingBody =>
+      'This takes a few seconds. Please don\'t close the app.';
 }

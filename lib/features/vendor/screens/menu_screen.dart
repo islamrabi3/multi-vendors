@@ -464,9 +464,9 @@ class _MenuViewState extends State<_MenuView> {
                     )
                   else if (state.categories.isEmpty && state.products.isEmpty)
                     Expanded(
-                      child: EmptyView(
-                        message: context.l10n.addASectionThenYourFirstProduct,
-                        icon: Icons.menu_book_outlined,
+                      child: _EmptyMenu(
+                        onAddSection: () => _editCategory(context),
+                        onAddItem: () => _openEditor(context),
                       ),
                     )
                   else if (split)
@@ -769,6 +769,53 @@ class _Header extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadii.pill),
                 borderSide: const BorderSide(color: AppColors.border),
               ),
+            ),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          // What an evening shift checks first: what is off the menu right
+          // now. One tap narrows the list to it.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (stock, label, count, icon) in [
+                  (
+                    MenuStock.all,
+                    l10n.all,
+                    state.products.length,
+                    Icons.restaurant_menu_rounded,
+                  ),
+                  (
+                    MenuStock.available,
+                    l10n.availableItems,
+                    state.products.length - state.soldOutCount,
+                    Icons.check_circle_outline_rounded,
+                  ),
+                  (
+                    MenuStock.soldOut,
+                    l10n.soldOut,
+                    state.soldOutCount,
+                    Icons.remove_shopping_cart_outlined,
+                  ),
+                ]) ...[
+                  FilterChip(
+                    avatar: Icon(
+                      icon,
+                      size: 16,
+                      color: state.stock == stock
+                          ? Colors.white
+                          : stock == MenuStock.soldOut && count > 0
+                          ? AppColors.dangerInk
+                          : AppColors.textMuted,
+                    ),
+                    label: Text('$label · $count'),
+                    selected: state.stock == stock,
+                    showCheckmark: false,
+                    onSelected: (_) => cubit.setStock(stock),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ],
             ),
           ),
         ],
@@ -1633,9 +1680,16 @@ class _ProductTile extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            if (!available) ...[
+                            if (!available || product.isOutOfStock) ...[
                               const SizedBox(width: 6),
                               const _SoldOutBadge(),
+                            ] else if (product.isLowStock) ...[
+                              const SizedBox(width: 6),
+                              SoftBadge(
+                                label: l10n.lowStock,
+                                fill: AppColors.amberFill,
+                                ink: AppColors.amberInk,
+                              ),
                             ],
                           ],
                         ),
@@ -1650,6 +1704,10 @@ class _ProductTile extends StatelessWidget {
                             Flexible(
                               child: Text(
                                 [
+                                  if (product.trackStock)
+                                    product.isOutOfStock
+                                        ? l10n.outOfStock
+                                        : l10n.stockLeft(product.stockQuantity),
                                   if (product.optionGroups.isNotEmpty)
                                     l10n.optionGroupsCount(
                                       product.optionGroups.length,
@@ -1747,6 +1805,79 @@ class _ProductTile extends StatelessWidget {
   );
 }
 
+/// A store with nothing on its menu yet: say what to do first, and put both
+/// first steps within reach.
+class _EmptyMenu extends StatelessWidget {
+  const _EmptyMenu({required this.onAddSection, required this.onAddItem});
+
+  final VoidCallback onAddSection;
+  final VoidCallback onAddItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: const BoxDecoration(
+                  color: AppColors.warmFill,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.menu_book_rounded,
+                  size: 44,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Text(
+                l10n.buildYourMenu,
+                textAlign: TextAlign.center,
+                style: AppType.heading(20),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                l10n.addASectionThenYourFirstProduct,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: AppSpace.xl),
+              FilledButton.icon(
+                onPressed: onAddSection,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                ),
+                icon: const Icon(Icons.create_new_folder_outlined),
+                label: Text(l10n.addSection),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              OutlinedButton.icon(
+                onPressed: onAddItem,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                ),
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l10n.addItem),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SoldOutBadge extends StatelessWidget {
   const _SoldOutBadge();
 
@@ -1758,7 +1889,7 @@ class _SoldOutBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadii.sm),
     ),
     child: Text(
-      context.l10n.soldOut.toUpperCase(),
+      context.l10n.soldOut,
       style: const TextStyle(
         fontSize: 9,
         fontWeight: FontWeight.w800,

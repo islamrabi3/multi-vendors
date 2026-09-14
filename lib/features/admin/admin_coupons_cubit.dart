@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/models/coupon.dart';
+import '../../core/repositories/admin_repository.dart';
 import '../../core/repositories/coupons_repository.dart';
 
 class AdminCouponsState extends Equatable {
@@ -9,25 +10,31 @@ class AdminCouponsState extends Equatable {
     this.loading = true,
     this.coupons = const [],
     this.error,
+    this.storeNames = const {},
   });
 
   final bool loading;
   final List<Coupon> coupons;
   final String? error;
 
+  /// Names of the stores that store-scoped codes belong to, by vendor id.
+  final Map<String, String> storeNames;
+
   AdminCouponsState copyWith({
     bool? loading,
     List<Coupon>? coupons,
     String? error,
     bool clearError = false,
+    Map<String, String>? storeNames,
   }) => AdminCouponsState(
     loading: loading ?? this.loading,
     coupons: coupons ?? this.coupons,
     error: clearError ? null : (error ?? this.error),
+    storeNames: storeNames ?? this.storeNames,
   );
 
   @override
-  List<Object?> get props => [loading, coupons, error];
+  List<Object?> get props => [loading, coupons, error, storeNames];
 }
 
 class AdminCouponsCubit extends Cubit<AdminCouponsState> {
@@ -36,12 +43,21 @@ class AdminCouponsCubit extends Cubit<AdminCouponsState> {
   }
 
   final CouponsRepository _repository;
+  final _admin = AdminRepository();
 
   Future<void> load() async {
     emit(state.copyWith(loading: true, clearError: true));
     try {
       final coupons = await _repository.fetchAll();
-      emit(state.copyWith(loading: false, coupons: coupons));
+      final ids = {for (final c in coupons) ?c.vendorId};
+      var names = state.storeNames;
+      try {
+        final labels = await _admin.vendorLabels(ids);
+        names = {for (final e in labels.entries) e.key: e.value.name};
+      } catch (_) {
+        // Names are a label only; the list still works without them.
+      }
+      emit(state.copyWith(loading: false, coupons: coupons, storeNames: names));
     } catch (e) {
       emit(state.copyWith(loading: false, error: e.toString()));
     }
@@ -60,6 +76,8 @@ class AdminCouponsCubit extends Cubit<AdminCouponsState> {
     bool firstOrderOnly = false,
     bool isPublic = false,
     String? title,
+    String? vendorId,
+    String fundedBy = 'platform',
   }) async {
     try {
       await _repository.create(
@@ -75,6 +93,8 @@ class AdminCouponsCubit extends Cubit<AdminCouponsState> {
         firstOrderOnly: firstOrderOnly,
         isPublic: isPublic,
         title: title,
+        vendorId: vendorId,
+        fundedBy: fundedBy,
       );
       await load();
       return true;

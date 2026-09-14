@@ -27,20 +27,20 @@ class ExtractedItem {
   bool get isMissingTranslation => name.isEmpty || nameAr.isEmpty;
 
   factory ExtractedItem.fromMap(Map<String, dynamic> map) => ExtractedItem(
-        name: (map['name'] as String?)?.trim() ?? '',
-        nameAr: (map['name_ar'] as String?)?.trim() ?? '',
-        description: (map['description'] as String?)?.trim() ?? '',
-        descriptionAr: (map['description_ar'] as String?)?.trim() ?? '',
-        price: ((map['price'] as num?) ?? 0).toDouble(),
-      );
+    name: (map['name'] as String?)?.trim() ?? '',
+    nameAr: (map['name_ar'] as String?)?.trim() ?? '',
+    description: (map['description'] as String?)?.trim() ?? '',
+    descriptionAr: (map['description_ar'] as String?)?.trim() ?? '',
+    price: ((map['price'] as num?) ?? 0).toDouble(),
+  );
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'name_ar': nameAr,
-        'description': description,
-        'description_ar': descriptionAr,
-        'price': price,
-      };
+    'name': name,
+    'name_ar': nameAr,
+    'description': description,
+    'description_ar': descriptionAr,
+    'price': price,
+  };
 }
 
 class ExtractedCategory {
@@ -70,10 +70,10 @@ class ExtractedCategory {
       );
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'name_ar': nameAr,
-        'items': items.map((item) => item.toMap()).toList(),
-      };
+    'name': name,
+    'name_ar': nameAr,
+    'items': items.map((item) => item.toMap()).toList(),
+  };
 }
 
 class MenuImportException implements Exception {
@@ -90,18 +90,16 @@ class MenuImportRepository {
   /// [vendorId] is checked server-side against `can_extract_menu`, so a
   /// store whose switch is off cannot extract by calling this directly.
   Future<List<ExtractedCategory>> extractMenu(
-      String vendorId,
-      List<({Uint8List bytes, String mimeType})> images) async {
+    String vendorId,
+    List<({Uint8List bytes, String mimeType})> images,
+  ) async {
     final response = await supabase.functions.invoke(
       'extract-menu',
       body: {
         'vendor_id': vendorId,
         'images': [
           for (final image in images)
-            {
-              'data': base64Encode(image.bytes),
-              'media_type': image.mimeType,
-            },
+            {'data': base64Encode(image.bytes), 'media_type': image.mimeType},
         ],
       },
     );
@@ -115,22 +113,29 @@ class MenuImportRepository {
     final categories = ((data['categories'] as List?) ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(ExtractedCategory.fromMap)
-        .where((category) =>
-            (category.name.isNotEmpty || category.nameAr.isNotEmpty) &&
-            category.items.isNotEmpty)
+        .where(
+          (category) =>
+              (category.name.isNotEmpty || category.nameAr.isNotEmpty) &&
+              category.items.isNotEmpty,
+        )
         .toList();
     return categories;
   }
 
   /// Returns (categoriesAdded, itemsAdded).
   Future<({int categories, int items})> importMenu(
-      String vendorId, List<ExtractedCategory> menu) async {
-    final result = await supabase.rpc('vendor_import_menu', params: {
-      'p_vendor_id': vendorId,
-      'p_menu': {
-        'categories': menu.map((category) => category.toMap()).toList(),
+    String vendorId,
+    List<ExtractedCategory> menu,
+  ) async {
+    final result = await supabase.rpc(
+      'vendor_import_menu',
+      params: {
+        'p_vendor_id': vendorId,
+        'p_menu': {
+          'categories': menu.map((category) => category.toMap()).toList(),
+        },
       },
-    });
+    );
     final map = result is Map ? result : const {};
     return (
       categories: ((map['categories_added'] as num?) ?? 0).toInt(),

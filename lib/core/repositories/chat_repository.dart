@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/chat_conversation.dart';
 import '../models/chat_message.dart';
 import '../services/attachment_service.dart';
 
 class ChatRepository {
   final SupabaseClient _client;
   ChatRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   String? get currentUserId => _client.auth.currentUser?.id;
 
@@ -27,9 +30,106 @@ class ChatRepository {
         .stream(primaryKey: ['id'])
         .eq('order_id', orderId)
         .order('created_at', ascending: true)
-        .map((list) => list
-            .map((e) => ChatMessage.fromMap(e))
-            .toList());
+        .map((list) => list.map((e) => ChatMessage.fromMap(e)).toList());
+  }
+
+  /// Unread messages from others in one order ([orderId]) or across every
+  /// conversation this user is part of (null). Recounted when a message
+  /// arrives or when this user reads a thread on any device.
+  Stream<int> watchUnread([String? orderId]) {
+    final me = currentUserId;
+    if (me == null) return Stream.value(0);
+    final controller = StreamController<int>();
+    RealtimeChannel? channel;
+    Timer? debounce;
+    var active = true;
+
+    Future<void> refresh() async {
+      try {
+        final value = await _client.rpc(
+          'my_unread_chat_count',
+          params: {'p_order_id': orderId},
+        );
+        if (active) controller.add(((value as num?) ?? 0).toInt());
+      } catch (_) {}
+    }
+
+    void schedule() {
+      debounce?.cancel();
+      debounce = Timer(const Duration(milliseconds: 400), refresh);
+    }
+
+    controller.onListen = () {
+      refresh();
+      channel = _client
+          .channel('chat-unread:${orderId ?? 'all'}:${_seq++}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'chat_messages',
+            filter: orderId == null
+                ? null
+                : PostgresChangeFilter(
+                    type: PostgresChangeFilterType.eq,
+                    column: 'order_id',
+                    value: orderId,
+                  ),
+            callback: (_) => schedule(),
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'chat_reads',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'user_id',
+              value: me,
+            ),
+            callback: (_) => schedule(),
+          )
+          .subscribe((status, _) {
+            if (status == RealtimeSubscribeStatus.subscribed) refresh();
+          });
+    };
+    controller.onCancel = () async {
+      active = false;
+      debounce?.cancel();
+      final open = channel;
+      if (open != null) await _client.removeChannel(open);
+      await controller.close();
+    };
+    return controller.stream;
+  }
+
+  static var _seq = 0;
+
+  /// Opening the thread is reading it — for this user only.
+  Future<void> markRead(String orderId) async {
+    try {
+      await _client.rpc(
+        'mark_order_chat_read',
+        params: {'p_order_id': orderId},
+      );
+    } catch (_) {
+      // A badge that stays one message too long is not worth an error.
+    }
+  }
+
+  /// Removes a conversation from this user's own list until someone writes
+  /// in it again. Also marks it read.
+  Future<void> hideConversation(String orderId) =>
+      _client.rpc('hide_order_conversation', params: {'p_order_id': orderId});
+
+  /// Every order conversation this user is part of, newest first.
+  Future<List<ChatConversation>> fetchConversations({int limit = 50}) async {
+    final rows = await _client.rpc(
+      'my_order_conversations',
+      params: {'p_limit': limit},
+    );
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(ChatConversation.fromMap)
+        .toList();
   }
 
   Future<void> sendMessage({

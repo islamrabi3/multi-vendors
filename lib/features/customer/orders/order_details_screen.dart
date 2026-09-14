@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
+import 'package:multi_vendor/core/widgets/chat_unread_badge.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -52,9 +54,11 @@ class _OrderDetailsView extends StatelessWidget {
     final description = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
     final submitted = context.l10n.reportSubmitted;
+    final trackLabel = context.l10n.complaintTrack;
+    final router = GoRouter.of(context);
 
     try {
-      final ok = await showFormDialog<bool>(
+      final reportId = await showFormDialog<String>(
         context: context,
         title: context.l10n.reportStoreOrOrder,
         icon: Icons.report_problem_rounded,
@@ -84,17 +88,28 @@ class _OrderDetailsView extends StatelessWidget {
           final desc = description.text.trim();
           // Returning null keeps the dialog open — nothing to report yet.
           if (subj.isEmpty || desc.isEmpty) return null;
-          await ReportRepository().submitReport(
+          final id = await ReportRepository().submitReport(
             subject: subj,
             description: desc,
             orderId: order.id,
             vendorId: order.vendorId,
           );
-          return true;
+          return id ?? '';
         },
       );
-      if (ok == true) {
-        messenger.showSnackBar(SnackBar(content: Text(submitted)));
+      if (reportId != null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(submitted),
+            duration: const Duration(seconds: 6),
+            action: reportId.isEmpty
+                ? null
+                : SnackBarAction(
+                    label: trackLabel,
+                    onPressed: () => router.push('/complaints/$reportId'),
+                  ),
+          ),
+        );
       }
     } finally {
       subject.dispose();
@@ -211,6 +226,11 @@ class _OrderDetailsView extends StatelessWidget {
                 label: context.l10n.deliveryFee1,
                 value: formatMoney(order.deliveryFee),
               ),
+              if (order.serviceFee > 0)
+                _Row(
+                  label: context.l10n.serviceFee,
+                  value: formatMoney(order.serviceFee),
+                ),
               if (order.discount > 0)
                 _Row(
                   label: context.l10n.discount1,
@@ -236,7 +256,9 @@ class _OrderDetailsView extends StatelessWidget {
               // other than who they thought. While the kitchen is still
               // cooking there is nobody to chat to, and "Report an issue"
               // below already reaches support.
-              if (order.driverId != null && !order.status.isTerminal)
+              // While the order is live there is always someone to talk to:
+              // the store until a driver takes it, then the driver.
+              if (!order.status.isTerminal)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: SizedBox(
@@ -247,9 +269,16 @@ class _OrderDetailsView extends StatelessWidget {
                         isScrollControlled: true,
                         builder: (_) => OrderChatSheet(orderId: order.id),
                       ),
-                      icon: const Icon(Icons.chat_bubble_outline),
+                      icon: ChatUnreadBadge(
+                        orderId: order.id,
+                        top: -8,
+                        end: -10,
+                        child: const Icon(Icons.chat_bubble_outline),
+                      ),
                       label: Text(
-                        context.l10n.chatWithDriver,
+                        order.driverId != null
+                            ? context.l10n.chatWithDriver
+                            : context.l10n.chatWithStore,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -427,7 +456,7 @@ class _StatusStepper extends StatelessWidget {
   Widget _buildStepTime(BuildContext context, DateTime? at) => SizedBox(
     width: 62,
     child: Text(
-      at == null ? '' : TimeOfDay.fromDateTime(at).format(context),
+      at == null ? '' : formatClock(context, at),
       textAlign: TextAlign.center,
       style: AppType.mono(9.5, color: AppColors.textFaint),
     ),
@@ -693,6 +722,7 @@ class _PaymentCard extends StatelessWidget {
                         final cubit = context.read<OrderDetailsCubit>();
                         final messenger = ScaffoldMessenger.of(context);
                         final router = GoRouter.of(context);
+                        final failed = context.l10n.paymentFailedNotice;
                         final checkout = await cubit.retryPayment();
                         if (checkout == null) return;
 
@@ -703,16 +733,17 @@ class _PaymentCard extends StatelessWidget {
                         if (result != PaymobFlowResult.paid) {
                           messenger.showSnackBar(
                             SnackBar(
-                              content: const Text(
-                                'Payment not completed. The order stays '
-                                'unpaid and is not sent to the restaurant.',
-                              ),
+                              content: Text(failed),
                               backgroundColor: AppColors.dangerInk,
                             ),
                           );
                         }
                       },
-                child: Text(context.l10n.payNow),
+                // Opening Paymob takes a few seconds; the spinner holds until
+                // its page is on screen.
+                child: busy
+                    ? const ButtonSpinner(size: 16)
+                    : Text(context.l10n.payNow),
               )
             : order.isPaid
             ? const Icon(Icons.check_circle, color: AppColors.success)

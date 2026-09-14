@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../app/tokens.dart';
 import '../../../core/widgets/web/web_table.dart';
@@ -68,7 +68,7 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
   Future<void> _deleteRole(AdminRole role) async {
     final confirmed = await AppDialogs.showConfirmDialog(
       context: context,
-      title: role.name,
+      title: role.displayName(Localizations.localeOf(context).languageCode),
       message: context.l10n.deleteRoleConfirm,
       confirmText: context.l10n.delete,
       cancelText: context.l10n.cancel,
@@ -147,7 +147,11 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
             ),
             for (final role in roles)
               ListTile(
-                title: Text(role.name),
+                title: Text(
+                  role.displayName(
+                    Localizations.localeOf(context).languageCode,
+                  ),
+                ),
                 subtitle: Text(
                   context.l10n.permissionsCount(role.permissions.length),
                 ),
@@ -756,7 +760,6 @@ class _AuditTabState extends State<_AuditTab> {
         icon: Icons.history_rounded,
       );
     }
-    final language = Localizations.localeOf(context).languageCode;
     return RefreshIndicator(
       onRefresh: _load,
       child: InfiniteScroll(
@@ -784,7 +787,7 @@ class _AuditTabState extends State<_AuditTab> {
               subtitle: Text(
                 [
                   entry.actorName ?? '—',
-                  DateFormat.yMMMd(language).add_jm().format(entry.createdAt),
+                  formatDateTime(context, entry.createdAt),
                   if (entry.detail.isNotEmpty) _detailText(entry.detail),
                 ].join(' · '),
                 maxLines: 2,
@@ -910,12 +913,11 @@ class _RoleEditorState extends State<_RoleEditor> {
                         bottom: 4,
                       ),
                       child: Text(
-                        _groupLabel(context, group).toUpperCase(),
+                        _groupLabel(context, group),
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color: AppColors.textFaint,
+                          color: AppColors.textMuted,
                         ),
                       ),
                     ),
@@ -926,12 +928,20 @@ class _RoleEditorState extends State<_RoleEditor> {
                         contentPadding: EdgeInsets.zero,
                         dense: true,
                         value: _selected.contains(permission.key),
-                        // The key itself is the label: these are read by
-                        // operators who also read the audit trail, where the
-                        // same strings appear.
+                        // A readable name in the app's language, with the key
+                        // underneath for anyone matching it to the audit log.
                         title: Text(
+                          permissionLabel(context, permission.key),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        subtitle: Text(
                           permission.key,
-                          style: AppType.mono(12.5, color: AppColors.ink),
+                          textDirection: TextDirection.ltr,
+                          style: AppType.mono(11, color: AppColors.textFaint),
                         ),
                         onChanged: (on) => setState(
                           () => on == true
@@ -1110,7 +1120,12 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
     items: [
       DropdownMenuItem(value: null, child: Text(context.l10n.ownerFullAccess)),
       for (final role in widget.roles)
-        DropdownMenuItem(value: role.id, child: Text(role.name)),
+        DropdownMenuItem(
+          value: role.id,
+          child: Text(
+            role.displayName(Localizations.localeOf(context).languageCode),
+          ),
+        ),
     ],
     onChanged: (value) => setState(() => _roleId = value),
   );
@@ -1447,4 +1462,34 @@ WebTableRow _staffRow(
           )
         : const SizedBox.shrink(),
   );
+}
+
+String permissionLabel(BuildContext context, String key) {
+  final l10n = context.l10n;
+  return switch (key) {
+    'orders.view' => l10n.permOrdersView,
+    'orders.cancel' => l10n.permOrdersCancel,
+    'orders.assign' => l10n.permOrdersAssign,
+    'vendors.view' => l10n.permVendorsView,
+    'vendors.approve' => l10n.permVendorsApprove,
+    'vendors.promote' => l10n.permVendorsPromote,
+    'vendors.terms' => l10n.permVendorsTerms,
+    'catalog.manage' => l10n.permCatalogManage,
+    'content.manage' => l10n.permContentManage,
+    'promos.manage' => l10n.permPromosManage,
+    'ads.manage' => l10n.permAdsManage,
+    'drivers.view' => l10n.permDriversView,
+    'drivers.approve' => l10n.permDriversApprove,
+    'users.block' => l10n.permUsersBlock,
+    'users.delete' => l10n.permUsersDelete,
+    'staff.manage' => l10n.permStaffManage,
+    'support.handle' => l10n.permSupportHandle,
+    'notifications.send' => l10n.permNotificationsSend,
+    'reports.view' => l10n.permReportsView,
+    'payments.refund' => l10n.permPaymentsRefund,
+    'wallets.adjust' => l10n.permWalletsAdjust,
+    'finance.settle' => l10n.permFinanceSettle,
+    'finance.adjust' => l10n.permFinanceAdjust,
+    _ => key,
+  };
 }

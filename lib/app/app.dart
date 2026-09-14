@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/features/admin/admin_action_badges.dart';
+import 'arabic_material_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -97,6 +99,7 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
           } else if (state.status == AuthStatus.unauthenticated) {
             // Sign-out: drop the cart so it never carries into the next session.
             _cartCubit.resetLocal();
+            AdminActionBadges.instance.stop();
           }
         },
         child: BlocBuilder<LocaleCubit, Locale>(
@@ -123,6 +126,9 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
               locale: locale,
               localizationsDelegates: [
                 AppLocalizations.delegate,
+                // Before the global set: the first delegate for a type wins,
+                // and this one only swaps the Arabic AM/PM words.
+                const ArabicMaterialLocalizationsDelegate(),
                 GlobalMaterialLocalizations.delegate,
                 GlobalWidgetsLocalizations.delegate,
                 GlobalCupertinoLocalizations.delegate,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
@@ -321,7 +321,7 @@ class _Body extends StatelessWidget {
               children: [
                 SelectableId(order.orderNumber, style: AppType.mono(20)),
                 Text(
-                  '${context.l10n.placed} ${DateFormat('h:mm a').format(order.createdAt)} · '
+                  '${context.l10n.placed} ${formatClock(context, order.createdAt)} · '
                   '${order.isCod ? context.l10n.cod : context.l10n.card}',
                   style: const TextStyle(
                     fontSize: 12,
@@ -721,6 +721,8 @@ class _ItemsCard extends StatelessWidget {
                 _totalRow(l10n.subtotal, formatMoney(order.subtotal)),
                 if (order.deliveryFee > 0)
                   _totalRow(l10n.deliveryFee, formatMoney(order.deliveryFee)),
+                if (order.serviceFee > 0)
+                  _totalRow(l10n.serviceFee, formatMoney(order.serviceFee)),
                 if (order.discount > 0)
                   _totalRow(
                     l10n.discount,

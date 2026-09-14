@@ -390,6 +390,11 @@ class OrderRepository {
         .select(_vendorJoin)
         .eq('customer_id', userId)
         .inFilter('status', ['delivered', 'cancelled', 'rejected'])
+        // A card checkout the customer backed out of is not an order they
+        // placed: it was never sent to the store.
+        .or(
+          'payment_method.neq.paymob,payment_status.eq.paid,status.neq.cancelled',
+        )
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
     return (data as List)

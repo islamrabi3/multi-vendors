@@ -161,12 +161,10 @@ class _ToastCardState extends State<_ToastCard>
       top: 76 + index * 92.0,
       end: AppSpace.xl,
       child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.25, 0),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-        ),
+        position: Tween<Offset>(begin: const Offset(0.25, 0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+            ),
         child: FadeTransition(
           opacity: _controller,
           child: MouseRegion(

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -61,6 +63,49 @@ class InterstitialAds {
     );
   }
 
+  /// Video files already on this device, by ad id, for the ad about to show.
+  static final Map<String, String> _localVideos = {};
+
+  /// A full-screen video plays only from a file already on the device, so it
+  /// starts instantly with no spinner. A video that is not cached yet is
+  /// downloaded quietly for next time and this launch goes without it.
+  static Future<bool> _videoReady(BannerItem ad) async {
+    if (!ad.isVideo) return true;
+    final url = ad.videoUrl!;
+    try {
+      final cached = await DefaultCacheManager().getFileFromCache(url);
+      if (cached != null && await cached.file.exists()) {
+        _localVideos[ad.id] = cached.file.path;
+        return true;
+      }
+    } catch (_) {}
+    unawaited(
+      DefaultCacheManager().downloadFile(url).then((_) {}, onError: (_) {}),
+    );
+    return false;
+  }
+
+  /// Downloads the videos for [placement] ahead of time, so the next launch
+  /// can play them immediately. Called once the app is idle.
+  static Future<void> prefetch(
+    OffersRepository repository, {
+    AdPlacement placement = AdPlacement.splash,
+  }) async {
+    if (kIsWeb) return;
+    try {
+      final ads = await repository.activeAds(placement);
+      for (final ad in ads.where((a) => a.isVideo)) {
+        final url = ad.videoUrl!;
+        final cached = await DefaultCacheManager().getFileFromCache(url);
+        if (cached == null) {
+          await DefaultCacheManager().downloadFile(url);
+        }
+      }
+    } catch (_) {}
+  }
+
+  static String? localVideoFor(BannerItem ad) => _localVideos[ad.id];
+
   /// Shows the first eligible interstitial, if there is one and if now is a
   /// reasonable moment. Silent about everything else — an ad that cannot be
   /// fetched must never be visible to the customer as an error.
@@ -85,6 +130,7 @@ class InterstitialAds {
 
       for (final ad in ads) {
         if (await _alreadySeen(ad)) continue;
+        if (!await _videoReady(ad)) continue;
         if (!context.mounted) return;
 
         _shownSinceLaunch = true;
@@ -278,8 +324,10 @@ class _Artwork extends StatelessWidget {
     // when a video was attached, so a video URL an admin uploaded here never
     // actually played.
     if (ad.isVideo) {
+      final local = InterstitialAds.localVideoFor(ad);
       return _FullScreenAdVideo(
         url: ad.videoUrl!,
+        localPath: local,
         poster: ad.poster,
         onUnplayable: onUnplayable,
         onFinished: onFinished,
@@ -319,12 +367,16 @@ class _Artwork extends StatelessWidget {
 class _FullScreenAdVideo extends StatefulWidget {
   const _FullScreenAdVideo({
     required this.url,
+    this.localPath,
     required this.poster,
     required this.onUnplayable,
     required this.onFinished,
   });
 
   final String url;
+
+  /// The cached copy; played in preference to [url] so it starts instantly.
+  final String? localPath;
   final String? poster;
   final VoidCallback onUnplayable;
   final VoidCallback onFinished;
@@ -345,7 +397,10 @@ class _FullScreenAdVideoState extends State<_FullScreenAdVideo> {
   }
 
   Future<void> _prepare() async {
-    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    final local = widget.localPath;
+    final controller = local != null
+        ? VideoPlayerController.file(File(local))
+        : VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _controller = controller;
     try {
       // A codec the platform cannot decode (HEVC in Chrome, say) may never
@@ -395,11 +450,9 @@ class _FullScreenAdVideoState extends State<_FullScreenAdVideo> {
     final controller = _controller;
     if (!_ready || controller == null) {
       final poster = widget.poster;
-      if (poster == null) {
-        return const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        );
-      }
+      // No spinner: the video plays from the device and is ready in a
+      // moment, and a loader flashing over an ad reads as a broken app.
+      if (poster == null) return const ColoredBox(color: Colors.black);
       return AppNetworkImage(
         url: poster,
         fit: BoxFit.contain,

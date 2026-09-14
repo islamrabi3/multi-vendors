@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import '../../../app/tokens.dart';
 import '../../../core/repositories/loyalty_repository.dart';
 import '../../../core/utils/paging.dart';
@@ -146,7 +147,7 @@ class _HistoryTile extends StatelessWidget {
       icon: isOrderReward ? Icons.redeem_rounded : Icons.stars_rounded,
       title: isOrderReward ? l10n.loyaltyOrderReward : action,
       subtitle: [
-        TimeOfDay.fromDateTime(createdAt).format(context),
+        formatClock(context, createdAt),
         if (ref != null) l10n.orderRef(ref),
       ].join(' · '),
       amount: l10n.pointsValue('${change.abs()}'),

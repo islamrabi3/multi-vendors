@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../repositories/chat_repository.dart';
 import '../repositories/notifications_repository.dart';
+import '../repositories/report_repository.dart';
 import '../repositories/support_repository.dart';
 
 /// A visible way into support conversations, separate from [NotificationBell]
@@ -18,8 +22,11 @@ class MessagesButton extends StatefulWidget {
 
   /// The admin/staff view: badges on how many threads are waiting for a
   /// reply — a queue, not an unread count — and opens the admin inbox.
-  const MessagesButton.staff({super.key, this.compact = false, this.dark = false})
-    : _forStaff = true;
+  const MessagesButton.staff({
+    super.key,
+    this.compact = false,
+    this.dark = false,
+  }) : _forStaff = true;
 
   final bool _forStaff;
   final bool compact;
@@ -32,7 +39,40 @@ class MessagesButton extends StatefulWidget {
 class _MessagesButtonState extends State<MessagesButton> {
   late final Stream<int> _count = widget._forStaff
       ? SupportRepository().watchOpenThreadCount()
-      : NotificationsRepository().watchUnreadCount(type: 'support');
+      : _combined(
+          _combined(
+            NotificationsRepository().watchUnreadCount(type: 'support'),
+            ChatRepository().watchUnread(),
+          ),
+          // Unopened replies on the customer's complaints; zero for others.
+          ReportRepository().watchUnreadReplies(),
+        );
+
+  /// Support replies and order-chat messages add up to one "messages" count.
+  static Stream<int> _combined(Stream<int> a, Stream<int> b) {
+    var lastA = 0;
+    var lastB = 0;
+    late final StreamController<int> controller;
+    StreamSubscription<int>? subA;
+    StreamSubscription<int>? subB;
+    controller = StreamController<int>(
+      onListen: () {
+        subA = a.listen((v) {
+          lastA = v;
+          controller.add(lastA + lastB);
+        });
+        subB = b.listen((v) {
+          lastB = v;
+          controller.add(lastA + lastB);
+        });
+      },
+      onCancel: () async {
+        await subA?.cancel();
+        await subB?.cancel();
+      },
+    );
+    return controller.stream;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +84,7 @@ class _MessagesButtonState extends State<MessagesButton> {
         final count = snapshot.data ?? 0;
         return InkWell(
           onTap: () => context.push(
-            widget._forStaff ? '/admin-app/support' : '/support',
+            widget._forStaff ? '/admin-app/support' : '/messages',
           ),
           borderRadius: BorderRadius.circular(21),
           child: Stack(

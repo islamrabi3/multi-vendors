@@ -134,10 +134,7 @@ class _AdSlotState extends State<AdSlot> {
                   fit: StackFit.expand,
                   children: [
                     if (ad.isVideo)
-                      _AdVideo(
-                        url: ad.videoUrl!,
-                        poster: ad.poster,
-                      )
+                      _AdVideo(url: ad.videoUrl!, poster: ad.poster)
                     else
                       AppNetworkImage(url: ad.imageUrl, fit: BoxFit.cover),
                     if (ad.title != null || ad.subtitle != null)
@@ -259,9 +256,7 @@ class _AdVideoState extends State<_AdVideo> {
       if (poster == null) {
         return const ColoredBox(
           color: Colors.black,
-          child: Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          ),
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
         );
       }
       return AppNetworkImage(url: poster, fit: BoxFit.cover);

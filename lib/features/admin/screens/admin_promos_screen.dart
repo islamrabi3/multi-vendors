@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/coupon.dart';
+import '../../../core/models/vendor.dart';
 import '../../../core/repositories/coupons_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -12,6 +13,7 @@ import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../admin_coupons_cubit.dart';
+import '../widgets/ad_destination_field.dart' show pickActiveStore;
 import 'admin_manage_screen.dart' show adminManageWebSections;
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
@@ -204,7 +206,11 @@ class _CouponsSection extends StatelessWidget {
         }
         final cubit = context.read<AdminCouponsCubit>();
         if (AppBreakpoints.isWebWide(context)) {
-          return _CouponTable(coupons: state.coupons, cubit: cubit);
+          return _CouponTable(
+            coupons: state.coupons,
+            cubit: cubit,
+            storeNames: state.storeNames,
+          );
         }
         return Container(
           decoration: BoxDecoration(
@@ -220,6 +226,7 @@ class _CouponsSection extends StatelessWidget {
                   coupon: state.coupons[i],
                   cubit: cubit,
                   last: i == state.coupons.length - 1,
+                  storeName: state.storeNames[state.coupons[i].vendorId],
                 ),
             ],
           ),
@@ -236,10 +243,15 @@ class _CouponsSection extends StatelessWidget {
 /// is on. Stacked cards make you re-find each of those in a different place
 /// per row; columns put them where the eye already is.
 class _CouponTable extends StatelessWidget {
-  const _CouponTable({required this.coupons, required this.cubit});
+  const _CouponTable({
+    required this.coupons,
+    required this.cubit,
+    required this.storeNames,
+  });
 
   final List<Coupon> coupons;
   final AdminCouponsCubit cubit;
+  final Map<String, String> storeNames;
 
   @override
   Widget build(BuildContext context) {
@@ -247,6 +259,7 @@ class _CouponTable extends StatelessWidget {
     final columns = [
       WebTableColumn(label: l10n.couponCode, flex: 2),
       WebTableColumn(label: l10n.discount, flex: 2),
+      WebTableColumn(label: l10n.couponAppliesTo, flex: 2),
       WebTableColumn(label: l10n.used, width: 120),
       WebTableColumn(label: l10n.expiresLabel, width: 120),
       WebTableColumn(label: l10n.statusLabel, width: 104),
@@ -272,6 +285,10 @@ class _CouponTable extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 12.5),
+              ),
+              _StoreScopeCell(
+                coupon: coupon,
+                storeName: storeNames[coupon.vendorId],
               ),
               Text(
                 '${coupon.usedCount} / ${coupon.usageLimit ?? '∞'}',
@@ -347,6 +364,47 @@ class _CouponTable extends StatelessWidget {
   }
 }
 
+/// "All stores", or the store's name with who pays for the discount.
+class _StoreScopeCell extends StatelessWidget {
+  const _StoreScopeCell({required this.coupon, this.storeName});
+
+  final Coupon coupon;
+  final String? storeName;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (coupon.vendorId == null) {
+      return Text(
+        l10n.couponAllStores,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          storeName ?? l10n.store,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+        ),
+        Text(
+          coupon.isVendorFunded
+              ? l10n.couponFundedStore
+              : l10n.couponFundedPlatform,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
 /// Why a coupon is or is not working, in one badge.
 class _CouponStatus extends StatelessWidget {
   const _CouponStatus({required this.coupon});
@@ -379,11 +437,13 @@ class _CouponRow extends StatelessWidget {
     required this.coupon,
     required this.cubit,
     required this.last,
+    this.storeName,
   });
 
   final Coupon coupon;
   final AdminCouponsCubit cubit;
   final bool last;
+  final String? storeName;
 
   String _summary(BuildContext context) {
     final l10n = context.l10n;
@@ -416,7 +476,10 @@ class _CouponRow extends StatelessWidget {
       1 => l10n.oncePerCustomer,
       final n => l10n.usesPerCustomer(n),
     };
+    final store = coupon.vendorId == null ? null : (storeName ?? l10n.store);
     return [
+      if (store != null)
+        '$store · ${coupon.isVendorFunded ? l10n.couponFundedStore : l10n.couponFundedPlatform}',
       '${coupon.usedCount} / $limit ${l10n.used}',
       perUser,
       if (coupon.firstOrderOnly) l10n.couponFirstOrderOnly,
@@ -564,6 +627,23 @@ class _CouponFormState extends State<_CouponForm> {
   bool _isPublic = false;
   bool _saving = false;
 
+  /// Null = every store. A picked store scopes the code to that store only.
+  Vendor? _store;
+
+  /// Who pays for a store-scoped code. Defaults to the platform: an admin
+  /// campaign should not quietly come out of the store's payout.
+  bool _storePays = false;
+
+  Future<void> _chooseStore() async {
+    final picked = await pickActiveStore(context);
+    if (picked == null || !mounted) return;
+    setState(() {
+      _store = picked;
+      // A store offer exists to be seen on that store's page.
+      _isPublic = true;
+    });
+  }
+
   @override
   void dispose() {
     _code.dispose();
@@ -634,6 +714,52 @@ class _CouponFormState extends State<_CouponForm> {
               controller: _title,
               decoration: InputDecoration(labelText: l10n.couponTitleLabel),
             ),
+            const SizedBox(height: 10),
+            _StoreScopeField(
+              store: _store,
+              onTap: _chooseStore,
+              onClear: () => setState(() {
+                _store = null;
+                _storePays = false;
+              }),
+            ),
+            if (_store != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n.couponFundedBy,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 6),
+              SegmentedButton<bool>(
+                expandedInsets: EdgeInsets.zero,
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    icon: const Icon(Icons.account_balance_rounded, size: 16),
+                    label: Text(
+                      l10n.couponFundedPlatform,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: const Icon(Icons.storefront_rounded, size: 16),
+                    label: Text(
+                      l10n.couponFundedStore,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                selected: {_storePays},
+                onSelectionChanged: (v) => setState(() => _storePays = v.first),
+              ),
+            ],
             const SizedBox(height: 12),
             SegmentedButton<_CouponKind>(
               // Full width with a single-line, ellipsised label per segment:
@@ -763,9 +889,13 @@ class _CouponFormState extends State<_CouponForm> {
               contentPadding: EdgeInsets.zero,
               value: _isPublic,
               onChanged: (v) => setState(() => _isPublic = v),
-              title: Text(l10n.couponPublic),
+              title: Text(
+                _store == null ? l10n.couponPublic : l10n.couponShowOnStorePage,
+              ),
               subtitle: Text(
-                l10n.couponPublicDesc,
+                _store == null
+                    ? l10n.couponPublicDesc
+                    : l10n.couponShowOnStorePageDesc(_store!.name),
                 style: const TextStyle(fontSize: 11.5),
               ),
             ),
@@ -808,6 +938,8 @@ class _CouponFormState extends State<_CouponForm> {
       firstOrderOnly: _firstOrderOnly,
       isPublic: _isPublic,
       title: _title.text.trim().isEmpty ? null : _title.text.trim(),
+      vendorId: _store?.id,
+      fundedBy: _storePays ? 'vendor' : 'platform',
     );
     if (!mounted) return;
     if (ok) {
@@ -816,6 +948,52 @@ class _CouponFormState extends State<_CouponForm> {
     } else {
       setState(() => _saving = false);
     }
+  }
+}
+
+/// Which stores a code works in: all of them, or the one picked.
+class _StoreScopeField extends StatelessWidget {
+  const _StoreScopeField({
+    required this.store,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final Vendor? store;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final picked = store;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: l10n.couponAppliesTo,
+          isDense: true,
+          prefixIcon: const Icon(Icons.storefront_rounded, size: 18),
+          suffixIcon: picked == null
+              ? const Icon(Icons.search_rounded, size: 18)
+              : IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  onPressed: onClear,
+                  tooltip: l10n.couponAllStores,
+                ),
+        ),
+        child: Text(
+          picked?.name ?? l10n.couponAllStores,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: picked == null ? FontWeight.w400 : FontWeight.w700,
+          ),
+        ),
+      ),
+    );
   }
 }
 

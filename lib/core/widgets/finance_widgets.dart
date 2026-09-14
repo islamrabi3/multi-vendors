@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../app/tokens.dart';
 import '../models/finance.dart';
+import '../repositories/finance_repository.dart';
 import '../utils/money.dart';
 import '../utils/settlement_format.dart';
 import 'common.dart' show SoftBadge;
 import 'settlement_receipt.dart' show shareSettlementReceipt;
+import 'web/adaptive_sheet.dart';
 
 /// Turns a ledger type into something a human reads.
 ///
@@ -25,6 +28,7 @@ String ledgerTypeLabel(BuildContext context, String type) {
     'vendor_earning' => l10n.itemSales,
     'platform_commission' => l10n.platformCommission,
     'platform_delivery_margin' => l10n.deliveryFeesTotal,
+    'platform_service_fee' => l10n.serviceFee,
     'platform_discount' => l10n.platformFundedDiscounts,
     'refund' => l10n.refunds,
     'bonus' => l10n.bonus,
@@ -45,6 +49,7 @@ IconData ledgerTypeIcon(String type) => switch (type) {
   'vendor_earning' => Icons.storefront_rounded,
   'platform_commission' => Icons.percent_rounded,
   'platform_delivery_margin' => Icons.local_shipping_rounded,
+  'platform_service_fee' => Icons.receipt_long_rounded,
   'platform_discount' => Icons.local_offer_rounded,
   'refund' => Icons.undo_rounded,
   'bonus' => Icons.card_giftcard_rounded,
@@ -967,7 +972,7 @@ class LedgerTile extends StatelessWidget {
       icon: ledgerTypeIcon(entry.type),
       title: ledgerTypeLabel(context, entry.type),
       subtitle: [
-        TimeOfDay.fromDateTime(entry.createdAt).format(context),
+        formatClock(context, entry.createdAt),
         if (entry.reference != null && entry.reference!.isNotEmpty)
           entry.reference!,
       ].join(' · '),
@@ -1083,9 +1088,10 @@ Future<WithdrawChoice?> showWithdrawSheet(
 }) {
   final l10n = context.l10n;
   final due = quote.nextScheduledPayout;
-  return showModalBottomSheet<WithdrawChoice>(
+  return showAdaptiveSheet<WithdrawChoice>(
     context: context,
     showDragHandle: true,
+    maxWidth: 520,
     backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
@@ -1399,7 +1405,7 @@ class SettlementTile extends StatelessWidget {
       subtitle: [
         '${settlement.createdAt.day}/${settlement.createdAt.month}/${settlement.createdAt.year}',
         if (settlement.notes != null && settlement.notes!.isNotEmpty)
-          settlement.notes!,
+          settlementNoteText(context, settlement.notes!),
       ].join(' · '),
       amount: formatMoney(settlement.amount),
       // Money out of the account either way; tone comes from the badge.
@@ -1544,8 +1550,15 @@ Future<void> showSettlementDetails(
                   settlement.reference!.isNotEmpty)
                 _detailRow(l10n.settlementReference, settlement.reference!),
               if (settlement.notes != null && settlement.notes!.isNotEmpty)
-                _detailRow(l10n.settlementNotes, settlement.notes!),
+                _detailRow(
+                  l10n.settlementNotes,
+                  settlementNoteText(context, settlement.notes!),
+                ),
               _detailRow(l10n.settlementId, settlement.id, mono: true),
+              if (settlement.proofPath != null) ...[
+                const SizedBox(height: AppSpace.md),
+                _SettlementProof(path: settlement.proofPath!),
+              ],
               const SizedBox(height: AppSpace.lg),
               if (settlement.status == 'completed') ...[
                 OutlinedButton.icon(
@@ -1600,3 +1613,77 @@ Widget _detailRow(String label, String value, {bool mono = false}) => Padding(
     ],
   ),
 );
+
+/// Notes the server writes in English for its own records ("Early payout
+/// (fee 22.44)"), shown in the app's language. Anything an admin typed is
+/// passed through as written.
+String settlementNoteText(BuildContext context, String note) {
+  final match = RegExp(
+    r'^Early payout \(fee ([0-9.]+)\)$',
+  ).firstMatch(note.trim());
+  if (match != null) {
+    final fee = double.tryParse(match.group(1)!) ?? 0;
+    return context.l10n.earlyPayoutFeeNote(formatMoney(fee));
+  }
+  return note;
+}
+
+/// The admin's proof-of-payment photo, fetched through a signed link because
+/// the bucket is private. Tapping opens it full size.
+class _SettlementProof extends StatefulWidget {
+  const _SettlementProof({required this.path});
+
+  final String path;
+
+  @override
+  State<_SettlementProof> createState() => _SettlementProofState();
+}
+
+class _SettlementProofState extends State<_SettlementProof> {
+  late final Future<String?> _url = FinanceRepository().settlementProofUrl(
+    widget.path,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _url,
+      builder: (context, snapshot) {
+        final url = snapshot.data;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.paymentProof,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(height: AppSpace.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              child: SizedBox(
+                height: 200,
+                width: double.infinity,
+                child: url == null
+                    ? const ColoredBox(color: AppColors.canvas)
+                    : GestureDetector(
+                        onTap: () => showDialog<void>(
+                          context: context,
+                          builder: (_) => Dialog(
+                            insetPadding: const EdgeInsets.all(AppSpace.lg),
+                            child: InteractiveViewer(child: Image.network(url)),
+                          ),
+                        ),
+                        child: Image.network(url, fit: BoxFit.cover),
+                      ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

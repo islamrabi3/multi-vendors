@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
@@ -340,7 +341,7 @@ class _TripTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 PriceText(
                   '${order.orderNumber} · '
-                  '${DateFormat('d MMM, h:mm a', Localizations.localeOf(context).languageCode).format(order.createdAt)}',
+                  '${formatDateTime(context, order.createdAt, date: DateFormat('d MMM', Localizations.localeOf(context).languageCode))}',
                   size: 11,
                   color: AppColors.textMuted,
                   weight: FontWeight.w500,

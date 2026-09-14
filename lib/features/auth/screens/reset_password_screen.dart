@@ -127,9 +127,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     style: const TextStyle(fontSize: 18, letterSpacing: 1.5),
                     decoration: const InputDecoration(fillColor: Colors.white),
                     onFieldSubmitted: (_) => _submit(),
-                    validator: (v) => v != _password.text
-                        ? l10n.passwordsDoNotMatch
-                        : null,
+                    validator: (v) =>
+                        v != _password.text ? l10n.passwordsDoNotMatch : null,
                   ),
                   const SizedBox(height: 26),
                   BlocBuilder<AuthCubit, AppAuthState>(

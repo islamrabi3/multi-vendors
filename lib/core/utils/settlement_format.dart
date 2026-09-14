@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../app/tokens.dart';
@@ -31,5 +32,4 @@ String settlementMethodLabel(BuildContext context, String method) {
 };
 
 String formatSettlementDateTime(BuildContext context, DateTime value) =>
-    '${value.day}/${value.month}/${value.year} · '
-    '${TimeOfDay.fromDateTime(value).format(context)}';
+    '${value.day}/${value.month}/${value.year} · ${formatClock(context, value)}';

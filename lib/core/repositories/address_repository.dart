@@ -16,7 +16,8 @@ class AddressRepository {
     if (values['is_default'] == true) {
       await supabase
           .from('addresses')
-          .update({'is_default': false}).eq('user_id', userId);
+          .update({'is_default': false})
+          .eq('user_id', userId);
     }
     final query = id == null
         ? supabase.from('addresses').insert({...values, 'user_id': userId})

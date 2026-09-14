@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -514,7 +515,7 @@ class _HistoryRow extends StatelessWidget {
           ),
           if (at != null)
             Text(
-              '${at.day}/${at.month} ${TimeOfDay.fromDateTime(at).format(context)}',
+              '${at.day}/${at.month} ${formatClock(context, at)}',
               style: const TextStyle(
                 fontSize: 11.5,
                 color: AppColors.textMuted,

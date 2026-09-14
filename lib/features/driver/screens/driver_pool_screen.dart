@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
@@ -501,7 +501,7 @@ class _PoolCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${context.l10n.ready} · ${DateFormat('h:mm a', Localizations.localeOf(context).languageCode).format(order.createdAt)}',
+                      '${context.l10n.ready} · ${formatClock(context, order.createdAt)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

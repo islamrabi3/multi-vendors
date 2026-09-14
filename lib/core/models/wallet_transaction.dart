@@ -19,7 +19,8 @@ class WalletTransaction extends Equatable {
   final String? description;
   final DateTime createdAt;
 
-  factory WalletTransaction.fromMap(Map<String, dynamic> map) => WalletTransaction(
+  factory WalletTransaction.fromMap(Map<String, dynamic> map) =>
+      WalletTransaction(
         id: map['id'] as String,
         userId: map['user_id'] as String,
         type: map['type'] as String,

@@ -176,7 +176,8 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
   /// the drag doesn't snap back while the write is in flight.
   Future<bool> reorderCategories(List<VendorCategory> ordered) async {
     final renumbered = [
-      for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i),
+      for (var i = 0; i < ordered.length; i++)
+        ordered[i].copyWith(sortOrder: i),
     ];
     final byId = {for (final c in renumbered) c.id: c};
     emit(

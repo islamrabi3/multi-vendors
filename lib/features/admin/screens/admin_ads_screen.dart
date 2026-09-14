@@ -15,6 +15,7 @@ import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../../auth/auth_cubit.dart';
+import '../widgets/ad_destination_field.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 import '../../../core/widgets/web/adaptive_sheet.dart';
 
@@ -672,7 +673,7 @@ class _AdComposerState extends State<_AdComposer> {
   final _subtitle = TextEditingController();
   final _code = TextEditingController();
   final _videoUrl = TextEditingController();
-  final _linkUrl = TextEditingController();
+  AdDestination _destination = const AdDestination.none();
   final _advertiser = TextEditingController();
 
   AdPlacement _placement = AdPlacement.homeCarousel;
@@ -713,7 +714,10 @@ class _AdComposerState extends State<_AdComposer> {
     _title.text = ad.title ?? '';
     _subtitle.text = ad.subtitle ?? '';
     _code.text = ad.code ?? '';
-    _linkUrl.text = ad.linkUrl ?? '';
+    _destination = AdDestination.fromAd(
+      vendorId: ad.vendorId,
+      linkUrl: ad.linkUrl,
+    );
     _advertiser.text = ad.advertiser ?? '';
     _placement = ad.placement;
     _audience = ad.audience;
@@ -733,7 +737,6 @@ class _AdComposerState extends State<_AdComposer> {
     _subtitle.dispose();
     _code.dispose();
     _videoUrl.dispose();
-    _linkUrl.dispose();
     _advertiser.dispose();
     super.dispose();
   }
@@ -837,6 +840,11 @@ class _AdComposerState extends State<_AdComposer> {
   }
 
   Future<void> _save() async {
+    final destinationError = _destination.validate(context);
+    if (destinationError != null) {
+      showSnack(context, destinationError, error: true);
+      return;
+    }
     final videoUrl = _videoUrl.text.trim();
     if (_isVideo && videoUrl.isEmpty) {
       showSnack(context, context.l10n.videoRequired, error: true);
@@ -854,18 +862,18 @@ class _AdComposerState extends State<_AdComposer> {
           // The column is required; a video ad with no cover stores the video
           // URL there, and `BannerItem.poster` knows not to draw it.
           imageUrl: _isVideo ? (_imageUrl ?? videoUrl) : _imageUrl!,
-          type: _code.text.trim().isNotEmpty
+          type: _destination.kind == AdDestinationKind.store
+              ? BannerType.vendor
+              : _code.text.trim().isNotEmpty
               ? BannerType.coupon
-              // A store ad has no field here; editing must not demote it.
-              : (widget.ad?.type == BannerType.vendor
-                    ? BannerType.vendor
-                    : BannerType.event),
+              : BannerType.event,
           placement: _placement,
           title: _title.text,
           subtitle: _subtitle.text,
           code: _code.text,
           videoUrl: _isVideo ? videoUrl : null,
-          linkUrl: _linkUrl.text,
+          linkUrl: _destination.linkToSave,
+          vendorId: _destination.vendorIdToSave,
           advertiser: _advertiser.text,
           audience: _audience,
           startsAt: _startsAt,
@@ -878,18 +886,18 @@ class _AdComposerState extends State<_AdComposer> {
           // The column is required; a video ad with no cover stores the video
           // URL there, and `BannerItem.poster` knows not to draw it.
           imageUrl: _isVideo ? (_imageUrl ?? videoUrl) : _imageUrl!,
-          type: _code.text.trim().isNotEmpty
+          type: _destination.kind == AdDestinationKind.store
+              ? BannerType.vendor
+              : _code.text.trim().isNotEmpty
               ? BannerType.coupon
-              // A store ad has no field here; editing must not demote it.
-              : (widget.ad?.type == BannerType.vendor
-                    ? BannerType.vendor
-                    : BannerType.event),
+              : BannerType.event,
           placement: _placement,
           title: _title.text,
           subtitle: _subtitle.text,
           code: _code.text,
           videoUrl: _isVideo ? videoUrl : null,
-          linkUrl: _linkUrl.text,
+          linkUrl: _destination.linkToSave,
+          vendorId: _destination.vendorIdToSave,
           advertiser: _advertiser.text,
           audience: _audience,
           startsAt: _startsAt,
@@ -1078,9 +1086,10 @@ class _AdComposerState extends State<_AdComposer> {
               textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(labelText: l10n.couponCode),
             ),
-            TextField(
-              controller: _linkUrl,
-              decoration: InputDecoration(labelText: l10n.adLinkUrl),
+            const SizedBox(height: AppSpace.md),
+            AdDestinationField(
+              value: _destination,
+              onChanged: (d) => setState(() => _destination = d),
             ),
             const SizedBox(height: AppSpace.md),
 

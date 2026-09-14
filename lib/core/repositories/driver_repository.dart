@@ -100,14 +100,17 @@ class DriverRepository {
 
   Future<void> setOnline(bool online) => supabase
       .from('drivers')
-      .update({'is_online': online}).eq('id', supabase.auth.currentUser!.id);
+      .update({'is_online': online})
+      .eq('id', supabase.auth.currentUser!.id);
 
-  Future<void> updateStoredLocation(double lat, double lng) =>
-      supabase.from('drivers').update({
+  Future<void> updateStoredLocation(double lat, double lng) => supabase
+      .from('drivers')
+      .update({
         'current_lat': lat,
         'current_lng': lng,
         'location_updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', supabase.auth.currentUser!.id);
+      })
+      .eq('id', supabase.auth.currentUser!.id);
 
   RealtimeChannel trackingChannel(String orderId) =>
       supabase.channel('order-tracking:$orderId');
@@ -116,9 +119,8 @@ class DriverRepository {
     RealtimeChannel channel,
     double lat,
     double lng,
-  ) =>
-      channel.sendBroadcastMessage(
-        event: 'location',
-        payload: {'lat': lat, 'lng': lng},
-      );
+  ) => channel.sendBroadcastMessage(
+    event: 'location',
+    payload: {'lat': lat, 'lng': lng},
+  );
 }

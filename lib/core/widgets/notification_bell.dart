@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../utils/l10n_extension.dart';
+import '../../features/notifications/notifications_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
@@ -31,6 +34,75 @@ class NotificationBell extends StatefulWidget {
 }
 
 class _NotificationBellState extends State<NotificationBell> {
+  /// On the web the bell drops a panel down from itself, the way a desktop
+  /// site does, instead of replacing the page with a notifications screen.
+  Future<void> _openDropdown(BuildContext context) async {
+    final box = context.findRenderObject() as RenderBox?;
+    final media = MediaQuery.of(context);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final origin = box?.localToGlobal(Offset.zero) ?? Offset.zero;
+    final size = box?.size ?? Size.zero;
+    const panelWidth = 400.0;
+    final top = origin.dy + size.height + 8;
+    final maxHeight = (media.size.height - top - 16).clamp(260.0, 620.0);
+    // Aligned to the bell's outer edge, kept on screen.
+    final left = rtl
+        ? origin.dx.clamp(8.0, media.size.width - panelWidth - 8)
+        : (origin.dx + size.width - panelWidth).clamp(
+            8.0,
+            media.size.width - panelWidth - 8,
+          );
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).closeButtonLabel,
+      barrierColor: Colors.black.withValues(alpha: 0.08),
+      transitionDuration: const Duration(milliseconds: 160),
+      pageBuilder: (dialogContext, _, _) => Stack(
+        children: [
+          Positioned(
+            top: top,
+            left: left,
+            width: panelWidth,
+            height: maxHeight,
+            child: Material(
+              elevation: 12,
+              color: AppColors.canvas,
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 6, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            dialogContext.l10n.notifications,
+                            style: AppType.heading(17),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: AppColors.borderSoft),
+                  const Expanded(child: NotificationsScreen(embedded: true)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      transitionBuilder: (_, animation, _, child) =>
+          FadeTransition(opacity: animation, child: child),
+    );
+  }
+
   final _repository = NotificationsRepository();
   late final Stream<int> _unread = _repository.watchUnreadCount();
 
@@ -43,7 +115,8 @@ class _NotificationBellState extends State<NotificationBell> {
       builder: (context, snapshot) {
         final count = snapshot.data ?? 0;
         return InkWell(
-          onTap: () => context.push('/notifications'),
+          onTap: () =>
+              kIsWeb ? _openDropdown(context) : context.push('/notifications'),
           borderRadius: BorderRadius.circular(21),
           child: Stack(
             clipBehavior: Clip.none,

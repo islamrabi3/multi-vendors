@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
@@ -640,9 +641,7 @@ class _CampaignCard extends StatelessWidget {
           Text(
             [
               _audienceLabel(context),
-              DateFormat.yMMMd().add_jm().format(
-                campaign.sentAt ?? campaign.createdAt,
-              ),
+              formatDateTime(context, campaign.sentAt ?? campaign.createdAt),
               // Only meaningful once it has actually gone out.
               if (campaign.isSent)
                 l10n.deliveredOf(campaign.delivered, campaign.failed),

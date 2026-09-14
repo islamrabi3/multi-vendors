@@ -31,6 +31,7 @@ class CouponsRepository {
     bool firstOrderOnly = false,
     bool isPublic = false,
     String? title,
+    String fundedBy = 'platform',
   }) async {
     await supabase.from('coupons').insert({
       'code': code.toUpperCase(),
@@ -49,7 +50,26 @@ class CouponsRepository {
       'is_public': isPublic,
       'title': ?title,
       'is_active': true,
+      // Only a store-scoped code can be charged to the store.
+      'funded_by': vendorId == null ? 'platform' : fundedBy,
     });
+  }
+
+  /// A store's promo codes that a customer can use right now, for that
+  /// store's page only. Platform-wide codes are deliberately not included.
+  Future<List<Coupon>> fetchStoreOffers(String vendorId) async {
+    final data = await supabase
+        .from('coupons')
+        .select()
+        .eq('vendor_id', vendorId)
+        .eq('is_active', true)
+        .eq('is_public', true)
+        .order('created_at', ascending: false);
+    return (data as List)
+        .map((e) => Coupon.fromMap(e))
+        // Dates and caps are checked here rather than in the query.
+        .where((c) => c.isLive)
+        .toList();
   }
 
   Future<void> update(String id, Map<String, dynamic> values) async {

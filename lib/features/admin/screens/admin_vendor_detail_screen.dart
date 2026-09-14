@@ -955,10 +955,7 @@ class _FinancePanelState extends State<_FinancePanel> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                context.l10n.settlementsTitle,
-                style: AppType.heading(18),
-              ),
+              Text(context.l10n.settlementsTitle, style: AppType.heading(18)),
               const SizedBox(height: AppSpace.md),
               if (history.isEmpty)
                 Padding(
@@ -974,9 +971,8 @@ class _FinancePanelState extends State<_FinancePanel> {
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: history.length,
-                    itemBuilder: (_, i) => SettlementTile(
-                      settlement: history[i],
-                    ),
+                    itemBuilder: (_, i) =>
+                        SettlementTile(settlement: history[i]),
                   ),
                 ),
             ],
@@ -1030,7 +1026,10 @@ class _FinancePanelState extends State<_FinancePanel> {
             const SizedBox(height: 9),
             _Card(
               children: [
-                _row(l10n.totalEarningsLabel, formatMoney(wallet.totalEarnings)),
+                _row(
+                  l10n.totalEarningsLabel,
+                  formatMoney(wallet.totalEarnings),
+                ),
                 _row(
                   l10n.totalSettlementsLabel,
                   formatMoney(wallet.totalSettlements),
@@ -1096,13 +1095,9 @@ class _FinancePanelSkeleton extends StatelessWidget {
   Widget build(BuildContext context) => SkeletonTheme(
     child: Row(
       children: [
-        Expanded(
-          child: Skeleton.box(height: 68, radius: AppRadii.lg),
-        ),
+        Expanded(child: Skeleton.box(height: 68, radius: AppRadii.lg)),
         const SizedBox(width: 9),
-        Expanded(
-          child: Skeleton.box(height: 68, radius: AppRadii.lg),
-        ),
+        Expanded(child: Skeleton.box(height: 68, radius: AppRadii.lg)),
       ],
     ),
   );

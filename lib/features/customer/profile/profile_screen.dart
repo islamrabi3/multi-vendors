@@ -6,6 +6,7 @@ import 'wallet_screen.dart';
 import 'loyalty_screen.dart';
 import '../../../app/tokens.dart';
 import '../../../core/repositories/auth_repository.dart';
+import '../../../core/repositories/report_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
@@ -25,6 +26,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _repo = AuthRepository();
   late Future<({int orders, int favorites, int points})> _stats = _repo
       .fetchMyStats();
+
+  /// Complaints with a support reply the customer has not opened.
+  late final Stream<int> _complaintReplies = ReportRepository()
+      .watchUnreadReplies();
 
   void _reloadStats() => setState(() {
     _stats = _repo.fetchMyStats();
@@ -273,6 +278,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: () => context.push('/support'),
                   ),
                   const _MenuDivider(),
+                  StreamBuilder<int>(
+                    stream: _complaintReplies,
+                    builder: (context, snap) => _MenuRow(
+                      icon: Icons.report_problem_outlined,
+                      label: context.l10n.myComplaints,
+                      badge: snap.data ?? 0,
+                      onTap: () => context.push('/complaints'),
+                    ),
+                  ),
+                  const _MenuDivider(),
                   _MenuRow(
                     icon: Icons.info_outline,
                     label: context.l10n.aboutUs,
@@ -477,11 +492,13 @@ class _MenuRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.badge = 0,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -512,6 +529,26 @@ class _MenuRow extends StatelessWidget {
                 ),
               ),
             ),
+            if (badge > 0)
+              Container(
+                constraints: const BoxConstraints(minWidth: 22),
+                height: 22,
+                margin: const EdgeInsetsDirectional.only(end: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.dangerInk,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  badge > 99 ? '99+' : '$badge',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
             const DirectionalIcon(
               Icons.chevron_right,
               size: 20,

@@ -250,6 +250,23 @@ class CartCubit extends Cubit<CartState> {
     _persist();
   }
 
+  /// Writes the cart to the server and waits for it.
+  ///
+  /// `place_order` reads the server cart, while this cubit is local-first and
+  /// saves in the background. Checkout calls this first so the two can never
+  /// disagree at the moment it matters — which is how a customer looking at a
+  /// full cart used to be told `CART_EMPTY`.
+  Future<void> syncToServer() async {
+    final repository = _repository;
+    final vendor = state.vendor;
+    if (repository == null || vendor == null || state.items.isEmpty) return;
+    try {
+      await repository.saveCart(vendor.id, state.items);
+    } catch (_) {
+      // place_order reports anything still wrong.
+    }
+  }
+
   void _persist() {
     final repository = _repository;
     final vendor = state.vendor;

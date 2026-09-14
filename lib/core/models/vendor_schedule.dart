@@ -21,21 +21,21 @@ class VendorSchedule extends Equatable {
   // for its hours, and selecting the keys back would be dead weight on every
   // card in the list.
   factory VendorSchedule.fromMap(Map<String, dynamic> map) => VendorSchedule(
-        id: (map['id'] as String?) ?? '',
-        vendorId: (map['vendor_id'] as String?) ?? '',
-        dayOfWeek: ((map['day_of_week'] as num?) ?? 0).toInt(),
-        openTime: (map['open_time'] as String?) ?? '09:00',
-        closeTime: (map['close_time'] as String?) ?? '23:00',
-        isClosed: (map['is_closed'] as bool?) ?? false,
-      );
+    id: (map['id'] as String?) ?? '',
+    vendorId: (map['vendor_id'] as String?) ?? '',
+    dayOfWeek: ((map['day_of_week'] as num?) ?? 0).toInt(),
+    openTime: (map['open_time'] as String?) ?? '09:00',
+    closeTime: (map['close_time'] as String?) ?? '23:00',
+    isClosed: (map['is_closed'] as bool?) ?? false,
+  );
 
   Map<String, dynamic> toMap() => {
-        'vendor_id': vendorId,
-        'day_of_week': dayOfWeek,
-        'open_time': openTime,
-        'close_time': closeTime,
-        'is_closed': isClosed,
-      };
+    'vendor_id': vendorId,
+    'day_of_week': dayOfWeek,
+    'open_time': openTime,
+    'close_time': closeTime,
+    'is_closed': isClosed,
+  };
 
   /// Minutes past midnight, or null when the stored text is not `HH:MM`.
   static int? _minutes(String value) {
@@ -61,11 +61,20 @@ class VendorSchedule extends Equatable {
     if (open == null || close == null) return true;
     if (open == close) return true;
     final now = at.hour * 60 + at.minute;
-    return close > open ? now >= open && now < close : now >= open || now < close;
+    return close > open
+        ? now >= open && now < close
+        : now >= open || now < close;
   }
 
   @override
-  List<Object?> get props => [id, vendorId, dayOfWeek, openTime, closeTime, isClosed];
+  List<Object?> get props => [
+    id,
+    vendorId,
+    dayOfWeek,
+    openTime,
+    closeTime,
+    isClosed,
+  ];
 }
 
 /// Postgres `extract(dow)` and this app both count Sunday as 0; Dart counts

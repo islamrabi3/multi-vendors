@@ -173,6 +173,7 @@ class Settlement extends Equatable {
     this.reference,
     this.notes,
     this.completedAt,
+    this.proofPath,
   });
 
   final String id;
@@ -191,6 +192,9 @@ class Settlement extends Equatable {
   final String? reference;
   final String? notes;
   final DateTime? completedAt;
+
+  /// Storage path of the admin's proof-of-payment photo, if one was attached.
+  final String? proofPath;
 
   bool get isEarly => fee > 0;
 
@@ -211,6 +215,7 @@ class Settlement extends Equatable {
     reference: map['reference'] as String?,
     notes: map['notes'] as String?,
     completedAt: _time(map['completed_at']),
+    proofPath: map['proof_url'] as String?,
   );
 
   @override
@@ -332,6 +337,7 @@ class FinanceOverview extends Equatable {
     this.vendorEarnings = 0,
     this.platformCommission = 0,
     this.platformDeliveryMargin = 0,
+    this.platformServiceFees = 0,
     this.platformDiscounts = 0,
     this.earlySettlementFees = 0,
     this.platformEarnings = 0,
@@ -374,6 +380,7 @@ class FinanceOverview extends Equatable {
   final double vendorEarnings;
   final double platformCommission;
   final double platformDeliveryMargin;
+  final double platformServiceFees;
   final double platformDiscounts;
 
   /// Charged to a vendor who asked to be paid before the settlement date.
@@ -424,6 +431,7 @@ class FinanceOverview extends Equatable {
     vendorEarnings: money(map['vendor_earnings']),
     platformCommission: money(map['platform_commission']),
     platformDeliveryMargin: money(map['platform_delivery_margin']),
+    platformServiceFees: money(map['platform_service_fees']),
     platformDiscounts: money(map['platform_discounts']),
     earlySettlementFees: money(map['early_settlement_fees']),
     platformEarnings: money(map['platform_earnings']),

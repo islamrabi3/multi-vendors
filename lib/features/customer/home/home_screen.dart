@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/address_format.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../../app/tokens.dart';
@@ -61,6 +63,8 @@ class _HomeViewState extends State<_HomeView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       InterstitialAds.maybeShow(context, repository: OffersRepository());
+      // Next launch's splash video, downloaded while the customer browses.
+      InterstitialAds.prefetch(OffersRepository());
     });
   }
 
@@ -484,7 +488,14 @@ class _OfferCard extends StatelessWidget {
           _showEventDialog(context);
         }
       case BannerType.event:
-        _showEventDialog(context);
+        final link = offer.linkUrl?.trim() ?? '';
+        if (link.startsWith('/')) {
+          context.push(link);
+        } else if (link.isNotEmpty && Uri.tryParse(link) != null) {
+          launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+        } else {
+          _showEventDialog(context);
+        }
     }
   }
 
@@ -1331,7 +1342,7 @@ class _DeliverToLabel extends StatelessWidget {
       );
     }
     return Text(
-      '${address.label} · ${address.summary}',
+      '${addressLabelText(context, address.label)} · ${addressSummaryText(context, address)}',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AppType.heading(15),

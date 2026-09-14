@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 
 import '../../../app/tokens.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -90,7 +91,7 @@ class StoreOpenToggle extends StatelessWidget {
               outsideHours
                   ? l10n.closedOutsideHours
                   : trading && closingTime != null
-                  ? l10n.openUntil(closingTime!)
+                  ? l10n.openUntil(formatClockText(context, closingTime!))
                   : isOpen
                   ? l10n.open
                   : l10n.closed,

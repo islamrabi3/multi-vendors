@@ -15,21 +15,20 @@ class ReviewRepository {
     String? driverId,
     int? driverRating,
     String? driverComment,
-  }) =>
-      supabase.from('reviews').insert({
-        'order_id': orderId,
-        'vendor_id': vendorId,
-        'customer_id': supabase.auth.currentUser!.id,
-        'rating': rating,
-        'comment': _clean(comment),
-        // Only stamped when the customer actually rated the driver: a null
-        // driver_rating is left out of the driver's average entirely.
-        if (driverRating != null) ...{
-          'driver_id': driverId,
-          'driver_rating': driverRating,
-          'driver_comment': _clean(driverComment),
-        },
-      });
+  }) => supabase.from('reviews').insert({
+    'order_id': orderId,
+    'vendor_id': vendorId,
+    'customer_id': supabase.auth.currentUser!.id,
+    'rating': rating,
+    'comment': _clean(comment),
+    // Only stamped when the customer actually rated the driver: a null
+    // driver_rating is left out of the driver's average entirely.
+    if (driverRating != null) ...{
+      'driver_id': driverId,
+      'driver_rating': driverRating,
+      'driver_comment': _clean(driverComment),
+    },
+  });
 
   Future<bool> hasReview(String orderId) async {
     final data = await supabase
@@ -47,19 +46,20 @@ class ReviewRepository {
     int limit = 20,
     int offset = 0,
   }) async {
-    final data = await supabase.rpc('vendor_reviews', params: {
-      'p_vendor_id': vendorId,
-      'p_limit': limit,
-      'p_offset': offset,
-    });
+    final data = await supabase.rpc(
+      'vendor_reviews',
+      params: {'p_vendor_id': vendorId, 'p_limit': limit, 'p_offset': offset},
+    );
     return (data as List)
         .map((e) => Review.fromMap(e as Map<String, dynamic>))
         .toList();
   }
 
   Future<RatingBreakdown> fetchBreakdown(String vendorId) async {
-    final data = await supabase
-        .rpc('vendor_rating_breakdown', params: {'p_vendor_id': vendorId});
+    final data = await supabase.rpc(
+      'vendor_rating_breakdown',
+      params: {'p_vendor_id': vendorId},
+    );
     if (data == null) return RatingBreakdown.empty;
     return RatingBreakdown.fromMap(data as Map<String, dynamic>);
   }
@@ -71,11 +71,10 @@ class ReviewRepository {
     int limit = 30,
     int offset = 0,
   }) async {
-    final data = await supabase.rpc('my_vendor_reviews', params: {
-      'p_vendor_id': vendorId,
-      'p_limit': limit,
-      'p_offset': offset,
-    });
+    final data = await supabase.rpc(
+      'my_vendor_reviews',
+      params: {'p_vendor_id': vendorId, 'p_limit': limit, 'p_offset': offset},
+    );
     return (data as List)
         .map((e) => Review.fromMap(e as Map<String, dynamic>))
         .toList();

@@ -1,11 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/tokens.dart';
+import '../support/messages_screen.dart' show conversationPreview;
+import '../customer/orders/order_chat_sheet.dart';
+import '../../core/repositories/chat_repository.dart';
+import '../../core/models/chat_conversation.dart';
 import '../../core/models/order.dart';
 import '../../core/repositories/notifications_repository.dart' show inboxCutoff;
 import '../../core/utils/l10n_extension.dart';
@@ -28,6 +33,7 @@ class _InboxItem {
     this.storeName,
     this.status,
     this.type,
+    this.conversation,
   });
 
   final String id;
@@ -43,11 +49,19 @@ class _InboxItem {
   final String? storeName;
   final OrderStatus? status;
 
-  bool get isOrder => orderId != null;
+  /// Set for a new order-chat message; its order and preview come from here.
+  final ChatConversation? conversation;
+
+  bool get isChat => conversation != null;
+  bool get isOrder => orderId != null && !isChat;
 }
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  const NotificationsScreen({super.key, this.embedded = false});
+
+  /// Drawn inside the web bell's dropdown: no app bar of its own, and a
+  /// tapped row opens over the dropdown instead of navigating away.
+  final bool embedded;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -151,6 +165,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final inbox = results[0] as List;
     final orders = results[1] as List;
 
+    // New messages from someone else on an order, as one row per
+    // conversation. Only on the first page: a conversation is a single row
+    // whose time moves, not a history to page through.
+    final cutoff = inboxCutoff().toLocal();
+    final chats = before != null
+        ? const <ChatConversation>[]
+        : await ChatRepository()
+              .fetchConversations(limit: 20)
+              .then(
+                (all) => all
+                    .where((c) => !c.lastFromMe && c.lastAt.isAfter(cutoff))
+                    .toList(),
+              )
+              .catchError((Object _) => const <ChatConversation>[]);
+
     final merged = <_InboxItem>[
       for (final n in inbox)
         _InboxItem(
@@ -171,6 +200,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           status: OrderStatus.fromName(o['status'] as String?),
           createdAt: DateTime.parse(o['updated_at'] as String).toLocal(),
         ),
+      for (final c in chats)
+        _InboxItem(
+          id: 'chat-${c.orderId}-${c.lastAt.millisecondsSinceEpoch}',
+          orderId: c.orderId,
+          orderNumber: c.orderNumber,
+          conversation: c,
+          unread: c.unread > 0,
+          createdAt: c.lastAt,
+        ),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final hasMore =
@@ -181,7 +219,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _open(_InboxItem item) {
-    if (item.isOrder) {
+    if (item.isChat) {
+      if (widget.embedded || AppBreakpoints.isWebWide(context)) {
+        showDialog<void>(
+          context: context,
+          builder: (_) => Dialog(
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              width: 480,
+              height: 620,
+              child: OrderChatSheet(orderId: item.orderId!, embedded: true),
+            ),
+          ),
+        ).then((_) => _refresh());
+      } else {
+        context.push('/order/${item.orderId}/chat').then((_) => _refresh());
+      }
+      return;
+    }
+    // On the web the feed is a dropdown: an order update opens as a detail
+    // card over it rather than taking the page somewhere else.
+    if (item.isOrder && !widget.embedded) {
       context.push('/order/${item.orderId}');
       return;
     }
@@ -280,6 +338,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
+    if (widget.embedded) {
+      return Material(color: AppColors.canvas, child: body);
+    }
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(l10n.notifications)),
@@ -293,11 +354,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-String _titleOf(BuildContext context, _InboxItem item) => item.isOrder
+String _titleOf(BuildContext context, _InboxItem item) => item.isChat
+    ? context.l10n.newMessageFrom(item.orderNumber ?? '')
+    : item.isOrder
     ? '${context.l10n.order} #${item.orderNumber}'
     : (item.title ?? context.l10n.notifications);
 
-String _bodyOf(BuildContext context, _InboxItem item) => item.isOrder
+String _bodyOf(BuildContext context, _InboxItem item) => item.isChat
+    ? conversationPreview(context, item.conversation!)
+    : item.isOrder
     ? '${item.storeName ?? context.l10n.store} · '
           '${item.status!.localizedLabel(context)}'
     : (item.body ?? '');
@@ -313,6 +378,13 @@ String _timeOf(BuildContext context, DateTime at) {
 }
 
 (IconData, Color, Color) _styleOf(_InboxItem item) {
+  if (item.isChat) {
+    return (
+      Icons.chat_bubble_rounded,
+      AppColors.successFill,
+      AppColors.successInk,
+    );
+  }
   if (item.isOrder) {
     return (Icons.receipt_long_rounded, AppColors.warmFill, AppColors.primary);
   }
@@ -326,6 +398,11 @@ String _timeOf(BuildContext context, DateTime at) {
       Icons.support_agent_rounded,
       AppColors.amberFill,
       AppColors.amberInk,
+    ),
+    'complaint' => (
+      Icons.report_problem_rounded,
+      AppColors.dangerFill,
+      AppColors.dangerInk,
     ),
     _ => (Icons.campaign_rounded, AppColors.warmFill, AppColors.primaryDark),
   };
@@ -443,8 +520,7 @@ class _NotificationDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final (icon, fill, ink) = _styleOf(item);
-    final route = item.route?.trim();
-    final language = Localizations.localeOf(context).languageCode;
+    final route = item.isOrder ? '/order/${item.orderId}' : item.route?.trim();
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(22, 8, 22, 22),
@@ -466,7 +542,7 @@ class _NotificationDetails extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    DateFormat.yMMMd(language).add_jm().format(item.createdAt),
+                    formatDateTime(context, item.createdAt),
                     style: const TextStyle(
                       fontSize: 12.5,
                       color: AppColors.textMuted,
@@ -477,10 +553,10 @@ class _NotificationDetails extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(_titleOf(context, item), style: AppType.heading(19)),
-            if ((item.body ?? '').isNotEmpty) ...[
+            if (_bodyOf(context, item).isNotEmpty) ...[
               const SizedBox(height: 8),
               SelectableText(
-                item.body!,
+                _bodyOf(context, item),
                 style: const TextStyle(
                   fontSize: 14.5,
                   height: 1.5,

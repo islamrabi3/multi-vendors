@@ -19,7 +19,10 @@ class AppContentRepository {
 
   /// Every page including drafts — the admin editor's list.
   Future<List<AppContent>> fetchAllContent() async {
-    final data = await supabase.from('app_content').select().order('key', ascending: true);
+    final data = await supabase
+        .from('app_content')
+        .select()
+        .order('key', ascending: true);
     return (data as List)
         .map((e) => AppContent.fromMap(e as Map<String, dynamic>))
         .toList();
@@ -31,14 +34,17 @@ class AppContentRepository {
   /// corrected typo would otherwise lock every store and rider out of the app
   /// until they had re-read a document that did not meaningfully change.
   Future<void> saveContent(AppContent content, {bool bumpVersion = false}) =>
-      supabase.from('app_content').update({
-        'title_en': content.titleEn,
-        'title_ar': content.titleAr,
-        'body_en': content.bodyEn,
-        'body_ar': content.bodyAr,
-        'is_published': content.isPublished,
-        if (bumpVersion) 'version': content.version + 1,
-      }).eq('key', content.key);
+      supabase
+          .from('app_content')
+          .update({
+            'title_en': content.titleEn,
+            'title_ar': content.titleAr,
+            'body_en': content.bodyEn,
+            'body_ar': content.bodyAr,
+            'is_published': content.isPublished,
+            if (bumpVersion) 'version': content.version + 1,
+          })
+          .eq('key', content.key);
 
   /// Active links in display order — the about page footer.
   Future<List<AppLink>> fetchLinks() async {
@@ -54,8 +60,10 @@ class AppContentRepository {
 
   /// Including the disabled ones — the admin editor's list.
   Future<List<AppLink>> fetchAllLinks() async {
-    final data =
-        await supabase.from('app_links').select().order('sort_order', ascending: true);
+    final data = await supabase
+        .from('app_links')
+        .select()
+        .order('sort_order', ascending: true);
     return (data as List)
         .map((e) => AppLink.fromMap(e as Map<String, dynamic>))
         .toList();

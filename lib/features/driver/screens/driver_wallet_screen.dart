@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
+
 import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -163,6 +166,22 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     _amountController.text = due > 0 ? trimZeros(due) : '';
     _referenceController.clear();
     var method = 'cash';
+    XFile? photo;
+    Uint8List? photoBytes;
+
+    Future<void> pickPhoto(void Function() rebuild) async {
+      final picked = await ImagePicker().pickImage(
+        // A receipt in hand is photographed; on the web there is no camera
+        // to open, so it is picked from files.
+        source: kIsWeb ? ImageSource.gallery : ImageSource.camera,
+        maxWidth: 1600,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+      photo = picked;
+      photoBytes = await picked.readAsBytes();
+      rebuild();
+    }
 
     final created = await showFormSheet<bool>(
       context: context,
@@ -230,6 +249,82 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             controller: _referenceController,
             decoration: InputDecoration(labelText: l10n.referenceOptional),
           ),
+          const SizedBox(height: AppSpace.md),
+          // The receipt is what an admin checks the claim against, so it sits
+          // in the form rather than being something to send separately.
+          InkWell(
+            onTap: () => pickPhoto(rebuild),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpace.md),
+              decoration: BoxDecoration(
+                color: photoBytes == null
+                    ? AppColors.canvas
+                    : AppColors.successFill,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(
+                  color: photoBytes == null
+                      ? AppColors.border
+                      : AppColors.successInk.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                    child: SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: photoBytes == null
+                          ? const ColoredBox(
+                              color: AppColors.warmFill,
+                              child: Icon(
+                                Icons.add_a_photo_rounded,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          : Image.memory(photoBytes!, fit: BoxFit.cover),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          photoBytes == null
+                              ? l10n.attachProofPhoto
+                              : l10n.changePhoto,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.attachProofHint,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (photoBytes != null)
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () {
+                        photo = null;
+                        photoBytes = null;
+                        rebuild();
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
       submitLabel: l10n.requestDeposit,
@@ -241,9 +336,17 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
           // everything the driver typed.
           throw Exception(l10n.amountRequired);
         }
+        // A bank transfer is only verifiable against its receipt.
+        if (method == 'bank_transfer' && photoBytes == null) {
+          throw Exception(l10n.proofRequiredForBank);
+        }
+        final proofPath = photoBytes == null
+            ? null
+            : await _repository.uploadDepositProof(photoBytes!, photo!.name);
         await _repository.createDepositRequest(
           amount: amount,
           paymentMethod: method,
+          proofUrl: proofPath,
           reference: _referenceController.text.trim().isEmpty
               ? null
               : _referenceController.text.trim(),

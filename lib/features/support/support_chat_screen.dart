@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/support.dart';
@@ -527,7 +527,7 @@ class _Bubble extends StatelessWidget {
             ],
             const SizedBox(height: 3),
             Text(
-              DateFormat('h:mm a').format(message.createdAt.toLocal()),
+              formatClock(context, message.createdAt.toLocal()),
               style: TextStyle(
                 fontSize: 10,
                 color: mine

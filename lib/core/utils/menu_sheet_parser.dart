@@ -96,15 +96,17 @@ class MenuSheetParser {
 
       final category = cell(row, 'category');
       final key = category.isEmpty ? 'Menu' : category;
-      categories.putIfAbsent(key, () => []).add(
-        ExtractedItem(
-          name: name,
-          nameAr: cell(row, 'name_ar'),
-          description: cell(row, 'description'),
-          descriptionAr: cell(row, 'description_ar'),
-          price: _price(cell(row, 'price')),
-        ),
-      );
+      categories
+          .putIfAbsent(key, () => [])
+          .add(
+            ExtractedItem(
+              name: name,
+              nameAr: cell(row, 'name_ar'),
+              description: cell(row, 'description'),
+              descriptionAr: cell(row, 'description_ar'),
+              price: _price(cell(row, 'price')),
+            ),
+          );
     }
 
     if (categories.isEmpty) throw const MenuSheetException.noRows();

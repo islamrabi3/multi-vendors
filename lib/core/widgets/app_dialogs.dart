@@ -274,6 +274,23 @@ Future<T?> showFormSheet<T>({
   String? destructiveLabel,
   Future<void> Function()? onDestructive,
 }) {
+  // A bottom sheet stretched across a desktop window reads as a broken page;
+  // wide web gets the centred dialog instead.
+  if (AppBreakpoints.isWebWide(context)) {
+    return _form<T>(
+      context: context,
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      tone: tone,
+      contentBuilder: contentBuilder,
+      submitLabel: submitLabel,
+      onSubmit: onSubmit,
+      cancelLabel: cancelLabel,
+      destructiveLabel: destructiveLabel,
+      onDestructive: onDestructive,
+    );
+  }
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -458,7 +475,11 @@ class _FormBodyState<T> extends State<_FormBody<T>> {
             top: AppSpace.xxl,
             bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpace.xxl,
           ),
-          child: Center(
+          // Sized to the form, not the screen: a Center here made the sheet
+          // fill the whole height with empty space above the fields.
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: 1,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: _kMaxWidth),
               child: SingleChildScrollView(child: content),

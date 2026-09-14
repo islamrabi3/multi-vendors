@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
@@ -1237,7 +1237,7 @@ class _OrderAgeChip extends StatelessWidget {
     // back to the wall-clock time it was placed.
     if (minutes >= 60) {
       return Text(
-        DateFormat('h:mm a').format(placedAt),
+        formatClock(context, placedAt),
         style: const TextStyle(
           fontSize: 11.5,
           fontWeight: FontWeight.w700,

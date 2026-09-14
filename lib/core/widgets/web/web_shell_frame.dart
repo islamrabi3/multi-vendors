@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../count_badge.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/locale_cubit.dart';
@@ -17,6 +20,7 @@ class WebNavItem {
     required this.label,
     required this.onTap,
     this.selectedIcon,
+    this.badge,
   });
 
   /// Compared against [WebShellFrame.activeId] to decide the highlight —
@@ -27,6 +31,9 @@ class WebNavItem {
   final IconData? selectedIcon;
   final String label;
   final VoidCallback onTap;
+
+  /// Items waiting on the user behind this entry; hidden at zero.
+  final ValueListenable<int>? badge;
 }
 
 /// A group of [WebNavItem]s under an optional uppercase header. A `null`
@@ -263,6 +270,7 @@ class _SidebarItem extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (item.badge != null) CountBadge(count: item.badge!),
               ],
             ),
           ),

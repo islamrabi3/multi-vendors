@@ -7,9 +7,9 @@ enum UserRole {
   admin;
 
   static UserRole fromName(String? name) => UserRole.values.firstWhere(
-        (r) => r.name == name,
-        orElse: () => UserRole.customer,
-      );
+    (r) => r.name == name,
+    orElse: () => UserRole.customer,
+  );
 }
 
 class Profile extends Equatable {
@@ -48,27 +48,27 @@ class Profile extends Equatable {
   final bool roleConfirmed;
 
   factory Profile.fromMap(Map<String, dynamic> map) => Profile(
-        id: map['id'] as String,
-        fullName: (map['full_name'] as String?) ?? '',
-        role: UserRole.fromName(map['role'] as String?),
-        phone: map['phone'] as String?,
-        avatarUrl: map['avatar_url'] as String?,
-        roleConfirmed: (map['role_confirmed'] as bool?) ?? true,
-        isBlocked: (map['is_blocked'] as bool?) ?? false,
-        blockedReason: map['blocked_reason'] as String?,
-        isClosed: map['deleted_at'] != null,
-      );
+    id: map['id'] as String,
+    fullName: (map['full_name'] as String?) ?? '',
+    role: UserRole.fromName(map['role'] as String?),
+    phone: map['phone'] as String?,
+    avatarUrl: map['avatar_url'] as String?,
+    roleConfirmed: (map['role_confirmed'] as bool?) ?? true,
+    isBlocked: (map['is_blocked'] as bool?) ?? false,
+    blockedReason: map['blocked_reason'] as String?,
+    isClosed: map['deleted_at'] != null,
+  );
 
   @override
   List<Object?> get props => [
-        id,
-        fullName,
-        role,
-        phone,
-        avatarUrl,
-        roleConfirmed,
-        isBlocked,
-        blockedReason,
-        isClosed,
-      ];
+    id,
+    fullName,
+    role,
+    phone,
+    avatarUrl,
+    roleConfirmed,
+    isBlocked,
+    blockedReason,
+    isClosed,
+  ];
 }

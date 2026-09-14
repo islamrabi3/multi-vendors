@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/tokens.dart';
@@ -150,7 +151,11 @@ class _ThreadTile extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          DateFormat('MMM d · h:mm a').format(thread.lastMessageAt.toLocal()),
+          formatDateTime(
+            context,
+            thread.lastMessageAt.toLocal(),
+            date: DateFormat.MMMd(Localizations.localeOf(context).languageCode),
+          ),
           style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
         trailing: Container(
@@ -415,9 +420,13 @@ class _SupportSplitView extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          DateFormat(
-                            'MMM d · h:mm a',
-                          ).format(thread.lastMessageAt.toLocal()),
+                          formatDateTime(
+                            context,
+                            thread.lastMessageAt.toLocal(),
+                            date: DateFormat.MMMd(
+                              Localizations.localeOf(context).languageCode,
+                            ),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

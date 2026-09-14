@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,7 @@ import '../../../core/widgets/skeleton.dart';
 import '../cart/cart_cubit.dart';
 import 'product_quantity_control.dart';
 import 'product_sheet.dart';
+import 'store_offers_strip.dart';
 import 'vendor_details_cubit.dart';
 import 'vendor_reviews_preview.dart';
 import 'vendor_reviews_screen.dart';
@@ -185,6 +187,7 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
             slivers: [
               _appBar(context, state, vendor),
               SliverToBoxAdapter(child: _VendorHeader(vendor: vendor)),
+              SliverToBoxAdapter(child: StoreOffersStrip(vendorId: vendor.id)),
               const SliverToBoxAdapter(
                 child: AdSlot(
                   placement: AdPlacement.vendorTop,
@@ -783,7 +786,9 @@ class _VendorHeader extends StatelessWidget {
                           )
                         else if (closing != null)
                           SoftBadge(
-                            label: l10n.openUntil(closing),
+                            label: l10n.openUntil(
+                              formatClockText(context, closing),
+                            ),
                             fill: AppColors.successFill,
                             ink: AppColors.successInk,
                             icon: Icons.schedule_rounded,

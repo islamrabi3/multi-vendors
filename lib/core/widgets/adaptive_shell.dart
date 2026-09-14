@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import 'count_badge.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
@@ -9,11 +12,13 @@ class AdaptiveDestination {
     required this.icon,
     required this.selectedIcon,
     required this.label,
+    this.badge,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+  final ValueListenable<int>? badge;
 }
 
 /// Responsive scaffold for the vendor and admin dashboards: bottom
@@ -51,8 +56,11 @@ class AdaptiveShell extends StatelessWidget {
           destinations: [
             for (final d in destinations)
               NavigationDestination(
-                icon: Icon(d.icon),
-                selectedIcon: Icon(d.selectedIcon),
+                icon: WithCountBadge(count: d.badge, child: Icon(d.icon)),
+                selectedIcon: WithCountBadge(
+                  count: d.badge,
+                  child: Icon(d.selectedIcon),
+                ),
                 label: d.label,
               ),
           ],
@@ -75,14 +83,20 @@ class AdaptiveShell extends StatelessWidget {
             destinations: [
               for (final d in destinations)
                 NavigationRailDestination(
-                  icon: Icon(d.icon),
-                  selectedIcon: Icon(d.selectedIcon),
+                  icon: WithCountBadge(count: d.badge, child: Icon(d.icon)),
+                  selectedIcon: WithCountBadge(
+                    count: d.badge,
+                    child: Icon(d.selectedIcon),
+                  ),
                   label: Text(d.label),
                 ),
             ],
           ),
           const VerticalDivider(
-              width: 1, thickness: 1, color: AppColors.border),
+            width: 1,
+            thickness: 1,
+            color: AppColors.border,
+          ),
           Expanded(
             child: Center(
               child: ConstrainedBox(

@@ -52,23 +52,31 @@ class AppContent extends Equatable {
   bool get isEmpty => bodyEn.trim().isEmpty && (bodyAr?.trim() ?? '').isEmpty;
 
   factory AppContent.fromMap(Map<String, dynamic> map) => AppContent(
-        key: map['key'] as String,
-        titleEn: (map['title_en'] as String?) ?? '',
-        titleAr: map['title_ar'] as String?,
-        bodyEn: (map['body_en'] as String?) ?? '',
-        bodyAr: map['body_ar'] as String?,
-        isPublished: (map['is_published'] as bool?) ?? true,
-        updatedAt: map['updated_at'] == null
-            ? null
-            : DateTime.parse(map['updated_at'] as String),
-        version: ((map['version'] as num?) ?? 1).toInt(),
-        requiresAcceptance: (map['requires_acceptance'] as bool?) ?? false,
-        audience: map['audience'] as String?,
-      );
+    key: map['key'] as String,
+    titleEn: (map['title_en'] as String?) ?? '',
+    titleAr: map['title_ar'] as String?,
+    bodyEn: (map['body_en'] as String?) ?? '',
+    bodyAr: map['body_ar'] as String?,
+    isPublished: (map['is_published'] as bool?) ?? true,
+    updatedAt: map['updated_at'] == null
+        ? null
+        : DateTime.parse(map['updated_at'] as String),
+    version: ((map['version'] as num?) ?? 1).toInt(),
+    requiresAcceptance: (map['requires_acceptance'] as bool?) ?? false,
+    audience: map['audience'] as String?,
+  );
 
   @override
-  List<Object?> get props =>
-      [key, titleEn, titleAr, bodyEn, bodyAr, isPublished, updatedAt, version];
+  List<Object?> get props => [
+    key,
+    titleEn,
+    titleAr,
+    bodyEn,
+    bodyAr,
+    isPublished,
+    updatedAt,
+    version,
+  ];
 }
 
 /// One social or contact link in the about page footer.
@@ -91,12 +99,12 @@ class AppLink extends Equatable {
   final int sortOrder;
 
   factory AppLink.fromMap(Map<String, dynamic> map) => AppLink(
-        id: map['id'] as String,
-        platform: ((map['platform'] as String?) ?? 'website').toLowerCase(),
-        url: (map['url'] as String?) ?? '',
-        isActive: (map['is_active'] as bool?) ?? true,
-        sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
-      );
+    id: map['id'] as String,
+    platform: ((map['platform'] as String?) ?? 'website').toLowerCase(),
+    url: (map['url'] as String?) ?? '',
+    isActive: (map['is_active'] as bool?) ?? true,
+    sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
+  );
 
   @override
   List<Object?> get props => [id, platform, url, isActive, sortOrder];

@@ -7,7 +7,7 @@ import 'catalog_repository.dart';
 /// repository mirrors it to the `carts` tables so it survives app restarts.
 class CartRepository {
   CartRepository({CatalogRepository? catalog})
-      : _catalog = catalog ?? CatalogRepository();
+    : _catalog = catalog ?? CatalogRepository();
 
   final CatalogRepository _catalog;
 
@@ -22,8 +22,10 @@ class CartRepository {
 
     final cart = await supabase
         .from('carts')
-        .upsert({'user_id': userId, 'vendor_id': vendorId},
-            onConflict: 'user_id')
+        .upsert({
+          'user_id': userId,
+          'vendor_id': vendorId,
+        }, onConflict: 'user_id')
         .select()
         .single();
     final cartId = cart['id'] as String;
@@ -75,19 +77,21 @@ class CartRepository {
           for (final option in group.options)
             if (optionIds.contains(option.id)) option,
       ];
-      items.add(CartItem(
-        product: product,
-        quantity: ((row['quantity'] as num?) ?? 1).toInt(),
-        selectedOptions: options,
-        notes: row['notes'] as String?,
-      ));
+      items.add(
+        CartItem(
+          product: product,
+          quantity: ((row['quantity'] as num?) ?? 1).toInt(),
+          selectedOptions: options,
+          notes: row['notes'] as String?,
+        ),
+      );
     }
 
     if (items.isEmpty) return null;
     return (cart['vendor_id'] as String, items);
   }
 
-  Future<Product?> productForRestore(String productId) =>
-      _catalog.fetchProductsByIds([productId]).then(
-          (list) => list.isEmpty ? null : list.first);
+  Future<Product?> productForRestore(String productId) => _catalog
+      .fetchProductsByIds([productId])
+      .then((list) => list.isEmpty ? null : list.first);
 }

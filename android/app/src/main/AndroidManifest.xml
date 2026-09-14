@@ -36,6 +36,11 @@
                 <data android:scheme="io.supabase.multivendor" android:host="login-callback" />
             </intent-filter>
         </activity>
+        <!-- Lets a notification's Accept / Reject buttons run without opening
+             the app (flutter_local_notifications background actions). -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

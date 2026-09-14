@@ -101,7 +101,9 @@ class _LocationPickerScreenState extends State<_LocationPickerScreen> {
 
   bool get _isCovered =>
       widget.coverage.isEmpty ||
-      widget.coverage.any((a) => a.contains(_center.latitude, _center.longitude));
+      widget.coverage.any(
+        (a) => a.contains(_center.latitude, _center.longitude),
+      );
 
   /// Reverse geocoding is billed per call, so it waits for the map to settle
   /// rather than firing on every frame of a pan.
@@ -229,9 +231,11 @@ class _LocationPickerScreenState extends State<_LocationPickerScreen> {
               child: Padding(
                 // Lifts the point of the pin onto the map centre.
                 padding: const EdgeInsets.only(bottom: 34),
-                child: Icon(Icons.location_on_rounded,
-                    size: 44,
-                    color: blocked ? AppColors.dangerInk : AppColors.primary),
+                child: Icon(
+                  Icons.location_on_rounded,
+                  size: 44,
+                  color: blocked ? AppColors.dangerInk : AppColors.primary,
+                ),
               ),
             ),
           ),
@@ -271,7 +275,9 @@ class _LocationPickerScreenState extends State<_LocationPickerScreen> {
               onConfirm: blocked
                   ? null
                   : () => Navigator.pop(
-                      context, PickedLocation(point: _center, address: _address)),
+                      context,
+                      PickedLocation(point: _center, address: _address),
+                    ),
             ),
           ),
         ],
@@ -314,8 +320,10 @@ class _SearchField extends StatelessWidget {
               ),
               filled: true,
               fillColor: Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
             ),
           ),
         ),
@@ -336,19 +344,28 @@ class _SearchField extends StatelessWidget {
                   const Divider(height: 1, color: AppColors.borderSoft),
               itemBuilder: (context, i) => ListTile(
                 dense: true,
-                leading: const Icon(Icons.place_outlined,
-                    size: 20, color: AppColors.textMuted),
-                title: Text(suggestions[i].primary,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                leading: const Icon(
+                  Icons.place_outlined,
+                  size: 20,
+                  color: AppColors.textMuted,
+                ),
+                title: Text(
+                  suggestions[i].primary,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 subtitle: suggestions[i].secondary.isEmpty
                     ? null
-                    : Text(suggestions[i].secondary,
+                    : Text(
+                        suggestions[i].secondary,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12)),
+                        style: const TextStyle(fontSize: 12),
+                      ),
                 onTap: () => onPick(suggestions[i]),
               ),
             ),
@@ -376,14 +393,21 @@ class _ConfirmBar extends StatelessWidget {
     final l10n = context.l10n;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.md, AppSpace.gutter,
-          AppSpace.md + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(
+        AppSpace.gutter,
+        AppSpace.md,
+        AppSpace.gutter,
+        AppSpace.md + MediaQuery.paddingOf(context).bottom,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
         boxShadow: [
-          BoxShadow(color: Color(0x1A1E1519), blurRadius: 24, offset: Offset(0, -6)),
+          BoxShadow(
+            color: Color(0x1A1E1519),
+            blurRadius: 24,
+            offset: Offset(0, -6),
+          ),
         ],
       ),
       child: Column(
@@ -393,17 +417,19 @@ class _ConfirmBar extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(blocked ? Icons.block_rounded : Icons.place_rounded,
-                  size: 18,
-                  color: blocked ? AppColors.dangerInk : AppColors.primary),
+              Icon(
+                blocked ? Icons.block_rounded : Icons.place_rounded,
+                size: 18,
+                color: blocked ? AppColors.dangerInk : AppColors.primary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   blocked
                       ? l10n.outsideServiceArea
                       : resolving
-                          ? l10n.locatingAddress
-                          : (address ?? l10n.dragTheMapToPlaceThePin),
+                      ? l10n.locatingAddress
+                      : (address ?? l10n.dragTheMapToPlaceThePin),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -418,8 +444,9 @@ class _ConfirmBar extends StatelessWidget {
           ),
           const SizedBox(height: AppSpace.md),
           FilledButton(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+            ),
             onPressed: onConfirm,
             child: Text(l10n.confirmLocation),
           ),

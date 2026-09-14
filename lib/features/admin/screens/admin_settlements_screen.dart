@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/features/admin/admin_action_badges.dart';
+import 'package:multi_vendor/core/widgets/count_badge.dart';
 import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -9,6 +11,7 @@ import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/finance_widgets.dart';
+import '../../../core/widgets/proof_photo_field.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 import '../../../core/widgets/web/adaptive_sheet.dart';
@@ -133,6 +136,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         : '';
     _referenceController.clear();
     var method = 'cash';
+    PickedProof? proof;
 
     final done = await showFormDialog<bool>(
       context: context,
@@ -193,6 +197,25 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
             controller: _referenceController,
             decoration: InputDecoration(labelText: l10n.referenceOptional),
           ),
+          const SizedBox(height: AppSpace.md),
+          // Required: this is the record the store or driver sees of being
+          // paid, and what support checks against in a dispute.
+          ProofPhotoField(
+            proof: proof,
+            required: true,
+            title: l10n.attachPaymentProof,
+            hint: l10n.attachPaymentProofHint,
+            onPick: () async {
+              final picked = await pickProofPhoto();
+              if (picked == null) return;
+              proof = picked;
+              rebuild();
+            },
+            onClear: () {
+              proof = null;
+              rebuild();
+            },
+          ),
         ],
       ),
       submitLabel: l10n.recordSettlement,
@@ -202,7 +225,16 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         if (amount == null || amount <= 0) {
           throw Exception(l10n.amountRequired);
         }
+        final picked = proof;
+        if (picked == null) throw Exception(l10n.paymentProofRequired);
+        final proofPath = await _repository.uploadSettlementProof(
+          ownerType: ownerType,
+          ownerId: party.ownerId,
+          bytes: picked.bytes,
+          fileName: picked.name,
+        );
         await _repository.recordSettlement(
+          proofPath: proofPath,
           ownerType: ownerType,
           ownerId: party.ownerId,
           amount: amount,
@@ -231,6 +263,55 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   /// [_settle]/`admin_record_settlement`. This just marks that it happened.
   Future<void> _reviewRequest(Settlement request, bool approve) async {
     final l10n = context.l10n;
+    if (approve) {
+      PickedProof? proof;
+      final approved = await showFormDialog<bool>(
+        context: context,
+        title: l10n.approve,
+        subtitle:
+            '${formatMoney(request.amount)} · ${_partyName(request)}'
+            '\n\n${l10n.settlementApprovalExternalNotice}',
+        icon: Icons.check_rounded,
+        contentBuilder: (rebuild) => ProofPhotoField(
+          proof: proof,
+          required: true,
+          title: l10n.attachPaymentProof,
+          hint: l10n.attachPaymentProofHint,
+          onPick: () async {
+            final picked = await pickProofPhoto();
+            if (picked == null) return;
+            proof = picked;
+            rebuild();
+          },
+          onClear: () {
+            proof = null;
+            rebuild();
+          },
+        ),
+        submitLabel: l10n.approve,
+        cancelLabel: l10n.cancel,
+        onSubmit: (_) async {
+          final picked = proof;
+          if (picked == null) throw Exception(l10n.paymentProofRequired);
+          final path = await _repository.uploadSettlementProof(
+            ownerType: request.ownerType,
+            ownerId: request.ownerId,
+            bytes: picked.bytes,
+            fileName: picked.name,
+          );
+          await _repository.reviewSettlementRequest(
+            settlementId: request.id,
+            approve: true,
+          );
+          await _repository.attachSettlementProof(request.id, path);
+          return true;
+        },
+      );
+      if (approved != true || !mounted) return;
+      showSnack(context, l10n.settlementApproved);
+      await _load();
+      return;
+    }
     final confirmed = await showConfirmDialog(
       context: context,
       title: approve ? l10n.approve : l10n.reject,
@@ -498,9 +579,25 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         Tab(text: l10n.driversTab),
         Tab(text: l10n.storesLabel),
         Tab(
-          text: _pending.isEmpty
-              ? l10n.settlementRequestsTab
-              : '${l10n.settlementRequestsTab} (${_pending.length})',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  l10n.settlementRequestsTab,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              CountBadge(
+                compact: true,
+                count: AdminActionBadges.instance.countFor(
+                  AdminActionBadges.settlementRequests,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

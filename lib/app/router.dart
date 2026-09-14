@@ -18,6 +18,10 @@ import '../features/auth/screens/reset_password_screen.dart';
 import '../features/auth/screens/role_choice_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
+import '../core/repositories/payment_repository.dart' show PaymobCheckout;
+import '../features/support/messages_screen.dart';
+import '../features/support/complaints/complaint_thread_screen.dart';
+import '../features/support/complaints/my_complaints_screen.dart';
 import '../features/admin/admin_shell.dart';
 import '../features/admin/screens/admin_complaints_screen.dart';
 import '../features/admin/screens/admin_content_screen.dart';
@@ -122,6 +126,8 @@ const _sharedPaths = {
   '/support',
   // Every shell draws the bell; vendors and drivers were bounced home.
   '/notifications',
+  // Every role has order conversations: customer, driver and store.
+  '/messages',
 };
 
 final _customerOrderLink = RegExp(r'^/order/([^/]+)(/chat)?$');
@@ -132,6 +138,9 @@ final _customerOrderLink = RegExp(r'^/order/([^/]+)(/chat)?$');
 String? _orderLinkForRole(UserRole role, String location) {
   final match = _customerOrderLink.firstMatch(location);
   if (match == null) return null;
+  // The chat thread itself is shared: the driver and the store open the same
+  // conversation page the customer does.
+  if (match.group(2) != null) return null;
   final id = match.group(1)!;
   return switch (role) {
     UserRole.vendor => '/vendor-app/orders/$id',
@@ -143,6 +152,7 @@ String? _orderLinkForRole(UserRole role, String location) {
 
 bool _allowedForRole(UserRole role, String location) {
   if (_sharedPaths.contains(location)) return true;
+  if (_customerOrderLink.firstMatch(location)?.group(2) != null) return true;
   return switch (role) {
     UserRole.vendor => location.startsWith('/vendor-app'),
     UserRole.driver => location.startsWith('/driver-app'),
@@ -327,8 +337,13 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
       GoRoute(
         path: '/paymob-checkout',
-        builder: (_, state) =>
-            PaymobCheckoutScreen(checkoutUrl: state.extra! as String),
+        builder: (_, state) => switch (state.extra) {
+          final PaymobCheckout checkout => PaymobCheckoutScreen(
+            checkoutUrl: checkout.url,
+            reference: checkout.reference,
+          ),
+          final extra => PaymobCheckoutScreen(checkoutUrl: extra! as String),
+        },
       ),
       GoRoute(
         path: '/order/:id',
@@ -346,6 +361,18 @@ GoRouter buildRouter(AuthCubit authCubit) {
       // Support belongs to every role: a vendor or driver needs the platform
       // just as much as a customer does.
       GoRoute(path: '/support', builder: (_, _) => const MySupportScreen()),
+      GoRoute(path: '/messages', builder: (_, _) => const MessagesScreen()),
+      // A customer's complaints and each one's follow-up thread; the push
+      // for a support reply lands on the thread itself.
+      GoRoute(
+        path: '/complaints',
+        builder: (_, _) => const MyComplaintsScreen(),
+      ),
+      GoRoute(
+        path: '/complaints/:id',
+        builder: (_, state) =>
+            ComplaintThreadScreen(reportId: state.pathParameters['id']!),
+      ),
 
       // Operator-managed pages. The body is fetched, so a wording change ships
       // from the admin app rather than through a store review.
@@ -498,7 +525,9 @@ GoRouter buildRouter(AuthCubit authCubit) {
       ),
       GoRoute(
         path: '/admin-app/complaints',
-        builder: (_, _) => const AdminComplaintsScreen(),
+        builder: (_, state) => AdminComplaintsScreen(
+          initialReportId: state.uri.queryParameters['id'],
+        ),
       ),
       GoRoute(
         path: '/admin-app/sales-reports',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/widgets/count_badge.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -222,7 +223,16 @@ class _ManageGrid extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(item.icon, size: 22, color: AppColors.primary),
+                          WithCountBadge(
+                            count: item.badge,
+                            top: -8,
+                            end: -14,
+                            child: Icon(
+                              item.icon,
+                              size: 22,
+                              color: AppColors.primary,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           Flexible(
                             child: Text(

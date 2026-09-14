@@ -5,8 +5,8 @@ import 'package:equatable/equatable.dart';
 /// falling back is the normal case rather than an error.
 String localizedText(String canonical, String? arabic, String languageCode) =>
     languageCode == 'ar' && (arabic?.trim().isNotEmpty ?? false)
-        ? arabic!.trim()
-        : canonical;
+    ? arabic!.trim()
+    : canonical;
 
 class ProductCategory extends Equatable {
   const ProductCategory({
@@ -27,12 +27,12 @@ class ProductCategory extends Equatable {
       localizedText(name, nameAr, languageCode);
 
   factory ProductCategory.fromMap(Map<String, dynamic> map) => ProductCategory(
-        id: map['id'] as String,
-        vendorId: map['vendor_id'] as String,
-        name: map['name'] as String,
-        nameAr: map['name_ar'] as String?,
-        sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
-      );
+    id: map['id'] as String,
+    vendorId: map['vendor_id'] as String,
+    name: map['name'] as String,
+    nameAr: map['name_ar'] as String?,
+    sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
+  );
 
   @override
   List<Object?> get props => [id, vendorId, name, nameAr, sortOrder];
@@ -67,18 +67,25 @@ class ProductHit extends Equatable {
       localizedText(name, nameAr, languageCode);
 
   factory ProductHit.fromMap(Map<String, dynamic> map) => ProductHit(
-        id: map['id'] as String,
-        vendorId: map['vendor_id'] as String,
-        vendorName: (map['vendor_name'] as String?) ?? '',
-        name: map['name'] as String,
-        nameAr: map['name_ar'] as String?,
-        imageUrl: map['image_url'] as String?,
-        price: ((map['price'] as num?) ?? 0).toDouble(),
-      );
+    id: map['id'] as String,
+    vendorId: map['vendor_id'] as String,
+    vendorName: (map['vendor_name'] as String?) ?? '',
+    name: map['name'] as String,
+    nameAr: map['name_ar'] as String?,
+    imageUrl: map['image_url'] as String?,
+    price: ((map['price'] as num?) ?? 0).toDouble(),
+  );
 
   @override
-  List<Object?> get props =>
-      [id, vendorId, vendorName, name, nameAr, imageUrl, price];
+  List<Object?> get props => [
+    id,
+    vendorId,
+    vendorName,
+    name,
+    nameAr,
+    imageUrl,
+    price,
+  ];
 }
 
 class ProductOption extends Equatable {
@@ -97,12 +104,12 @@ class ProductOption extends Equatable {
   final bool isAvailable;
 
   factory ProductOption.fromMap(Map<String, dynamic> map) => ProductOption(
-        id: map['id'] as String,
-        groupId: map['group_id'] as String,
-        name: map['name'] as String,
-        priceDelta: ((map['price_delta'] as num?) ?? 0).toDouble(),
-        isAvailable: (map['is_available'] as bool?) ?? true,
-      );
+    id: map['id'] as String,
+    groupId: map['group_id'] as String,
+    name: map['name'] as String,
+    priceDelta: ((map['price_delta'] as num?) ?? 0).toDouble(),
+    isAvailable: (map['is_available'] as bool?) ?? true,
+  );
 
   @override
   List<Object?> get props => [id, groupId, name, priceDelta, isAvailable];
@@ -141,7 +148,14 @@ class ProductOptionGroup extends Equatable {
       );
 
   @override
-  List<Object?> get props => [id, productId, name, minSelect, maxSelect, options];
+  List<Object?> get props => [
+    id,
+    productId,
+    name,
+    minSelect,
+    maxSelect,
+    options,
+  ];
 }
 
 class Product extends Equatable {
@@ -189,8 +203,7 @@ class Product extends Equatable {
   /// `isAvailable` is the shop's decision to sell it at all; a tracked product
   /// with nothing left is out of stock regardless of that switch. Mirrors
   /// `product_is_sellable` so the app and the server agree.
-  bool get isSellable =>
-      isAvailable && (!trackStock || stockQuantity > 0);
+  bool get isSellable => isAvailable && (!trackStock || stockQuantity > 0);
 
   bool get isOutOfStock => trackStock && stockQuantity <= 0;
 
@@ -220,61 +233,60 @@ class Product extends Equatable {
     bool? isAvailable,
     String? categoryId,
     int? stockQuantity,
-  }) =>
-      Product(
-        id: id,
-        vendorId: vendorId,
-        categoryId: categoryId ?? this.categoryId,
-        name: name,
-        nameAr: nameAr,
-        description: description,
-        descriptionAr: descriptionAr,
-        imageUrl: imageUrl,
-        price: price,
-        isAvailable: isAvailable ?? this.isAvailable,
-        sortOrder: sortOrder ?? this.sortOrder,
-        optionGroups: optionGroups,
-        trackStock: trackStock,
-        stockQuantity: stockQuantity ?? this.stockQuantity,
-        lowStockThreshold: lowStockThreshold,
-      );
+  }) => Product(
+    id: id,
+    vendorId: vendorId,
+    categoryId: categoryId ?? this.categoryId,
+    name: name,
+    nameAr: nameAr,
+    description: description,
+    descriptionAr: descriptionAr,
+    imageUrl: imageUrl,
+    price: price,
+    isAvailable: isAvailable ?? this.isAvailable,
+    sortOrder: sortOrder ?? this.sortOrder,
+    optionGroups: optionGroups,
+    trackStock: trackStock,
+    stockQuantity: stockQuantity ?? this.stockQuantity,
+    lowStockThreshold: lowStockThreshold,
+  );
 
   factory Product.fromMap(Map<String, dynamic> map) => Product(
-        id: map['id'] as String,
-        vendorId: map['vendor_id'] as String,
-        categoryId: map['category_id'] as String?,
-        name: map['name'] as String,
-        nameAr: map['name_ar'] as String?,
-        description: map['description'] as String?,
-        descriptionAr: map['description_ar'] as String?,
-        imageUrl: map['image_url'] as String?,
-        price: ((map['price'] as num?) ?? 0).toDouble(),
-        isAvailable: (map['is_available'] as bool?) ?? true,
-        sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
-        optionGroups: ((map['product_option_groups'] as List?) ?? [])
-            .map((g) => ProductOptionGroup.fromMap(g as Map<String, dynamic>))
-            .toList(),
-        trackStock: (map['track_stock'] as bool?) ?? false,
-        stockQuantity: ((map['stock_quantity'] as num?) ?? 0).toInt(),
-        lowStockThreshold: ((map['low_stock_threshold'] as num?) ?? 0).toInt(),
-      );
+    id: map['id'] as String,
+    vendorId: map['vendor_id'] as String,
+    categoryId: map['category_id'] as String?,
+    name: map['name'] as String,
+    nameAr: map['name_ar'] as String?,
+    description: map['description'] as String?,
+    descriptionAr: map['description_ar'] as String?,
+    imageUrl: map['image_url'] as String?,
+    price: ((map['price'] as num?) ?? 0).toDouble(),
+    isAvailable: (map['is_available'] as bool?) ?? true,
+    sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
+    optionGroups: ((map['product_option_groups'] as List?) ?? [])
+        .map((g) => ProductOptionGroup.fromMap(g as Map<String, dynamic>))
+        .toList(),
+    trackStock: (map['track_stock'] as bool?) ?? false,
+    stockQuantity: ((map['stock_quantity'] as num?) ?? 0).toInt(),
+    lowStockThreshold: ((map['low_stock_threshold'] as num?) ?? 0).toInt(),
+  );
 
   // `sortOrder` belongs here: a reorder changes nothing else about a row, and
   // without it two differently ordered lists compare equal and the rebuild
   // that would show the drag never happens.
   @override
   List<Object?> get props => [
-        id,
-        vendorId,
-        categoryId,
-        name,
-        nameAr,
-        description,
-        descriptionAr,
-        imageUrl,
-        price,
-        isAvailable,
-        sortOrder,
-        optionGroups,
-      ];
+    id,
+    vendorId,
+    categoryId,
+    name,
+    nameAr,
+    description,
+    descriptionAr,
+    imageUrl,
+    price,
+    isAvailable,
+    sortOrder,
+    optionGroups,
+  ];
 }

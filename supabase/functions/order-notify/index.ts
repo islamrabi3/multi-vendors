@@ -75,6 +75,61 @@ const STATUS_FALLBACK: Record<Lang, string> = {
   ar: "تم تحديث حالة طلبك.",
 };
 
+// Labels the app puts on a delivery offer it draws itself (Android), and on
+// the follow-up it shows after Accept is pressed from the shade. The app has
+// no language context in a background isolate, so the server sends them.
+const OFFER_TEXT: Record<Lang, Record<string, string>> = {
+  en: {
+    accept_label: "Accept",
+    reject_label: "Reject",
+    accepted_title: "Delivery accepted ✅",
+    accepted_body: "Open the app to start the delivery.",
+    taken_title: "Order already taken",
+    taken_body: "Another driver accepted it first.",
+  },
+  ar: {
+    accept_label: "قبول",
+    reject_label: "رفض",
+    accepted_title: "تم قبول التوصيل ✅",
+    accepted_body: "افتح التطبيق لبدء التوصيل.",
+    taken_title: "تم أخذ الطلب",
+    taken_body: "قبله مندوب آخر قبلك.",
+  },
+};
+
+function fcmMessage(
+  token: string,
+  event: string,
+  lang: Lang,
+  title: string,
+  body: string,
+  data: Record<string, string>,
+) {
+  if (event !== "ready_for_pickup") {
+    return { token, notification: { title, body }, data };
+  }
+  // A delivery offer. No top-level `notification`: on Android that would be
+  // drawn by the system without buttons, so it goes as high-priority data and
+  // the app draws it with Accept / Reject. iOS and web still get a normal
+  // alert through their own blocks.
+  return {
+    token,
+    data: {
+      ...data,
+      kind: "driver_offer",
+      title,
+      body,
+      ...OFFER_TEXT[lang],
+    },
+    android: { priority: "HIGH", ttl: "600s" },
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: { aps: { alert: { title, body }, sound: "default" } },
+    },
+    webpush: { notification: { title, body } },
+  };
+}
+
 function bodyFor(event: string, lang: Lang, status: string, label: string): string {
   switch (event) {
     case "new_order":
@@ -196,14 +251,14 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
-            message: {
-              token: recipient.fcm_token,
-              notification: {
-                title: TITLES[event][lang],
-                body: bodyFor(event, lang, status, label),
-              },
-              data: { order_id: `${orderId}`, event, status },
-            },
+            message: fcmMessage(
+              `${recipient.fcm_token}`,
+              event,
+              lang,
+              TITLES[event][lang],
+              bodyFor(event, lang, status, label),
+              { order_id: `${orderId}`, event, status },
+            ),
           }),
         },
       );

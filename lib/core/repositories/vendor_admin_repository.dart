@@ -16,12 +16,21 @@ class VendorAdminRepository {
     required String vendorId,
     required int limit,
     required int offset,
+    DateTime? from,
+    DateTime? to,
   }) async {
-    final data = await supabase
+    var query = supabase
         .from('orders')
-        .select('*, vendors(name, logo_url)')
+        .select('*, vendors(name, logo_url), order_items(*)')
         .eq('vendor_id', vendorId)
-        .inFilter('status', _finishedStatuses)
+        .inFilter('status', _finishedStatuses);
+    if (from != null) {
+      query = query.gte('created_at', from.toUtc().toIso8601String());
+    }
+    if (to != null) {
+      query = query.lt('created_at', to.toUtc().toIso8601String());
+    }
+    final data = await query
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
     return (data as List)

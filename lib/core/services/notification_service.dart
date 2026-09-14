@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
+import 'driver_offer_alerts.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,8 +11,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  if (kDebugMode) {
-    print("Handling a background message: ${message.messageId}");
+  // A delivery offer arrives as data only on Android, so nothing is on screen
+  // until the app draws it — with its Accept / Reject buttons.
+  if (defaultTargetPlatform == TargetPlatform.android &&
+      DriverOfferAlerts.isOffer(message.data)) {
+    final plugin = FlutterLocalNotificationsPlugin();
+    await plugin.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+      onDidReceiveBackgroundNotificationResponse: driverOfferBackgroundResponse,
+    );
+    await DriverOfferAlerts.show(plugin, message.data);
   }
 }
 
@@ -59,9 +70,62 @@ class NotificationService {
   /// Returns null for payloads with nothing to open, so a tap on those simply
   /// brings the app to the foreground instead of jumping somewhere arbitrary.
   static String? routeFor(Map<String, dynamic> data) {
+    // Pushes that name their own destination (complaints, campaigns).
+    final route = data['route'];
+    if (route is String && route.startsWith('/') && data['order_id'] == null) {
+      return route;
+    }
     final orderId = data['order_id'] as String?;
     if (orderId == null || orderId.isEmpty) return null;
+    // Driver pushes open the driver's own screens; `/order/:id` is the
+    // customer's page and a driver has nothing to do there.
+    switch (data['kind'] ?? data['event']) {
+      case DriverOfferAlerts.kind || 'ready_for_pickup' || 'driver_offer_lost':
+        return '/driver-app/pool';
+      case 'driver_offer_won' || 'driver_assigned':
+        return '/driver-app/active';
+    }
     return data['type'] == 'chat' ? '/order/$orderId/chat' : '/order/$orderId';
+  }
+
+  void _openRoute(String route) =>
+      onOpenRoute == null ? _pendingRoute = route : onOpenRoute!(route);
+
+  /// A local notification was tapped, or one of its buttons pressed, while
+  /// the app is running.
+  Future<void> _onLocalResponse(NotificationResponse response) async {
+    final data = DriverOfferAlerts.decode(response.payload);
+    switch (response.actionId) {
+      case DriverOfferAlerts.rejectAction:
+        return;
+      case DriverOfferAlerts.acceptAction:
+        final orderId = '${data['order_id'] ?? ''}';
+        if (orderId.isEmpty) return;
+        try {
+          final won = await DriverOfferAlerts.claim(
+            Supabase.instance.client,
+            orderId,
+          );
+          if (won) {
+            _openRoute('/driver-app/active');
+          } else {
+            await DriverOfferAlerts.showOutcome(
+              _localNotifications,
+              data,
+              won: false,
+            );
+          }
+        } catch (_) {
+          await DriverOfferAlerts.showOutcome(
+            _localNotifications,
+            data,
+            won: false,
+          );
+        }
+        return;
+    }
+    final route = routeFor(data);
+    if (route != null) _openRoute(route);
   }
 
   void _handleTap(RemoteMessage message) {
@@ -127,7 +191,12 @@ class NotificationService {
 
       // Initialize Local Notifications for Foreground display
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosInit = DarwinInitializationSettings();
+      const iosInit = DarwinInitializationSettings(
+        // Asked through FCM above; asking twice shows nothing new.
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
       const initSettings = InitializationSettings(
         android: androidInit,
         iOS: iosInit,
@@ -139,21 +208,20 @@ class NotificationService {
       if (!kIsWeb) {
         await _localNotifications.initialize(
           initSettings,
-          onDidReceiveNotificationResponse: (response) {
-            final payload = response.payload;
-            if (payload == null || payload.isEmpty) return;
-            final data = <String, dynamic>{};
-            for (final pair in payload.split('|')) {
-              final split = pair.indexOf('=');
-              if (split > 0) {
-                data[pair.substring(0, split)] = pair.substring(split + 1);
-              }
-            }
-            final route = routeFor(data);
-            if (route == null) return;
-            onOpenRoute == null ? _pendingRoute = route : onOpenRoute!(route);
-          },
+          onDidReceiveNotificationResponse: _onLocalResponse,
+          onDidReceiveBackgroundNotificationResponse:
+              driverOfferBackgroundResponse,
         );
+
+        // Cold start from tapping a notification the app itself drew (an
+        // offer, or the result of accepting one from the shade).
+        final launch = await _localNotifications
+            .getNotificationAppLaunchDetails();
+        final launchResponse = launch?.notificationResponse;
+        if ((launch?.didNotificationLaunchApp ?? false) &&
+            launchResponse != null) {
+          await _onLocalResponse(launchResponse);
+        }
 
         final androidPlugin = _localNotifications
             .resolvePlatformSpecificImplementation<
@@ -164,6 +232,14 @@ class NotificationService {
 
       // Listen for FCM messages while app is in foreground
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        // On Android an offer is data-only and must be drawn here too. On iOS
+        // the system already shows its alert in the foreground.
+        if (!kIsWeb &&
+            defaultTargetPlatform == TargetPlatform.android &&
+            DriverOfferAlerts.isOffer(message.data)) {
+          DriverOfferAlerts.show(_localNotifications, message.data);
+          return;
+        }
         final notification = message.notification;
         final android = message.notification?.android;
         // flutter_local_notifications has no web implementation; a foreground

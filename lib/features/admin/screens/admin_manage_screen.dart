@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/tokens.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../auth/auth_cubit.dart';
+import '../admin_action_badges.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// The same grouping the mobile Manage screen renders as a list, in one
@@ -23,12 +25,14 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           icon: Icons.report_problem_outlined,
           label: l10n.customerReports,
           route: '/admin-app/complaints',
+          badgeKey: AdminActionBadges.reportsPending,
           permission: 'support.handle',
         ),
         ManageNavItem(
           icon: Icons.support_agent_outlined,
           label: l10n.supportChat,
           route: '/admin-app/support',
+          badgeKey: AdminActionBadges.supportAwaiting,
           permission: 'support.handle',
         ),
         ManageNavItem(
@@ -59,6 +63,7 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           icon: Icons.delivery_dining_outlined,
           label: l10n.driverApprovals,
           route: '/admin-app/drivers',
+          badgeKey: AdminActionBadges.driversPending,
           permission: 'drivers.view',
         ),
         ManageNavItem(
@@ -108,12 +113,14 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           icon: Icons.handshake_outlined,
           label: l10n.settlementsTitle,
           route: '/admin-app/settlements',
+          badgeKey: AdminActionBadges.settlementRequests,
           permission: 'finance.settle',
         ),
         ManageNavItem(
           icon: Icons.account_balance_outlined,
           label: l10n.depositsAwaitingReview,
           route: '/admin-app/deposits',
+          badgeKey: AdminActionBadges.depositsPending,
           permission: 'finance.settle',
         ),
       ],
@@ -163,6 +170,7 @@ List<WebNavSection> adminManageWebSections(BuildContext context) => [
             id: 'manage:${item.route}',
             icon: item.icon,
             label: item.label,
+            badge: item.badge,
             onTap: () => context.push(item.route),
           ),
       ],
@@ -264,11 +272,18 @@ class ManageNavItem {
     required this.label,
     required this.route,
     required this.permission,
+    this.badgeKey,
   });
 
   final IconData icon;
   final String label;
   final String route;
+
+  /// Which [AdminActionBadges] count marks work waiting behind this item.
+  final String? badgeKey;
+
+  ValueListenable<int>? get badge =>
+      badgeKey == null ? null : AdminActionBadges.instance.countFor(badgeKey!);
 
   /// What a member of staff needs to hold for this row to be worth showing.
   /// Hiding is courtesy — the screen behind it and every RPC it calls check

@@ -33,14 +33,14 @@ class ServiceArea extends Equatable {
   }
 
   factory ServiceArea.fromMap(Map<String, dynamic> map) => ServiceArea(
-        id: map['id'] as String,
-        name: (map['name'] as String?) ?? '',
-        nameAr: map['name_ar'] as String?,
-        lat: (map['lat'] as num).toDouble(),
-        lng: (map['lng'] as num).toDouble(),
-        radiusKm: (map['radius_km'] as num).toDouble(),
-        isActive: (map['is_active'] as bool?) ?? true,
-      );
+    id: map['id'] as String,
+    name: (map['name'] as String?) ?? '',
+    nameAr: map['name_ar'] as String?,
+    lat: (map['lat'] as num).toDouble(),
+    lng: (map['lng'] as num).toDouble(),
+    radiusKm: (map['radius_km'] as num).toDouble(),
+    isActive: (map['is_active'] as bool?) ?? true,
+  );
 
   /// Mirrors `public.is_within_service_area` so the picker can answer
   /// instantly while the pin is being dragged. The server still decides at
@@ -58,7 +58,8 @@ double distanceKm(double lat1, double lng1, double lat2, double lng2) {
   double toRad(double deg) => deg * math.pi / 180;
   final dLat = toRad(lat2 - lat1);
   final dLng = toRad(lng2 - lng1);
-  final a = math.pow(math.sin(dLat / 2), 2) +
+  final a =
+      math.pow(math.sin(dLat / 2), 2) +
       math.cos(toRad(lat1)) *
           math.cos(toRad(lat2)) *
           math.pow(math.sin(dLng / 2), 2);

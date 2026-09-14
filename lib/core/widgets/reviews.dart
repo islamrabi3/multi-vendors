@@ -31,8 +31,8 @@ class RatingStars extends StatelessWidget {
             rating >= star
                 ? Icons.star_rounded
                 : rating >= star - 0.5
-                    ? Icons.star_half_rounded
-                    : Icons.star_outline_rounded,
+                ? Icons.star_half_rounded
+                : Icons.star_outline_rounded,
             size: size,
             color: color,
           ),
@@ -64,7 +64,10 @@ class RatingSummary extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               l10n.basedOnReviews(breakdown.total),
-              style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: AppColors.textMuted,
+              ),
             ),
           ],
         ),
@@ -80,9 +83,10 @@ class RatingSummary extends StatelessWidget {
                     children: [
                       SizedBox(
                         width: 12,
-                        child: Text('$star',
-                            style: AppType.mono(11,
-                                color: AppColors.textMuted)),
+                        child: Text(
+                          '$star',
+                          style: AppType.mono(11, color: AppColors.textMuted),
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -93,7 +97,8 @@ class RatingSummary extends StatelessWidget {
                             minHeight: 6,
                             backgroundColor: AppColors.neutralFill,
                             valueColor: const AlwaysStoppedAnimation(
-                                AppColors.rating),
+                              AppColors.rating,
+                            ),
                           ),
                         ),
                       ),
@@ -140,7 +145,9 @@ class ReviewTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 13.5),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
                 ),
               ),
               RatingStars(rating: review.rating, size: 14),
@@ -148,8 +155,9 @@ class ReviewTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            DateFormat.yMMMd(Localizations.localeOf(context).toString())
-                .format(review.createdAt),
+            DateFormat.yMMMd(
+              Localizations.localeOf(context).toString(),
+            ).format(review.createdAt),
             style: const TextStyle(fontSize: 11, color: AppColors.textFaint),
           ),
           if (review.hasComment) ...[
@@ -157,7 +165,10 @@ class ReviewTile extends StatelessWidget {
             Text(
               review.comment!,
               style: const TextStyle(
-                  fontSize: 13.5, height: 1.45, color: AppColors.textSecondary),
+                fontSize: 13.5,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ],

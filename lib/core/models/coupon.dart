@@ -27,6 +27,7 @@ class Coupon extends Equatable {
     this.firstOrderOnly = false,
     this.isPublic = false,
     this.title,
+    this.fundedBy = 'platform',
   });
 
   final String id;
@@ -61,6 +62,12 @@ class Coupon extends Equatable {
   /// Shown to the customer instead of the raw code.
   final String? title;
 
+  /// Who absorbs the discount at settlement: `platform` or `vendor`. A store
+  /// promo run by the admin is usually platform-funded, so the store is not
+  /// charged for a campaign it never agreed to.
+  final String fundedBy;
+  bool get isVendorFunded => fundedBy == 'vendor';
+
   bool get isPercentage => discountType == 'percentage';
   bool get isFreeDelivery => discountType == 'free_delivery';
   bool get isExpired =>
@@ -92,6 +99,7 @@ class Coupon extends Equatable {
     firstOrderOnly: (map['first_order_only'] as bool?) ?? false,
     isPublic: (map['is_public'] as bool?) ?? false,
     title: map['title'] as String?,
+    fundedBy: (map['funded_by'] as String?) ?? 'platform',
   );
 
   @override
@@ -112,5 +120,6 @@ class Coupon extends Equatable {
     firstOrderOnly,
     isPublic,
     title,
+    fundedBy,
   ];
 }

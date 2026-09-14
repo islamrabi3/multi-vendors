@@ -200,13 +200,17 @@ class KitchenInLockup extends StatelessWidget {
       children: [
         KitchenInMark(
           size: markSize,
-          style: onDark ? KitchenInMarkStyle.glass : KitchenInMarkStyle.gradient,
+          style: onDark
+              ? KitchenInMarkStyle.glass
+              : KitchenInMarkStyle.gradient,
         ),
         SizedBox(width: markSize * 0.23),
         // Flexible so the lockup can be put in a row beside something else.
         // Its own Row is `min`, so without this the wordmark took its natural
         // width and pushed whatever sat next to it off the edge.
-        Flexible(child: KitchenInWordmark(fontSize: size, onDark: onDark)),
+        Flexible(
+          child: KitchenInWordmark(fontSize: size, onDark: onDark),
+        ),
       ],
     );
   }

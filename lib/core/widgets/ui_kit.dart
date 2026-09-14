@@ -17,13 +17,14 @@ class DirectionalIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Transform.flip(
-        // Material's arrows, chevrons and send already carry
-        // `matchTextDirection` and mirror themselves; flipping those again
-        // pointed them the wrong way in Arabic.
-        flipX: Directionality.of(context) == TextDirection.rtl &&
-            !icon.matchTextDirection,
-        child: Icon(icon, size: size, color: color),
-      );
+    // Material's arrows, chevrons and send already carry
+    // `matchTextDirection` and mirror themselves; flipping those again
+    // pointed them the wrong way in Arabic.
+    flipX:
+        Directionality.of(context) == TextDirection.rtl &&
+        !icon.matchTextDirection,
+    child: Icon(icon, size: size, color: color),
+  );
 }
 
 /// The standard surface: white, hairline border, card lift, `xl` corner.
@@ -107,11 +108,12 @@ class AppFilterChip extends StatelessWidget {
         child: Container(
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.lg, vertical: AppSpace.sm),
+            horizontal: AppSpace.lg,
+            vertical: AppSpace.sm,
+          ),
           decoration: BoxDecoration(
             borderRadius: radius,
-            border:
-                selected ? null : Border.all(color: AppColors.borderSoft),
+            border: selected ? null : Border.all(color: AppColors.borderSoft),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -153,7 +155,11 @@ class AppFilterBar extends StatelessWidget {
     super.key,
     required this.children,
     this.padding = const EdgeInsets.fromLTRB(
-        AppSpace.gutter, AppSpace.sm, AppSpace.gutter, AppSpace.xs),
+      AppSpace.gutter,
+      AppSpace.sm,
+      AppSpace.gutter,
+      AppSpace.xs,
+    ),
     this.height = 54,
     this.spacing = 9,
   });
@@ -243,7 +249,12 @@ class DarkStatTile extends StatelessWidget {
 
 /// Small tracked caps above a block — "ACTIVE DELIVERY", "PAYMENT".
 class SectionEyebrow extends StatelessWidget {
-  const SectionEyebrow(this.text, {super.key, this.trailing, this.onDark = false});
+  const SectionEyebrow(
+    this.text, {
+    super.key,
+    this.trailing,
+    this.onDark = false,
+  });
 
   final String text;
   final Widget? trailing;

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../app/tokens.dart';
+import '../../../core/repositories/payment_repository.dart';
 import '../../../core/widgets/common.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -15,9 +17,18 @@ enum PaymobCheckoutResult { completed, declined, cancelled }
 /// checkout navigates there we close the tab and hand the outcome back to the
 /// caller. This screen never navigates anywhere itself.
 class PaymobCheckoutScreen extends StatefulWidget {
-  const PaymobCheckoutScreen({super.key, required this.checkoutUrl});
+  const PaymobCheckoutScreen({
+    super.key,
+    required this.checkoutUrl,
+    this.reference,
+  });
 
   final String checkoutUrl;
+
+  /// The intent this checkout settles. With it, the screen confirms the
+  /// payment itself from Paymob's signed redirect before closing, instead of
+  /// relying on the webhook alone.
+  final String? reference;
 
   @override
   State<PaymobCheckoutScreen> createState() => _PaymobCheckoutScreenState();
@@ -27,6 +38,9 @@ class _PaymobCheckoutScreenState extends State<PaymobCheckoutScreen> {
   late final WebViewController _controller;
   bool _loading = true;
   bool _finished = false;
+
+  /// Paymob has redirected back; the server is confirming the payment.
+  bool _confirming = false;
 
   @override
   void initState() {
@@ -41,7 +55,7 @@ class _PaymobCheckoutScreenState extends State<PaymobCheckoutScreen> {
           onNavigationRequest: (request) {
             final result = _resultFor(request.url);
             if (result == null) return NavigationDecision.navigate;
-            _finish(result);
+            _confirmAndFinish(result, Uri.parse(request.url));
             return NavigationDecision.prevent;
           },
         ),
@@ -72,6 +86,33 @@ class _PaymobCheckoutScreenState extends State<PaymobCheckoutScreen> {
     return PaymobCheckoutResult.completed;
   }
 
+  /// The redirect carries the whole transaction, signed. Passing it to the
+  /// server settles the payment even when Paymob's webhook never arrives —
+  /// which is how a paid order used to stay unpaid and invisible.
+  Future<void> _confirmAndFinish(PaymobCheckoutResult result, Uri uri) async {
+    final reference = widget.reference;
+    if (_confirming || _finished) return;
+    if (reference == null || result == PaymobCheckoutResult.cancelled) {
+      _finish(result);
+      return;
+    }
+    setState(() => _confirming = true);
+    final repo = PaymentRepository();
+    final status = await repo.confirmFromRedirect(
+      reference,
+      uri.queryParameters,
+    );
+    if (status == null || status == 'pending') {
+      // Give the webhook a moment before handing back to the caller, which
+      // keeps polling on its own.
+      await repo.awaitSettlement(
+        reference,
+        timeout: const Duration(seconds: 20),
+      );
+    }
+    _finish(result);
+  }
+
   void _finish(PaymobCheckoutResult result) {
     if (_finished || !mounted) return;
     _finished = true;
@@ -96,8 +137,58 @@ class _PaymobCheckoutScreenState extends State<PaymobCheckoutScreen> {
         body: Stack(
           children: [
             WebViewWidget(controller: _controller),
-            if (_loading) const LoadingView(),
+            if (_loading && !_confirming) const LoadingView(),
+            if (_confirming) const _ConfirmingOverlay(),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Covers the gateway page while the payment is confirmed, so the customer is
+/// not left looking at a finished checkout with nothing happening.
+class _ConfirmingOverlay extends StatelessWidget {
+  const _ConfirmingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: AppColors.canvas,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3.5,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Text(
+                  context.l10n.paymentConfirmingTitle,
+                  textAlign: TextAlign.center,
+                  style: AppType.heading(17),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Text(
+                  context.l10n.paymentConfirmingBody,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

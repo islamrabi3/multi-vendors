@@ -18,17 +18,18 @@ enum _AttachChoice {
   final IconData icon;
 
   String label(BuildContext context) => switch (this) {
-        _AttachChoice.photo => context.l10n.attachPhoto,
-        _AttachChoice.camera => context.l10n.attachCamera,
-        _AttachChoice.file => context.l10n.attachFile,
-      };
+    _AttachChoice.photo => context.l10n.attachPhoto,
+    _AttachChoice.camera => context.l10n.attachCamera,
+    _AttachChoice.file => context.l10n.attachFile,
+  };
 
   Future<ChatAttachment?> pick() => switch (this) {
-        _AttachChoice.photo => AttachmentService.instance.pickImage(),
-        _AttachChoice.camera =>
-          AttachmentService.instance.pickImage(fromCamera: true),
-        _AttachChoice.file => AttachmentService.instance.pickFile(),
-      };
+    _AttachChoice.photo => AttachmentService.instance.pickImage(),
+    _AttachChoice.camera => AttachmentService.instance.pickImage(
+      fromCamera: true,
+    ),
+    _AttachChoice.file => AttachmentService.instance.pickFile(),
+  };
 }
 
 /// Asks what to attach, then picks and uploads it.
@@ -150,9 +151,7 @@ class _ChatAttachmentViewState extends State<ChatAttachmentView> {
         }
         return GestureDetector(
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => _ImageViewer(url: url),
-            ),
+            MaterialPageRoute<void>(builder: (_) => _ImageViewer(url: url)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.md),
@@ -200,7 +199,9 @@ class _FileRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadii.md),
       child: Container(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.md, vertical: AppSpace.sm),
+          horizontal: AppSpace.md,
+          vertical: AppSpace.sm,
+        ),
         decoration: BoxDecoration(
           color: onDark
               ? Colors.white.withValues(alpha: 0.16)

@@ -40,16 +40,23 @@ class SupportThread extends Equatable {
       lastMessageAt: DateTime.parse(map['last_message_at'] as String),
       userName: profile is Map
           ? ((profile['full_name'] as String?)?.trim().isNotEmpty == true
-              ? profile['full_name'] as String
-              : null)
+                ? profile['full_name'] as String
+                : null)
           : null,
       userRole: profile is Map ? profile['role'] as String? : null,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [id, userId, subject, status, lastMessageAt, userName, userRole];
+  List<Object?> get props => [
+    id,
+    userId,
+    subject,
+    status,
+    lastMessageAt,
+    userName,
+    userRole,
+  ];
 }
 
 class SupportMessage extends Equatable {
@@ -91,31 +98,31 @@ class SupportMessage extends Equatable {
   bool get isImageAttachment => attachmentType == 'image';
 
   factory SupportMessage.fromMap(Map<String, dynamic> map) => SupportMessage(
-        id: map['id'] as String,
-        threadId: map['thread_id'] as String,
-        senderId: map['sender_id'] as String,
-        isFromAdmin: (map['is_from_admin'] as bool?) ?? false,
-        isAutomated: (map['is_automated'] as bool?) ?? false,
-        message: (map['message'] as String?) ?? '',
-        createdAt: DateTime.parse(map['created_at'] as String),
-        attachmentPath: map['attachment_url'] as String?,
-        attachmentName: map['attachment_name'] as String?,
-        attachmentType: map['attachment_type'] as String?,
-      );
+    id: map['id'] as String,
+    threadId: map['thread_id'] as String,
+    senderId: map['sender_id'] as String,
+    isFromAdmin: (map['is_from_admin'] as bool?) ?? false,
+    isAutomated: (map['is_automated'] as bool?) ?? false,
+    message: (map['message'] as String?) ?? '',
+    createdAt: DateTime.parse(map['created_at'] as String),
+    attachmentPath: map['attachment_url'] as String?,
+    attachmentName: map['attachment_name'] as String?,
+    attachmentType: map['attachment_type'] as String?,
+  );
 
   @override
   List<Object?> get props => [
-        id,
-        threadId,
-        senderId,
-        isFromAdmin,
-        isAutomated,
-        message,
-        createdAt,
-        attachmentPath,
-        attachmentName,
-        attachmentType,
-      ];
+    id,
+    threadId,
+    senderId,
+    isFromAdmin,
+    isAutomated,
+    message,
+    createdAt,
+    attachmentPath,
+    attachmentName,
+    attachmentType,
+  ];
 }
 
 /// A one-tap reason a customer can open a support thread with.
@@ -143,11 +150,11 @@ class SupportTemplate extends Equatable {
       languageCode == 'ar' && labelAr.trim().isNotEmpty ? labelAr : labelEn;
 
   factory SupportTemplate.fromMap(Map<String, dynamic> map) => SupportTemplate(
-        key: map['key'] as String,
-        labelEn: (map['label_en'] as String?) ?? '',
-        labelAr: (map['label_ar'] as String?) ?? '',
-        hasReply: map['reply_en'] != null || map['reply_ar'] != null,
-      );
+    key: map['key'] as String,
+    labelEn: (map['label_en'] as String?) ?? '',
+    labelAr: (map['label_ar'] as String?) ?? '',
+    hasReply: map['reply_en'] != null || map['reply_ar'] != null,
+  );
 
   @override
   List<Object?> get props => [key, labelEn, labelAr, hasReply];

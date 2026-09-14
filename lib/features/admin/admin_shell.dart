@@ -6,6 +6,7 @@ import '../../app/tokens.dart';
 import '../../core/widgets/adaptive_shell.dart';
 import '../../core/widgets/web/web_shell_frame.dart';
 import '../auth/auth_cubit.dart';
+import 'admin_action_badges.dart';
 import '../support/my_support_screen.dart' show AdminSupportScreen;
 import 'screens/admin_ads_screen.dart';
 import 'screens/admin_announcements_screen.dart';
@@ -33,6 +34,7 @@ class AdminShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AdminActionBadges.instance.ensureStarted();
     if (AppBreakpoints.isWebWide(context)) {
       return _AdminWebShell(shell: shell);
     }
@@ -47,16 +49,23 @@ class AdminShell extends StatelessWidget {
           icon: Icons.grid_view_outlined,
           selectedIcon: Icons.grid_view_rounded,
           label: context.l10n.overview,
+          badge: AdminActionBadges.instance.gridTotal,
         ),
         AdaptiveDestination(
           icon: Icons.receipt_long_outlined,
           selectedIcon: Icons.receipt_long,
           label: context.l10n.orders,
+          badge: AdminActionBadges.instance.countFor(
+            AdminActionBadges.ordersAttention,
+          ),
         ),
         AdaptiveDestination(
           icon: Icons.storefront_outlined,
           selectedIcon: Icons.storefront,
           label: context.l10n.vendors,
+          badge: AdminActionBadges.instance.countFor(
+            AdminActionBadges.vendorsPending,
+          ),
         ),
       ],
     );
@@ -231,6 +240,9 @@ class _AdminWebShellState extends State<_AdminWebShell> {
               icon: Icons.receipt_long_outlined,
               selectedIcon: Icons.receipt_long,
               label: l10n.orders,
+              badge: AdminActionBadges.instance.countFor(
+                AdminActionBadges.ordersAttention,
+              ),
               onTap: () => _selectBranch(1),
             ),
             WebNavItem(
@@ -238,6 +250,9 @@ class _AdminWebShellState extends State<_AdminWebShell> {
               icon: Icons.storefront_outlined,
               selectedIcon: Icons.storefront,
               label: l10n.vendors,
+              badge: AdminActionBadges.instance.countFor(
+                AdminActionBadges.vendorsPending,
+              ),
               onTap: () => _selectBranch(2),
             ),
           ],
@@ -251,6 +266,7 @@ class _AdminWebShellState extends State<_AdminWebShell> {
                   id: 'manage:${item.route}',
                   icon: item.icon,
                   label: item.label,
+                  badge: item.badge,
                   onTap: () => _embeddedManageScreen(item.route) != null
                       ? _selectManage(item.route, item.label)
                       : context.push(item.route),

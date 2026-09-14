@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/wallet_transaction.dart';
@@ -155,7 +156,9 @@ class _WalletScreenState extends State<WalletScreen> {
         title: context.l10n.topUpWallet,
         subtitle: context.l10n.selectTopUpAmount,
         icon: Icons.account_balance_wallet_rounded,
-        submitLabel: context.l10n.payWithPaymob,
+        // The channel (card or mobile wallet) is chosen in the form itself, so
+        // the button just says pay.
+        submitLabel: context.l10n.payAction,
         cancelLabel: context.l10n.cancel,
         contentBuilder: (rebuild) {
           final current = double.tryParse(amount.text);
@@ -304,7 +307,7 @@ class _TransactionTile extends StatelessWidget {
       _ => (Icons.receipt_long_rounded, null),
     };
     final title = label ?? tx.description ?? tx.type.replaceAll('_', ' ');
-    final time = TimeOfDay.fromDateTime(tx.createdAt).format(context);
+    final time = formatClock(context, tx.createdAt);
     return FinanceTxTile(
       icon: icon,
       title: title,

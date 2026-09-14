@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -89,7 +90,9 @@ class VendorCard extends StatelessWidget {
                     ] else if (closingTime != null) ...[
                       const SizedBox(height: 6),
                       Text(
-                        context.l10n.openUntil(closingTime),
+                        context.l10n.openUntil(
+                          formatClockText(context, closingTime),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/features/admin/admin_action_badges.dart';
 import 'package:intl/intl.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/finance.dart';
+import '../../../core/repositories/admin_repository.dart';
 import '../../../core/repositories/finance_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -75,6 +77,11 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
   /// There is no separate one-tap approve; every review opens here.
   Future<void> _review(DepositRequest request) async {
     final l10n = context.l10n;
+    // Receipts live in a private bucket; the row holds its path.
+    final proofUrl = await AdminRepository().signedDriverDocumentUrl(
+      request.proofUrl,
+    );
+    if (!mounted) return;
     final reasonController = TextEditingController();
 
     Future<void> confirm(bool approve) async {
@@ -161,7 +168,7 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
                 ),
               ),
               const SizedBox(height: AppSpace.sm),
-              if (request.proofUrl == null || request.proofUrl!.isEmpty)
+              if (proofUrl == null || proofUrl.isEmpty)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpace.lg),
@@ -186,12 +193,12 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
                       builder: (_) => Dialog(
                         insetPadding: const EdgeInsets.all(AppSpace.lg),
                         child: InteractiveViewer(
-                          child: AppNetworkImage(url: request.proofUrl),
+                          child: AppNetworkImage(url: proofUrl),
                         ),
                       ),
                     ),
                     child: AppNetworkImage(
-                      url: request.proofUrl,
+                      url: proofUrl,
                       height: 220,
                       width: double.infinity,
                     ),
@@ -273,7 +280,13 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
     final filter = FinanceSegments<bool>(
       values: const [true, false],
       selected: _pendingOnly,
-      labelOf: (pendingOnly) => pendingOnly ? l10n.pending : l10n.all,
+      labelOf: (pendingOnly) {
+        if (!pendingOnly) return l10n.all;
+        final waiting = AdminActionBadges.instance
+            .countFor(AdminActionBadges.depositsPending)
+            .value;
+        return waiting > 0 ? '${l10n.pending} ($waiting)' : l10n.pending;
+      },
       onChanged: (value) {
         if (value == _pendingOnly) return;
         setState(() => _pendingOnly = value);

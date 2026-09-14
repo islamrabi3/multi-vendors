@@ -6825,6 +6825,654 @@ abstract class AppLocalizations {
   /// **'Show less'**
   String get showLess;
 
+  /// No description provided for @serviceFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Service fee'**
+  String get serviceFee;
+
+  /// No description provided for @work.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get work;
+
+  /// No description provided for @adWhenTapped.
+  ///
+  /// In en, this message translates to:
+  /// **'When tapped'**
+  String get adWhenTapped;
+
+  /// No description provided for @adTapNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing'**
+  String get adTapNothing;
+
+  /// No description provided for @adTapNothingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The ad is only shown; tapping does nothing (a coupon ad still shows its code).'**
+  String get adTapNothingHint;
+
+  /// No description provided for @adTapAppPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Page in the app'**
+  String get adTapAppPage;
+
+  /// No description provided for @adTapExternalLink.
+  ///
+  /// In en, this message translates to:
+  /// **'External link'**
+  String get adTapExternalLink;
+
+  /// No description provided for @adPickStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for a store by name'**
+  String get adPickStore;
+
+  /// No description provided for @adSearchStoreHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Store name'**
+  String get adSearchStoreHint;
+
+  /// No description provided for @adPickStoreRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the store this ad opens.'**
+  String get adPickStoreRequired;
+
+  /// No description provided for @adPickPageRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the page this ad opens.'**
+  String get adPickPageRequired;
+
+  /// No description provided for @adLinkInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a full link starting with https://'**
+  String get adLinkInvalid;
+
+  /// No description provided for @searchPageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get searchPageLabel;
+
+  /// No description provided for @cartPageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart'**
+  String get cartPageLabel;
+
+  /// No description provided for @conversationRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation {order} removed'**
+  String conversationRemoved(String order);
+
+  /// No description provided for @swipeToRemoveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe a conversation to remove it. It comes back if a new message arrives.'**
+  String get swipeToRemoveHint;
+
+  /// No description provided for @undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
+
+  /// No description provided for @chatWithStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat with the store'**
+  String get chatWithStore;
+
+  /// No description provided for @messagesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get messagesTitle;
+
+  /// No description provided for @orderChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Order chats'**
+  String get orderChats;
+
+  /// No description provided for @noConversationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations yet. Chats about your orders will appear here.'**
+  String get noConversationsYet;
+
+  /// No description provided for @youLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get youLabel;
+
+  /// No description provided for @supportInboxHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat with our support team'**
+  String get supportInboxHint;
+
+  /// No description provided for @newMessageFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'New message · {order}'**
+  String newMessageFrom(String order);
+
+  /// No description provided for @openChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Open chat'**
+  String get openChat;
+
+  /// No description provided for @availableItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get availableItems;
+
+  /// No description provided for @buildYourMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Build your menu'**
+  String get buildYourMenu;
+
+  /// No description provided for @stockLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left'**
+  String stockLeft(int count);
+
+  /// No description provided for @completedOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completedOrders;
+
+  /// No description provided for @noReviewsForFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'No reviews match this filter yet.'**
+  String get noReviewsForFilter;
+
+  /// No description provided for @positiveReviewsShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Rated 4 or 5 stars'**
+  String get positiveReviewsShare;
+
+  /// No description provided for @criticalReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get criticalReviews;
+
+  /// No description provided for @positiveReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Positive'**
+  String get positiveReviews;
+
+  /// No description provided for @withComments.
+  ///
+  /// In en, this message translates to:
+  /// **'With comments'**
+  String get withComments;
+
+  /// No description provided for @ratingWithoutComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Rated without a comment'**
+  String get ratingWithoutComment;
+
+  /// No description provided for @openThisDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this day'**
+  String get openThisDay;
+
+  /// No description provided for @applyToAllDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply these hours to every day'**
+  String get applyToAllDays;
+
+  /// No description provided for @todayHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s hours'**
+  String get todayHours;
+
+  /// No description provided for @locationPinSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin set'**
+  String get locationPinSet;
+
+  /// No description provided for @ordersSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders'**
+  String get ordersSettingsTitle;
+
+  /// No description provided for @noMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'No minimum'**
+  String get noMinimum;
+
+  /// No description provided for @planAndFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan & fees'**
+  String get planAndFees;
+
+  /// No description provided for @setByPlatformFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Set by the platform. Contact support to change them.'**
+  String get setByPlatformFooter;
+
+  /// No description provided for @signOutConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'You will stop receiving new orders on this device until you sign in again.'**
+  String get signOutConfirm;
+
+  /// No description provided for @changeCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Change cover'**
+  String get changeCover;
+
+  /// No description provided for @payAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay'**
+  String get payAction;
+
+  /// No description provided for @attachPaymentProof.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach proof of payment'**
+  String get attachPaymentProof;
+
+  /// No description provided for @attachPaymentProofHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer screenshot or signed cash receipt'**
+  String get attachPaymentProofHint;
+
+  /// No description provided for @paymentProofRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a photo of the payment proof.'**
+  String get paymentProofRequired;
+
+  /// No description provided for @paymentProof.
+  ///
+  /// In en, this message translates to:
+  /// **'Proof of payment'**
+  String get paymentProof;
+
+  /// No description provided for @earlyPayoutFeeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast payout · fee {fee}'**
+  String earlyPayoutFeeNote(String fee);
+
+  /// No description provided for @attachProofPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a photo of the receipt'**
+  String get attachProofPhoto;
+
+  /// No description provided for @attachProofHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer receipt or cash hand-over slip — helps approve it faster'**
+  String get attachProofHint;
+
+  /// No description provided for @changePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get changePhoto;
+
+  /// No description provided for @proofRequiredForBank.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach the transfer receipt photo.'**
+  String get proofRequiredForBank;
+
+  /// No description provided for @permOrdersView.
+  ///
+  /// In en, this message translates to:
+  /// **'View orders'**
+  String get permOrdersView;
+
+  /// No description provided for @permOrdersCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel orders'**
+  String get permOrdersCancel;
+
+  /// No description provided for @permOrdersAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign drivers to orders'**
+  String get permOrdersAssign;
+
+  /// No description provided for @permVendorsView.
+  ///
+  /// In en, this message translates to:
+  /// **'View stores'**
+  String get permVendorsView;
+
+  /// No description provided for @permVendorsApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve & suspend stores'**
+  String get permVendorsApprove;
+
+  /// No description provided for @permVendorsPromote.
+  ///
+  /// In en, this message translates to:
+  /// **'Promote stores'**
+  String get permVendorsPromote;
+
+  /// No description provided for @permVendorsTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Set store fees & commission'**
+  String get permVendorsTerms;
+
+  /// No description provided for @permCatalogManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage categories & menus'**
+  String get permCatalogManage;
+
+  /// No description provided for @permContentManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage app content'**
+  String get permContentManage;
+
+  /// No description provided for @permPromosManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage coupons & offers'**
+  String get permPromosManage;
+
+  /// No description provided for @permAdsManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage ads'**
+  String get permAdsManage;
+
+  /// No description provided for @permDriversView.
+  ///
+  /// In en, this message translates to:
+  /// **'View drivers'**
+  String get permDriversView;
+
+  /// No description provided for @permDriversApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve & suspend drivers'**
+  String get permDriversApprove;
+
+  /// No description provided for @permUsersBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Block users'**
+  String get permUsersBlock;
+
+  /// No description provided for @permUsersDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete users'**
+  String get permUsersDelete;
+
+  /// No description provided for @permStaffManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage staff & roles'**
+  String get permStaffManage;
+
+  /// No description provided for @permSupportHandle.
+  ///
+  /// In en, this message translates to:
+  /// **'Handle support & complaints'**
+  String get permSupportHandle;
+
+  /// No description provided for @permNotificationsSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send notifications'**
+  String get permNotificationsSend;
+
+  /// No description provided for @permReportsView.
+  ///
+  /// In en, this message translates to:
+  /// **'View reports & finance'**
+  String get permReportsView;
+
+  /// No description provided for @permPaymentsRefund.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund payments'**
+  String get permPaymentsRefund;
+
+  /// No description provided for @permWalletsAdjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust customer wallets'**
+  String get permWalletsAdjust;
+
+  /// No description provided for @permFinanceSettle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle payouts & hand-overs'**
+  String get permFinanceSettle;
+
+  /// No description provided for @permFinanceAdjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Change fees & driver share'**
+  String get permFinanceAdjust;
+
+  /// No description provided for @takings.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales'**
+  String get takings;
+
+  /// No description provided for @previousDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous day'**
+  String get previousDay;
+
+  /// No description provided for @nextDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Next day'**
+  String get nextDay;
+
+  /// No description provided for @pickAnotherDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick another day'**
+  String get pickAnotherDay;
+
+  /// No description provided for @swipeWhenDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe when delivered'**
+  String get swipeWhenDelivered;
+
+  /// No description provided for @collectCashLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect in cash'**
+  String get collectCashLabel;
+
+  /// No description provided for @finishWithPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo & finish'**
+  String get finishWithPhoto;
+
+  /// No description provided for @finishWithoutPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish without photo'**
+  String get finishWithoutPhoto;
+
+  /// No description provided for @notYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet'**
+  String get notYet;
+
+  /// No description provided for @addressHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get addressHome;
+
+  /// No description provided for @saveAddressAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Save address as'**
+  String get saveAddressAs;
+
+  /// No description provided for @customAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Label name (e.g. Mom\'s house)'**
+  String get customAddressLabel;
+
+  /// No description provided for @setAsDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default'**
+  String get setAsDefault;
+
+  /// No description provided for @defaultAddressUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Default address updated'**
+  String get defaultAddressUpdated;
+
+  /// No description provided for @chooseDeliveryAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose delivery address'**
+  String get chooseDeliveryAddress;
+
+  /// No description provided for @addNewAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Add new address'**
+  String get addNewAddress;
+
+  /// No description provided for @addressNeedsPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin not set on map'**
+  String get addressNeedsPin;
+
+  /// No description provided for @buildingWithValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Building {value}'**
+  String buildingWithValue(String value);
+
+  /// No description provided for @floorWithValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Floor {value}'**
+  String floorWithValue(String value);
+
+  /// No description provided for @aptWithValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Apt {value}'**
+  String aptWithValue(String value);
+
+  /// No description provided for @serviceFeeSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Service fee on every order'**
+  String get serviceFeeSettings;
+
+  /// No description provided for @serviceFeeOff.
+  ///
+  /// In en, this message translates to:
+  /// **'No service fee'**
+  String get serviceFeeOff;
+
+  /// No description provided for @serviceFeeFixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed amount'**
+  String get serviceFeeFixed;
+
+  /// No description provided for @serviceFeePercent.
+  ///
+  /// In en, this message translates to:
+  /// **'% of subtotal'**
+  String get serviceFeePercent;
+
+  /// No description provided for @serviceFeeValueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get serviceFeeValueLabel;
+
+  /// No description provided for @serviceFeePercentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Percentage'**
+  String get serviceFeePercentLabel;
+
+  /// No description provided for @serviceFeeMaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum fee (optional)'**
+  String get serviceFeeMaxLabel;
+
+  /// No description provided for @serviceFeeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to the customer\'s total on every order and kept by the platform. Set 0 to turn it off.'**
+  String get serviceFeeHint;
+
+  /// No description provided for @serviceFeeSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Service fee updated'**
+  String get serviceFeeSaved;
+
+  /// No description provided for @serviceFeeSummaryPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of subtotal'**
+  String serviceFeeSummaryPercent(String percent);
+
   /// No description provided for @yourOrderFrom.
   ///
   /// In en, this message translates to:
@@ -9038,6 +9686,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'App splash (before launch)'**
   String get placementSplash;
+
+  /// No description provided for @couponAppliesTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to'**
+  String get couponAppliesTo;
+
+  /// No description provided for @couponAllStores.
+  ///
+  /// In en, this message translates to:
+  /// **'All stores'**
+  String get couponAllStores;
+
+  /// No description provided for @couponFundedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Who pays the discount'**
+  String get couponFundedBy;
+
+  /// No description provided for @couponFundedPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform pays'**
+  String get couponFundedPlatform;
+
+  /// No description provided for @couponFundedStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Store pays'**
+  String get couponFundedStore;
+
+  /// No description provided for @couponShowOnStorePage.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the code on the store page'**
+  String get couponShowOnStorePage;
+
+  /// No description provided for @couponShowOnStorePageDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers see it only on {store}\'s page.'**
+  String couponShowOnStorePageDesc(String store);
+
+  /// No description provided for @storeOffersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers from this store'**
+  String get storeOffersTitle;
+
+  /// No description provided for @storeOfferTapToCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to copy'**
+  String get storeOfferTapToCopy;
+
+  /// No description provided for @storeOfferExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Until {date}'**
+  String storeOfferExpires(String date);
+
+  /// No description provided for @myComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'My complaints'**
+  String get myComplaints;
+
+  /// No description provided for @myComplaintsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow up on complaints you filed'**
+  String get myComplaintsHint;
+
+  /// No description provided for @myComplaintsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t filed any complaints.'**
+  String get myComplaintsEmpty;
+
+  /// No description provided for @myComplaintsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'To report a problem, open the order and use the report option. You can follow it up here.'**
+  String get myComplaintsEmptyHint;
+
+  /// No description provided for @complaintDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint'**
+  String get complaintDetails;
+
+  /// No description provided for @complaintNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This complaint could not be found.'**
+  String get complaintNotFound;
+
+  /// No description provided for @complaintSupportTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Support team'**
+  String get complaintSupportTeam;
+
+  /// No description provided for @complaintThreadEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Support will reply here. You can add more details any time.'**
+  String get complaintThreadEmpty;
+
+  /// No description provided for @complaintThreadEmptyAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'No replies yet. Your reply reaches the customer as a notification.'**
+  String get complaintThreadEmptyAdmin;
+
+  /// No description provided for @complaintResolvedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This complaint is resolved. If the problem is still there, reply and it reopens.'**
+  String get complaintResolvedNotice;
+
+  /// No description provided for @complaintResolvedNoticeAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved. A reply from the customer reopens it.'**
+  String get complaintResolvedNoticeAdmin;
+
+  /// No description provided for @complaintFiledAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Filed {time}'**
+  String complaintFiledAt(String time);
+
+  /// No description provided for @complaintYouWrote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your complaint'**
+  String get complaintYouWrote;
+
+  /// No description provided for @complaintCustomerWrote.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer\'s complaint'**
+  String get complaintCustomerWrote;
+
+  /// No description provided for @complaintCustomerReplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer replied'**
+  String get complaintCustomerReplied;
+
+  /// No description provided for @complaintSupportReplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Support replied'**
+  String get complaintSupportReplied;
+
+  /// No description provided for @complaintInReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get complaintInReview;
+
+  /// No description provided for @complaintReplyReopens.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to reopen the complaint...'**
+  String get complaintReplyReopens;
+
+  /// No description provided for @complaintAddDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Add details or reply...'**
+  String get complaintAddDetails;
+
+  /// No description provided for @complaintTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Track'**
+  String get complaintTrack;
+
+  /// No description provided for @complaintSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a complaint to see the conversation'**
+  String get complaintSelectHint;
+
+  /// No description provided for @paymentConfirmingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming your payment'**
+  String get paymentConfirmingTitle;
+
+  /// No description provided for @paymentConfirmingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This takes a few seconds. Please don\'t close the app.'**
+  String get paymentConfirmingBody;
 }
 
 class _AppLocalizationsDelegate

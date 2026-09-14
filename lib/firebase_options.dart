@@ -71,5 +71,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'multi-rest-app.firebasestorage.app',
     iosBundleId: 'com.kitchenin.app',
   );
-
 }

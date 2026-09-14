@@ -32,7 +32,7 @@ Future<PaymobFlowResult> runPaymobCheckout(
 }) async {
   final tabResult = await router.push<PaymobCheckoutResult>(
     '/paymob-checkout',
-    extra: checkout.url,
+    extra: checkout,
   );
 
   if (tabResult == PaymobCheckoutResult.cancelled || tabResult == null) {

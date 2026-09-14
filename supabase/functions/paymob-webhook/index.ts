@@ -99,17 +99,30 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: outcome, error: settleError } = await admin.rpc(
-      "settle_payment_intent",
-      {
+    // A transient gateway error between this function and the database used
+    // to drop the payment on the floor: Paymob does not reliably retry, so the
+    // order stayed unpaid and invisible although the customer was charged.
+    // The RPC is idempotent per reference, so retrying is safe.
+    let outcome: unknown = null;
+    let settleError: unknown = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data, error } = await admin.rpc("settle_payment_intent", {
         p_reference: reference,
         p_success: success,
         p_transaction_id: `${tx.id}`,
         p_failure_reason: success
           ? null
           : `${tx.data?.message ?? tx.error_occured ?? "declined"}`,
-      },
-    );
+      });
+      if (!error) {
+        outcome = data;
+        settleError = null;
+        break;
+      }
+      settleError = error;
+      console.error("settle_payment_intent attempt failed", attempt, reference, error);
+      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+    }
 
     if (settleError) {
       // 500 makes Paymob retry rather than silently dropping the payment.
@@ -125,7 +138,11 @@ Deno.serve(async (req) => {
         .eq("reference", reference)
         .maybeSingle();
 
-      if (intent?.order_id) {
+      const { count: already } = await admin
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("provider_transaction_id", `${tx.id}`);
+      if (intent?.order_id && !already) {
         await admin.from("payments").insert({
           order_id: intent.order_id,
           provider: "paymob",

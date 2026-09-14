@@ -1,18 +1,36 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/features/admin/admin_action_badges.dart';
+import 'package:multi_vendor/core/widgets/count_badge.dart';
 import '../../../app/tokens.dart';
+import '../../../core/models/customer_report.dart';
 import '../../../core/repositories/report_repository.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../../support/complaints/complaint_thread_screen.dart';
+import '../../support/complaints/complaint_thread_view.dart';
+import '../../support/complaints/my_complaints_screen.dart' show ComplaintTile;
 import 'admin_manage_screen.dart' show adminManageWebSections;
 
+/// The complaints queue. Each complaint is a conversation with the customer:
+/// the admin replies, the customer can answer back, and either resolving or a
+/// new customer message moves it between the tabs.
 class AdminComplaintsScreen extends StatefulWidget {
-  const AdminComplaintsScreen({super.key, this.embedded = false});
+  const AdminComplaintsScreen({
+    super.key,
+    this.embedded = false,
+    this.initialReportId,
+  });
 
   /// True when a web sidebar is already drawing the shell around this screen
   /// (`_AdminWebShell`) — skips this widget's own [WebPageChrome]/[Scaffold]
   /// and returns just the filter bar + split view.
   final bool embedded;
+
+  /// Opened from a notification: select (web) or open (phone) this complaint.
+  final String? initialReportId;
 
   @override
   State<AdminComplaintsScreen> createState() => _AdminComplaintsScreenState();
@@ -22,21 +40,43 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
   final _repo = ReportRepository();
   bool _loading = true;
   String? _error;
-  List<Map<String, dynamic>> _reports = const [];
+  List<CustomerReport> _reports = const [];
   String _filterStatus = 'all'; // 'all', 'pending', 'resolved'
 
-  /// Selected complaint for the web split view. Mobile never sets this — it
-  /// resolves inline via a dialog instead, same as before this screen grew a
-  /// desktop layout.
+  /// Selected complaint for the web split view.
   String? _selectedId;
+  StreamSubscription<void>? _changes;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _selectedId = widget.initialReportId;
     _load();
+    // A customer reply or another admin's resolve reorders the queue live.
+    _changes = _repo.watchAll().listen((_) {
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 400), _load);
+    });
+    final initial = widget.initialReportId;
+    if (initial != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !AppBreakpoints.isWebWide(context)) {
+          _openOnPhone(initial);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _changes?.cancel();
+    _debounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -47,9 +87,6 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
       setState(() {
         _loading = false;
         _reports = list;
-        if (_selectedId != null && !list.any((r) => r['id'] == _selectedId)) {
-          _selectedId = null;
-        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -60,85 +97,14 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
     }
   }
 
-  Future<void> _resolveReport(Map<String, dynamic> report) async {
-    final controller = TextEditingController();
-    final reply = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.resolveComplaint),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.subjectLine(
-                (report['subject'] as String?) ??
-                    context.l10n.complaintFallback,
-              ),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              report['description'] ?? '',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: context.l10n.complaintReplyHint,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, null),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: Text(context.l10n.sendAndResolve),
-          ),
-        ],
+  Future<void> _openOnPhone(String reportId) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            ComplaintThreadScreen(reportId: reportId, asAdmin: true),
       ),
     );
-
-    if (reply == null || reply.isEmpty) return;
-
-    try {
-      await _repo.resolveReport(
-        reportId: report['id'] as String,
-        userId: report['user_id'] as String,
-        replyMessage: reply,
-      );
-      if (!mounted) return;
-      showSnack(context, context.l10n.complaintResolvedAndNotified);
-      await _load();
-    } catch (e) {
-      if (mounted) showFailure(context, e);
-    }
-  }
-
-  /// Resolves inline from the web detail pane — same repository call as the
-  /// mobile dialog, just with the reply box already on screen instead of
-  /// popped over it.
-  Future<void> _resolveInline(Map<String, dynamic> report, String reply) async {
-    if (reply.trim().isEmpty) return;
-    try {
-      await _repo.resolveReport(
-        reportId: report['id'] as String,
-        userId: report['user_id'] as String,
-        replyMessage: reply.trim(),
-      );
-      if (!mounted) return;
-      showSnack(context, context.l10n.complaintResolvedAndNotified);
-      await _load();
-    } catch (e) {
-      if (mounted) showFailure(context, e);
-    }
+    _load();
   }
 
   @override
@@ -156,7 +122,22 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
         showSelectedIcon: !expanded,
         segments: [
           ButtonSegment(value: 'all', label: label(l10n.all)),
-          ButtonSegment(value: 'pending', label: label(l10n.pendingLabel)),
+          ButtonSegment(
+            value: 'pending',
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(child: label(l10n.pendingLabel)),
+                const SizedBox(width: 4),
+                CountBadge(
+                  compact: true,
+                  count: AdminActionBadges.instance.countFor(
+                    AdminActionBadges.reportsPending,
+                  ),
+                ),
+              ],
+            ),
+          ),
           ButtonSegment(value: 'resolved', label: label(l10n.resolvedLabel)),
         ],
         selected: {_filterStatus},
@@ -169,7 +150,7 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
 
     final filterBar = buildFilterBar();
 
-    final body = _loading
+    final body = _loading && _reports.isEmpty
         ? const Center(child: CircularProgressIndicator())
         : _error != null
         ? ErrorView(message: _error!, onRetry: _load)
@@ -178,12 +159,12 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
             reports: _reports,
             selectedId: _selectedId,
             onSelect: (id) => setState(() => _selectedId = id),
-            onResolve: _resolveInline,
+            onChanged: _load,
             onRefresh: _load,
           )
         : _MobileList(
             reports: _reports,
-            onResolve: _resolveReport,
+            onOpen: _openOnPhone,
             onRefresh: _load,
           );
 
@@ -249,22 +230,22 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
   }
 }
 
-/// Mobile/narrow: the original vertical stack of full cards, resolve via a
-/// dialog. Unchanged behaviour from before this screen grew a web layout.
+/// Mobile/narrow: the queue as tiles; a tap opens the thread full screen.
 class _MobileList extends StatelessWidget {
   const _MobileList({
     required this.reports,
-    required this.onResolve,
+    required this.onOpen,
     required this.onRefresh,
   });
 
-  final List<Map<String, dynamic>> reports;
-  final ValueChanged<Map<String, dynamic>> onResolve;
+  final List<CustomerReport> reports;
+  final ValueChanged<String> onOpen;
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
+      color: AppColors.primary,
       onRefresh: onRefresh,
       child: reports.isEmpty
           ? ListView(
@@ -276,358 +257,96 @@ class _MobileList extends StatelessWidget {
                 ),
               ],
             )
-          : ListView.builder(
+          : ListView.separated(
               padding: const EdgeInsets.all(AppSpace.gutter),
               itemCount: reports.length,
-              itemBuilder: (context, index) {
-                final report = reports[index];
-                final isResolved = report['status'] == 'resolved';
-                final vendorName = (report['vendors'] as Map?)?['name'];
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                report['subject'] ??
-                                    context.l10n.complaintFallback,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            _StatusPill(isResolved: isResolved),
-                          ],
-                        ),
-                        if (vendorName != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            '${context.l10n.storeLabel}: $vendorName',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        Text(
-                          report['description'] ?? '',
-                          style: const TextStyle(fontSize: 13.5, height: 1.4),
-                        ),
-                        if (isResolved && report['admin_reply'] != null) ...[
-                          const SizedBox(height: 12),
-                          _ReplyBlock(reply: report['admin_reply'] as String),
-                        ],
-                        const SizedBox(height: 12),
-                        if (!isResolved)
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () => onResolve(report),
-                              icon: const Icon(
-                                Icons.check_circle_outline,
-                                size: 18,
-                              ),
-                              label: Text(context.l10n.replyAndResolve),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
+              itemBuilder: (context, i) => ComplaintTile(
+                report: reports[i],
+                forAdmin: true,
+                onTap: () => onOpen(reports[i].id),
+              ),
             ),
     );
   }
 }
 
-/// Web/wide: a list (subject, store, status) beside a reading pane — the
-/// same list+detail shape [admin_dashboard_screen.dart] already uses for
-/// live orders, since a complaint is free-text content that doesn't fit a
-/// spreadsheet row any better than an order does.
+/// Web/wide: the queue beside the open conversation.
 class _WebSplitView extends StatelessWidget {
   const _WebSplitView({
     required this.reports,
     required this.selectedId,
     required this.onSelect,
-    required this.onResolve,
+    required this.onChanged,
     required this.onRefresh,
   });
 
-  final List<Map<String, dynamic>> reports;
+  final List<CustomerReport> reports;
   final String? selectedId;
   final ValueChanged<String> onSelect;
-  final void Function(Map<String, dynamic> report, String reply) onResolve;
+  final VoidCallback onChanged;
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    if (reports.isEmpty) {
-      return Center(
-        child: EmptyView(
-          message: context.l10n.noComplaints,
-          icon: Icons.report_problem_outlined,
-        ),
-      );
-    }
-
-    final selected = reports.cast<Map<String, dynamic>?>().firstWhere(
-      (r) => r?['id'] == selectedId,
-      orElse: () => null,
-    );
-
+    final id = selectedId;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
           flex: 4,
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: onRefresh,
-            child: ListView.separated(
-              itemCount: reports.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
-              itemBuilder: (context, i) {
-                final report = reports[i];
-                final isResolved = report['status'] == 'resolved';
-                final vendorName = (report['vendors'] as Map?)?['name'];
-                final isSelected = report['id'] == selectedId;
-                return Material(
-                  color: isSelected ? AppColors.warmFill : AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                    onTap: () => onSelect(report['id'] as String),
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpace.md),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(AppRadii.lg),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.3)
-                              : AppColors.border,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  report['subject'] ??
-                                      context.l10n.complaintFallback,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              _StatusPill(isResolved: isResolved),
-                            ],
-                          ),
-                          if (vendorName != null) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              vendorName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+          child: reports.isEmpty
+              ? Center(
+                  child: EmptyView(
+                    message: context.l10n.noComplaints,
+                    icon: Icons.report_problem_outlined,
+                  ),
+                )
+              : RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: onRefresh,
+                  child: ListView.separated(
+                    itemCount: reports.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpace.sm),
+                    itemBuilder: (context, i) => ComplaintTile(
+                      report: reports[i],
+                      forAdmin: true,
+                      selected: reports[i].id == id,
+                      onTap: () => onSelect(reports[i].id),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
+                ),
         ),
         const SizedBox(width: AppSpace.lg),
         Expanded(
-          flex: 5,
+          flex: 6,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.canvas,
               border: Border.all(color: AppColors.border),
               borderRadius: BorderRadius.circular(AppRadii.xl),
             ),
             clipBehavior: Clip.antiAlias,
-            child: selected == null
+            // Kept even when the filter hides the selected complaint, so
+            // resolving it does not yank the conversation away mid-reply.
+            child: id == null
                 ? Center(
                     child: EmptyView(
-                      message: context.l10n.complaintFallback,
-                      icon: Icons.report_problem_outlined,
+                      message: context.l10n.complaintSelectHint,
+                      icon: Icons.forum_outlined,
                     ),
                   )
-                : _ComplaintDetail(
-                    key: ValueKey(selected['id']),
-                    report: selected,
-                    onResolve: onResolve,
+                : ComplaintThreadView(
+                    key: ValueKey(id),
+                    reportId: id,
+                    asAdmin: true,
+                    showHeaderActions: true,
+                    onChanged: onChanged,
                   ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ComplaintDetail extends StatefulWidget {
-  const _ComplaintDetail({
-    super.key,
-    required this.report,
-    required this.onResolve,
-  });
-
-  final Map<String, dynamic> report;
-  final void Function(Map<String, dynamic> report, String reply) onResolve;
-
-  @override
-  State<_ComplaintDetail> createState() => _ComplaintDetailState();
-}
-
-class _ComplaintDetailState extends State<_ComplaintDetail> {
-  final _replyController = TextEditingController();
-
-  @override
-  void dispose() {
-    _replyController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final report = widget.report;
-    final isResolved = report['status'] == 'resolved';
-    final vendorName = (report['vendors'] as Map?)?['name'];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpace.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  report['subject'] ?? l10n.complaintFallback,
-                  style: AppType.heading(18),
-                ),
-              ),
-              _StatusPill(isResolved: isResolved),
-            ],
-          ),
-          if (vendorName != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              '${l10n.storeLabel}: $vendorName',
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textMuted,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpace.lg),
-          Text(
-            report['description'] ?? '',
-            style: const TextStyle(fontSize: 14, height: 1.5),
-          ),
-          if (isResolved && report['admin_reply'] != null) ...[
-            const SizedBox(height: AppSpace.xl),
-            _ReplyBlock(reply: report['admin_reply'] as String),
-          ],
-          if (!isResolved) ...[
-            const SizedBox(height: AppSpace.xl),
-            const Divider(color: AppColors.borderSoft),
-            const SizedBox(height: AppSpace.lg),
-            TextField(
-              controller: _replyController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: l10n.complaintReplyHint,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: AppSpace.md),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () =>
-                    widget.onResolve(report, _replyController.text),
-                icon: const Icon(Icons.check_circle_outline, size: 18),
-                label: Text(l10n.sendAndResolve),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.isResolved});
-
-  final bool isResolved;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isResolved ? AppColors.successFill : AppColors.amberFill,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        (isResolved ? context.l10n.resolvedLabel : context.l10n.pendingLabel)
-            .toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: isResolved ? AppColors.successInk : AppColors.amberInk,
-        ),
-      ),
-    );
-  }
-}
-
-class _ReplyBlock extends StatelessWidget {
-  const _ReplyBlock({required this.reply});
-
-  final String reply;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.canvas,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        '${context.l10n.resolutionReply}:\n$reply',
-        style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic),
-      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
@@ -490,7 +491,7 @@ class OrderTypeChip extends StatelessWidget {
     final now = DateTime.now();
     final sameDay =
         at.year == now.year && at.month == now.month && at.day == now.day;
-    final time = TimeOfDay.fromDateTime(at).format(context);
+    final time = formatClock(context, at);
     return sameDay ? time : '${at.day}/${at.month} $time';
   }
 }

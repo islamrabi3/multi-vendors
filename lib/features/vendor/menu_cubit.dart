@@ -13,6 +13,9 @@ import '../../core/repositories/vendor_admin_repository.dart';
 /// the default and the only mode where dragging is allowed.
 enum MenuSort { manual, nameAsc, priceAsc, priceDesc }
 
+/// Narrows the list to what customers can buy right now, or what they cannot.
+enum MenuStock { all, available, soldOut }
+
 class MenuState extends Equatable {
   const MenuState({
     this.loading = true,
@@ -25,6 +28,7 @@ class MenuState extends Equatable {
     this.sort = MenuSort.manual,
     this.busy = false,
     this.selection = const {},
+    this.stock = MenuStock.all,
   });
 
   final bool loading;
@@ -56,6 +60,8 @@ class MenuState extends Equatable {
   /// trips; this makes it one.
   final Set<String> selection;
 
+  final MenuStock stock;
+
   bool get selecting => selection.isNotEmpty;
 
   /// Only the selected items still present in the menu — a bulk action that
@@ -74,12 +80,13 @@ class MenuState extends Equatable {
       )
       .toList();
 
-  int get soldOutCount => products.where((p) => !p.isAvailable).length;
+  int get soldOutCount => products.where((p) => !p.isSellable).length;
 
   bool get isFiltered =>
       query.trim().isNotEmpty ||
       selectedCategoryId != null ||
-      showUncategorized;
+      showUncategorized ||
+      stock != MenuStock.all;
 
   /// What the list actually shows: the section filter, then the search, then
   /// the sort.
@@ -89,6 +96,11 @@ class MenuState extends Equatable {
         : selectedCategoryId == null
         ? products
         : productsIn(selectedCategoryId!);
+
+    if (stock != MenuStock.all) {
+      final wantSellable = stock == MenuStock.available;
+      items = items.where((p) => p.isSellable == wantSellable).toList();
+    }
 
     final needle = query.trim().toLowerCase();
     if (needle.isNotEmpty) {
@@ -132,6 +144,7 @@ class MenuState extends Equatable {
     MenuSort? sort,
     bool? busy,
     Set<String>? selection,
+    MenuStock? stock,
     bool clearError = false,
     bool clearCategoryFilter = false,
   }) => MenuState(
@@ -147,6 +160,7 @@ class MenuState extends Equatable {
     sort: sort ?? this.sort,
     busy: busy ?? this.busy,
     selection: selection ?? this.selection,
+    stock: stock ?? this.stock,
   );
 
   @override
@@ -161,6 +175,7 @@ class MenuState extends Equatable {
     sort,
     busy,
     selection,
+    stock,
   ];
 }
 
@@ -217,11 +232,14 @@ class MenuCubit extends Cubit<MenuState> {
 
   void setSort(MenuSort sort) => emit(state.copyWith(sort: sort));
 
+  void setStock(MenuStock stock) => emit(state.copyWith(stock: stock));
+
   void clearFilters() => emit(
     state.copyWith(
       query: '',
       clearCategoryFilter: true,
       showUncategorized: false,
+      stock: MenuStock.all,
     ),
   );
 

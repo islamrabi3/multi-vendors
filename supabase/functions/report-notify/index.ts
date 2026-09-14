@@ -3,6 +3,7 @@
 // new_report      -> every admin (someone needs to pick this up)
 // report_replied  -> the customer who raised it
 // report_resolved -> the customer who raised it
+// report_customer_reply -> every admin (the customer added to the thread)
 //
 // Authenticated with the same shared secret as order-notify, since the caller
 // is the database rather than a signed-in user. Each recipient is messaged in
@@ -34,7 +35,13 @@ const COPY: Record<string, Record<Lang, { title: string; body: string }>> = {
     en: { title: "Complaint resolved ✅", body: "Your report was resolved: " },
     ar: { title: "تم حل الشكوى ✅", body: "تم حل بلاغك: " },
   },
+  report_customer_reply: {
+    en: { title: "Customer replied on a complaint 💬", body: "" },
+    ar: { title: "رد العميل على شكوى 💬", body: "" },
+  },
 };
+
+const ADMIN_EVENTS = new Set(["new_report", "report_customer_reply"]);
 
 Deno.serve(async (req) => {
   try {
@@ -66,7 +73,7 @@ Deno.serve(async (req) => {
     if (!report) return json({ sent: 0, reason: "REPORT_NOT_FOUND" });
 
     let targets: string[];
-    if (event === "new_report") {
+    if (ADMIN_EVENTS.has(event)) {
       const { data: admins } = await admin
         .from("profiles")
         .select("id")
@@ -86,7 +93,21 @@ Deno.serve(async (req) => {
     const recipients = profiles ?? [];
     if (recipients.length === 0) return json({ sent: 0, reason: "NO_TOKEN" });
 
-    const subject = `${report.subject ?? ""}`.slice(0, 80);
+    // Replies show the message itself; the other events name the complaint.
+    let subject = `${report.subject ?? ""}`.slice(0, 80);
+    if (event === "report_replied" || event === "report_customer_reply") {
+      const { data: last } = await admin
+        .from("customer_report_messages")
+        .select("message")
+        .eq("report_id", reportId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (last?.message) subject = `${last.message}`.slice(0, 120);
+    }
+    const route = ADMIN_EVENTS.has(event)
+      ? `/admin-app/complaints?id=${reportId}`
+      : `/complaints/${reportId}`;
     const sa = JSON.parse(atob(saB64));
     const authClient = new JWT({
       email: sa.client_email,
@@ -113,7 +134,7 @@ Deno.serve(async (req) => {
             message: {
               token: recipient.fcm_token,
               notification: { title: copy.title, body: `${copy.body}${subject}` },
-              data: { report_id: `${reportId}`, event },
+              data: { report_id: `${reportId}`, event, route },
             },
           }),
         },

@@ -22,9 +22,8 @@ class SkeletonTheme extends StatefulWidget {
 
   /// The ambient shimmer progress in `-1..2`, or null when there is no
   /// [SkeletonTheme] above — in which case a [Skeleton] paints its base fill.
-  static Animation<double>? maybeOf(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<_SkeletonScope>()
-      ?.progress;
+  static Animation<double>? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SkeletonScope>()?.progress;
 }
 
 class _SkeletonThemeState extends State<SkeletonTheme>
@@ -35,9 +34,7 @@ class _SkeletonThemeState extends State<SkeletonTheme>
   );
 
   late final Animation<double> _progress = _controller.drive(
-    Tween<double>(begin: -1, end: 2).chain(
-      CurveTween(curve: Curves.easeInOut),
-    ),
+    Tween<double>(begin: -1, end: 2).chain(CurveTween(curve: Curves.easeInOut)),
   );
 
   @override
@@ -50,8 +47,7 @@ class _SkeletonThemeState extends State<SkeletonTheme>
   Widget build(BuildContext context) {
     // "Reduce motion" means reduce motion: a static base fill still reads as
     // "content is coming", and it does so without a looping animation.
-    final animate =
-        widget.enabled && !MediaQuery.disableAnimationsOf(context);
+    final animate = widget.enabled && !MediaQuery.disableAnimationsOf(context);
     if (animate) {
       if (!_controller.isAnimating) _controller.repeat();
     } else if (_controller.isAnimating) {
@@ -92,19 +88,18 @@ class Skeleton extends StatelessWidget {
 
   /// A text line. [widthFactor] mimics the ragged right edge of real copy.
   const Skeleton.line({super.key, double widthFactor = 1.0, this.height = 12})
-      : width = null,
-        radius = AppRadii.xs,
-        shape = SkeletonShape.rect,
-        _widthFactor = widthFactor;
-
+    : width = null,
+      radius = AppRadii.xs,
+      shape = SkeletonShape.rect,
+      _widthFactor = widthFactor;
 
   /// An avatar / logo tile.
   const Skeleton.circle({super.key, required double size})
-      : width = size,
-        height = size,
-        radius = AppRadii.pill,
-        shape = SkeletonShape.circle,
-        _widthFactor = null;
+    : width = size,
+      height = size,
+      radius = AppRadii.pill,
+      shape = SkeletonShape.circle,
+      _widthFactor = null;
 
   /// A cover image or card body.
   const Skeleton.box({
@@ -112,8 +107,8 @@ class Skeleton extends StatelessWidget {
     this.width,
     this.height,
     this.radius = AppRadii.xl,
-  })  : shape = SkeletonShape.rect,
-        _widthFactor = null;
+  }) : shape = SkeletonShape.rect,
+       _widthFactor = null;
 
   final double? width;
   final double? height;
@@ -125,10 +120,10 @@ class Skeleton extends StatelessWidget {
   static final _highlight = Color.lerp(_base, Colors.white, 0.6)!;
 
   BorderRadius get _borderRadius => switch (shape) {
-        SkeletonShape.circle => BorderRadius.circular(AppRadii.pill),
-        SkeletonShape.pill => BorderRadius.circular(AppRadii.pill),
-        SkeletonShape.rect => BorderRadius.circular(radius),
-      };
+    SkeletonShape.circle => BorderRadius.circular(AppRadii.pill),
+    SkeletonShape.pill => BorderRadius.circular(AppRadii.pill),
+    SkeletonShape.rect => BorderRadius.circular(radius),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -236,8 +231,8 @@ class ButtonSpinner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: size,
-        width: size,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
-      );
+    height: size,
+    width: size,
+    child: CircularProgressIndicator(strokeWidth: 2, color: color),
+  );
 }

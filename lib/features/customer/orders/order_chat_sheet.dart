@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/utils/time_format.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/repositories/chat_repository.dart';
@@ -32,6 +33,34 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
   final TextEditingController _msgController = TextEditingController();
 
   bool _busy = false;
+
+  /// Created once: a stream built inside `build` was re-subscribed on every
+  /// rebuild, re-downloading the thread each time the attach spinner toggled.
+  late final Stream<List<ChatMessage>> _messages = _chatRepo.streamMessages(
+    widget.orderId,
+  );
+  String? _lastReadId;
+
+  @override
+  void initState() {
+    super.initState();
+    _chatRepo.markRead(widget.orderId);
+  }
+
+  @override
+  void dispose() {
+    _msgController.dispose();
+    super.dispose();
+  }
+
+  /// New messages arriving while the thread is open are read on arrival.
+  void _markReadIfNew(List<ChatMessage> messages) {
+    if (messages.isEmpty || messages.last.id == _lastReadId) return;
+    _lastReadId = messages.last.id;
+    if (messages.last.senderId != _chatRepo.currentUserId) {
+      _chatRepo.markRead(widget.orderId);
+    }
+  }
 
   Future<void> _sendMessage({ChatAttachment? attachment}) async {
     final text = _msgController.text.trim();
@@ -112,10 +141,11 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
           ),
           Expanded(
             child: StreamBuilder<List<ChatMessage>>(
-              stream: _chatRepo.streamMessages(widget.orderId),
+              stream: _messages,
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const _ChatSkeleton();
                 final messages = snapshot.data!;
+                _markReadIfNew(messages);
                 if (messages.isEmpty) {
                   return Center(
                     child: Text(
@@ -134,8 +164,10 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
                   itemBuilder: (context, index) {
                     final msg = messages[index];
                     final isMe = msg.senderId == currentUserId;
-                    final timeStr =
-                        '${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}';
+                    final timeStr = formatClock(
+                      context,
+                      msg.createdAt.toLocal(),
+                    );
 
                     return Align(
                       alignment: isMe
