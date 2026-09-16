@@ -247,7 +247,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get liveOverview => 'نظرة عامة مباشرة';
 
   @override
-  String get grossMerchandiseValue => 'إجمالي قيمة البضائع';
+  String get grossMerchandiseValue => 'إجمالي المبيعات';
 
   @override
   String get a => 'A';
@@ -3524,7 +3524,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get frequencyOnce => 'مرة واحدة فقط لكل جهاز';
 
   @override
-  String get homeCravingPrompt => 'ماذا تحب أن تطلب اليوم؟';
+  String get homeCravingPrompt => 'تحب تاكل إيه النهاردة؟';
 
   @override
   String get railRecommendedHint => 'أماكن مختارة بعناية';
@@ -5312,4 +5312,460 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paymentConfirmingBody => 'ثوانٍ قليلة، من فضلك لا تغلق التطبيق.';
+
+  @override
+  String get chooseFromGallery => 'اختيار من المعرض';
+
+  @override
+  String get takePhoto => 'التقاط صورة';
+
+  @override
+  String get proofImageUnavailable => 'تعذر تحميل الصورة';
+
+  @override
+  String get accountCreatedTitle => 'تم إنشاء الحساب';
+
+  @override
+  String get accountCreatedHint =>
+      'شارك بيانات الدخول دي مع صاحب الحساب. كلمة المرور مش هتظهر تاني.';
+
+  @override
+  String get copyLoginDetails => 'نسخ';
+
+  @override
+  String get copiedLabel => 'تم النسخ';
+
+  @override
+  String get done => 'تم';
+
+  @override
+  String get newStoreAccount => 'متجر جديد';
+
+  @override
+  String get newDriverAccount => 'سائق جديد';
+
+  @override
+  String get loginDetailsSection => 'بيانات الدخول';
+
+  @override
+  String get ownerName => 'اسم صاحب المتجر';
+
+  @override
+  String get passwordMin8 => '8 أحرف على الأقل';
+
+  @override
+  String get generatePassword => 'إنشاء كلمة مرور';
+
+  @override
+  String get storeDetailsSection => 'بيانات المتجر';
+
+  @override
+  String get platformTermsSection => 'شروط المنصة';
+
+  @override
+  String get storePhotosSection => 'الصور';
+
+  @override
+  String get storeLogoLabel => 'الشعار';
+
+  @override
+  String get storeCoverLabel => 'صورة الغلاف';
+
+  @override
+  String get driverDocumentsOptional => 'المستندات (اختياري)';
+
+  @override
+  String get approveNow => 'اعتماد الآن';
+
+  @override
+  String get approveNowOnHint => 'الحساب يقدر يبدأ الشغل فور إنشائه.';
+
+  @override
+  String get approveNowOffHint => 'الحساب هيتعمل قيد المراجعة ومستني الاعتماد.';
+
+  @override
+  String get createStoreAccount => 'إنشاء المتجر';
+
+  @override
+  String get createDriverAccount => 'إنشاء السائق';
+
+  @override
+  String get errStoreLocationRequired => 'اختر موقع المتجر على الخريطة.';
+
+  @override
+  String get errStoreDetailsRequired => 'اسم المتجر والتصنيف والعنوان مطلوبين.';
+
+  @override
+  String get addStoreAccount => 'متجر جديد';
+
+  @override
+  String get addDriverAccount => 'سائق جديد';
+
+  @override
+  String shareVendorMessage(String name) {
+    return 'شوف $name على KitchenIn';
+  }
+
+  @override
+  String get changePassword => 'تغيير كلمة المرور';
+
+  @override
+  String get setAPassword => 'تعيين كلمة مرور';
+
+  @override
+  String get currentPassword => 'كلمة المرور الحالية';
+
+  @override
+  String get currentPasswordWrong => 'كلمة المرور الحالية غير صحيحة.';
+
+  @override
+  String get newPasswordSameAsOld =>
+      'كلمة المرور الجديدة لازم تكون مختلفة عن الحالية.';
+
+  @override
+  String get passwordChanged => 'تم تغيير كلمة المرور';
+
+  @override
+  String get savePassword => 'حفظ كلمة المرور';
+
+  @override
+  String get accountSecurity => 'الحساب';
+
+  @override
+  String get soonLabel => 'قريباً';
+
+  @override
+  String get comingSoonToggle => 'إظهار كقريباً';
+
+  @override
+  String categoryComingSoonMessage(String name) {
+    return '$name قريباً';
+  }
+
+  @override
+  String get pickupCodeTitle => 'كود الاستلام';
+
+  @override
+  String get pickupCodeHint =>
+      'اطلب من المتجر الكود المكوّن من 6 أرقام لاستلام الطلب.';
+
+  @override
+  String get pickupCodeVendorHint => 'اقرأ الكود للسائق عند استلامه الطلب.';
+
+  @override
+  String get confirmPickup => 'استلمت';
+
+  @override
+  String get goToStoreSubtitle => 'توجّه إلى المتجر';
+
+  @override
+  String get errWrongPickupCode =>
+      'كود الاستلام غير صحيح. اطلب الكود من المتجر مرة أخرى.';
+
+  @override
+  String get maintenanceTitle => 'وضع الصيانة';
+
+  @override
+  String get maintenanceBody =>
+      'بنجري بعض التحسينات، والتطبيق هيرجع خلال وقت قصير.';
+
+  @override
+  String get maintenanceStateOn => 'وضع الصيانة مفعّل';
+
+  @override
+  String get maintenanceStateOff => 'المنصة تعمل بشكل طبيعي';
+
+  @override
+  String get maintenanceScope =>
+      'العملاء والمتاجر والسائقين هيشوفوا شاشة الصيانة ومش هيقدروا يعملوا طلبات. الأدمن بيدخل عادي.';
+
+  @override
+  String get maintenanceMessage => 'الرسالة اللي هتظهر';
+
+  @override
+  String get maintenanceTurnOn => 'تفعيل وضع الصيانة';
+
+  @override
+  String get maintenanceTurnOff => 'إعادة فتح المنصة';
+
+  @override
+  String get maintenanceSaveMessage => 'حفظ الرسالة';
+
+  @override
+  String get maintenanceOnToast => 'تم تفعيل وضع الصيانة';
+
+  @override
+  String get maintenanceOffToast => 'تم إعادة فتح المنصة';
+
+  @override
+  String get errMaintenanceMode =>
+      'التطبيق في وضع الصيانة حالياً. حاول بعد قليل.';
+
+  @override
+  String get staffTitle => 'فريق المتجر';
+
+  @override
+  String get staffAdd => 'إضافة موظف';
+
+  @override
+  String get staffIntro =>
+      'حسابات الموظفين تشتغل داخل متجرك فقط، ومش بتشوف المبيعات ولا المستحقات ولا خطة الاشتراك.';
+
+  @override
+  String get staffEmpty => 'مفيش موظفين لسه.';
+
+  @override
+  String get staffNoPermissions => 'بدون صلاحيات';
+
+  @override
+  String get staffPermissionsHint => 'اختر اللي الموظف يقدر يعمله.';
+
+  @override
+  String get staffPermOrders => 'استقبال وإدارة الطلبات';
+
+  @override
+  String get staffPermMenu => 'تعديل المنيو';
+
+  @override
+  String get staffPermReviews => 'قراءة التقييمات';
+
+  @override
+  String get staffPermSettings => 'تعديل إعدادات المتجر';
+
+  @override
+  String get staffPickOnePermission => 'اختر صلاحية واحدة على الأقل.';
+
+  @override
+  String get staffRemoveConfirm =>
+      'هيفقد صلاحية الدخول للمتجر، وحسابه هيفضل حساب عميل عادي.';
+
+  @override
+  String get errNoPermissions => 'اختر صلاحية واحدة على الأقل.';
+
+  @override
+  String get errAlreadyStoreOwner => 'هذا الحساب يمتلك متجراً بالفعل.';
+
+  @override
+  String get staffNoAccess => 'حسابك ملوش صلاحية على هذا القسم.';
+
+  @override
+  String get campaignsTitle => 'حملات الأسعار';
+
+  @override
+  String get campaignNew => 'حملة جديدة';
+
+  @override
+  String get campaignName => 'اسم الحملة';
+
+  @override
+  String get campaignPercent => 'نسبة الزيادة';
+
+  @override
+  String get campaignPercentHint =>
+      'أسعار المنيو بتزيد بالنسبة دي طول مدة الحملة وبترجع زي ما كانت بعد انتهائها. المتاجر بتاخد مستحقاتها على سعرها الأساسي، والفرق يغطي الخصم اللي بتقدمه للعميل.';
+
+  @override
+  String get campaignScopeAll => 'كل المتاجر';
+
+  @override
+  String get campaignIntro =>
+      'الحملة بترفع أسعار المنيو طول مدتها. اختر نسبة الزيادة بنفس قيمة الخصم اللي هتقدمه.';
+
+  @override
+  String get campaignEmpty => 'مفيش حملات لسه.';
+
+  @override
+  String get campaignEnd => 'إنهاء الحملة';
+
+  @override
+  String get campaignEndConfirm =>
+      'الأسعار هترجع زي ما كانت. الأسعار اللي غيّرها المتجر أثناء الحملة هتفضل زي ما هي.';
+
+  @override
+  String campaignEnded(int count) {
+    return 'تم إرجاع $count سعر';
+  }
+
+  @override
+  String campaignItemsRaised(int count) {
+    return '$count صنف';
+  }
+
+  @override
+  String get campaignStatusEnded => 'انتهت';
+
+  @override
+  String get campaignStartNow => 'ابدأ الآن';
+
+  @override
+  String get campaignMarkupLedger => 'زيادة الحملة';
+
+  @override
+  String minOrderOf(String amount) {
+    return 'حد أدنى $amount';
+  }
+
+  @override
+  String get orderNow => 'اطلب الآن';
+
+  @override
+  String get minOrderLabel => 'الحد الأدنى للطلب';
+
+  @override
+  String get minOrderHint => 'اتركه 0 لو مفيش حد أدنى.';
+
+  @override
+  String get editCoupon => 'تعديل الكود';
+
+  @override
+  String get couponUpdated => 'تم تحديث الكود';
+
+  @override
+  String couponsAvailable(int count) {
+    return '$count كود متاح لك';
+  }
+
+  @override
+  String get couponsSheetTitle => 'أكواد تقدر تستخدمها';
+
+  @override
+  String get couponsSheetHint => 'اضغط على الكود لنسخه، وحطه عند إتمام الطلب.';
+
+  @override
+  String get storesSectionTitle => 'المتاجر';
+
+  @override
+  String get swipeForCoupons => 'اسحب لعرض الأكواد المتاحة لك';
+
+  @override
+  String get favoritesEmptyHint =>
+      'اكتشف المحلات واحفظ أماكنك المفضلة عشان تلاقيها هنا بسرعة.';
+
+  @override
+  String get exploreStores => 'استكشف المحلات';
+
+  @override
+  String removedFromFavorites(String name) {
+    return 'تم حذف $name من المفضلة';
+  }
+
+  @override
+  String get favoriteUpdateFailed => 'تعذر تحديث المفضلة.';
+
+  @override
+  String get swipeForDiscount => 'اسحب واحصل على خصمك';
+
+  @override
+  String get exploreStoresTitle => 'استكشف المحلات';
+
+  @override
+  String get redeemPoints => 'استبدال النقاط';
+
+  @override
+  String get redeemToWallet => 'حوّل نقاطك رصيد في المحفظة';
+
+  @override
+  String redeemRateHint(int points, String amount) {
+    return '$points نقطة = $amount رصيد في المحفظة.';
+  }
+
+  @override
+  String redeemMinHint(int points) {
+    return 'الاستبدال متاح من $points نقطة.';
+  }
+
+  @override
+  String get redeemAmountLabel => 'عدد النقاط';
+
+  @override
+  String redeemWorth(String amount) {
+    return 'تساوي $amount';
+  }
+
+  @override
+  String redeemDone(String amount) {
+    return 'تمت إضافة $amount إلى محفظتك';
+  }
+
+  @override
+  String get errBelowMinRedeem => 'محتاج نقاط أكتر قبل ما تقدر تستبدل.';
+
+  @override
+  String get errNotEnoughPoints => 'نقاطك أقل من كده.';
+
+  @override
+  String get platformRunOrders => 'إحنا اللي بندير طلبات المتجر';
+
+  @override
+  String get platformRunOn =>
+      'الطلبات مش بتستنى المتجر: بتروح للسائق على طول، والأدمن هو اللي بيحرّكها.';
+
+  @override
+  String get platformRunOff => 'المتجر بيستقبل طلباته ويجهزها بنفسه.';
+
+  @override
+  String get platformRunBadge => 'بندير طلباته';
+
+  @override
+  String advanceOrder(String status) {
+    return 'نقل الطلب إلى $status';
+  }
+
+  @override
+  String get usernameLabel => 'اسم المستخدم';
+
+  @override
+  String get usernameHint =>
+      'حروف وأرقام ونقطة أو شرطة سفلية، من 3 إلى 20 حرف.';
+
+  @override
+  String get emailOrUsername => 'البريد أو اسم المستخدم';
+
+  @override
+  String get emailOrUsernameHint => 'sara@email.com أو sara';
+
+  @override
+  String get usernameTaken => 'اسم المستخدم دا محجوز.';
+
+  @override
+  String get usernameInvalid =>
+      'استخدم من 3 إلى 20 حرف أو رقم أو نقطة أو شرطة سفلية.';
+
+  @override
+  String get errUsernameTaken => 'اسم المستخدم دا محجوز.';
+
+  @override
+  String get errInvalidUsername =>
+      'استخدم من 3 إلى 20 حرف أو رقم أو نقطة أو شرطة سفلية.';
+
+  @override
+  String get errUnknownLogin => 'مفيش حساب بالاسم دا.';
+
+  @override
+  String get stageConfirmed => 'تم التأكيد';
+
+  @override
+  String get stageOnTheWay => 'في الطريق';
+
+  @override
+  String get couponsCardTitle => 'في خصم مستنيك';
+
+  @override
+  String couponsCardSubtitle(int count) {
+    return '$count كود جاهز للاستخدام';
+  }
+
+  @override
+  String get threadStore => 'المتجر';
+
+  @override
+  String get threadDriver => 'السائق';
+
+  @override
+  String get pickADay => 'اختر يوماً';
+
+  @override
+  String ordersForDay(String day) {
+    return 'طلبات · $day';
+  }
 }

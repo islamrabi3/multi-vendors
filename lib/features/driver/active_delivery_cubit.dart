@@ -85,9 +85,7 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
   Future<void> _init() async {
     _ordersSubscription = _orders.driverOrdersStream().listen(
       (orders) {
-        final active = orders
-            .where((o) => o.status == OrderStatus.outForDelivery)
-            .firstOrNull;
+        final active = _activeOf(orders);
         if (active == null) {
           _stopTracking();
           emit(state.copyWith(loading: false, clearOrder: true));
@@ -181,9 +179,7 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
   Future<void> refresh() async {
     try {
       final orders = await _orders.fetchDriverOrders();
-      final active = orders
-          .where((o) => o.status == OrderStatus.outForDelivery)
-          .firstOrNull;
+      final active = _activeOf(orders);
       if (active == null) {
         _stopTracking();
         emit(state.copyWith(loading: false, clearOrder: true));
@@ -197,6 +193,28 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
       }
     } catch (error) {
       emit(state.copyWith(loading: false, error: error.toString()));
+    }
+  }
+
+  /// The job in hand: an order already collected, or one claimed and waiting
+  /// to be collected from the store.
+  static AppOrder? _activeOf(List<AppOrder> orders) =>
+      orders.where((o) => o.status == OrderStatus.outForDelivery).firstOrNull ??
+      orders.where((o) => o.status == OrderStatus.readyForPickup).firstOrNull;
+
+  /// Types the store's code. Returns false and surfaces the error when the
+  /// code is wrong, so the field can stay on screen with what was typed.
+  Future<bool> confirmPickup(String code) async {
+    final order = state.order;
+    if (order == null) return false;
+    emit(state.copyWith(busy: true, clearError: true));
+    try {
+      await _orders.confirmPickup(order.id, code);
+      emit(state.copyWith(busy: false));
+      return true;
+    } catch (error) {
+      emit(state.copyWith(busy: false, error: error.toString()));
+      return false;
     }
   }
 

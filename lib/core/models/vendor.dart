@@ -10,10 +10,15 @@ class VendorCategory extends Equatable {
     this.imageUrl,
     this.parentId,
     this.sortOrder = 0,
+    this.isComingSoon = false,
   });
 
   final String id;
   final String name;
+
+  /// Announced but not open yet: customers see it with a "Soon" badge and
+  /// cannot browse into it.
+  final bool isComingSoon;
 
   /// Arabic label. Null on the many categories a vendor typed in one language;
   /// callers fall back to [name] rather than showing a blank chip.
@@ -43,19 +48,30 @@ class VendorCategory extends Equatable {
     imageUrl: map['image_url'] as String?,
     parentId: map['parent_id'] as String?,
     sortOrder: ((map['sort_order'] as num?) ?? 0).toInt(),
+    isComingSoon: (map['is_coming_soon'] as bool?) ?? false,
   );
 
-  VendorCategory copyWith({int? sortOrder}) => VendorCategory(
-    id: id,
-    name: name,
-    nameAr: nameAr,
-    imageUrl: imageUrl,
-    parentId: parentId,
-    sortOrder: sortOrder ?? this.sortOrder,
-  );
+  VendorCategory copyWith({int? sortOrder, bool? isComingSoon}) =>
+      VendorCategory(
+        id: id,
+        name: name,
+        nameAr: nameAr,
+        imageUrl: imageUrl,
+        parentId: parentId,
+        sortOrder: sortOrder ?? this.sortOrder,
+        isComingSoon: isComingSoon ?? this.isComingSoon,
+      );
 
   @override
-  List<Object?> get props => [id, name, nameAr, imageUrl, parentId, sortOrder];
+  List<Object?> get props => [
+    id,
+    name,
+    nameAr,
+    imageUrl,
+    parentId,
+    sortOrder,
+    isComingSoon,
+  ];
 }
 
 class Vendor extends Equatable {
@@ -68,6 +84,7 @@ class Vendor extends Equatable {
     required this.approvalStatus,
     required this.autoAccept,
     this.aiMenuEnabled = false,
+    this.orderFlow = 'vendor',
     required this.deliveryFee,
     required this.minOrderAmount,
     required this.avgPrepMinutes,
@@ -132,6 +149,12 @@ class Vendor extends Equatable {
   /// each run costs a model call per photo — and switched on per store by an
   /// admin. Admins can always import on a store's behalf regardless.
   final bool aiMenuEnabled;
+
+  /// `vendor` — the store accepts its own orders. `platform` — the store is
+  /// not in the app: the admin runs the order and the driver is sent without
+  /// waiting for anyone to press accept.
+  final String orderFlow;
+  bool get isPlatformRun => orderFlow == 'platform';
 
   bool get isPending => approvalStatus == 'pending';
   bool get isApproved => approvalStatus == 'active';
@@ -204,6 +227,7 @@ class Vendor extends Equatable {
     approvalStatus: (map['approval_status'] as String?) ?? 'active',
     autoAccept: (map['auto_accept'] as bool?) ?? false,
     aiMenuEnabled: (map['ai_menu_enabled'] as bool?) ?? false,
+    orderFlow: (map['order_flow'] as String?) ?? 'vendor',
     deliveryFee: ((map['delivery_fee'] as num?) ?? 0).toDouble(),
     minOrderAmount: ((map['min_order_amount'] as num?) ?? 0).toDouble(),
     avgPrepMinutes: ((map['avg_prep_minutes'] as num?) ?? 20).toInt(),
@@ -234,6 +258,7 @@ class Vendor extends Equatable {
     approvalStatus,
     autoAccept,
     aiMenuEnabled,
+    orderFlow,
     deliveryFee,
     minOrderAmount,
     avgPrepMinutes,

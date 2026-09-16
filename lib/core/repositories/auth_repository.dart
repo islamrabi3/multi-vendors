@@ -61,8 +61,42 @@ class AuthRepository {
   Session? get currentSession => supabase.auth.currentSession;
   User? get currentUser => supabase.auth.currentUser;
 
-  Future<void> signIn({required String email, required String password}) =>
-      supabase.auth.signInWithPassword(email: email, password: password);
+  /// Signs in with an email or a username.
+  ///
+  /// Auth only knows emails, so a username is swapped for its email first.
+  /// An unknown name fails before the password is ever sent, and says so —
+  /// there is nothing secret about a name that does not exist.
+  Future<void> signIn({required String email, required String password}) async {
+    var identifier = email.trim();
+    if (!identifier.contains('@')) {
+      final found = await supabase.rpc(
+        'email_for_username',
+        params: {'p_username': identifier},
+      );
+      final resolved = found as String?;
+      if (resolved == null || resolved.isEmpty) {
+        throw Exception('UNKNOWN_LOGIN');
+      }
+      identifier = resolved;
+    }
+    await supabase.auth.signInWithPassword(
+      email: identifier,
+      password: password,
+    );
+  }
+
+  /// Whether a username is free and well formed, for the signup form.
+  Future<bool> isUsernameAvailable(String username) async {
+    final free = await supabase.rpc(
+      'username_available',
+      params: {'p_username': username.trim()},
+    );
+    return free == true;
+  }
+
+  /// Claims a username for the signed-in account.
+  Future<void> setUsername(String username) =>
+      supabase.rpc('set_my_username', params: {'p_username': username.trim()});
 
   /// Returns true when a session was created immediately (email confirmation
   /// disabled); false when the user must confirm their email first.
@@ -73,11 +107,19 @@ class AuthRepository {
     required String phone,
     required UserRole role,
     DriverDocuments? documents,
+    String? username,
   }) async {
     final response = await supabase.auth.signUp(
       email: email,
       password: password,
-      data: {'full_name': fullName, 'phone': phone, 'role': role.name},
+      data: {
+        'full_name': fullName,
+        'phone': phone,
+        'role': role.name,
+        // Claimed by the signup trigger, which ignores a name already taken.
+        if (username != null && username.trim().isNotEmpty)
+          'username': username.trim(),
+      },
     );
     final session = response.session;
 
@@ -329,26 +371,29 @@ class AuthRepository {
   /// an admin's screen, and the store was only read at sign-in — so a vendor
   /// approved while the app was open kept seeing "waiting for verification"
   /// and kept being refused, until they signed out and back in.
-  Stream<Vendor?> watchMyVendor() {
-    final userId = currentUser?.id;
-    if (userId == null) return Stream.value(null);
-    return supabase
-        .from('vendors')
-        .stream(primaryKey: ['id'])
-        .eq('owner_id', userId)
-        .map((rows) => rows.isEmpty ? null : Vendor.fromMap(rows.first));
+  /// The store row, live. Keyed by id rather than owner so it also serves
+  /// staff, who work in a store they do not own.
+  Stream<Vendor?> watchMyVendor(String vendorId) => supabase
+      .from('vendors')
+      .stream(primaryKey: ['id'])
+      .eq('id', vendorId)
+      .map((rows) => rows.isEmpty ? null : Vendor.fromMap(rows.first));
+
+  /// What this account may do inside its store: the store's id, whether it
+  /// owns the store, and the permissions a staff account was given.
+  Future<VendorAccess> myVendorAccess() async {
+    final data = await supabase.rpc('my_vendor_access');
+    return VendorAccess.fromMap((data as Map).cast<String, dynamic>());
   }
 
-  Future<Vendor?> fetchMyVendor() async {
-    final userId = currentUser?.id;
-    if (userId == null) return null;
+  Future<Vendor?> fetchMyVendor(String vendorId) async {
     final data = await supabase
         // The opening hours ride along: the dashboard has to tell the owner
         // "your switch is on but you are outside today's hours", which needs
         // the timetable, not just `is_open`.
         .from('vendors')
         .select('*, vendor_schedules(*)')
-        .eq('owner_id', userId)
+        .eq('id', vendorId)
         .maybeSingle();
     return data == null ? null : Vendor.fromMap(data);
   }
@@ -361,4 +406,34 @@ class AuthRepository {
         .single();
     return Vendor.fromMap(data);
   }
+}
+
+/// What a signed-in account may do inside a store.
+///
+/// The owner holds `*`; a staff account holds the keys its owner ticked, and
+/// the same keys are enforced by the database — the app hides what a staff
+/// account cannot do, it does not decide it.
+class VendorAccess {
+  const VendorAccess({
+    this.vendorId,
+    this.isOwner = false,
+    this.permissions = const [],
+  });
+
+  final String? vendorId;
+  final bool isOwner;
+  final List<String> permissions;
+
+  bool can(String key) =>
+      isOwner || permissions.contains('*') || permissions.contains(key);
+
+  static const none = VendorAccess();
+
+  factory VendorAccess.fromMap(Map<String, dynamic> map) => VendorAccess(
+    vendorId: map['vendor_id'] as String?,
+    isOwner: (map['is_owner'] as bool?) ?? false,
+    permissions: ((map['permissions'] as List?) ?? const [])
+        .map((e) => '$e')
+        .toList(),
+  );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/repositories/chat_repository.dart';
 import 'package:multi_vendor/core/widgets/chat_unread_badge.dart';
 import 'package:multi_vendor/features/customer/orders/order_chat_sheet.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
@@ -181,6 +182,12 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
           alignment: AlignmentDirectional.centerStart,
           child: OrderTypeChip(order: order),
         ),
+        if (order.status == OrderStatus.readyForPickup &&
+            !order.isPickup &&
+            (order.pickupCode?.isNotEmpty ?? false)) ...[
+          const SizedBox(height: 12),
+          _PickupCodeCard(code: order.pickupCode!),
+        ],
         const SizedBox(height: 12),
         // Customer card.
         Container(
@@ -232,6 +239,7 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
               const SizedBox(width: 8),
               ChatUnreadBadge(
                 orderId: order.id,
+                thread: ChatRepository.vendorThread,
                 top: -4,
                 end: -4,
                 child: InkWell(
@@ -429,7 +437,7 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.productName,
+                  item.nameFor(Localizations.localeOf(context).languageCode),
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -566,5 +574,65 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
     final parts = name.trim().split(RegExp(r'\s+'));
     final letters = parts.take(2).map((p) => p[0].toUpperCase()).join();
     return letters;
+  }
+}
+
+/// The six digits the driver has to type before the order can leave.
+///
+/// Shown to the store only while the bag is waiting at the counter: read it
+/// out when the rider arrives, and the order moves itself.
+class _PickupCodeCard extends StatelessWidget {
+  const _PickupCodeCard({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.warmFill,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.pin_rounded, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.pickupCodeTitle, style: AppType.heading(14.5)),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.pickupCodeVendorHint,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.3,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Text(
+              code,
+              textDirection: TextDirection.ltr,
+              style: AppType.mono(20, color: AppColors.ink),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

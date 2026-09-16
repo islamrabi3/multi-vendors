@@ -107,8 +107,11 @@ class _VendorWebShellState extends State<_VendorWebShell> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final vendor = context.select((AuthCubit c) => c.state.vendor);
+    final auth = context.watch<AuthCubit>().state;
+    final vendor = auth.vendor;
     if (vendor == null) return const SizedBox.shrink();
+    final showMoney = auth.canVendor('finance');
+    final showMenu = auth.canVendor('menu');
     final tool = _toolId == null ? null : _toolScreen(_toolId!, vendor.id);
     final toolLabels = <String, String>{
       'analytics': l10n.storeAnalyticsAndReports,
@@ -139,36 +142,39 @@ class _VendorWebShellState extends State<_VendorWebShell> {
               label: l10n.orders,
               onTap: () => _selectBranch(0),
             ),
-            WebNavItem(
-              id: 'branch:1',
-              icon: Icons.menu_book_outlined,
-              selectedIcon: Icons.menu_book,
-              label: l10n.menu,
-              onTap: () => _selectBranch(1),
-            ),
+            if (showMenu)
+              WebNavItem(
+                id: 'branch:1',
+                icon: Icons.menu_book_outlined,
+                selectedIcon: Icons.menu_book,
+                label: l10n.menu,
+                onTap: () => _selectBranch(1),
+              ),
           ],
         ),
         WebNavSection(
           title: l10n.storeAnalyticsAndReports,
           items: [
-            WebNavItem(
-              id: 'analytics',
-              icon: Icons.insights_outlined,
-              label: l10n.storeAnalyticsAndReports,
-              onTap: () => _selectTool('analytics'),
-            ),
+            if (showMoney)
+              WebNavItem(
+                id: 'analytics',
+                icon: Icons.insights_outlined,
+                label: l10n.storeAnalyticsAndReports,
+                onTap: () => _selectTool('analytics'),
+              ),
             WebNavItem(
               id: 'history',
               icon: Icons.history_rounded,
               label: l10n.ordersHistory,
               onTap: () => _selectTool('history'),
             ),
-            WebNavItem(
-              id: 'payouts',
-              icon: Icons.account_balance_wallet_outlined,
-              label: l10n.payouts,
-              onTap: () => _selectTool('payouts'),
-            ),
+            if (showMoney)
+              WebNavItem(
+                id: 'payouts',
+                icon: Icons.account_balance_wallet_outlined,
+                label: l10n.payouts,
+                onTap: () => _selectTool('payouts'),
+              ),
           ],
         ),
         WebNavSection(

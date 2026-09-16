@@ -184,9 +184,7 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
       },
     );
 
-    fee.dispose();
-    commission.dispose();
-    subscription.dispose();
+    disposeAfterClose([fee, commission, subscription]);
     if (saved != true || !mounted) return;
     setState(() {
       _future = _load();
@@ -238,6 +236,24 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
       await VendorAdminRepository().updateVendor(widget.vendorId, {
         'ai_menu_enabled': enabled,
       });
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _future = _load();
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showFailure(context, e);
+      }
+    }
+  }
+
+  /// Hands the store's orders to the platform, or gives them back.
+  Future<void> _setOrderFlow(bool platformRun) async {
+    setState(() => _busy = true);
+    try {
+      await _repo.setVendorOrderFlow(widget.vendorId, platformRun);
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -371,6 +387,30 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
                     ),
                     subtitle: Text(
                       context.l10n.recommended,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1, color: AppColors.borderSoft),
+                  SwitchListTile(
+                    value: vendor.isPlatformRun,
+                    onChanged: _busy ? null : _setOrderFlow,
+                    secondary: Icon(
+                      Icons.support_agent_rounded,
+                      color: vendor.isPlatformRun
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                    ),
+                    title: Text(
+                      context.l10n.platformRunOrders,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      vendor.isPlatformRun
+                          ? context.l10n.platformRunOn
+                          : context.l10n.platformRunOff,
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -520,8 +560,10 @@ class _Body extends StatelessWidget {
                 children: [
                   AppNetworkImage(url: vendor.coverUrl, fit: BoxFit.cover),
                   if (showBack)
-                    Positioned(
-                      left: 16,
+                    // Directional: the back button and the logo sit at the
+                    // reading start, which is the right edge in Arabic.
+                    PositionedDirectional(
+                      start: 16,
                       top: MediaQuery.of(context).padding.top + 8,
                       child: _CircleButton(
                         icon: Icons.chevron_left,
@@ -531,8 +573,8 @@ class _Body extends StatelessWidget {
                 ],
               ),
             ),
-            Positioned(
-              left: 22,
+            PositionedDirectional(
+              start: 22,
               bottom: -34,
               child: Container(
                 width: 70,

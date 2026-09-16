@@ -85,7 +85,11 @@ class NotificationService {
       case 'driver_offer_won' || 'driver_assigned':
         return '/driver-app/active';
     }
-    return data['type'] == 'chat' ? '/order/$orderId/chat' : '/order/$orderId';
+    if (data['type'] != 'chat') return '/order/$orderId';
+    // An order carries two conversations; the push says which one it came
+    // from so the tap lands in it and not in the other.
+    final thread = data['thread'] == 'driver' ? 'driver' : 'vendor';
+    return '/order/$orderId/chat?thread=$thread';
   }
 
   void _openRoute(String route) =>

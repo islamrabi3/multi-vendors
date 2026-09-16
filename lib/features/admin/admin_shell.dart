@@ -18,6 +18,8 @@ import 'screens/admin_drivers_screen.dart';
 import 'screens/admin_finance_screen.dart';
 import 'screens/admin_manage_screen.dart';
 import 'screens/admin_menu_import_screen.dart';
+import 'screens/admin_maintenance_screen.dart';
+import 'screens/admin_price_campaigns_screen.dart';
 import 'screens/admin_price_adjustment_screen.dart';
 import 'screens/admin_promos_screen.dart';
 import 'screens/admin_reports_screen.dart';
@@ -180,6 +182,10 @@ class _AdminWebShellState extends State<_AdminWebShell> {
   /// exists to create.
   Widget? _embeddedManageScreen(String route) => switch (route) {
     '/admin-app/complaints' => const AdminComplaintsScreen(embedded: true),
+    '/admin-app/maintenance' => const AdminMaintenanceScreen(embedded: true),
+    '/admin-app/price-campaigns' => const AdminPriceCampaignsScreen(
+      embedded: true,
+    ),
     '/admin-app/support' => const AdminSupportScreen(embedded: true),
     '/admin-app/users' => const AdminUsersScreen(embedded: true),
     '/admin-app/roles' => const AdminRolesScreen(embedded: true),

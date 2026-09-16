@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
@@ -30,6 +31,11 @@ class _SignupFormState extends State<SignupForm> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _email = TextEditingController();
+  final _username = TextEditingController();
+
+  /// Checked against the server as it is typed: null = not asked yet.
+  bool? _usernameFree;
+  Timer? _usernameDebounce;
   final _password = TextEditingController();
   UserRole _role = UserRole.customer;
 
@@ -50,6 +56,8 @@ class _SignupFormState extends State<SignupForm> {
     _name.dispose();
     _phone.dispose();
     _email.dispose();
+    _username.dispose();
+    _usernameDebounce?.cancel();
     _password.dispose();
     super.dispose();
   }
@@ -66,6 +74,24 @@ class _SignupFormState extends State<SignupForm> {
     if (picked != null) onPicked(picked);
   }
 
+  /// Asks the server whether the name is free, 400 ms after typing stops.
+  void _onUsernameChanged(String value) {
+    _usernameDebounce?.cancel();
+    setState(() => _usernameFree = null);
+    final name = value.trim();
+    if (name.length < 3) return;
+    _usernameDebounce = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        final free = await AuthRepository().isUsernameAvailable(name);
+        if (mounted && _username.text.trim() == name) {
+          setState(() => _usernameFree = free);
+        }
+      } catch (_) {
+        // Silent: the signup itself still refuses a name that is taken.
+      }
+    });
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     // A driver whose documents are missing gets a pending account nobody can
@@ -76,6 +102,7 @@ class _SignupFormState extends State<SignupForm> {
       return;
     }
     context.read<AuthCubit>().signUp(
+      username: _username.text,
       email: _email.text,
       password: _password.text,
       fullName: _name.text,
@@ -171,6 +198,40 @@ class _SignupFormState extends State<SignupForm> {
                   validator: (v) => (v == null || v.trim().length < 8)
                       ? context.l10n.enterAValidPhone
                       : null,
+                ),
+                const SizedBox(height: 11),
+                TextFormField(
+                  controller: _username,
+                  autocorrect: false,
+                  textDirection: TextDirection.ltr,
+                  onChanged: _onUsernameChanged,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.usernameLabel,
+                    helperText: context.l10n.usernameHint,
+                    helperMaxLines: 2,
+                    fillColor: Colors.white,
+                    suffixIcon: _usernameFree == null
+                        ? null
+                        : Icon(
+                            _usernameFree!
+                                ? Icons.check_circle_rounded
+                                : Icons.error_outline_rounded,
+                            color: _usernameFree!
+                                ? AppColors.successInk
+                                : AppColors.dangerInk,
+                            size: 20,
+                          ),
+                  ),
+                  validator: (v) {
+                    final name = v?.trim() ?? '';
+                    if (!RegExp(r'^[A-Za-z0-9._]{3,20}$').hasMatch(name)) {
+                      return context.l10n.usernameInvalid;
+                    }
+                    if (_usernameFree == false) {
+                      return context.l10n.usernameTaken;
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 11),
                 TextFormField(

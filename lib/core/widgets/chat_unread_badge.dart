@@ -10,11 +10,16 @@ class ChatUnreadBadge extends StatefulWidget {
     super.key,
     required this.orderId,
     required this.child,
+    this.thread,
     this.top = -6,
     this.end = -6,
   });
 
   final String orderId;
+
+  /// Null counts both of the order's conversations — what the customer's own
+  /// screens want; the store and the rider pass their own thread.
+  final String? thread;
   final Widget child;
   final double top;
   final double end;
@@ -24,7 +29,10 @@ class ChatUnreadBadge extends StatefulWidget {
 }
 
 class _ChatUnreadBadgeState extends State<ChatUnreadBadge> {
-  late final Stream<int> _unread = ChatRepository().watchUnread(widget.orderId);
+  late final Stream<int> _unread = ChatRepository().watchUnread(
+    widget.orderId,
+    widget.thread,
+  );
 
   @override
   Widget build(BuildContext context) {

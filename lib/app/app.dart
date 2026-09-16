@@ -13,6 +13,7 @@ import 'tokens.dart';
 import '../core/repositories/auth_repository.dart';
 import '../core/repositories/cart_repository.dart';
 import '../core/repositories/catalog_repository.dart';
+import '../core/services/maintenance_gate.dart';
 import '../core/services/notification_service.dart';
 import '../core/widgets/web/web_toast.dart';
 import '../features/auth/auth_cubit.dart';
@@ -42,6 +43,9 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
     _cartCubit = CartCubit(repository: CartRepository(catalog: _catalog));
     _localeCubit = LocaleCubit();
     _router = buildRouter(_authCubit);
+    // Watched from launch: the switch has to reach a phone that is already
+    // open, not only one that starts afterwards.
+    MaintenanceGate.instance.start();
 
     // A tapped notification names a destination; the router is the only thing
     // that can open it. A tap from a cold start arrives before this point, so

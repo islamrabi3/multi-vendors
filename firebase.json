@@ -32,7 +32,6 @@
     "public": "build/web",
     "ignore": [
       "firebase.json",
-      "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
@@ -42,6 +41,15 @@
       }
     ],
     "headers": [
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
       {
         "source": "/canvaskit/**",
         "headers": [

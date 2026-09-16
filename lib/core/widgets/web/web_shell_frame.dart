@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../count_badge.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/locale_cubit.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -320,6 +321,20 @@ class _TopBar extends StatelessWidget {
               tooltip: '',
               offset: const Offset(0, 44),
               itemBuilder: (context) => [
+                PopupMenuItem<void>(
+                  onTap: () => GoRouter.of(context).push('/change-password'),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.key_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: AppSpace.sm),
+                      Text(context.l10n.changePassword),
+                    ],
+                  ),
+                ),
                 PopupMenuItem<void>(
                   onTap: onSignOut,
                   child: Row(

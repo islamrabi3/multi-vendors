@@ -326,6 +326,16 @@ class AdminRepository {
     return result is Map && result['hard_deleted'] == true;
   }
 
+  /// Who runs this store's orders: the store itself, or the platform.
+  Future<void> setVendorOrderFlow(String vendorId, bool platformRun) =>
+      supabase.rpc(
+        'admin_set_vendor_order_flow',
+        params: {
+          'p_vendor_id': vendorId,
+          'p_flow': platformRun ? 'platform' : 'vendor',
+        },
+      );
+
   /// Promotes or demotes a store on the customer home's recommended rail.
   Future<void> setVendorRecommended(
     String vendorId,
@@ -374,15 +384,29 @@ class AdminRepository {
 
   /// One page of finished orders, newest first. The unpaid-Paymob-draft rule is
   /// applied server-side so a short page always means "no more results".
+  /// Finished orders, newest first. [day] narrows to one calendar day, which
+  /// is how the monitor reads by default — a console showing every order ever
+  /// placed is a list nobody can work.
   Future<List<AppOrder>> fetchOrdersHistoryPage({
     required int limit,
     required int offset,
+    DateTime? day,
   }) async {
-    final data = await supabase
+    var query = supabase
         .from('orders')
         .select('*, vendors(name, logo_url)')
         .inFilter('status', _finishedStatuses)
-        .or('payment_method.neq.paymob,payment_status.eq.paid')
+        .or('payment_method.neq.paymob,payment_status.eq.paid');
+    if (day != null) {
+      final start = DateTime(day.year, day.month, day.day);
+      query = query
+          .gte('created_at', start.toUtc().toIso8601String())
+          .lt(
+            'created_at',
+            start.add(const Duration(days: 1)).toUtc().toIso8601String(),
+          );
+    }
+    final data = await query
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
     return (data as List)
@@ -530,6 +554,18 @@ class AdminRepository {
     return num.tryParse('$amount')?.toDouble() ?? 0;
   }
 
+  /// Moves an order along on the store's behalf. The server only allows this
+  /// for a store the platform runs — see `admin_set_vendor_order_flow`.
+  Future<void> setOrderStatus(String orderId, OrderStatus status) =>
+      supabase.rpc(
+        'update_order_status',
+        params: {
+          'p_order_id': orderId,
+          'p_new_status': status.wireName,
+          'p_reason': null,
+        },
+      );
+
   Future<void> cancelOrder(String orderId, {String? reason}) => supabase.rpc(
     'update_order_status',
     params: {
@@ -602,6 +638,13 @@ class AdminRepository {
         })
         .eq('id', id);
   }
+
+  /// Marks a category as coming soon, or opens it.
+  Future<void> setVendorCategoryComingSoon(String id, bool comingSoon) =>
+      supabase
+          .from('vendor_categories')
+          .update({'is_coming_soon': comingSoon})
+          .eq('id', id);
 
   /// Renumbers [ids] to `0, 1, 2…` in the order given. Callers pass one
   /// sibling group at a time — the top-level list, or one parent's

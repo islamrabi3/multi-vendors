@@ -10,6 +10,8 @@ import '../../../core/repositories/admin_repository.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../admin_vendors_cubit.dart';
+import '../../auth/auth_cubit.dart';
+import 'admin_create_account_screen.dart';
 import 'admin_vendor_detail_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -81,10 +83,30 @@ class _VendorsViewState extends State<_VendorsView> {
                               icon: const Icon(Icons.arrow_back),
                               onPressed: () => Navigator.of(context).pop(),
                             ),
-                          Text(
-                            context.l10n.vendors,
-                            style: AppType.display(26),
+                          Expanded(
+                            child: Text(
+                              context.l10n.vendors,
+                              style: AppType.display(26),
+                            ),
                           ),
+                          if (context.select(
+                            (AuthCubit c) => c.state.can('vendors.approve'),
+                          ))
+                            FilledButton.icon(
+                              onPressed: () async {
+                                final created =
+                                    await AdminCreateAccountScreen.open(
+                                      context,
+                                      NewAccountKind.vendor,
+                                    );
+                                if (created == true) cubit.load();
+                              },
+                              icon: const Icon(
+                                Icons.add_business_rounded,
+                                size: 18,
+                              ),
+                              label: Text(context.l10n.addStoreAccount),
+                            ),
                         ],
                       ),
                     ),

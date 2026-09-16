@@ -20,8 +20,21 @@ class MenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vendor = context.read<AuthCubit>().state.vendor;
+    final auth = context.watch<AuthCubit>().state;
+    final vendor = auth.vendor;
     if (vendor == null) return const LoadingView();
+    // A staff account without the menu permission is refused by the database
+    // anyway; saying so here beats a screen of controls that all fail.
+    if (!auth.canVendor('menu')) {
+      return Scaffold(
+        backgroundColor: AppColors.canvas,
+        appBar: AppBar(title: Text(context.l10n.menu)),
+        body: EmptyView(
+          message: context.l10n.staffNoAccess,
+          icon: Icons.lock_outline_rounded,
+        ),
+      );
+    }
     return BlocProvider(
       create: (_) =>
           MenuCubit(CatalogRepository(), VendorAdminRepository(), vendor.id),
@@ -115,10 +128,7 @@ class _MenuViewState extends State<_MenuView> {
     if (result != null && result.isNotEmpty) {
       await cubit.saveCategory(result, nameAr: nameArVal, id: category?.id);
     }
-    Future.delayed(const Duration(milliseconds: 500), () {
-      controller.dispose();
-      controllerAr.dispose();
-    });
+    disposeAfterClose([controller, controllerAr]);
   }
 
   /// Deleting a section is destructive enough to confirm, and the outcome —

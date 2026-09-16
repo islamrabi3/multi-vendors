@@ -25,6 +25,7 @@ class AppAuthState extends Equatable {
     this.error,
     this.info,
     this.permissions = const [],
+    this.vendorAccess = VendorAccess.none,
     this.pendingPolicy,
     this.passwordRecovery = false,
   });
@@ -44,6 +45,15 @@ class AppAuthState extends Equatable {
   /// Only ever used to hide controls. Every action is enforced again on the
   /// server, so a stale copy of this list grants nothing.
   final List<String> permissions;
+
+  /// The store this account works in and what it may do there. An owner holds
+  /// everything; a staff account only what it was given.
+  final VendorAccess vendorAccess;
+
+  /// Whether the store console should offer [key] at all — `orders`, `menu`,
+  /// `reviews`, `settings`, or `finance` (owner only).
+  bool canVendor(String key) =>
+      key == 'finance' ? vendorAccess.isOwner : vendorAccess.can(key);
 
   /// Terms this partner has not accepted at their current version. Null for
   /// customers and admins, and for anyone already up to date.
@@ -90,11 +100,14 @@ class AppAuthState extends Equatable {
   bool get needsPolicyAcceptance =>
       status == AuthStatus.authenticated && pendingPolicy != null;
 
+  /// Only a would-be owner is sent to onboarding. A staff account is already
+  /// attached to a store, so it must never be asked to open one.
   bool get needsVendorOnboarding =>
       status == AuthStatus.authenticated &&
       profile?.roleConfirmed != false &&
       profile?.role == UserRole.vendor &&
-      vendor == null;
+      vendor == null &&
+      vendorAccess.vendorId == null;
 
   AppAuthState copyWith({
     AuthStatus? status,
@@ -104,6 +117,7 @@ class AppAuthState extends Equatable {
     String? error,
     String? info,
     List<String>? permissions,
+    VendorAccess? vendorAccess,
     PendingPolicy? pendingPolicy,
     bool clearPendingPolicy = false,
     bool clearMessages = false,
@@ -118,6 +132,7 @@ class AppAuthState extends Equatable {
     error: clearMessages ? null : error,
     info: clearMessages ? null : info,
     permissions: permissions ?? this.permissions,
+    vendorAccess: vendorAccess ?? this.vendorAccess,
     pendingPolicy: clearPendingPolicy
         ? null
         : (pendingPolicy ?? this.pendingPolicy),
@@ -133,6 +148,7 @@ class AppAuthState extends Equatable {
     error,
     info,
     permissions,
+    vendorAccess,
     pendingPolicy,
     passwordRecovery,
   ];
@@ -205,9 +221,11 @@ class AuthCubit extends Cubit<AppAuthState> {
 
   /// Watches the owner's store row, so an approval or suspension decided by an
   /// admin reaches the dashboard while it is open rather than at next sign-in.
-  void _watchVendor() {
+  void _watchVendor(String vendorId) {
     _vendorSubscription?.cancel();
-    _vendorSubscription = _repository.watchMyVendor().listen((vendor) async {
+    _vendorSubscription = _repository.watchMyVendor(vendorId).listen((
+      vendor,
+    ) async {
       if (vendor == null || isClosed) return;
       if (vendor == state.vendor) return;
       // The row from the socket carries no opening hours: a realtime stream
@@ -216,7 +234,7 @@ class AuthCubit extends Cubit<AppAuthState> {
       // which of the two sources spoke last, so the event is treated as a
       // signal to re-read the whole thing.
       try {
-        final full = await _repository.fetchMyVendor();
+        final full = await _repository.fetchMyVendor(vendorId);
         if (isClosed || full == null) return;
         if (full == state.vendor) return;
         emit(state.copyWith(vendor: full));
@@ -245,9 +263,15 @@ class AuthCubit extends Cubit<AppAuthState> {
       // this a returning user whose flag never persisted sees the get-started
       // carousel flash between OAuth landing and the home screen.
       if (!AppOnboarding.seen) unawaited(AppOnboarding.markSeen());
-      final vendor = profile.role == UserRole.vendor
-          ? await _repository.fetchMyVendor()
-          : null;
+      // Owners and staff both resolve their store through the same call.
+      final access = profile.role == UserRole.vendor
+          ? await _repository.myVendorAccess().catchError(
+              (_) => VendorAccess.none,
+            )
+          : VendorAccess.none;
+      final vendor = access.vendorId == null
+          ? null
+          : await _repository.fetchMyVendor(access.vendorId!);
       // Only an admin has any, and a failure here must not block sign-in —
       // the console simply shows nothing rather than refusing to open.
       final permissions = profile.role == UserRole.admin
@@ -266,6 +290,7 @@ class AuthCubit extends Cubit<AppAuthState> {
           profile: profile,
           vendor: vendor,
           permissions: permissions,
+          vendorAccess: access,
           pendingPolicy: pendingPolicy,
           // This full-replacement constructor otherwise drops the recovery
           // gate the instant this method runs, which is on every single
@@ -274,8 +299,8 @@ class AuthCubit extends Cubit<AppAuthState> {
         ),
       );
       _watchProfile();
-      // Only a store owner has a row to watch.
-      if (vendor != null) _watchVendor();
+      // Only somebody with a store has a row to watch.
+      if (vendor != null) _watchVendor(vendor.id);
     } catch (_) {
       // Keep whatever state we had; a transient network error on profile
       // fetch should not log the user out.
@@ -418,6 +443,7 @@ class AuthCubit extends Cubit<AppAuthState> {
     required String phone,
     required UserRole role,
     DriverDocuments? documents,
+    String? username,
   }) async {
     emit(state.copyWith(busy: true, clearMessages: true));
     try {
@@ -428,6 +454,7 @@ class AuthCubit extends Cubit<AppAuthState> {
         phone: phone.trim(),
         role: role,
         documents: documents,
+        username: username,
       );
       emit(
         state.copyWith(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/widgets/soon_badge.dart';
+import 'package:multi_vendor/core/widgets/store_rail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -74,10 +76,20 @@ class _CategoryView extends StatelessWidget {
                       selectedId: state.selectedChildId,
                       language: language,
                     ),
-                  if (state.recommended.isNotEmpty)
-                    _RecommendedRail(
-                      vendors: state.recommended,
+                  if (state.recommendedVisible.isNotEmpty)
+                    StoreRail(
                       title: context.l10n.recommendedIn(scopeTitle),
+                      icon: Icons.auto_awesome_rounded,
+                      vendors: state.recommendedVisible,
+                      isFavorite: (v) => state.favoriteVendorIds.contains(v.id),
+                      onToggleFavorite: (v) => cubit.toggleFavorite(v.id),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpace.gutter,
+                        AppSpace.md,
+                        AppSpace.gutter,
+                        AppSpace.md,
+                      ),
+                      gutter: AppSpace.gutter,
                     ),
                   // Header and the open-only chip share a row: two stacked
                   // full-width rows for one short title and one chip was most
@@ -174,7 +186,10 @@ class _SubcategoryStrip extends StatelessWidget {
             imageUrl: category.imageUrl,
             fallbackEmoji: emojiFor(category.name).trim(),
             selected: category.id == selectedId,
-            onTap: () => cubit.selectChild(category.id),
+            comingSoon: category.isComingSoon,
+            onTap: () => category.isComingSoon
+                ? showComingSoonMessage(context, category.label(language))
+                : cubit.selectChild(category.id),
           );
         },
       ),
@@ -190,8 +205,10 @@ class _CategoryTile extends StatelessWidget {
     this.imageUrl,
     this.fallbackEmoji,
     this.icon,
+    this.comingSoon = false,
   });
 
+  final bool comingSoon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -215,33 +232,57 @@ class _CategoryTile extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(2.5),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                // A ring rather than a tint: the artwork is the thing being
-                // chosen, and colouring over it would hide what it shows.
-                border: Border.all(
-                  color: selected ? AppColors.primary : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              child: ClipOval(
-                child: image != null && image.isNotEmpty
-                    ? AppNetworkImage(url: image, height: _size, width: _size)
-                    : Container(
-                        width: _size,
-                        height: _size,
-                        alignment: Alignment.center,
-                        color: AppColors.warmFill,
-                        child: icon != null
-                            ? Icon(icon, size: 26, color: AppColors.primary)
-                            : Text(
-                                fallbackEmoji ?? '',
-                                style: const TextStyle(fontSize: 26),
-                              ),
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                Opacity(
+                  opacity: comingSoon ? 0.55 : 1,
+                  child: Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      // A ring rather than a tint: the artwork is the thing being
+                      // chosen, and colouring over it would hide what it shows.
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        width: 2,
                       ),
-              ),
+                    ),
+                    child: ClipOval(
+                      child: image != null && image.isNotEmpty
+                          ? AppNetworkImage(
+                              url: image,
+                              height: _size,
+                              width: _size,
+                            )
+                          : Container(
+                              width: _size,
+                              height: _size,
+                              alignment: Alignment.center,
+                              color: AppColors.warmFill,
+                              child: icon != null
+                                  ? Icon(
+                                      icon,
+                                      size: 26,
+                                      color: AppColors.primary,
+                                    )
+                                  : Text(
+                                      fallbackEmoji ?? '',
+                                      style: const TextStyle(fontSize: 26),
+                                    ),
+                            ),
+                    ),
+                  ),
+                ),
+                if (comingSoon)
+                  const PositionedDirectional(
+                    bottom: -4,
+                    child: SoonBadge(compact: true),
+                  ),
+              ],
             ),
             const SizedBox(height: 5),
             // Flexible, not fixed: the label's line box depends on the font,
@@ -265,53 +306,6 @@ class _CategoryTile extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RecommendedRail extends StatelessWidget {
-  const _RecommendedRail({required this.vendors, required this.title});
-
-  final List<Vendor> vendors;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpace.gutter,
-            AppSpace.md,
-            AppSpace.gutter,
-            AppSpace.xs,
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.auto_awesome_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppType.heading(17),
-                ),
-              ),
-            ],
-          ),
-        ),
-        for (final vendor in vendors)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-            child: VendorCard(vendor: vendor),
-          ),
-      ],
     );
   }
 }

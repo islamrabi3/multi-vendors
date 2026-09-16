@@ -186,6 +186,7 @@ class _DashboardViewState extends State<_DashboardView> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
       ),
       builder: (sheetContext) => _StoreControlsSheet(
+        showMoney: context.read<AuthCubit>().state.canVendor('finance'),
         onToggleBusy: (value) {
           Navigator.pop(sheetContext);
           _toggleBusy(value);
@@ -311,6 +312,9 @@ class _DashboardViewState extends State<_DashboardView> {
                     const Expanded(child: LoadingView())
                   else ...[
                     _KpiBar(
+                      showRevenue: context.read<AuthCubit>().state.canVendor(
+                        'finance',
+                      ),
                       revenue: state.todayRevenue,
                       orders: state.todayOrderCount,
                       avgPrep: vendor.totalPrepMinutes,
@@ -544,6 +548,7 @@ class _WebVendorStrip extends StatelessWidget {
   /// already is). It sits beside the open switch here: both answer "what is
   /// my kitchen doing right now", which is the one thing this bar is for.
   final bool togglingBusy;
+
   final ValueChanged<bool> onToggleBusy;
 
   @override
@@ -827,11 +832,14 @@ class _StatusBanner extends StatelessWidget {
 /// hand the reclaimed space to the order list.
 class _KpiBar extends StatelessWidget {
   const _KpiBar({
+    required this.showRevenue,
     required this.revenue,
     required this.orders,
     required this.avgPrep,
   });
 
+  /// Off for staff: what the store takes is the owner's business.
+  final bool showRevenue;
   final double revenue;
   final int orders;
   final int avgPrep;
@@ -854,8 +862,10 @@ class _KpiBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _stat(formatMoney(revenue), l10n.itemSales),
-          _divider(),
+          if (showRevenue) ...[
+            _stat(formatMoney(revenue), l10n.itemSales),
+            _divider(),
+          ],
           _stat('$orders', l10n.orders),
           _divider(),
           _stat('$avgPrep ${l10n.min}', l10n.avgPrep),
@@ -901,6 +911,7 @@ class _KpiBar extends StatelessWidget {
 /// each spelled out.
 class _StoreControlsSheet extends StatelessWidget {
   const _StoreControlsSheet({
+    required this.showMoney,
     required this.onToggleBusy,
     required this.onAnalytics,
     required this.onSchedule,
@@ -908,6 +919,8 @@ class _StoreControlsSheet extends StatelessWidget {
     required this.onPayouts,
   });
 
+  /// Analytics and payouts are the owner's; staff never see either.
+  final bool showMoney;
   final ValueChanged<bool> onToggleBusy;
   final VoidCallback onAnalytics;
   final VoidCallback onSchedule;
@@ -957,41 +970,43 @@ class _StoreControlsSheet extends StatelessWidget {
               ),
             ),
             const Divider(height: 1, color: AppColors.borderSoft),
-            ListTile(
-              onTap: onAnalytics,
-              leading: const Icon(
-                Icons.insights_rounded,
-                color: AppColors.textSecondary,
+            if (showMoney) ...[
+              ListTile(
+                onTap: onAnalytics,
+                leading: const Icon(
+                  Icons.insights_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                title: Text(
+                  l10n.vendorAnalytics,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textFaint,
+                ),
               ),
-              title: Text(
-                l10n.vendorAnalytics,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              const Divider(height: 1, color: AppColors.borderSoft),
+              // The money the store is owed, and when it lands. Given its own row
+              // rather than buried in analytics: it is the thing a shop owner
+              // opens the app to check that is not an order.
+              ListTile(
+                onTap: onPayouts,
+                leading: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: AppColors.textSecondary,
+                ),
+                title: Text(
+                  l10n.payouts,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textFaint,
+                ),
               ),
-              trailing: const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textFaint,
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.borderSoft),
-            // The money the store is owed, and when it lands. Given its own row
-            // rather than buried in analytics: it is the thing a shop owner
-            // opens the app to check that is not an order.
-            ListTile(
-              onTap: onPayouts,
-              leading: const Icon(
-                Icons.account_balance_wallet_outlined,
-                color: AppColors.textSecondary,
-              ),
-              title: Text(
-                l10n.payouts,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              trailing: const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textFaint,
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.borderSoft),
+              const Divider(height: 1, color: AppColors.borderSoft),
+            ],
             // Support, where every other occasional action lives. Previously a
             // vendor had no route to it at all from their own app.
             ListTile(

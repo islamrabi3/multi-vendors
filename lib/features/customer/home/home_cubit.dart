@@ -8,7 +8,9 @@ import '../../../core/models/banner_item.dart';
 import '../../../core/models/service_area.dart' show distanceKm;
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/address_repository.dart';
+import '../../../core/models/coupon.dart';
 import '../../../core/repositories/catalog_repository.dart';
+import '../../../core/repositories/coupons_repository.dart';
 import '../../../core/repositories/favorites_repository.dart';
 
 /// How the store list is ordered. `recommended` is the server's own order
@@ -94,6 +96,7 @@ class HomeState extends Equatable {
     this.addressLoaded = false,
     this.favoriteVendorIds = const {},
     this.filters = const VendorFilters(),
+    this.coupons = const [],
   });
 
   final bool loading;
@@ -110,6 +113,9 @@ class HomeState extends Equatable {
 
   final Set<String> favoriteVendorIds;
   final VendorFilters filters;
+
+  /// Live, public, platform-wide promo codes — what the home page badges.
+  final List<Coupon> coupons;
 
   /// The kinds of shop — Food, Groceries, Pharmacies, Stores — which is what
   /// the home page leads with. The cuisine-level entries live beneath one of
@@ -142,31 +148,42 @@ class HomeState extends Equatable {
     return [for (final (vendor, _) in measured.take(6)) vendor];
   }
 
-  /// The admin's promoted stores, best rank first.
+  /// The home page's main list: the stores the admin promoted, in the
+  /// admin's order.
+  ///
+  /// Open stores come first, but a closed one is still listed (it shows as
+  /// closed) — hiding it made a promoted store vanish from home for most of
+  /// the day. Nothing promoted means no section at all.
   List<Vendor> get recommendedVendors {
-    final promoted =
-        vendors.where((v) => v.isRecommended && v.isOpenNow()).toList()
-          ..sort((a, b) {
-            final byRank = a.recommendedRank.compareTo(b.recommendedRank);
-            return byRank != 0 ? byRank : b.ratingAvg.compareTo(a.ratingAvg);
-          });
+    final promoted = vendors.where((v) => v.isRecommended).toList()
+      ..sort((a, b) {
+        final byOpen = _openFirst(a, b);
+        if (byOpen != 0) return byOpen;
+        final byRank = a.recommendedRank.compareTo(b.recommendedRank);
+        return byRank != 0 ? byRank : b.ratingAvg.compareTo(a.ratingAvg);
+      });
+    // Only the admin's picks: a store the admin did not choose must never be
+    // labelled "recommended".
     return promoted;
   }
 
-  /// The home page's store rails, top to bottom.
+  static int _openFirst(Vendor a, Vendor b) =>
+      (b.isOpenNow() ? 1 : 0) - (a.isOpenNow() ? 1 : 0);
+
+  /// The carousels under the recommended list, top to bottom: nearest first.
   ///
-  /// Each rail skips every store a rail above it already showed, so a small
-  /// marketplace no longer repeats the same two stores under "Recommended",
-  /// "Nearby" and the full list. A rail with fewer than two stores left is
-  /// dropped — a one-card carousel is just a worse list row.
+  /// "Nearest" answers a different question from "recommended", so it may
+  /// repeat a recommended store. The rails after it skip every store already
+  /// shown above them, so a small marketplace does not see the same two
+  /// stores in every section. A rail with fewer than two stores is dropped.
   List<({HomeRail rail, List<Vendor> vendors})> get rails {
     const limit = 10;
-    final used = <String>{};
+    final used = <String>{for (final v in recommendedVendors) v.id};
     final result = <({HomeRail rail, List<Vendor> vendors})>[];
 
-    void add(HomeRail rail, Iterable<Vendor> candidates) {
+    void add(HomeRail rail, Iterable<Vendor> candidates, {bool dedupe = true}) {
       final picked = candidates
-          .where((v) => !used.contains(v.id))
+          .where((v) => !dedupe || !used.contains(v.id))
           .take(limit)
           .toList();
       if (picked.length < 2) return;
@@ -174,14 +191,12 @@ class HomeState extends Equatable {
       result.add((rail: rail, vendors: picked));
     }
 
-    add(HomeRail.recommended, recommendedVendors);
-
     final measured = <(Vendor, double)>[
       for (final v in vendors)
         if (v.isOpenNow())
           if (distanceToVendor(v) case final km?) (v, km),
     ]..sort((a, b) => a.$2.compareTo(b.$2));
-    add(HomeRail.nearest, measured.map((e) => e.$1));
+    add(HomeRail.nearest, measured.map((e) => e.$1), dedupe: false);
 
     add(
       HomeRail.favorites,
@@ -273,6 +288,7 @@ class HomeState extends Equatable {
     bool? addressLoaded,
     Set<String>? favoriteVendorIds,
     VendorFilters? filters,
+    List<Coupon>? coupons,
     bool clearError = false,
     bool clearAddress = false,
   }) => HomeState(
@@ -286,6 +302,7 @@ class HomeState extends Equatable {
         : (deliverToAddress ?? this.deliverToAddress),
     addressLoaded: addressLoaded ?? this.addressLoaded,
     favoriteVendorIds: favoriteVendorIds ?? this.favoriteVendorIds,
+    coupons: coupons ?? this.coupons,
     filters: filters ?? this.filters,
   );
 
@@ -300,6 +317,7 @@ class HomeState extends Equatable {
     addressLoaded,
     favoriteVendorIds,
     filters,
+    coupons,
   ];
 }
 
@@ -329,6 +347,7 @@ class HomeCubit extends Cubit<HomeState> {
     // their errors are swallowed.
     _loadDeliverToAddress();
     _loadFavorites();
+    _loadCoupons();
     List<BannerItem>? banners;
     List<Vendor>? vendors;
     String? error;
@@ -371,6 +390,20 @@ class HomeCubit extends Cubit<HomeState> {
     } catch (_) {
       if (!isClosed) emit(state.copyWith(addressLoaded: true));
     }
+  }
+
+  /// Re-reads the codes this customer may still use — after an order, a
+  /// one-per-customer code is gone and must leave the home page with it.
+  Future<void> refreshCoupons() => _loadCoupons();
+
+  /// Decorative like the address and favourites: a failure here costs the
+  /// badge, never the page.
+  Future<void> _loadCoupons() async {
+    try {
+      final coupons = await CouponsRepository().fetchPublicCoupons();
+      if (isClosed) return;
+      emit(state.copyWith(coupons: coupons));
+    } catch (_) {}
   }
 
   Future<void> _loadFavorites() async {

@@ -19,6 +19,11 @@ import '../features/auth/screens/role_choice_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../core/repositories/payment_repository.dart' show PaymobCheckout;
+import '../core/services/maintenance_gate.dart';
+import '../features/admin/screens/admin_maintenance_screen.dart';
+import '../features/admin/screens/admin_price_campaigns_screen.dart';
+import '../features/auth/screens/change_password_screen.dart';
+import '../features/auth/screens/maintenance_screen.dart';
 import '../features/support/messages_screen.dart';
 import '../features/support/complaints/complaint_thread_screen.dart';
 import '../features/support/complaints/my_complaints_screen.dart';
@@ -128,7 +133,16 @@ const _sharedPaths = {
   '/notifications',
   // Every role has order conversations: customer, driver and store.
   '/messages',
+  // Every role signs in with a password.
+  '/change-password',
 };
+
+/// A shared link opened before the app was ready — during the splash, the
+/// language picker, or while signed out. Held here and replayed once the user
+/// reaches the app, instead of being dropped on the way through those gates.
+String? _pendingDeepLink;
+
+final _shareableLink = RegExp(r'^/vendors/[^/]+$');
 
 final _customerOrderLink = RegExp(r'^/order/([^/]+)(/chat)?$');
 
@@ -173,10 +187,15 @@ GoRouter buildRouter(AuthCubit authCubit) {
       _AuthRefreshNotifier(authCubit),
       SplashGate.introDone,
       AppLanguage.chosen,
+      MaintenanceGate.instance.status,
     ]),
     redirect: (context, state) {
       final auth = authCubit.state;
       final location = state.matchedLocation;
+      if (_shareableLink.hasMatch(location) &&
+          auth.status != AuthStatus.authenticated) {
+        _pendingDeepLink = state.uri.toString();
+      }
 
       if (auth.status == AuthStatus.unknown) {
         return location == '/splash' ? null : '/splash';
@@ -195,6 +214,11 @@ GoRouter buildRouter(AuthCubit authCubit) {
         return location == '/language' ? null : '/language';
       }
 
+      if (MaintenanceGate.instance.isDown &&
+          auth.status == AuthStatus.unauthenticated) {
+        return location == '/maintenance' ? null : '/maintenance';
+      }
+
       if (auth.status == AuthStatus.unauthenticated) {
         // First launch only: the intro carousel. Once it has been seen — or
         // once anyone has ever signed in on this device — signing out lands
@@ -205,6 +229,13 @@ GoRouter buildRouter(AuthCubit authCubit) {
         return _authPaths.contains(location) || _publicPaths.contains(location)
             ? null
             : '/login';
+      }
+
+      // Closed for maintenance: everyone but an admin is held on one screen,
+      // including while signed out — there is nothing to do in the app.
+      if (MaintenanceGate.instance.isDown &&
+          auth.profile?.role != UserRole.admin) {
+        return location == '/maintenance' ? null : '/maintenance';
       }
 
       // Authenticated.
@@ -245,6 +276,14 @@ GoRouter buildRouter(AuthCubit authCubit) {
         return location == '/vendor-onboarding' ? null : '/vendor-onboarding';
       }
       final role = auth.profile!.role;
+      final pending = _pendingDeepLink;
+      if (pending != null) {
+        _pendingDeepLink = null;
+        if (_allowedForRole(role, Uri.parse(pending).path) &&
+            location != pending) {
+          return pending;
+        }
+      }
       final roleOrderLink = _orderLinkForRole(role, location);
       if (roleOrderLink != null) return roleOrderLink;
       if (location == '/splash' ||
@@ -261,6 +300,10 @@ GoRouter buildRouter(AuthCubit authCubit) {
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(
+        path: '/maintenance',
+        builder: (_, _) => const MaintenanceScreen(),
+      ),
       GoRoute(
         path: '/language',
         // No explicit destination: committing the choice flips
@@ -355,13 +398,21 @@ GoRouter buildRouter(AuthCubit authCubit) {
       // the user may never have opened.
       GoRoute(
         path: '/order/:id/chat',
-        builder: (_, state) =>
-            OrderChatScreen(orderId: state.pathParameters['id']!),
+        builder: (_, state) => OrderChatScreen(
+          orderId: state.pathParameters['id']!,
+          thread: state.uri.queryParameters['thread'] == 'driver'
+              ? 'driver'
+              : 'vendor',
+        ),
       ),
       // Support belongs to every role: a vendor or driver needs the platform
       // just as much as a customer does.
       GoRoute(path: '/support', builder: (_, _) => const MySupportScreen()),
       GoRoute(path: '/messages', builder: (_, _) => const MessagesScreen()),
+      GoRoute(
+        path: '/change-password',
+        builder: (_, _) => const ChangePasswordScreen(),
+      ),
       // A customer's complaints and each one's follow-up thread; the push
       // for a support reply lands on the thread itself.
       GoRoute(
@@ -522,6 +573,14 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/admin-app/support',
         builder: (_, _) => const AdminSupportScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/price-campaigns',
+        builder: (_, _) => const AdminPriceCampaignsScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/maintenance',
+        builder: (_, _) => const AdminMaintenanceScreen(),
       ),
       GoRoute(
         path: '/admin-app/complaints',

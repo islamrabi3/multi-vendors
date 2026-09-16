@@ -472,8 +472,9 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const MessagesButton.staff(compact: true, dark: true),
+              const SizedBox(width: 5),
               const NotificationBell(compact: true, dark: true),
-              const SizedBox(width: 4),
+              const SizedBox(width: 5),
               _AvatarButton(
                 onSignOut: () => context.read<AuthCubit>().signOut(),
               ),
@@ -632,9 +633,40 @@ class _AvatarButton extends StatelessWidget {
     // Every management tool now lives on Overview as a grid — this is the
     // plain account menu it always looked like.
     return PopupMenuButton<String>(
-      onSelected: (_) => onSignOut(),
+      onSelected: (value) =>
+          value == 'password' ? context.push('/change-password') : onSignOut(),
       itemBuilder: (_) => [
-        PopupMenuItem(value: 'signout', child: Text(context.l10n.signOut)),
+        PopupMenuItem(
+          value: 'password',
+          child: Row(
+            children: [
+              const Icon(
+                Icons.key_rounded,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Text(context.l10n.changePassword),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'signout',
+          child: Row(
+            children: [
+              const Icon(
+                Icons.logout_rounded,
+                size: 18,
+                color: AppColors.dangerInk,
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Text(
+                context.l10n.signOut,
+                style: const TextStyle(color: AppColors.dangerInk),
+              ),
+            ],
+          ),
+        ),
       ],
       child: Container(
         width: 42,

@@ -104,6 +104,49 @@ class AdminCouponsCubit extends Cubit<AdminCouponsState> {
     }
   }
 
+  Future<bool> edit({
+    required String id,
+    required String code,
+    required String discountType,
+    required double value,
+    double minOrderAmount = 0,
+    double? maxDiscount,
+    int? usageLimit,
+    int? perUserLimit,
+    DateTime? startsAt,
+    DateTime? expiresAt,
+    bool firstOrderOnly = false,
+    bool isPublic = false,
+    String? title,
+    String? vendorId,
+    String fundedBy = 'platform',
+  }) async {
+    try {
+      await _repository.edit(
+        id: id,
+        code: code,
+        discountType: discountType,
+        value: value,
+        minOrderAmount: minOrderAmount,
+        maxDiscount: maxDiscount,
+        usageLimit: usageLimit,
+        perUserLimit: perUserLimit,
+        startsAt: startsAt,
+        expiresAt: expiresAt,
+        firstOrderOnly: firstOrderOnly,
+        isPublic: isPublic,
+        title: title,
+        vendorId: vendorId,
+        fundedBy: fundedBy,
+      );
+      await load();
+      return true;
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+      return false;
+    }
+  }
+
   Future<void> toggleActive(Coupon coupon) async {
     try {
       await _repository.setActive(coupon.id, !coupon.isActive);

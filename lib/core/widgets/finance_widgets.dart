@@ -30,6 +30,9 @@ String ledgerTypeLabel(BuildContext context, String type) {
     'platform_delivery_margin' => l10n.deliveryFeesTotal,
     'platform_service_fee' => l10n.serviceFee,
     'platform_discount' => l10n.platformFundedDiscounts,
+    'early_settlement_fee' => l10n.earlySettlementFees,
+    'platform_markup' => l10n.campaignMarkupLedger,
+    'platform_subscription' => l10n.subscriptionFee,
     'refund' => l10n.refunds,
     'bonus' => l10n.bonus,
     'penalty' => l10n.penalty,
@@ -51,6 +54,9 @@ IconData ledgerTypeIcon(String type) => switch (type) {
   'platform_delivery_margin' => Icons.local_shipping_rounded,
   'platform_service_fee' => Icons.receipt_long_rounded,
   'platform_discount' => Icons.local_offer_rounded,
+  'early_settlement_fee' => Icons.bolt_rounded,
+  'platform_markup' => Icons.trending_up_rounded,
+  'platform_subscription' => Icons.event_repeat_rounded,
   'refund' => Icons.undo_rounded,
   'bonus' => Icons.card_giftcard_rounded,
   'penalty' => Icons.gavel_rounded,
@@ -1667,8 +1673,19 @@ class _SettlementProofState extends State<_SettlementProof> {
               child: SizedBox(
                 height: 200,
                 width: double.infinity,
-                child: url == null
-                    ? const ColoredBox(color: AppColors.canvas)
+                child: snapshot.connectionState != ConnectionState.done
+                    ? const ColoredBox(
+                        color: AppColors.canvas,
+                        child: Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          ),
+                        ),
+                      )
+                    : url == null
+                    ? const _ProofUnavailable()
                     : GestureDetector(
                         onTap: () => showDialog<void>(
                           context: context,
@@ -1677,7 +1694,26 @@ class _SettlementProofState extends State<_SettlementProof> {
                             child: InteractiveViewer(child: Image.network(url)),
                           ),
                         ),
-                        child: Image.network(url, fit: BoxFit.cover),
+                        child: Image.network(
+                          url,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) =>
+                              progress == null
+                              ? child
+                              : const ColoredBox(
+                                  color: AppColors.canvas,
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          errorBuilder: (_, _, _) => const _ProofUnavailable(),
+                        ),
                       ),
               ),
             ),
@@ -1686,4 +1722,32 @@ class _SettlementProofState extends State<_SettlementProof> {
       },
     );
   }
+}
+
+/// The proof exists but could not be fetched — said plainly instead of an
+/// empty grey box that looks like nothing was attached.
+class _ProofUnavailable extends StatelessWidget {
+  const _ProofUnavailable();
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: AppColors.canvas,
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.broken_image_outlined,
+            color: AppColors.textFaint,
+            size: 30,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            context.l10n.proofImageUnavailable,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    ),
+  );
 }

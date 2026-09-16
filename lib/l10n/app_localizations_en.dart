@@ -248,7 +248,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveOverview => 'Live overview';
 
   @override
-  String get grossMerchandiseValue => 'Gross merchandise value';
+  String get grossMerchandiseValue => 'Total sales';
 
   @override
   String get a => 'A';
@@ -3550,7 +3550,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get frequencyOnce => 'Only once per device';
 
   @override
-  String get homeCravingPrompt => 'What would you like today?';
+  String get homeCravingPrompt => 'What are you eating today?';
 
   @override
   String get railRecommendedHint => 'Hand-picked places we love';
@@ -5351,4 +5351,466 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get paymentConfirmingBody =>
       'This takes a few seconds. Please don\'t close the app.';
+
+  @override
+  String get chooseFromGallery => 'Choose from gallery';
+
+  @override
+  String get takePhoto => 'Take a photo';
+
+  @override
+  String get proofImageUnavailable => 'Couldn\'t load the image';
+
+  @override
+  String get accountCreatedTitle => 'Account created';
+
+  @override
+  String get accountCreatedHint =>
+      'Share these login details with the owner. The password is not shown again.';
+
+  @override
+  String get copyLoginDetails => 'Copy';
+
+  @override
+  String get copiedLabel => 'Copied';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get newStoreAccount => 'New store';
+
+  @override
+  String get newDriverAccount => 'New driver';
+
+  @override
+  String get loginDetailsSection => 'Login details';
+
+  @override
+  String get ownerName => 'Owner name';
+
+  @override
+  String get passwordMin8 => 'At least 8 characters';
+
+  @override
+  String get generatePassword => 'Generate password';
+
+  @override
+  String get storeDetailsSection => 'Store details';
+
+  @override
+  String get platformTermsSection => 'Platform terms';
+
+  @override
+  String get storePhotosSection => 'Photos';
+
+  @override
+  String get storeLogoLabel => 'Logo';
+
+  @override
+  String get storeCoverLabel => 'Cover photo';
+
+  @override
+  String get driverDocumentsOptional => 'Documents (optional)';
+
+  @override
+  String get approveNow => 'Approve now';
+
+  @override
+  String get approveNowOnHint =>
+      'The account can start working as soon as it\'s created.';
+
+  @override
+  String get approveNowOffHint =>
+      'The account is created as pending and waits for approval.';
+
+  @override
+  String get createStoreAccount => 'Create store';
+
+  @override
+  String get createDriverAccount => 'Create driver';
+
+  @override
+  String get errStoreLocationRequired =>
+      'Pick the store\'s location on the map.';
+
+  @override
+  String get errStoreDetailsRequired =>
+      'Store name, category and address are required.';
+
+  @override
+  String get addStoreAccount => 'New store';
+
+  @override
+  String get addDriverAccount => 'New driver';
+
+  @override
+  String shareVendorMessage(String name) {
+    return 'Check out $name on KitchenIn';
+  }
+
+  @override
+  String get changePassword => 'Change password';
+
+  @override
+  String get setAPassword => 'Set a password';
+
+  @override
+  String get currentPassword => 'Current password';
+
+  @override
+  String get currentPasswordWrong => 'The current password is incorrect.';
+
+  @override
+  String get newPasswordSameAsOld =>
+      'The new password must be different from the current one.';
+
+  @override
+  String get passwordChanged => 'Password changed';
+
+  @override
+  String get savePassword => 'Save password';
+
+  @override
+  String get accountSecurity => 'Account';
+
+  @override
+  String get soonLabel => 'Soon';
+
+  @override
+  String get comingSoonToggle => 'Show as coming soon';
+
+  @override
+  String categoryComingSoonMessage(String name) {
+    return '$name is coming soon';
+  }
+
+  @override
+  String get pickupCodeTitle => 'Pickup code';
+
+  @override
+  String get pickupCodeHint =>
+      'Ask the store for the six-digit code to collect this order.';
+
+  @override
+  String get pickupCodeVendorHint =>
+      'Read this out to the driver when they collect the order.';
+
+  @override
+  String get confirmPickup => 'Collect';
+
+  @override
+  String get goToStoreSubtitle => 'Go to the store';
+
+  @override
+  String get errWrongPickupCode =>
+      'Wrong pickup code. Ask the store to read it again.';
+
+  @override
+  String get maintenanceTitle => 'Maintenance';
+
+  @override
+  String get maintenanceBody =>
+      'We are making some improvements. The app will be back shortly.';
+
+  @override
+  String get maintenanceStateOn => 'Maintenance mode is on';
+
+  @override
+  String get maintenanceStateOff => 'The platform is open';
+
+  @override
+  String get maintenanceScope =>
+      'Customers, stores and drivers see the maintenance screen and no order can be placed. Admins keep full access.';
+
+  @override
+  String get maintenanceMessage => 'Message to show';
+
+  @override
+  String get maintenanceTurnOn => 'Turn on maintenance mode';
+
+  @override
+  String get maintenanceTurnOff => 'Reopen the platform';
+
+  @override
+  String get maintenanceSaveMessage => 'Save message';
+
+  @override
+  String get maintenanceOnToast => 'Maintenance mode is on';
+
+  @override
+  String get maintenanceOffToast => 'The platform is open again';
+
+  @override
+  String get errMaintenanceMode =>
+      'The app is under maintenance right now. Please try again shortly.';
+
+  @override
+  String get staffTitle => 'Team';
+
+  @override
+  String get staffAdd => 'Add a team member';
+
+  @override
+  String get staffIntro =>
+      'Team logins work inside your store only. They never see sales, payouts or your plan.';
+
+  @override
+  String get staffEmpty => 'Nobody on the team yet.';
+
+  @override
+  String get staffNoPermissions => 'No access yet';
+
+  @override
+  String get staffPermissionsHint => 'Choose what this person can do.';
+
+  @override
+  String get staffPermOrders => 'Take and manage orders';
+
+  @override
+  String get staffPermMenu => 'Edit the menu';
+
+  @override
+  String get staffPermReviews => 'Read reviews';
+
+  @override
+  String get staffPermSettings => 'Edit store settings';
+
+  @override
+  String get staffPickOnePermission => 'Pick at least one permission.';
+
+  @override
+  String get staffRemoveConfirm =>
+      'They lose access to the store. Their login stays as a normal customer account.';
+
+  @override
+  String get errNoPermissions => 'Pick at least one permission.';
+
+  @override
+  String get errAlreadyStoreOwner => 'This account already owns a store.';
+
+  @override
+  String get staffNoAccess =>
+      'Your account does not have access to this section.';
+
+  @override
+  String get campaignsTitle => 'Price campaigns';
+
+  @override
+  String get campaignNew => 'New campaign';
+
+  @override
+  String get campaignName => 'Campaign name';
+
+  @override
+  String get campaignPercent => 'Price uplift';
+
+  @override
+  String get campaignPercentHint =>
+      'Menu prices rise by this much while the campaign runs, and go back when it ends. Stores are still paid on their own price, so the uplift covers the discount you give the customer.';
+
+  @override
+  String get campaignScopeAll => 'All stores';
+
+  @override
+  String get campaignIntro =>
+      'A campaign raises menu prices for as long as it runs. Set the uplift to match the discount you are about to offer.';
+
+  @override
+  String get campaignEmpty => 'No campaigns yet.';
+
+  @override
+  String get campaignEnd => 'End campaign';
+
+  @override
+  String get campaignEndConfirm =>
+      'Prices go back to what they were. Prices a store changed during the campaign are left alone.';
+
+  @override
+  String campaignEnded(int count) {
+    return '$count prices restored';
+  }
+
+  @override
+  String campaignItemsRaised(int count) {
+    return '$count items';
+  }
+
+  @override
+  String get campaignStatusEnded => 'Ended';
+
+  @override
+  String get campaignStartNow => 'Start now';
+
+  @override
+  String get campaignMarkupLedger => 'Campaign uplift';
+
+  @override
+  String minOrderOf(String amount) {
+    return 'min order $amount';
+  }
+
+  @override
+  String get orderNow => 'Order now';
+
+  @override
+  String get minOrderLabel => 'Minimum order';
+
+  @override
+  String get minOrderHint => 'Leave it at 0 for no minimum.';
+
+  @override
+  String get editCoupon => 'Edit code';
+
+  @override
+  String get couponUpdated => 'Code updated';
+
+  @override
+  String couponsAvailable(int count) {
+    return '$count codes for you';
+  }
+
+  @override
+  String get couponsSheetTitle => 'Codes you can use';
+
+  @override
+  String get couponsSheetHint =>
+      'Tap a code to copy it, then paste it at checkout.';
+
+  @override
+  String get storesSectionTitle => 'Stores';
+
+  @override
+  String get swipeForCoupons => 'Swipe to see the codes you can use';
+
+  @override
+  String get favoritesEmptyHint =>
+      'Explore shops and save your favourite places to find them quickly here.';
+
+  @override
+  String get exploreStores => 'Explore stores';
+
+  @override
+  String removedFromFavorites(String name) {
+    return '$name removed from favourites';
+  }
+
+  @override
+  String get favoriteUpdateFailed => 'Could not update your favourites.';
+
+  @override
+  String get swipeForDiscount => 'Swipe for your discount';
+
+  @override
+  String get exploreStoresTitle => 'Explore stores';
+
+  @override
+  String get redeemPoints => 'Redeem points';
+
+  @override
+  String get redeemToWallet => 'Turn points into wallet credit';
+
+  @override
+  String redeemRateHint(int points, String amount) {
+    return '$points points = $amount wallet credit.';
+  }
+
+  @override
+  String redeemMinHint(int points) {
+    return 'You can redeem from $points points.';
+  }
+
+  @override
+  String get redeemAmountLabel => 'Points to redeem';
+
+  @override
+  String redeemWorth(String amount) {
+    return 'Worth $amount';
+  }
+
+  @override
+  String redeemDone(String amount) {
+    return '$amount added to your wallet';
+  }
+
+  @override
+  String get errBelowMinRedeem => 'You need more points before you can redeem.';
+
+  @override
+  String get errNotEnoughPoints => 'You do not have that many points.';
+
+  @override
+  String get platformRunOrders => 'We run this store\'s orders';
+
+  @override
+  String get platformRunOn =>
+      'Orders skip the store: they go straight to a driver and the admin moves them along.';
+
+  @override
+  String get platformRunOff => 'The store accepts and prepares its own orders.';
+
+  @override
+  String get platformRunBadge => 'Run by us';
+
+  @override
+  String advanceOrder(String status) {
+    return 'Move order to $status';
+  }
+
+  @override
+  String get usernameLabel => 'Username';
+
+  @override
+  String get usernameHint =>
+      'Letters, numbers, dot or underscore. 3–20 characters.';
+
+  @override
+  String get emailOrUsername => 'Email or username';
+
+  @override
+  String get emailOrUsernameHint => 'sara@email.com or sara';
+
+  @override
+  String get usernameTaken => 'That username is taken.';
+
+  @override
+  String get usernameInvalid => 'Use 3–20 letters, numbers, dot or underscore.';
+
+  @override
+  String get errUsernameTaken => 'That username is taken.';
+
+  @override
+  String get errInvalidUsername =>
+      'Use 3–20 letters, numbers, dot or underscore.';
+
+  @override
+  String get errUnknownLogin => 'No account with that username.';
+
+  @override
+  String get stageConfirmed => 'Confirmed';
+
+  @override
+  String get stageOnTheWay => 'On the way';
+
+  @override
+  String get couponsCardTitle => 'A discount is waiting';
+
+  @override
+  String couponsCardSubtitle(int count) {
+    return '$count codes ready to use';
+  }
+
+  @override
+  String get threadStore => 'Store';
+
+  @override
+  String get threadDriver => 'Rider';
+
+  @override
+  String get pickADay => 'Pick a day';
+
+  @override
+  String ordersForDay(String day) {
+    return 'Orders · $day';
+  }
 }

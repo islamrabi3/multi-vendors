@@ -7,6 +7,7 @@ class ChatMessage extends Equatable {
     required this.senderId,
     required this.message,
     required this.createdAt,
+    this.thread = 'vendor',
     this.imageUrl,
     this.isRead = false,
     this.senderName,
@@ -19,6 +20,9 @@ class ChatMessage extends Equatable {
   final String orderId;
   final String senderId;
   final String message;
+
+  /// `vendor` (customer ↔ store) or `driver` (customer ↔ rider).
+  final String thread;
   final String? imageUrl;
   final bool isRead;
   final DateTime createdAt;
@@ -42,6 +46,7 @@ class ChatMessage extends Equatable {
       orderId: map['order_id'] as String,
       senderId: map['sender_id'] as String,
       message: map['message'] as String,
+      thread: (map['thread'] as String?) ?? 'vendor',
       imageUrl: map['image_url'] as String?,
       isRead: (map['is_read'] as bool?) ?? false,
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),

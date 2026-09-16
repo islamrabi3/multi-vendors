@@ -2,6 +2,7 @@
 class ChatConversation {
   const ChatConversation({
     required this.orderId,
+    this.thread = 'vendor',
     required this.orderNumber,
     required this.orderStatus,
     required this.lastAt,
@@ -16,6 +17,10 @@ class ChatConversation {
   });
 
   final String orderId;
+
+  /// Which of the order's two conversations this row is: `vendor` or
+  /// `driver`.
+  final String thread;
   final String orderNumber;
   final String orderStatus;
   final String? vendorName;
@@ -33,6 +38,7 @@ class ChatConversation {
   factory ChatConversation.fromMap(Map<String, dynamic> map) =>
       ChatConversation(
         orderId: map['order_id'] as String,
+        thread: (map['thread'] as String?) ?? 'vendor',
         orderNumber: (map['order_number'] as String?) ?? '',
         orderStatus: (map['order_status'] as String?) ?? '',
         vendorName: map['vendor_name'] as String?,

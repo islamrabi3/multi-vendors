@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/errors/app_failure.dart' show UserMessage;
 import 'package:multi_vendor/features/admin/admin_action_badges.dart';
 import 'package:multi_vendor/core/widgets/count_badge.dart';
 import 'package:flutter/services.dart';
@@ -206,7 +207,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
             title: l10n.attachPaymentProof,
             hint: l10n.attachPaymentProofHint,
             onPick: () async {
-              final picked = await pickProofPhoto();
+              final picked = await pickProofPhoto(context);
               if (picked == null) return;
               proof = picked;
               rebuild();
@@ -223,10 +224,10 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
       onSubmit: (_) async {
         final amount = double.tryParse(_amountController.text.trim());
         if (amount == null || amount <= 0) {
-          throw Exception(l10n.amountRequired);
+          throw UserMessage(l10n.amountRequired);
         }
         final picked = proof;
-        if (picked == null) throw Exception(l10n.paymentProofRequired);
+        if (picked == null) throw UserMessage(l10n.paymentProofRequired);
         final proofPath = await _repository.uploadSettlementProof(
           ownerType: ownerType,
           ownerId: party.ownerId,
@@ -278,7 +279,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
           title: l10n.attachPaymentProof,
           hint: l10n.attachPaymentProofHint,
           onPick: () async {
-            final picked = await pickProofPhoto();
+            final picked = await pickProofPhoto(context);
             if (picked == null) return;
             proof = picked;
             rebuild();
@@ -292,7 +293,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         cancelLabel: l10n.cancel,
         onSubmit: (_) async {
           final picked = proof;
-          if (picked == null) throw Exception(l10n.paymentProofRequired);
+          if (picked == null) throw UserMessage(l10n.paymentProofRequired);
           final path = await _repository.uploadSettlementProof(
             ownerType: request.ownerType,
             ownerId: request.ownerId,
@@ -522,9 +523,9 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         final percent = double.tryParse(_feePercentController.text.trim());
         final min = double.tryParse(_feeMinController.text.trim());
         if (percent == null || percent < 0 || percent > 100) {
-          throw Exception(l10n.invalidFeePercent);
+          throw UserMessage(l10n.invalidFeePercent);
         }
-        if (min == null || min < 0) throw Exception(l10n.invalidFeeMin);
+        if (min == null || min < 0) throw UserMessage(l10n.invalidFeeMin);
         final updated = await _repository.setEarlySettlementFee(
           percent: percent,
           min: min,

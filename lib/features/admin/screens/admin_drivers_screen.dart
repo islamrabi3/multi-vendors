@@ -14,6 +14,7 @@ import '../../../core/widgets/web/adaptive_sheet.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../../auth/auth_cubit.dart';
+import 'admin_create_account_screen.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 
 enum DriverFilter { all, pending, active, suspended }
@@ -306,6 +307,23 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
       ],
     );
 
+    // Creating a driver is approving one, so it needs the same permission.
+    Future<void> newDriver() async {
+      final created = await AdminCreateAccountScreen.open(
+        context,
+        NewAccountKind.driver,
+      );
+      if (created == true) _load();
+    }
+
+    final newDriverButton = canApprove
+        ? FilledButton.icon(
+            onPressed: newDriver,
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+            label: Text(l10n.addDriverAccount),
+          )
+        : null;
+
     final searchField = _drivers.length > 5
         ? Padding(
             padding: EdgeInsets.symmetric(
@@ -351,6 +369,13 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (newDriverButton != null) ...[
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: newDriverButton,
+              ),
+              const SizedBox(height: AppSpace.md),
+            ],
             filterBar,
             if (searchField != null) ...[
               const SizedBox(height: AppSpace.sm),
@@ -374,6 +399,13 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (newDriverButton != null) ...[
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: newDriverButton,
+                ),
+                const SizedBox(height: AppSpace.md),
+              ],
               filterBar,
               if (searchField != null) ...[
                 const SizedBox(height: AppSpace.sm),
@@ -389,7 +421,17 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(title: Text(l10n.driverApprovals)),
+      appBar: AppBar(
+        title: Text(l10n.driverApprovals),
+        actions: [
+          if (canApprove)
+            IconButton(
+              tooltip: l10n.addDriverAccount,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              onPressed: newDriver,
+            ),
+        ],
+      ),
       body: SafeArea(
         top: false,
         child: Column(

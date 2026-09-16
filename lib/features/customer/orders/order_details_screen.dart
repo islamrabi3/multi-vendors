@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
+import '../../../core/repositories/chat_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/repositories/payment_repository.dart';
 import '../../../core/repositories/report_repository.dart';
@@ -112,8 +113,7 @@ class _OrderDetailsView extends StatelessWidget {
         );
       }
     } finally {
-      subject.dispose();
-      description.dispose();
+      disposeAfterClose([subject, description]);
     }
   }
 
@@ -176,7 +176,7 @@ class _OrderDetailsView extends StatelessWidget {
                   ),
                 )
               else
-                _StatusStepper(order: order),
+                _StatusStepper(order: order, platformRun: state.platformRun),
               if (order.status == OrderStatus.outForDelivery) ...[
                 const SizedBox(height: 16),
                 _EtaBanner(order: order, driverLocation: state.driverLocation),
@@ -211,7 +211,9 @@ class _OrderDetailsView extends StatelessWidget {
                     '${item.quantity}x',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  title: Text(item.productName),
+                  title: Text(
+                    item.nameFor(Localizations.localeOf(context).languageCode),
+                  ),
                   subtitle: item.optionNames.isEmpty
                       ? null
                       : Text(item.optionNames.join(', ')),
@@ -258,31 +260,33 @@ class _OrderDetailsView extends StatelessWidget {
               // below already reaches support.
               // While the order is live there is always someone to talk to:
               // the store until a driver takes it, then the driver.
+              // Two conversations, never one room: what the customer tells
+              // the rider is not the store's business, and the reverse.
               if (!order.status.isTerminal)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (_) => OrderChatSheet(orderId: order.id),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ChatButton(
+                          orderId: order.id,
+                          thread: ChatRepository.vendorThread,
+                          label: context.l10n.chatWithStore,
+                          icon: Icons.storefront_rounded,
+                        ),
                       ),
-                      icon: ChatUnreadBadge(
-                        orderId: order.id,
-                        top: -8,
-                        end: -10,
-                        child: const Icon(Icons.chat_bubble_outline),
-                      ),
-                      label: Text(
-                        order.driverId != null
-                            ? context.l10n.chatWithDriver
-                            : context.l10n.chatWithStore,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                      if (order.driverId != null) ...[
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _ChatButton(
+                            orderId: order.id,
+                            thread: ChatRepository.driverThread,
+                            label: context.l10n.chatWithDriver,
+                            icon: Icons.two_wheeler_rounded,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               if (order.status == OrderStatus.pending)
@@ -380,12 +384,17 @@ class _OrderDetailsView extends StatelessWidget {
 }
 
 class _StatusStepper extends StatelessWidget {
-  const _StatusStepper({required this.order});
+  const _StatusStepper({required this.order, this.platformRun = false});
 
   final AppOrder order;
 
+  /// On a store the platform runs, there is nobody to report "preparing", so
+  /// the tracker is confirmed → on the way → delivered.
+  final bool platformRun;
+
   @override
   Widget build(BuildContext context) {
+    if (platformRun) return _platformStepper(context);
     int currentStep = 0;
     if (order.status == OrderStatus.pending) {
       currentStep = 0;
@@ -444,6 +453,59 @@ class _StatusStepper extends StatelessWidget {
             children: [
               _buildStepTime(context, order.acceptedAt),
               _buildStepTime(context, order.readyAt),
+              _buildStepTime(context, order.pickedUpAt),
+              _buildStepTime(context, order.deliveredAt),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The same card with three nodes: confirmed, on the way, delivered.
+  Widget _platformStepper(BuildContext context) {
+    final step = switch (order.status) {
+      OrderStatus.delivered => 2,
+      OrderStatus.outForDelivery => 1,
+      _ => 0,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _buildStepNode(0, step, isIcon: false, text: '✓'),
+              _buildLine(0, step),
+              _buildStepNode(
+                1,
+                step,
+                isIcon: true,
+                icon: Icons.delivery_dining,
+              ),
+              _buildLine(1, step),
+              _buildStepNode(2, step, isIcon: false, text: ''),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStepLabel(context.l10n.statusConfirmed, 0, step),
+              _buildStepLabel(context.l10n.statusOnTheWay, 1, step),
+              _buildStepLabel(context.l10n.statusDelivered, 2, step),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStepTime(context, order.acceptedAt ?? order.createdAt),
               _buildStepTime(context, order.pickedUpAt),
               _buildStepTime(context, order.deliveredAt),
             ],
@@ -1187,6 +1249,43 @@ class _TipCardState extends State<_TipCard> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One of an order's two conversations, with its own unread badge.
+class _ChatButton extends StatelessWidget {
+  const _ChatButton({
+    required this.orderId,
+    required this.thread,
+    required this.label,
+    required this.icon,
+  });
+
+  final String orderId;
+  final String thread;
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+      ),
+      onPressed: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => OrderChatSheet(orderId: orderId, thread: thread),
+      ),
+      icon: ChatUnreadBadge(
+        orderId: orderId,
+        thread: thread,
+        top: -8,
+        end: -10,
+        child: Icon(icon, size: 18),
+      ),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }

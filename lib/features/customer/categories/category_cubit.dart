@@ -18,7 +18,12 @@ class CategoryState extends Equatable {
     this.favoriteVendorIds = const {},
     this.openOnly = false,
     this.selectedChildId,
+    this.categoryId = '',
   });
+
+  /// The page's own category id, needed to tell its picks from its
+  /// sub-categories'.
+  final String categoryId;
 
   final bool loading;
   final String? error;
@@ -31,8 +36,9 @@ class CategoryState extends Equatable {
   /// the page from a directory into a plain store list.
   final List<VendorCategory> children;
 
-  /// The admin's picks for this category, best rank first.
-  final List<Vendor> recommended;
+  /// Every category's admin picks, filtered to this page in
+  /// [recommendedVisible].
+  final List<({String categoryId, int rank, Vendor vendor})> recommended;
 
   /// Every store filed under this category or any of its children.
   final List<Vendor> vendors;
@@ -66,6 +72,53 @@ class CategoryState extends Equatable {
     return openOnly ? scoped.where((v) => v.isOpenNow()).toList() : scoped;
   }
 
+  /// The recommended row for what is on screen.
+  ///
+  /// On "All" it gathers every recommended store in this category: the picks
+  /// made for the category itself, the picks made for each of its
+  /// sub-categories, and stores the admin recommended overall that are filed
+  /// here. With a sub-category selected it is the same, narrowed to that
+  /// sub-category. Only stores an admin chose, never filler.
+  List<Vendor> get recommendedVisible {
+    final child = selectedChildId;
+    final scopeIds = child == null
+        ? {categoryId, for (final c in children) c.id}
+        : {child};
+    final inScope = child == null
+        ? vendors
+        : vendors.where((v) => v.categoryId == child).toList();
+    final inScopeIds = {for (final v in inScope) v.id};
+
+    final picks =
+        recommended
+            .where(
+              (p) =>
+                  scopeIds.contains(p.categoryId) ||
+                  // A pick made on the parent still shows under the
+                  // sub-category its store belongs to.
+                  (child != null &&
+                      p.categoryId == categoryId &&
+                      inScopeIds.contains(p.vendor.id)),
+            )
+            .toList()
+          ..sort((a, b) {
+            // The page's own picks lead, then its sub-categories'.
+            final aOwn = a.categoryId == (child ?? categoryId) ? 0 : 1;
+            final bOwn = b.categoryId == (child ?? categoryId) ? 0 : 1;
+            if (aOwn != bOwn) return aOwn - bOwn;
+            return a.rank.compareTo(b.rank);
+          });
+
+    final overall = inScope.where((v) => v.isRecommended).toList()
+      ..sort((a, b) => a.recommendedRank.compareTo(b.recommendedRank));
+
+    final seen = <String>{};
+    return [
+      for (final v in [for (final p in picks) p.vendor, ...overall])
+        if (seen.add(v.id)) v,
+    ];
+  }
+
   bool get isLeaf => children.isEmpty;
 
   CategoryState copyWith({
@@ -74,13 +127,14 @@ class CategoryState extends Equatable {
     bool clearError = false,
     VendorCategory? category,
     List<VendorCategory>? children,
-    List<Vendor>? recommended,
+    List<({String categoryId, int rank, Vendor vendor})>? recommended,
     List<Vendor>? vendors,
     Set<String>? favoriteVendorIds,
     bool? openOnly,
     String? selectedChildId,
     bool clearSelectedChild = false,
   }) => CategoryState(
+    categoryId: categoryId,
     loading: loading ?? this.loading,
     error: clearError ? null : (error ?? this.error),
     category: category ?? this.category,
@@ -105,6 +159,7 @@ class CategoryState extends Equatable {
     favoriteVendorIds,
     openOnly,
     selectedChildId,
+    categoryId,
   ];
 }
 
@@ -116,7 +171,7 @@ class CategoryState extends Equatable {
 /// losing it must not cost the customer the list.
 class CategoryCubit extends Cubit<CategoryState> {
   CategoryCubit(this._catalog, this._favorites, this.categoryId)
-    : super(const CategoryState()) {
+    : super(CategoryState(categoryId: categoryId)) {
     load();
     _loadFavorites();
   }
@@ -129,7 +184,6 @@ class CategoryCubit extends Cubit<CategoryState> {
 
   Future<void> load() async {
     emit(state.copyWith(loading: true, clearError: true));
-    final scope = state.selectedChildId ?? categoryId;
     try {
       // The picks go out with the page, not after it. Fetched second, they
       // landed a beat after the store list and the rail pushed every card
@@ -137,15 +191,18 @@ class CategoryCubit extends Cubit<CategoryState> {
       final results = await Future.wait<Object>([
         _catalog.fetchVendorCategories(),
         _catalog.fetchVendorsInCategory(categoryId),
-        _catalog
-            .fetchCategoryRecommendations(scope)
-            .then<List<Vendor>>((v) => v, onError: (_) => const <Vendor>[]),
+        _catalog.fetchAllCategoryRecommendations().then<Object>(
+          (v) => v,
+          onError: (_) =>
+              const <({String categoryId, int rank, Vendor vendor})>[],
+        ),
       ]).timeout(_fetchTimeout);
       if (isClosed) return;
 
       final categories = results[0] as List<VendorCategory>;
       final vendors = results[1] as List<Vendor>;
-      final recommended = results[2] as List<Vendor>;
+      final recommended =
+          results[2] as List<({String categoryId, int rank, Vendor vendor})>;
       VendorCategory? category;
       for (final c in categories) {
         if (c.id == categoryId) category = c;
@@ -160,11 +217,7 @@ class CategoryCubit extends Cubit<CategoryState> {
           category: category,
           children: children,
           vendors: vendors,
-          // A sub-category picked while this was in flight gets its own
-          // picks from selectChild; these would be the wrong ones.
-          recommended: (state.selectedChildId ?? categoryId) == scope
-              ? recommended
-              : null,
+          recommended: recommended,
         ),
       );
     } catch (error) {
@@ -177,9 +230,7 @@ class CategoryCubit extends Cubit<CategoryState> {
   /// the parent when [childId] is null or is the one already selected.
   ///
   /// The stores are filtered locally — they were all fetched with the page —
-  /// so the list changes on the same frame as the tap. Only the promoted rail
-  /// needs the network, and it is left showing the previous picks until the
-  /// new ones land rather than blinking empty.
+  /// so the list and the recommended row change on the same frame as the tap.
   void selectChild(String? childId) {
     final next = childId == state.selectedChildId ? null : childId;
     emit(
@@ -187,18 +238,6 @@ class CategoryCubit extends Cubit<CategoryState> {
           ? state.copyWith(clearSelectedChild: true)
           : state.copyWith(selectedChildId: next),
     );
-    _loadRecommended(next ?? categoryId);
-  }
-
-  /// Guarded by the id it was asked for: two quick taps can land out of order,
-  /// and the answer to the older one must not overwrite the newer.
-  Future<void> _loadRecommended(String forCategoryId) async {
-    try {
-      final picks = await _catalog.fetchCategoryRecommendations(forCategoryId);
-      if (isClosed) return;
-      if ((state.selectedChildId ?? categoryId) != forCategoryId) return;
-      emit(state.copyWith(recommended: picks));
-    } catch (_) {}
   }
 
   Future<void> _loadFavorites() async {

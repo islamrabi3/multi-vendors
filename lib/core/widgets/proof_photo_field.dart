@@ -10,16 +10,73 @@ import '../utils/l10n_extension.dart';
 /// A photo the user picked, held in memory until the form is submitted.
 typedef PickedProof = ({String name, Uint8List bytes});
 
-/// Opens the camera on a phone (a receipt is photographed where it is) and
-/// the file picker on the web.
-Future<PickedProof?> pickProofPhoto() async {
-  final picked = await ImagePicker().pickImage(
-    source: kIsWeb ? ImageSource.gallery : ImageSource.camera,
-    maxWidth: 1600,
-    imageQuality: 80,
+/// Lets the user take a photo or pick one they already have — a transfer
+/// screenshot is in the gallery, a paper receipt is in their hand. The web has
+/// no camera to offer, so it goes straight to the file picker.
+///
+/// Returns null when nothing was chosen, including when the source is not
+/// available on this device (a simulator has no camera).
+Future<PickedProof?> pickProofPhoto(BuildContext context) async {
+  final source = kIsWeb
+      ? ImageSource.gallery
+      : await showModalBottomSheet<ImageSource>(
+          context: context,
+          showDragHandle: true,
+          builder: (sheetContext) {
+            final l10n = sheetContext.l10n;
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.md),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      leading: const _SourceIcon(Icons.photo_library_rounded),
+                      title: Text(l10n.chooseFromGallery),
+                      onTap: () =>
+                          Navigator.pop(sheetContext, ImageSource.gallery),
+                    ),
+                    ListTile(
+                      leading: const _SourceIcon(Icons.photo_camera_rounded),
+                      title: Text(l10n.takePhoto),
+                      onTap: () =>
+                          Navigator.pop(sheetContext, ImageSource.camera),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+  if (source == null) return null;
+  try {
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1600,
+      imageQuality: 80,
+    );
+    if (picked == null) return null;
+    return (name: picked.name, bytes: await picked.readAsBytes());
+  } catch (_) {
+    return null;
+  }
+}
+
+class _SourceIcon extends StatelessWidget {
+  const _SourceIcon(this.icon);
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(
+      color: AppColors.warmFill,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+    ),
+    child: Icon(icon, color: AppColors.primary, size: 20),
   );
-  if (picked == null) return null;
-  return (name: picked.name, bytes: await picked.readAsBytes());
 }
 
 /// The "attach receipt" tile used by every money hand-over form.

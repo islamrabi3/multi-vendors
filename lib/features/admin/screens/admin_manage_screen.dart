@@ -42,6 +42,12 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           permission: 'users.block',
         ),
         ManageNavItem(
+          icon: Icons.build_outlined,
+          label: l10n.maintenanceTitle,
+          route: '/admin-app/maintenance',
+          permission: 'staff.manage',
+        ),
+        ManageNavItem(
           icon: Icons.admin_panel_settings_outlined,
           label: l10n.managementRoles,
           route: '/admin-app/roles',
@@ -133,6 +139,12 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           label: l10n.promos,
           route: '/admin-app/promos',
           permission: 'promos.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.trending_up_rounded,
+          label: l10n.campaignsTitle,
+          route: '/admin-app/price-campaigns',
+          permission: 'catalog.manage',
         ),
         ManageNavItem(
           icon: Icons.ad_units_outlined,
@@ -247,6 +259,13 @@ class AdminManageScreen extends StatelessWidget {
               const SizedBox(height: AppSpace.lg),
             ],
             const SizedBox(height: AppSpace.sm),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => context.push('/change-password'),
+                icon: const Icon(Icons.key_rounded, size: 18),
+                label: Text(l10n.changePassword),
+              ),
+            ),
             Center(
               child: TextButton.icon(
                 onPressed: () => context.read<AuthCubit>().signOut(),

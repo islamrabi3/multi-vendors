@@ -23,6 +23,7 @@ class AdminOrdersState extends Equatable {
     this.loadingMore = false,
     this.hasMore = true,
     this.error,
+    this.day,
   });
 
   final bool loading;
@@ -38,13 +39,32 @@ class AdminOrdersState extends Equatable {
   final bool hasMore;
   final String? error;
 
+  /// The calendar day being read. Null is never used: the monitor opens on
+  /// today, and an older day is chosen deliberately.
+  final DateTime? day;
+
+  DateTime get selectedDay => day ?? DateTime.now();
+
+  bool get isToday {
+    final now = DateTime.now();
+    final d = selectedDay;
+    return d.year == now.year && d.month == now.month && d.day == now.day;
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
   static bool isFlagged(AppOrder o) =>
       !o.status.isTerminal &&
       o.status != OrderStatus.outForDelivery &&
       DateTime.now().difference(o.createdAt) > _stuckAfter;
 
   /// Live and history are disjoint by status, so this never repeats a row.
-  List<AppOrder> get orders => [...liveOrders, ...history];
+  /// Both are narrowed to the day on screen.
+  List<AppOrder> get orders => [
+    ...liveOrders.where((o) => _sameDay(o.createdAt, selectedDay)),
+    ...history,
+  ];
 
   int get liveCount => liveOrders.length;
   int get flaggedCount => liveOrders.where(isFlagged).length;
@@ -83,6 +103,7 @@ class AdminOrdersState extends Equatable {
     bool? loadingMore,
     bool? hasMore,
     String? error,
+    DateTime? day,
     bool clearError = false,
   }) => AdminOrdersState(
     loading: loading ?? this.loading,
@@ -93,6 +114,7 @@ class AdminOrdersState extends Equatable {
     loadingMore: loadingMore ?? this.loadingMore,
     hasMore: hasMore ?? this.hasMore,
     error: clearError ? null : (error ?? this.error),
+    day: day ?? this.day,
   );
 
   @override
@@ -105,6 +127,7 @@ class AdminOrdersState extends Equatable {
     loadingMore,
     hasMore,
     error,
+    day,
   ];
 }
 
@@ -120,6 +143,20 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState> {
   }
 
   final AdminRepository _repository;
+
+  /// Reads another day: the history is dropped and re-paged from that day.
+  Future<void> setDay(DateTime day) async {
+    emit(
+      state.copyWith(
+        day: DateTime(day.year, day.month, day.day),
+        history: const [],
+        hasMore: true,
+        loadingMore: false,
+      ),
+    );
+    await loadMore();
+  }
+
   StreamSubscription<List<AppOrder>>? _subscription;
   Set<String> _liveIds = {};
 
@@ -167,6 +204,7 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState> {
       final page = await _repository.fetchOrdersHistoryPage(
         limit: kPageSize,
         offset: state.history.length,
+        day: state.selectedDay,
       );
       final labels = await _withLabels(page);
       if (isClosed) return;
@@ -197,6 +235,7 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState> {
       final page = await _repository.fetchOrdersHistoryPage(
         limit: kPageSize,
         offset: 0,
+        day: state.selectedDay,
       );
       if (isClosed) return;
       final known = state.history.map((o) => o.id).toSet();

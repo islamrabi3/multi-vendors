@@ -244,6 +244,25 @@ void _showDriverControls(BuildContext context) {
             const Divider(height: 1, color: AppColors.borderSoft),
             ListTile(
               leading: const Icon(
+                Icons.key_rounded,
+                color: AppColors.textSecondary,
+              ),
+              title: Text(
+                l10n.changePassword,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textFaint,
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/change-password');
+              },
+            ),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            ListTile(
+              leading: const Icon(
                 Icons.support_agent_outlined,
                 color: AppColors.textSecondary,
               ),

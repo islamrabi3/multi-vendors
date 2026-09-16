@@ -25,6 +25,27 @@ const _flow = [
   OrderStatus.delivered,
 ];
 
+/// The words the admin uses for those three stages. "Accepted" is the store's
+/// word for a step the store did not take; "confirmed" is ours.
+String _platformStageLabel(BuildContext context, OrderStatus status) =>
+    switch (status) {
+      OrderStatus.accepted => context.l10n.stageConfirmed,
+      OrderStatus.outForDelivery => context.l10n.stageOnTheWay,
+      _ => status.localizedLabel(context),
+    };
+
+/// The same order seen from the platform's side, when we are the ones running
+/// it: confirmed, on the way, delivered.
+///
+/// "Preparing" and "ready for pickup" are stages a store reports; on a store
+/// that is not in the app nobody is there to report them, so showing them
+/// would be three rows that never light up.
+const _platformFlow = [
+  OrderStatus.accepted,
+  OrderStatus.outForDelivery,
+  OrderStatus.delivered,
+];
+
 /// Route entry for the phone flow: the detail view on its own page.
 class AdminOrderDetailScreen extends StatelessWidget {
   const AdminOrderDetailScreen({super.key, required this.orderId});
@@ -57,10 +78,27 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   late Future<AppOrder> _future;
   bool _busy = false;
 
+  /// True when the platform runs this store's orders, so the action bar
+  /// offers accept/prepare/ready instead of leaving them to a store that is
+  /// not in the app.
+  bool _platformRun = false;
+
   @override
   void initState() {
     super.initState();
     _future = _repo.fetchOrder(widget.orderId);
+    _loadFlow();
+  }
+
+  Future<void> _loadFlow() async {
+    try {
+      final order = await _future;
+      final vendor = await _repo.fetchVendor(order.vendorId);
+      if (!mounted) return;
+      setState(() => _platformRun = vendor.isPlatformRun);
+    } catch (_) {
+      // The bar simply keeps its cancel-only shape.
+    }
   }
 
   void _reload() => setState(() {
@@ -84,6 +122,35 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       if (mounted) showFailure(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// The next step this order would take if the store were doing it. Null on
+  /// a store that runs its own orders, or once the driver has it.
+  OrderStatus? _nextStatusFor(AppOrder order, bool platformRun) {
+    if (!platformRun) return null;
+    // Three steps only: confirm it, send it out, close it.
+    return switch (order.status) {
+      OrderStatus.pending => OrderStatus.accepted,
+      OrderStatus.accepted ||
+      OrderStatus.preparing ||
+      OrderStatus.readyForPickup => OrderStatus.outForDelivery,
+      OrderStatus.outForDelivery => OrderStatus.delivered,
+      _ => null,
+    };
+  }
+
+  Future<void> _advance(AppOrder order, OrderStatus next) async {
+    setState(() => _busy = true);
+    try {
+      await _repo.setOrderStatus(order.id, next);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _reload();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showFailure(context, error);
     }
   }
 
@@ -172,6 +239,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       }
       return _Body(
         order: snap.data!,
+        platformRun: _platformRun,
         // Reassigning a delivery is `orders.assign`; without it the row
         // still shows who is carrying the order, just no way to change it.
         onAssign: context.watch<AuthCubit>().state.can('orders.assign')
@@ -187,13 +255,21 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     builder: (context, snap) {
       if (!snap.hasData) return const SizedBox.shrink();
       final auth = context.watch<AuthCubit>().state;
+      final order = snap.data!;
+      // Only for a store the platform runs: an ordinary store's own app is
+      // where accept and ready belong.
+      final next = auth.can('orders.view')
+          ? _nextStatusFor(order, _platformRun)
+          : null;
       return _ActionBar(
-        order: snap.data!,
+        order: order,
         busy: _busy,
         canCancel: auth.can('orders.cancel'),
         canRefund: auth.can('payments.refund'),
+        nextStatus: next,
+        onAdvance: next == null ? null : () => _advance(order, next),
         onCancel: _cancel,
-        onRefund: () => _refund(snap.data!),
+        onRefund: () => _refund(order),
       );
     },
   );
@@ -267,8 +343,13 @@ class _Body extends StatelessWidget {
   const _Body({
     required this.order,
     required this.onAssign,
+    this.platformRun = false,
     this.showBack = true,
   });
+
+  /// True when the platform runs this store's orders, which shortens the
+  /// timeline to the three stages an admin actually moves through.
+  final bool platformRun;
 
   final AppOrder order;
 
@@ -436,7 +517,7 @@ class _Body extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 14),
-        _Timeline(order: order),
+        _Timeline(order: order, platformRun: platformRun),
         const SizedBox(height: 13),
         Row(
           children: [
@@ -684,7 +765,9 @@ class _ItemsCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            item.productName,
+                            item.nameFor(
+                              Localizations.localeOf(context).languageCode,
+                            ),
                             style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
@@ -773,16 +856,27 @@ class _ItemsCard extends StatelessWidget {
 }
 
 class _Timeline extends StatelessWidget {
-  const _Timeline({required this.order});
+  const _Timeline({required this.order, this.platformRun = false});
 
   final AppOrder order;
+  final bool platformRun;
 
   @override
   Widget build(BuildContext context) {
     final voided =
         order.status == OrderStatus.cancelled ||
         order.status == OrderStatus.rejected;
-    final currentIndex = _flow.indexOf(order.status);
+    final flow = platformRun ? _platformFlow : _flow;
+    // A platform-run order sits in one of the store's stages until the admin
+    // sends it out; all of those read as "confirmed" here.
+    final effective =
+        platformRun &&
+            (order.status == OrderStatus.preparing ||
+                order.status == OrderStatus.readyForPickup ||
+                order.status == OrderStatus.pending)
+        ? OrderStatus.accepted
+        : order.status;
+    final currentIndex = flow.indexOf(effective);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -792,17 +886,19 @@ class _Timeline extends StatelessWidget {
       ),
       child: Column(
         children: [
-          for (var i = 0; i < _flow.length; i++)
+          for (var i = 0; i < flow.length; i++)
             _step(
               context,
-              label: _flow[i].localizedLabel(context),
+              label: platformRun
+                  ? _platformStageLabel(context, flow[i])
+                  : flow[i].localizedLabel(context),
               done: !voided && currentIndex >= 0 && i < currentIndex,
               current: !voided && i == currentIndex,
               stalled:
                   !voided &&
                   i == currentIndex &&
                   order.status != OrderStatus.delivered,
-              isLast: i == _flow.length - 1,
+              isLast: i == flow.length - 1,
             ),
           if (voided)
             _step(
@@ -968,6 +1064,8 @@ class _ActionBar extends StatelessWidget {
     required this.canRefund,
     required this.onCancel,
     required this.onRefund,
+    this.nextStatus,
+    this.onAdvance,
   });
 
   final AppOrder order;
@@ -979,6 +1077,11 @@ class _ActionBar extends StatelessWidget {
   final bool canRefund;
   final VoidCallback onCancel;
   final VoidCallback onRefund;
+
+  /// Set when the platform is running this store's orders: the admin is the
+  /// one accepting and preparing, so the bar offers the next step.
+  final OrderStatus? nextStatus;
+  final VoidCallback? onAdvance;
 
   bool get _refundDue =>
       order.paymentMethod == 'paymob' &&
@@ -1040,16 +1143,35 @@ class _ActionBar extends StatelessWidget {
         ),
       );
     }
+    final next = nextStatus;
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(22, 10, 22, 18),
-      child: FilledButton.icon(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primaryDark,
-          minimumSize: const Size.fromHeight(52),
-        ),
-        onPressed: onCancel,
-        icon: const Icon(Icons.close_rounded, size: 19),
-        label: Text(context.l10n.cancelRefundOrder),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (next != null && onAdvance != null) ...[
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
+              onPressed: onAdvance,
+              icon: const Icon(Icons.play_arrow_rounded, size: 20),
+              label: Text(
+                context.l10n.advanceOrder(_platformStageLabel(context, next)),
+              ),
+            ),
+            const SizedBox(height: AppSpace.sm),
+          ],
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryDark,
+              minimumSize: const Size.fromHeight(52),
+            ),
+            onPressed: onCancel,
+            icon: const Icon(Icons.close_rounded, size: 19),
+            label: Text(context.l10n.cancelRefundOrder),
+          ),
+        ],
       ),
     );
   }

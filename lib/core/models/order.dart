@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'product.dart' show localizedText;
+
 enum OrderStatus {
   pending,
   accepted,
@@ -48,6 +50,7 @@ class OrderItem extends Equatable {
     required this.quantity,
     required this.lineTotal,
     this.productId,
+    this.productNameAr,
     this.optionNames = const [],
     this.optionIds = const [],
   });
@@ -59,6 +62,13 @@ class OrderItem extends Equatable {
   /// Null only for rows written before the column existed.
   final String? productId;
   final String productName;
+
+  /// Arabic name as it was when ordered; null when the product had none.
+  final String? productNameAr;
+
+  /// The name in the reader's language, falling back to [productName].
+  String nameFor(String languageCode) =>
+      localizedText(productName, productNameAr, languageCode);
   final double unitPrice;
   final int quantity;
   final double lineTotal;
@@ -75,6 +85,7 @@ class OrderItem extends Equatable {
     return OrderItem(
       productId: map['product_id'] as String?,
       productName: map['product_name'] as String,
+      productNameAr: map['product_name_ar'] as String?,
       unitPrice: ((map['unit_price'] as num?) ?? 0).toDouble(),
       quantity: ((map['quantity'] as num?) ?? 1).toInt(),
       lineTotal: ((map['line_total'] as num?) ?? 0).toDouble(),
@@ -93,6 +104,7 @@ class OrderItem extends Equatable {
   List<Object?> get props => [
     productId,
     productName,
+    productNameAr,
     unitPrice,
     quantity,
     lineTotal,
@@ -136,6 +148,7 @@ class AppOrder extends Equatable {
     this.readyAt,
     this.pickedUpAt,
     this.deliveredAt,
+    this.pickupCode,
   });
 
   final String id;
@@ -184,6 +197,11 @@ class AppOrder extends Equatable {
   final DateTime? readyAt;
   final DateTime? pickedUpAt;
   final DateTime? deliveredAt;
+
+  /// The six digits the store reads out to the driver at the counter. The
+  /// driver types them to move the order out for delivery, so nobody else can
+  /// collect it.
+  final String? pickupCode;
 
   bool get isPaid => paymentStatus == 'paid';
   bool get isCod => paymentMethod == 'cod';
@@ -252,6 +270,7 @@ class AppOrder extends Equatable {
       acceptedAt: _time(map['accepted_at']),
       readyAt: _time(map['ready_at']),
       pickedUpAt: _time(map['picked_up_at']),
+      pickupCode: map['pickup_code'] as String?,
       deliveredAt: _time(map['delivered_at']),
     );
   }

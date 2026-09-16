@@ -303,15 +303,17 @@ class OrderRepository {
         .toList();
   }
 
-  /// One-shot fetch of the driver's delivery in progress (pull-to-refresh).
-  /// Only `out_for_delivery` rows: that is all the caller looks for.
+  /// One-shot fetch of the driver's job in progress (pull-to-refresh).
+  ///
+  /// Claimed-but-not-collected counts: the driver is on the way to the store
+  /// and needs the screen that takes the store's pickup code.
   Future<List<AppOrder>> fetchDriverOrders() async {
     final userId = supabase.auth.currentUser!.id;
     final data = await supabase
         .from('orders')
         .select(_vendorJoin)
         .eq('driver_id', userId)
-        .eq('status', 'out_for_delivery')
+        .inFilter('status', const ['ready_for_pickup', 'out_for_delivery'])
         .order('created_at', ascending: false);
     return (data as List)
         .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))
@@ -325,6 +327,13 @@ class OrderRepository {
     );
     return result == true;
   }
+
+  /// Hands over the code the store gave the driver. Throws
+  /// `WRONG_PICKUP_CODE` when it does not match.
+  Future<void> confirmPickup(String orderId, String code) => supabase.rpc(
+    'driver_confirm_pickup',
+    params: {'p_order_id': orderId, 'p_code': code.trim()},
+  );
 
   Future<void> updateStatus(
     String orderId,

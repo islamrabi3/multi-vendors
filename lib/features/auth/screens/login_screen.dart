@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/errors/app_failure.dart' show UserMessage;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -58,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
       cancelLabel: l10n.cancel,
       onSubmit: (_) async {
         final email = _resetEmail.text.trim();
-        if (!email.contains('@')) throw Exception(l10n.enterValidEmail);
+        if (!email.contains('@')) throw UserMessage(l10n.enterValidEmail);
         await context.read<AuthCubit>().sendPasswordReset(email);
         return true;
       },
@@ -114,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Email Field
                   Text(
-                    context.l10n.email,
+                    context.l10n.emailOrUsername,
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -125,11 +126,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
                     decoration: InputDecoration(
-                      hintText: context.l10n.saraemailcom,
+                      hintText: context.l10n.emailOrUsernameHint,
                       fillColor: Colors.white,
                     ),
-                    validator: (v) => (v == null || !v.contains('@'))
+                    // Either form is fine; the repository swaps a username
+                    // for its email before the password is sent.
+                    validator: (v) => (v == null || v.trim().length < 3)
                         ? context.l10n.enterValidEmail
                         : null,
                   ),

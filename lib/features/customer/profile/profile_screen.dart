@@ -273,6 +273,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const _MenuDivider(),
                   _MenuRow(
+                    icon: Icons.key_rounded,
+                    label: context.l10n.changePassword,
+                    onTap: () => context.push('/change-password'),
+                  ),
+                  const _MenuDivider(),
+                  _MenuRow(
                     icon: Icons.support_agent_outlined,
                     label: context.l10n.contactSupport,
                     onTap: () => context.push('/support'),

@@ -43,8 +43,23 @@ enum FailureKind {
 /// errors, and anything the map did not know became "Something went wrong".
 /// Failures now carry their kind and code, and the text is resolved against
 /// the active locale at render time.
+/// A validation message that is already written for the user, in their
+/// language. Thrown from form dialogs so the sentence reaches the screen as-is
+/// instead of collapsing into "Something went wrong".
+class UserMessage implements Exception {
+  const UserMessage(this.text);
+
+  final String text;
+
+  @override
+  String toString() => text;
+}
+
 class AppFailure implements Exception {
-  const AppFailure({required this.kind, this.code, this.cause});
+  const AppFailure({required this.kind, this.code, this.cause, this.text});
+
+  /// Shown verbatim when set — see [UserMessage].
+  final String? text;
 
   final FailureKind kind;
 
@@ -62,6 +77,13 @@ class AppFailure implements Exception {
   /// hold `error.toString()` in their state — into one of these.
   factory AppFailure.from(Object error) {
     if (error is AppFailure) return error;
+    if (error is UserMessage) {
+      return AppFailure(
+        kind: FailureKind.rejected,
+        cause: error,
+        text: error.text,
+      );
+    }
 
     if (error is SocketException || error is TimeoutException) {
       return AppFailure(kind: FailureKind.network, cause: error);
@@ -106,6 +128,7 @@ class AppFailure implements Exception {
 
   /// The sentence to show the user, in their language.
   String message(AppLocalizations l10n) {
+    if (text != null) return text!;
     final byCode = code == null ? null : _messageForCode(code!, l10n);
     if (byCode != null) return byCode;
     return switch (kind) {
@@ -196,6 +219,15 @@ class AppFailure implements Exception {
         'ORDER_NOT_CANCELLED' => l10n.errOrderNotCancelled,
         'NOT_A_CARD_ORDER' => l10n.errNotACardOrder,
         'PRODUCT_UNAVAILABLE' => l10n.errProductUnavailable,
+        'WRONG_PICKUP_CODE' => l10n.errWrongPickupCode,
+        'MAINTENANCE_MODE' => l10n.errMaintenanceMode,
+        'NO_PERMISSIONS' => l10n.errNoPermissions,
+        'BELOW_MIN_REDEEM' => l10n.errBelowMinRedeem,
+        'NOT_ENOUGH_POINTS' => l10n.errNotEnoughPoints,
+        'USERNAME_TAKEN' => l10n.errUsernameTaken,
+        'INVALID_USERNAME' => l10n.errInvalidUsername,
+        'UNKNOWN_LOGIN' => l10n.errUnknownLogin,
+        'ALREADY_A_STORE_OWNER' => l10n.errAlreadyStoreOwner,
         'TRANSITION_NOT_ALLOWED' => l10n.errTransitionNotAllowed,
         'ACCOUNT_BLOCKED' => l10n.errAccountBlocked,
         'HAS_ACTIVE_ORDERS' => l10n.errHasActiveOrders,
@@ -210,6 +242,8 @@ class AppFailure implements Exception {
         'INVALID_LOGIN' => l10n.errInvalidLogin,
         'EMAIL_NOT_CONFIRMED' => l10n.errEmailNotConfirmed,
         'USER_ALREADY_EXISTS' => l10n.errUserAlreadyExists,
+        'STORE_LOCATION_REQUIRED' => l10n.errStoreLocationRequired,
+        'STORE_DETAILS_REQUIRED' => l10n.errStoreDetailsRequired,
         'WEAK_PASSWORD' => l10n.errWeakPassword,
         'DUPLICATE' => l10n.errDuplicate,
         'STILL_REFERENCED' => l10n.errStillReferenced,

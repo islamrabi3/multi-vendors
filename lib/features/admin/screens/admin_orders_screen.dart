@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -50,7 +51,7 @@ class _OrdersViewState extends State<_OrdersView> {
                 final list = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Title(state: state),
+                    _Title(state: state, cubit: cubit),
                     _FilterBar(state: state, cubit: cubit),
                     Expanded(
                       child: _OrderList(
@@ -87,9 +88,23 @@ class _OrdersViewState extends State<_OrdersView> {
 }
 
 class _Title extends StatelessWidget {
-  const _Title({required this.state});
+  const _Title({required this.state, required this.cubit});
 
   final AdminOrdersState state;
+  final AdminOrdersCubit cubit;
+
+  /// The monitor reads one day at a time — today unless an older one is
+  /// picked. Listing every order ever placed is not a queue anybody works.
+  Future<void> _pickDay(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: state.selectedDay,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now,
+    );
+    if (picked != null) await cubit.setDay(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +114,33 @@ class _Title extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(context.l10n.orders, style: AppType.display(26)),
+          const SizedBox(width: 10),
+          // The day being read, and the way to read another one.
+          ActionChip(
+            avatar: Icon(
+              state.isToday
+                  ? Icons.today_rounded
+                  : Icons.event_available_rounded,
+              size: 16,
+              color: AppColors.primary,
+            ),
+            label: Text(
+              state.isToday
+                  ? context.l10n.today
+                  : DateFormat.yMMMd(
+                      Localizations.localeOf(context).languageCode,
+                    ).format(state.selectedDay),
+              style: const TextStyle(fontSize: 12.5),
+            ),
+            onPressed: () => _pickDay(context),
+          ),
+          if (!state.isToday)
+            IconButton(
+              tooltip: context.l10n.today,
+              onPressed: () => cubit.setDay(DateTime.now()),
+              icon: const Icon(Icons.close_rounded, size: 18),
+              color: AppColors.textMuted,
+            ),
           const Spacer(),
           Row(
             children: [

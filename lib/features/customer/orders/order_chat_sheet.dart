@@ -14,10 +14,16 @@ class OrderChatSheet extends StatefulWidget {
   const OrderChatSheet({
     super.key,
     required this.orderId,
+    this.thread = ChatRepository.vendorThread,
     this.embedded = false,
   });
 
   final String orderId;
+
+  /// Which of the order's two conversations this is: with the store, or with
+  /// the rider. The store never sees the rider's thread, and the rider never
+  /// sees the store's.
+  final String thread;
 
   /// Rendered as a full page rather than a sheet: it then fills its parent and
   /// drops the rounded sheet cap, which would otherwise float inside a
@@ -37,6 +43,7 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
   /// Created once: a stream built inside `build` was re-subscribed on every
   /// rebuild, re-downloading the thread each time the attach spinner toggled.
   late final Stream<List<ChatMessage>> _messages = _chatRepo.streamMessages(
+    thread: widget.thread,
     widget.orderId,
   );
   String? _lastReadId;
@@ -44,7 +51,7 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
   @override
   void initState() {
     super.initState();
-    _chatRepo.markRead(widget.orderId);
+    _chatRepo.markRead(widget.orderId, thread: widget.thread);
   }
 
   @override
@@ -58,7 +65,7 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
     if (messages.isEmpty || messages.last.id == _lastReadId) return;
     _lastReadId = messages.last.id;
     if (messages.last.senderId != _chatRepo.currentUserId) {
-      _chatRepo.markRead(widget.orderId);
+      _chatRepo.markRead(widget.orderId, thread: widget.thread);
     }
   }
 
@@ -68,6 +75,7 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
     _msgController.clear();
     try {
       await _chatRepo.sendMessage(
+        thread: widget.thread,
         orderId: widget.orderId,
         message: text,
         attachment: attachment,
@@ -341,16 +349,23 @@ class _ChatSkeleton extends StatelessWidget {
 /// there is no screen underneath to present a sheet from — so the same widget
 /// is also reachable as its own route.
 class OrderChatScreen extends StatelessWidget {
-  const OrderChatScreen({super.key, required this.orderId});
+  const OrderChatScreen({
+    super.key,
+    required this.orderId,
+    this.thread = ChatRepository.vendorThread,
+  });
 
   final String orderId;
+  final String thread;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(title: Text(context.l10n.chat)),
-      body: SafeArea(child: OrderChatSheet(orderId: orderId, embedded: true)),
+      body: SafeArea(
+        child: OrderChatSheet(orderId: orderId, thread: thread, embedded: true),
+      ),
     );
   }
 }

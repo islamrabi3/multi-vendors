@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/coupon.dart';
-import '../../../core/models/vendor.dart';
 import '../../../core/repositories/coupons_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -330,6 +329,23 @@ class _CouponTable extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: l10n.edit,
+                  onPressed: () => _showCouponForm(
+                    context,
+                    cubit,
+                    coupon: coupon,
+                    storeName: storeNames[coupon.vendorId],
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  color: AppColors.textMuted,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
+                IconButton(
                   tooltip: l10n.delete,
                   onPressed: () => _confirmDeleteCoupon(context, coupon, cubit),
                   icon: const Icon(Icons.delete_outline, size: 18),
@@ -496,6 +512,12 @@ class _CouponRow extends StatelessWidget {
             : const Border(bottom: BorderSide(color: AppColors.borderSoft)),
       ),
       child: ListTile(
+        onTap: () => _showCouponForm(
+          context,
+          cubit,
+          coupon: coupon,
+          storeName: storeName,
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
@@ -590,18 +612,30 @@ Widget _emptyCard(String message) => Container(
 // Forms
 // ---------------------------------------------------------------------------
 
-void _showCouponForm(BuildContext context, AdminCouponsCubit cubit) {
+void _showCouponForm(
+  BuildContext context,
+  AdminCouponsCubit cubit, {
+  Coupon? coupon,
+  String? storeName,
+}) {
   showAdaptiveSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) =>
-        BlocProvider.value(value: cubit, child: const _CouponForm()),
+    builder: (_) => BlocProvider.value(
+      value: cubit,
+      child: _CouponForm(coupon: coupon, storeName: storeName),
+    ),
   );
 }
 
 class _CouponForm extends StatefulWidget {
-  const _CouponForm();
+  const _CouponForm({this.coupon, this.storeName});
+
+  /// Null when creating. Editing reuses the same form, so the two can never
+  /// offer different fields.
+  final Coupon? coupon;
+  final String? storeName;
 
   @override
   State<_CouponForm> createState() => _CouponFormState();
@@ -627,8 +661,45 @@ class _CouponFormState extends State<_CouponForm> {
   bool _isPublic = false;
   bool _saving = false;
 
+  Coupon? get _editing => widget.coupon;
+
+  @override
+  void initState() {
+    super.initState();
+    final coupon = widget.coupon;
+    if (coupon == null) return;
+    _code.text = coupon.code;
+    _title.text = coupon.title ?? '';
+    _value.text = coupon.isFreeDelivery ? '' : trimZeros(coupon.value);
+    _minOrder.text = coupon.minOrderAmount > 0
+        ? trimZeros(coupon.minOrderAmount)
+        : '';
+    _maxDiscount.text = coupon.maxDiscount == null
+        ? ''
+        : trimZeros(coupon.maxDiscount!);
+    _limit.text = coupon.usageLimit?.toString() ?? '';
+    _perUser.text = coupon.perUserLimit?.toString() ?? '';
+    _kind = switch (coupon.discountType) {
+      'percentage' => _CouponKind.percentage,
+      'free_delivery' => _CouponKind.freeDelivery,
+      _ => _CouponKind.fixed,
+    };
+    _startsAt = coupon.startsAt;
+    _expiresAt = coupon.expiresAt;
+    _firstOrderOnly = coupon.firstOrderOnly;
+    _isPublic = coupon.isPublic;
+    _storePays = coupon.isVendorFunded;
+    if (coupon.vendorId != null) {
+      // Only the id is on the coupon; the list passes the name it already
+      // resolved so the field does not read "Store" until something is picked.
+      _storeId = coupon.vendorId;
+      _storeName = widget.storeName;
+    }
+  }
+
   /// Null = every store. A picked store scopes the code to that store only.
-  Vendor? _store;
+  String? _storeId;
+  String? _storeName;
 
   /// Who pays for a store-scoped code. Defaults to the platform: an admin
   /// campaign should not quietly come out of the store's payout.
@@ -638,7 +709,8 @@ class _CouponFormState extends State<_CouponForm> {
     final picked = await pickActiveStore(context);
     if (picked == null || !mounted) return;
     setState(() {
-      _store = picked;
+      _storeId = picked.id;
+      _storeName = picked.name;
       // A store offer exists to be seen on that store's page.
       _isPublic = true;
     });
@@ -699,7 +771,10 @@ class _CouponFormState extends State<_CouponForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.newCoupon, style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              _editing == null ? l10n.newCoupon : l10n.editCoupon,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 14),
             TextField(
               controller: _code,
@@ -716,14 +791,15 @@ class _CouponFormState extends State<_CouponForm> {
             ),
             const SizedBox(height: 10),
             _StoreScopeField(
-              store: _store,
+              storeName: _storeId == null ? null : (_storeName ?? ''),
               onTap: _chooseStore,
               onClear: () => setState(() {
-                _store = null;
+                _storeId = null;
+                _storeName = null;
                 _storePays = false;
               }),
             ),
-            if (_store != null) ...[
+            if (_storeId != null) ...[
               const SizedBox(height: 12),
               Text(
                 l10n.couponFundedBy,
@@ -814,7 +890,13 @@ class _CouponFormState extends State<_CouponForm> {
             TextField(
               controller: _minOrder,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: l10n.minOrderOptional),
+              // Named plainly rather than "optional": the minimum basket is
+              // the rule most campaigns actually turn on.
+              decoration: InputDecoration(
+                labelText: l10n.minOrderLabel,
+                helperText: l10n.minOrderHint,
+                helperMaxLines: 2,
+              ),
             ),
             if (_kind == _CouponKind.percentage) ...[
               const SizedBox(height: 10),
@@ -890,12 +972,14 @@ class _CouponFormState extends State<_CouponForm> {
               value: _isPublic,
               onChanged: (v) => setState(() => _isPublic = v),
               title: Text(
-                _store == null ? l10n.couponPublic : l10n.couponShowOnStorePage,
+                _storeId == null
+                    ? l10n.couponPublic
+                    : l10n.couponShowOnStorePage,
               ),
               subtitle: Text(
-                _store == null
+                _storeId == null
                     ? l10n.couponPublicDesc
-                    : l10n.couponShowOnStorePageDesc(_store!.name),
+                    : l10n.couponShowOnStorePageDesc(_storeName ?? ''),
                 style: const TextStyle(fontSize: 11.5),
               ),
             ),
@@ -905,7 +989,9 @@ class _CouponFormState extends State<_CouponForm> {
                 minimumSize: const Size.fromHeight(50),
               ),
               onPressed: _saving ? null : _submit,
-              child: _saving ? const ButtonSpinner() : Text(l10n.createCoupon),
+              child: _saving
+                  ? const ButtonSpinner()
+                  : Text(_editing == null ? l10n.createCoupon : l10n.save),
             ),
           ],
         ),
@@ -922,29 +1008,56 @@ class _CouponFormState extends State<_CouponForm> {
       return;
     }
     setState(() => _saving = true);
-    final ok = await context.read<AdminCouponsCubit>().create(
-      code: code,
-      discountType: _kind.wire,
-      value: value ?? 0,
-      minOrderAmount: double.tryParse(_minOrder.text.trim()) ?? 0,
-      maxDiscount: _kind == _CouponKind.percentage
-          ? double.tryParse(_maxDiscount.text.trim())
-          : null,
-      usageLimit: int.tryParse(_limit.text.trim()),
-      // Blank means unlimited, which the server reads as a null column.
-      perUserLimit: int.tryParse(_perUser.text.trim()),
-      startsAt: _startsAt,
-      expiresAt: _expiresAt,
-      firstOrderOnly: _firstOrderOnly,
-      isPublic: _isPublic,
-      title: _title.text.trim().isEmpty ? null : _title.text.trim(),
-      vendorId: _store?.id,
-      fundedBy: _storePays ? 'vendor' : 'platform',
-    );
+    final editing = _editing;
+    final cubit = context.read<AdminCouponsCubit>();
+    final ok = editing != null
+        ? await cubit.edit(
+            id: editing.id,
+            code: code,
+            discountType: _kind.wire,
+            value: value ?? 0,
+            minOrderAmount: double.tryParse(_minOrder.text.trim()) ?? 0,
+            maxDiscount: _kind == _CouponKind.percentage
+                ? double.tryParse(_maxDiscount.text.trim())
+                : null,
+            usageLimit: int.tryParse(_limit.text.trim()),
+            perUserLimit: int.tryParse(_perUser.text.trim()),
+            startsAt: _startsAt,
+            expiresAt: _expiresAt,
+            firstOrderOnly: _firstOrderOnly,
+            isPublic: _isPublic,
+            title: _title.text.trim().isEmpty ? null : _title.text.trim(),
+            vendorId: _storeId,
+            fundedBy: _storePays ? 'vendor' : 'platform',
+          )
+        : await cubit.create(
+            code: code,
+            discountType: _kind.wire,
+            value: value ?? 0,
+            minOrderAmount: double.tryParse(_minOrder.text.trim()) ?? 0,
+            maxDiscount: _kind == _CouponKind.percentage
+                ? double.tryParse(_maxDiscount.text.trim())
+                : null,
+            usageLimit: int.tryParse(_limit.text.trim()),
+            // Blank means unlimited, which the server reads as a null column.
+            perUserLimit: int.tryParse(_perUser.text.trim()),
+            startsAt: _startsAt,
+            expiresAt: _expiresAt,
+            firstOrderOnly: _firstOrderOnly,
+            isPublic: _isPublic,
+            title: _title.text.trim().isEmpty ? null : _title.text.trim(),
+            vendorId: _storeId,
+            fundedBy: _storePays ? 'vendor' : 'platform',
+          );
     if (!mounted) return;
     if (ok) {
       Navigator.pop(context);
-      showSnack(context, context.l10n.couponCreated);
+      showSnack(
+        context,
+        editing == null
+            ? context.l10n.couponCreated
+            : context.l10n.couponUpdated,
+      );
     } else {
       setState(() => _saving = false);
     }
@@ -954,19 +1067,20 @@ class _CouponFormState extends State<_CouponForm> {
 /// Which stores a code works in: all of them, or the one picked.
 class _StoreScopeField extends StatelessWidget {
   const _StoreScopeField({
-    required this.store,
+    required this.storeName,
     required this.onTap,
     required this.onClear,
   });
 
-  final Vendor? store;
+  /// Null when the code applies to every store.
+  final String? storeName;
   final VoidCallback onTap;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final picked = store;
+    final picked = storeName;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.md),
@@ -984,7 +1098,9 @@ class _StoreScopeField extends StatelessWidget {
                 ),
         ),
         child: Text(
-          picked?.name ?? l10n.couponAllStores,
+          (picked?.isEmpty ?? true)
+              ? (picked == null ? l10n.couponAllStores : l10n.store)
+              : picked!,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(

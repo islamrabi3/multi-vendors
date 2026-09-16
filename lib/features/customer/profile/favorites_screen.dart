@@ -48,12 +48,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     try {
       await _repository.setFavorite(vendor.id, false);
       if (mounted) {
-        showSnack(context, 'Removed ${vendor.name} from favorites');
+        showSnack(context, context.l10n.removedFromFavorites(vendor.name));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _vendors = originalList);
-        showSnack(context, 'Failed to update favorite status', error: true);
+        showSnack(context, context.l10n.favoriteUpdateFailed, error: true);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -107,9 +107,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: Text(
-                      'Explore shops and save your favorite places to find them quickly here!',
+                      context.l10n.favoritesEmptyHint,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textMuted,
                         height: 1.4,
@@ -138,9 +138,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           borderRadius: BorderRadius.circular(AppRadii.lg),
                         ),
                       ),
-                      child: const Text(
-                        'Explore Restaurants',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.exploreStores,
+                        style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
                         ),
@@ -260,8 +260,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          '${vendor.avgPrepMinutes}–${vendor.avgPrepMinutes + 10} min'
-                                          ' · ${formatMoney(vendor.deliveryFee)} delivery',
+                                          '${context.l10n.minutesRange(vendor.avgPrepMinutes, vendor.avgPrepMinutes + 10)}'
+                                          ' · ${context.l10n.deliveryFeeLabel(formatMoney(vendor.deliveryFee))}',
                                           style: const TextStyle(
                                             fontSize: 12.5,
                                             color: AppColors.textMuted,

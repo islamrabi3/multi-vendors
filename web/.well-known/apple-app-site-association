@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["JSN83ZC24J.com.kitchenin.app"],
+        "components": [{ "/": "/vendors/*" }]
+      }
+    ]
+  }
+}

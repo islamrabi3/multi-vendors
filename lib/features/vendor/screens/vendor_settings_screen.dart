@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/errors/app_failure.dart' show UserMessage;
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +20,7 @@ import '../vendor_shell.dart' show VendorWebNav;
 import 'menu_import_screen.dart';
 import 'vendor_orders_history_screen.dart';
 import 'vendor_schedule_screen.dart';
+import 'vendor_staff_screen.dart';
 
 /// The store's own settings.
 ///
@@ -86,12 +88,12 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
       onSubmit: (_) async {
         final value = controller.text.trim();
         final error = validate?.call(value);
-        if (error != null) throw Exception(error);
+        if (error != null) throw UserMessage(error);
         await onSave(value);
         return true;
       },
     );
-    controller.dispose();
+    disposeAfterClose([controller]);
   }
 
   /// Prep time is picked, not typed: a handful of realistic values covers
@@ -268,6 +270,10 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
     final l10n = context.l10n;
     final hasPin = vendor.lat != null && vendor.lng != null;
     final language = context.watch<LocaleCubit>().state.languageCode;
+    // Staff see the store's own settings; money, terms and the team list stay
+    // with the owner.
+    final auth = context.watch<AuthCubit>().state;
+    final isOwner = auth.vendorAccess.isOwner;
 
     return [
       _Group(
@@ -458,31 +464,61 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
             ),
         ],
       ),
+      // The owner's own team. Staff cannot manage staff, so this is the one
+      // group they never see.
+      if (isOwner)
+        _Group(
+          title: l10n.staffTitle,
+          footer: l10n.staffIntro,
+          children: [
+            _Row(
+              icon: Icons.groups_rounded,
+              label: l10n.staffTitle,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VendorStaffScreen(vendorId: vendor.id),
+                ),
+              ),
+            ),
+          ],
+        ),
       // What the platform sets. Shown so the owner understands their terms,
       // locked so nobody tries to change them and gets a refused save.
+      if (isOwner)
+        _Group(
+          title: l10n.planAndFees,
+          footer: l10n.setByPlatformFooter,
+          children: [
+            _Row(
+              icon: Icons.delivery_dining_rounded,
+              label: l10n.deliveryFee,
+              value: vendor.deliveryFee == 0
+                  ? l10n.freeDelivery
+                  : formatMoney(vendor.deliveryFee),
+              locked: true,
+            ),
+            _Row(
+              icon: vendor.isSubscription
+                  ? Icons.card_membership_rounded
+                  : Icons.percent_rounded,
+              label: l10n.billingPlan,
+              value: vendor.isSubscription
+                  ? '${l10n.billingSubscription} · '
+                        '${formatMoney(vendor.subscriptionFee)}'
+                  : '${l10n.billingCommission} · '
+                        '${vendor.commissionRate.toStringAsFixed(0)}%',
+              locked: true,
+            ),
+          ],
+        ),
       _Group(
-        title: l10n.planAndFees,
-        footer: l10n.setByPlatformFooter,
+        title: l10n.accountSecurity,
         children: [
           _Row(
-            icon: Icons.delivery_dining_rounded,
-            label: l10n.deliveryFee,
-            value: vendor.deliveryFee == 0
-                ? l10n.freeDelivery
-                : formatMoney(vendor.deliveryFee),
-            locked: true,
-          ),
-          _Row(
-            icon: vendor.isSubscription
-                ? Icons.card_membership_rounded
-                : Icons.percent_rounded,
-            label: l10n.billingPlan,
-            value: vendor.isSubscription
-                ? '${l10n.billingSubscription} · '
-                      '${formatMoney(vendor.subscriptionFee)}'
-                : '${l10n.billingCommission} · '
-                      '${vendor.commissionRate.toStringAsFixed(0)}%',
-            locked: true,
+            icon: Icons.key_rounded,
+            label: l10n.changePassword,
+            onTap: () => context.push('/change-password'),
           ),
         ],
       ),

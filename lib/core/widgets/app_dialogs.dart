@@ -188,6 +188,21 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
 // Form — dialog and sheet share one contract
 // ===========================================================================
 
+/// Disposes a form's controllers once its dialog or sheet has finished
+/// closing.
+///
+/// The `showFormDialog`/`showFormSheet` future completes when the route pops,
+/// but the route keeps rebuilding its text fields through the exit animation.
+/// Disposing right after the `await` crashed with "A TextEditingController was
+/// used after being disposed".
+void disposeAfterClose(List<ChangeNotifier> notifiers) {
+  Future<void>.delayed(const Duration(milliseconds: 600), () {
+    for (final notifier in notifiers) {
+      notifier.dispose();
+    }
+  });
+}
+
 /// A dialog that collects input.
 ///
 /// [contentBuilder] receives a `rebuild` callback: call it from a chip or toggle

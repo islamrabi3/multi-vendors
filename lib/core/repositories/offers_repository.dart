@@ -22,7 +22,6 @@ final adsRevision = ValueNotifier<int>(0);
 /// policies, which require the `ads.manage` permission rather than merely
 /// being an admin.
 class OffersRepository {
-  /// All offers including inactive — admins only (RLS).
   Future<List<BannerItem>> fetchAll() async {
     final data = await supabase
         .from('banners')

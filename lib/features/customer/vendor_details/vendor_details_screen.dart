@@ -17,6 +17,7 @@ import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../cart/cart_cubit.dart';
 import 'product_quantity_control.dart';
+import '../../../core/utils/share_links.dart';
 import 'product_sheet.dart';
 import 'store_offers_strip.dart';
 import 'vendor_details_cubit.dart';
@@ -225,7 +226,9 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
         // in Arabic without a manual flip.
         icon: Icons.arrow_back,
         flat: _collapsed,
-        onPressed: () => context.pop(),
+        // Opened from a shared link there is nothing underneath to go back
+        // to, so back goes home instead of doing nothing.
+        onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
       ),
       // The store's name appears in the bar once the cover has scrolled away,
       // so the customer never loses track of whose menu this is.
@@ -307,6 +310,13 @@ class _VendorDetailsViewState extends State<_VendorDetailsView> {
             flat: _collapsed,
             onPressed: _toggleSearch,
           ),
+        Builder(
+          builder: (buttonContext) => _CircleButton(
+            icon: Icons.ios_share_rounded,
+            flat: _collapsed,
+            onPressed: () => shareVendor(buttonContext, vendor),
+          ),
+        ),
         _CircleButton(
           icon: state.isFavorite
               ? Icons.favorite_rounded

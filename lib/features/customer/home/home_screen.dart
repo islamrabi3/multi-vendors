@@ -25,8 +25,11 @@ import '../../../core/widgets/messages_button.dart';
 import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/interstitial_ad.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/soon_badge.dart';
+import '../../../core/widgets/store_rail.dart';
 import '../../../core/widgets/vendor_card.dart';
 import '../../auth/auth_cubit.dart';
+import 'coupon_swipe_card.dart';
 import 'home_cubit.dart';
 import 'vendor_filters_sheet.dart';
 
@@ -53,10 +56,29 @@ class _HomeView extends StatefulWidget {
   State<_HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<_HomeView> {
+class _HomeViewState extends State<_HomeView> with WidgetsBindingObserver {
+  /// How many of the stores are built. Growing this as the customer reaches
+  /// the end is what keeps a marketplace with hundreds of stores from
+  /// building every card for a page nobody has scrolled to yet.
+  static const _pageSize = 8;
+  int _visibleStores = _pageSize;
+
+  /// True while there are stores left to reveal.
+  bool _canGrow(int total) => _visibleStores < total;
+
+  bool _onScroll(ScrollNotification notification, int total) {
+    if (!_canGrow(total)) return false;
+    final metrics = notification.metrics;
+    if (metrics.pixels >= metrics.maxScrollExtent - 600) {
+      setState(() => _visibleStores += _pageSize);
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // After the first frame, so the takeover lands on a drawn home page rather
     // than on a blank one — and only once per launch, which
     // `InterstitialAds.maybeShow` enforces for every campaign at once.
@@ -66,6 +88,21 @@ class _HomeViewState extends State<_HomeView> {
       // Next launch's splash video, downloaded while the customer browses.
       InterstitialAds.prefetch(OffersRepository());
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back from checkout — or from anywhere — a code that has just
+    // been spent should not still be on offer here.
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<HomeCubit>().refreshCoupons();
+    }
   }
 
   @override
@@ -89,68 +126,99 @@ class _HomeViewState extends State<_HomeView> {
             return RefreshIndicator(
               color: AppColors.primary,
               onRefresh: cubit.load,
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 28),
-                children: [
-                  _Header(key: const ValueKey('home_header'), state: state),
-                  const _Greeting(),
-                  _SearchBar(
-                    key: const ValueKey('home_search_bar'),
-                    filters: state.filters,
-                  ),
-                  _QuickFilters(filters: state.filters),
-                  if (!filtering) ...[
-                    _Offers(offers: state.banners),
-                    _CategoryRail(state: state),
-                    // A second surface, between the rails rather than at the
-                    // top: empty until somebody buys it, so it costs nothing.
-                    const AdSlot(placement: AdPlacement.homeInline),
-                    // A handful of stores need no carousels on top of the
-                    // list — they would only repeat it.
-                    if (state.vendors.length >= 4)
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (n) => _onScroll(n, vendors.length),
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 28),
+                  children: [
+                    _Header(key: const ValueKey('home_header'), state: state),
+                    const _Greeting(),
+                    _SearchBar(
+                      key: const ValueKey('home_search_bar'),
+                      filters: state.filters,
+                    ),
+                    _QuickFilters(filters: state.filters),
+                    if (state.coupons.isNotEmpty)
+                      CouponSwipeCard(coupons: state.coupons),
+                    if (!filtering) ...[
+                      _Offers(offers: state.banners),
+                      _CategoryRail(state: state),
+                      // A second surface, between the rails rather than at the
+                      // top: empty until somebody buys it, so it costs nothing.
+                      const AdSlot(placement: AdPlacement.homeInline),
+                      // The main list is the recommended stores, with the
+                      // nearest-to-you carousel under it.
+                      if (state.recommendedVendors.isNotEmpty)
+                        _StoreRail(
+                          rail: HomeRail.recommended,
+                          vendors: state.recommendedVendors,
+                        ),
                       for (final rail in state.rails)
                         _StoreRail(rail: rail.rail, vendors: rail.vendors),
-                  ],
-                  _StoresHeader(
-                    count: vendors.length,
-                    filtering: filtering,
-                    onClear: cubit.clearFilters,
-                  ),
-                  if (vendors.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        children: [
-                          EmptyView(
-                            // "Nothing nearby" and "your filters are too tight"
-                            // need different words, and only the second one has
-                            // a fix the customer can act on.
-                            message: state.filters.activeCount > 0
-                                ? context.l10n.noStoresMatchFilters
-                                : context.l10n.noStoresFound,
+                      if (vendors.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: EmptyView(
+                            message: context.l10n.noStoresFound,
                             icon: Icons.storefront_outlined,
                           ),
-                          if (state.filters.activeCount > 0) ...[
-                            const SizedBox(height: AppSpace.lg),
-                            OutlinedButton.icon(
-                              onPressed: cubit.clearFilters,
-                              icon: const Icon(
-                                Icons.filter_alt_off_outlined,
-                                size: 18,
+                        ),
+                    ],
+                    _StoresHeader(
+                      filtering: filtering,
+                      onClear: cubit.clearFilters,
+                    ),
+                    ...[
+                      if (vendors.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              EmptyView(
+                                message: filtering
+                                    ? context.l10n.noStoresMatchFilters
+                                    : context.l10n.noStoresFound,
+                                icon: Icons.storefront_outlined,
                               ),
-                              label: Text(context.l10n.clearAll),
+                              if (filtering) ...[
+                                const SizedBox(height: AppSpace.lg),
+                                OutlinedButton.icon(
+                                  onPressed: cubit.clearFilters,
+                                  icon: const Icon(
+                                    Icons.filter_alt_off_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(context.l10n.clearAll),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      else ...[
+                        for (final vendor in vendors.take(_visibleStores))
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                            child: _HomeVendorCard(vendor: vendor),
+                          ),
+                        // The next page builds itself as this comes into view.
+                        if (_canGrow(vendors.length))
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 18),
+                            child: Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                             ),
-                          ],
-                        ],
-                      ),
-                    )
-                  else
-                    for (final vendor in vendors)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 22),
-                        child: _HomeVendorCard(vendor: vendor),
-                      ),
-                ],
+                          ),
+                      ],
+                    ],
+                  ],
+                ),
               ),
             );
           },
@@ -742,25 +810,41 @@ class _CategoryTile extends StatelessWidget {
       // GestureDetector, not InkWell: a rectangular ripple around rounded
       // artwork read as a glitch, and the page transition is the feedback.
       child: GestureDetector(
-        onTap: () => context.push('/categories/${category.id}'),
+        onTap: () => category.isComingSoon
+            ? showComingSoonMessage(context, category.label(language))
+            : context.push('/categories/${category.id}'),
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              child: image != null && image.isNotEmpty
-                  ? AppNetworkImage(url: image, height: 72, width: 78)
-                  : Container(
-                      width: 78,
-                      height: 72,
-                      alignment: Alignment.center,
-                      color: AppColors.warmFill,
-                      child: Text(
-                        emojiFor(category.name).trim(),
-                        style: const TextStyle(fontSize: 30),
-                      ),
-                    ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Opacity(
+                  opacity: category.isComingSoon ? 0.55 : 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    child: image != null && image.isNotEmpty
+                        ? AppNetworkImage(url: image, height: 72, width: 78)
+                        : Container(
+                            width: 78,
+                            height: 72,
+                            alignment: Alignment.center,
+                            color: AppColors.warmFill,
+                            child: Text(
+                              emojiFor(category.name).trim(),
+                              style: const TextStyle(fontSize: 30),
+                            ),
+                          ),
+                  ),
+                ),
+                if (category.isComingSoon)
+                  const PositionedDirectional(
+                    top: 4,
+                    end: 4,
+                    child: SoonBadge(compact: true),
+                  ),
+              ],
             ),
             const SizedBox(height: 6),
             // Flexible so the label can never push this Column past the rail's
@@ -788,13 +872,8 @@ class _CategoryTile extends StatelessWidget {
 
 // ===== Stores section header =====
 class _StoresHeader extends StatelessWidget {
-  const _StoresHeader({
-    required this.count,
-    required this.filtering,
-    required this.onClear,
-  });
+  const _StoresHeader({required this.filtering, required this.onClear});
 
-  final int count;
   final bool filtering;
   final VoidCallback onClear;
 
@@ -810,16 +889,10 @@ class _StoresHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  filtering ? l10n.filteredStoresTitle : l10n.allStoresTitle,
+                  filtering
+                      ? l10n.filteredStoresTitle
+                      : l10n.exploreStoresTitle,
                   style: AppType.display(20),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  l10n.storesCount(count),
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textMuted,
-                  ),
                 ),
               ],
             ),
@@ -994,6 +1067,10 @@ class _StoreRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cubit = context.read<HomeCubit>();
+    final favorites = context.select<HomeCubit, Set<String>>(
+      (c) => c.state.favoriteVendorIds,
+    );
     final (title, subtitle, icon) = switch (rail) {
       HomeRail.recommended => (
         l10n.recommended,
@@ -1021,269 +1098,16 @@ class _StoreRail extends StatelessWidget {
         Icons.delivery_dining_rounded,
       ),
     };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 12),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.warmFill,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: AppColors.primary),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.heading(17),
-                    ),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          // Exactly the card: photo, gap, then the name and meta lines, which
-          // grow with the system text size. A fixed 226 left ~40px of dead
-          // space under every rail.
-          height:
-              _StoreRailCard._imageHeight +
-              10 +
-              MediaQuery.textScalerOf(context).scale(58),
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            itemCount: vendors.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, i) => _StoreRailCard(
-              vendor: vendors[i],
-              showDistance: rail == HomeRail.nearest,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StoreRailCard extends StatelessWidget {
-  const _StoreRailCard({required this.vendor, required this.showDistance});
-
-  final Vendor vendor;
-  final bool showDistance;
-
-  static const _width = 250.0;
-  static const _imageHeight = 136.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cubit = context.read<HomeCubit>();
-    final isFavorite = context.select<HomeCubit, bool>(
-      (c) => c.state.favoriteVendorIds.contains(vendor.id),
-    );
-    final km = cubit.state.distanceToVendor(vendor);
-    final open = vendor.isOpenNow();
-    final free = vendor.deliveryFee == 0;
-    final logo = vendor.logoUrl;
-
-    return SizedBox(
-      width: _width,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => context.push('/vendors/${vendor.id}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: _imageHeight,
-              width: _width,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                    child: AppNetworkImage(
-                      url: vendor.coverUrl,
-                      height: _imageHeight,
-                      width: _width,
-                    ),
-                  ),
-                  if (!open)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                      child: ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        child: Center(
-                          child: Text(
-                            l10n.closedNow,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  PositionedDirectional(
-                    top: 10,
-                    end: 10,
-                    child: Material(
-                      color: Colors.white,
-                      shape: const CircleBorder(),
-                      elevation: 1,
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () => cubit.toggleFavorite(vendor.id),
-                        child: Padding(
-                          padding: const EdgeInsets.all(7),
-                          child: Icon(
-                            isFavorite
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            size: 18,
-                            color: isFavorite
-                                ? AppColors.primary
-                                : AppColors.textMuted,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  PositionedDirectional(
-                    bottom: 10,
-                    start: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                      ),
-                      child: Text(
-                        [
-                          if (showDistance && km != null)
-                            '${km < 10 ? km.toStringAsFixed(1) : km.round()} ${l10n.kmUnit}',
-                          l10n.minutesRange(
-                            vendor.totalPrepMinutes,
-                            vendor.totalPrepMinutes + 10,
-                          ),
-                        ].join(' · '),
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.borderSoft),
-                  ),
-                  alignment: Alignment.center,
-                  child: logo != null && logo.isNotEmpty
-                      ? AppNetworkImage(url: logo, height: 34, width: 34)
-                      : Text(
-                          emojiFor(vendor.name).trim(),
-                          style: const TextStyle(fontSize: 17),
-                        ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        vendor.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 14,
-                            color: AppColors.rating,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            vendor.ratingCount > 0
-                                ? vendor.ratingAvg.toStringAsFixed(1)
-                                : l10n.newStoreBadge,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '· ${free ? l10n.freeDelivery : l10n.deliveryFeeLabel(formatMoney(vendor.deliveryFee))}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: free
-                                    ? AppColors.successInk
-                                    : AppColors.textMuted,
-                                fontWeight: free
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return StoreRail(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      vendors: vendors,
+      isFavorite: (v) => favorites.contains(v.id),
+      onToggleFavorite: (v) => cubit.toggleFavorite(v.id),
+      distanceKm: rail == HomeRail.nearest
+          ? cubit.state.distanceToVendor
+          : null,
     );
   }
 }
@@ -1304,8 +1128,11 @@ class _HomeVendorCard extends StatelessWidget {
     final isFavorite = context.select<HomeCubit, bool>(
       (c) => c.state.favoriteVendorIds.contains(vendor.id),
     );
-    return VendorCard(
+    // The same card the rails use, one per line: a list that looked nothing
+    // like the row above it read as two different apps on one page.
+    return StoreRailCard(
       vendor: vendor,
+      fullWidth: true,
       isFavorite: isFavorite,
       onToggleFavorite: () => cubit.toggleFavorite(vendor.id),
       // Only real once the customer has a pinned address and the store has

@@ -35,13 +35,25 @@ Future<PaymobFlowResult> runPaymobCheckout(
     extra: checkout,
   );
 
+  final repository = payments ?? PaymentRepository();
+
   if (tabResult == PaymobCheckoutResult.cancelled || tabResult == null) {
-    return PaymobFlowResult.cancelled;
+    // Closing the page is not proof that nothing was paid: a customer who
+    // paid and then shut the tab a second early would otherwise be told the
+    // payment failed while the webhook was busy settling it. A short wait
+    // costs nothing and turns that into the truth.
+    final late = await repository.awaitSettlement(
+      checkout.reference,
+      timeout: const Duration(seconds: 12),
+    );
+    return switch (late) {
+      PaymentOutcome.paid => PaymobFlowResult.paid,
+      PaymentOutcome.failed => PaymobFlowResult.failed,
+      PaymentOutcome.pending => PaymobFlowResult.cancelled,
+    };
   }
 
-  final outcome = await (payments ?? PaymentRepository()).awaitSettlement(
-    checkout.reference,
-  );
+  final outcome = await repository.awaitSettlement(checkout.reference);
 
   switch (outcome) {
     case PaymentOutcome.paid:

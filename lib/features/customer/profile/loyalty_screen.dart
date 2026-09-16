@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import '../../../app/tokens.dart';
 import '../../../core/repositories/loyalty_repository.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/utils/paging.dart';
+import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/skeleton.dart';
@@ -23,6 +25,18 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
   bool _hasMore = false;
   bool _loadingMore = false;
 
+  /// The platform's exchange rate and floor; read once with the balance.
+  int _pointsPerUnit = 100;
+  int _minRedeem = 1000;
+  bool _redeeming = false;
+
+  bool get _canRedeem => _points >= _minRedeem;
+
+  /// Points are spent in whole units, so a remainder stays on the balance.
+  int get _redeemablePoints => (_points ~/ _pointsPerUnit) * _pointsPerUnit;
+
+  double get _redeemableCredit => _redeemablePoints / _pointsPerUnit;
+
   @override
   void initState() {
     super.initState();
@@ -40,9 +54,14 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
         _loyaltyRepo.getPoints(),
         _loyaltyRepo.getHistory(),
       ]);
+      final config = await _loyaltyRepo.redeemConfig().catchError(
+        (_) => (pointsPerUnit: 100, minRedeem: 1000),
+      );
       if (!mounted) return;
       final history = results[1] as List<Map<String, dynamic>>;
       setState(() {
+        _pointsPerUnit = config.pointsPerUnit;
+        _minRedeem = config.minRedeem;
         _points = results[0] as int;
         _history = history;
         _hasMore = history.length == kPageSize;
@@ -75,6 +94,34 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
     }
   }
 
+  /// Spends the whole redeemable balance: the rate is fixed, so a form asking
+  /// how much would be a decision with one sensible answer.
+  Future<void> _redeem() async {
+    final l10n = context.l10n;
+    final points = _redeemablePoints;
+    final confirmed = await AppDialogs.showConfirmDialog(
+      context: context,
+      title: l10n.redeemPoints,
+      message: l10n.redeemRateHint(_pointsPerUnit, formatMoney(1)),
+      confirmText: l10n.redeemPoints,
+      cancelText: l10n.cancel,
+      icon: Icons.redeem_rounded,
+    );
+    if (confirmed != true) return;
+    setState(() => _redeeming = true);
+    try {
+      final credit = await _loyaltyRepo.redeem(points);
+      if (!mounted) return;
+      showSnack(context, l10n.redeemDone(formatMoney(credit)));
+      setState(() => _redeeming = false);
+      await _loadLoyalty();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _redeeming = false);
+      showFailure(context, error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -86,36 +133,91 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
           : RefreshIndicator(
               color: AppColors.primary,
               onRefresh: _loadLoyalty,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  AppSpace.lg,
-                  AppSpace.md,
-                  AppSpace.lg,
-                  AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
-                ),
-                children: [
-                  FinanceHero(
-                    eyebrow: l10n.points,
-                    amount: '$_points',
-                    caption: l10n.earnPointsOnOrders,
+              child: NotificationListener<ScrollNotification>(
+                // Pages itself as the customer reaches the end; the button
+                // below stays for anyone who scrolls faster than the fetch.
+                onNotification: (n) {
+                  if (n.metrics.pixels >= n.metrics.maxScrollExtent - 400) {
+                    _loadMore();
+                  }
+                  return false;
+                },
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpace.lg,
+                    AppSpace.md,
+                    AppSpace.lg,
+                    AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
                   ),
-                  FinanceSection(
-                    title: l10n.pointsHistory,
-                    child: _history.isEmpty
-                        ? FinanceEmpty(
-                            message: l10n.noLoyaltyPointsYet,
-                            icon: Icons.stars_rounded,
-                          )
-                        : DayGroupedList<Map<String, dynamic>>(
-                            items: _history,
-                            dateOf: (row) => _cursorOf(row).createdAt.toLocal(),
-                            itemBuilder: (row) => _HistoryTile(row: row),
+                  children: [
+                    FinanceHero(
+                      eyebrow: l10n.points,
+                      amount: '$_points',
+                      caption: l10n.earnPointsOnOrders,
+                    ),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppSpace.lg),
+                      padding: const EdgeInsets.all(AppSpace.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            l10n.redeemToWallet,
+                            style: AppType.heading(15.5),
                           ),
-                  ),
-                  if (_hasMore)
-                    FinanceLoadMore(busy: _loadingMore, onPressed: _loadMore),
-                ],
+                          const SizedBox(height: 4),
+                          Text(
+                            _canRedeem
+                                ? l10n.redeemWorth(
+                                    formatMoney(_redeemableCredit),
+                                  )
+                                : l10n.redeemMinHint(_minRedeem),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              height: 1.4,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpace.md),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                            onPressed: _canRedeem && !_redeeming
+                                ? _redeem
+                                : null,
+                            icon: _redeeming
+                                ? const ButtonSpinner(size: 18)
+                                : const Icon(Icons.redeem_rounded, size: 18),
+                            label: Text(l10n.redeemPoints),
+                          ),
+                        ],
+                      ),
+                    ),
+                    FinanceSection(
+                      title: l10n.pointsHistory,
+                      child: _history.isEmpty
+                          ? FinanceEmpty(
+                              message: l10n.noLoyaltyPointsYet,
+                              icon: Icons.stars_rounded,
+                            )
+                          : DayGroupedList<Map<String, dynamic>>(
+                              items: _history,
+                              dateOf: (row) =>
+                                  _cursorOf(row).createdAt.toLocal(),
+                              itemBuilder: (row) => _HistoryTile(row: row),
+                            ),
+                    ),
+                    if (_hasMore)
+                      FinanceLoadMore(busy: _loadingMore, onPressed: _loadMore),
+                  ],
+                ),
               ),
             ),
     );

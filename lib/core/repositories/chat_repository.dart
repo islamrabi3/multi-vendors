@@ -12,11 +12,20 @@ class ChatRepository {
 
   String? get currentUserId => _client.auth.currentUser?.id;
 
-  Future<List<ChatMessage>> getMessages(String orderId) async {
+  /// The two conversations an order can have: with the store, and with the
+  /// rider. The customer is in both; the store and the rider see only theirs.
+  static const vendorThread = 'vendor';
+  static const driverThread = 'driver';
+
+  Future<List<ChatMessage>> getMessages(
+    String orderId, {
+    String thread = vendorThread,
+  }) async {
     final res = await _client
         .from('chat_messages')
         .select('*, profiles(full_name)')
         .eq('order_id', orderId)
+        .eq('thread', thread)
         .order('created_at', ascending: true);
 
     return (res as List)
@@ -24,19 +33,29 @@ class ChatRepository {
         .toList();
   }
 
-  Stream<List<ChatMessage>> streamMessages(String orderId) {
+  Stream<List<ChatMessage>> streamMessages(
+    String orderId, {
+    String thread = vendorThread,
+  }) {
+    // A stream takes one filter, so the thread is applied here — the row is
+    // in the payload either way.
     return _client
         .from('chat_messages')
         .stream(primaryKey: ['id'])
         .eq('order_id', orderId)
         .order('created_at', ascending: true)
-        .map((list) => list.map((e) => ChatMessage.fromMap(e)).toList());
+        .map(
+          (list) => list
+              .map(ChatMessage.fromMap)
+              .where((m) => m.thread == thread)
+              .toList(),
+        );
   }
 
   /// Unread messages from others in one order ([orderId]) or across every
   /// conversation this user is part of (null). Recounted when a message
   /// arrives or when this user reads a thread on any device.
-  Stream<int> watchUnread([String? orderId]) {
+  Stream<int> watchUnread([String? orderId, String? thread]) {
     final me = currentUserId;
     if (me == null) return Stream.value(0);
     final controller = StreamController<int>();
@@ -48,7 +67,7 @@ class ChatRepository {
       try {
         final value = await _client.rpc(
           'my_unread_chat_count',
-          params: {'p_order_id': orderId},
+          params: {'p_order_id': orderId, 'p_thread': thread},
         );
         if (active) controller.add(((value as num?) ?? 0).toInt());
       } catch (_) {}
@@ -104,11 +123,11 @@ class ChatRepository {
   static var _seq = 0;
 
   /// Opening the thread is reading it — for this user only.
-  Future<void> markRead(String orderId) async {
+  Future<void> markRead(String orderId, {String thread = vendorThread}) async {
     try {
       await _client.rpc(
         'mark_order_chat_read',
-        params: {'p_order_id': orderId},
+        params: {'p_order_id': orderId, 'p_thread': thread},
       );
     } catch (_) {
       // A badge that stays one message too long is not worth an error.
@@ -117,8 +136,13 @@ class ChatRepository {
 
   /// Removes a conversation from this user's own list until someone writes
   /// in it again. Also marks it read.
-  Future<void> hideConversation(String orderId) =>
-      _client.rpc('hide_order_conversation', params: {'p_order_id': orderId});
+  Future<void> hideConversation(
+    String orderId, {
+    String thread = vendorThread,
+  }) => _client.rpc(
+    'hide_order_conversation',
+    params: {'p_order_id': orderId, 'p_thread': thread},
+  );
 
   /// Every order conversation this user is part of, newest first.
   Future<List<ChatConversation>> fetchConversations({int limit = 50}) async {
@@ -135,6 +159,7 @@ class ChatRepository {
   Future<void> sendMessage({
     required String orderId,
     required String message,
+    String thread = vendorThread,
     String? imageUrl,
     ChatAttachment? attachment,
   }) async {
@@ -148,6 +173,7 @@ class ChatRepository {
     await _client.from('chat_messages').insert({
       'order_id': orderId,
       'sender_id': senderId,
+      'thread': thread,
       'message': message,
       'image_url': imageUrl,
       if (attachment != null) ...{

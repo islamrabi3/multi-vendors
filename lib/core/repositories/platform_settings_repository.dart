@@ -1,3 +1,4 @@
+import '../services/maintenance_gate.dart';
 import '../supabase_client.dart';
 
 /// The platform's per-order service fee rule. Mirrors
@@ -42,6 +43,32 @@ class PlatformSettingsRepository {
         .maybeSingle();
     return row == null ? const ServiceFeeRule() : ServiceFeeRule.fromMap(row);
   }
+
+  /// The maintenance flag and its message, read once.
+  Future<MaintenanceStatus> maintenanceStatus() async {
+    final row = await supabase
+        .from('platform_settings')
+        .select('maintenance_mode, maintenance_message, maintenance_message_ar')
+        .eq('id', 1)
+        .maybeSingle();
+    return row == null
+        ? const MaintenanceStatus()
+        : MaintenanceStatus.fromMap(row);
+  }
+
+  /// Admin only; the database refuses anyone who is not an admin.
+  Future<void> setMaintenanceMode({
+    required bool enabled,
+    String? message,
+    String? messageAr,
+  }) => supabase.rpc(
+    'admin_set_maintenance_mode',
+    params: {
+      'p_enabled': enabled,
+      'p_message': message,
+      'p_message_ar': messageAr,
+    },
+  );
 
   /// Admin only; the database refuses anyone without `finance.adjust`.
   Future<void> setServiceFee({

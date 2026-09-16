@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_picker/image_picker.dart';
+import 'package:multi_vendor/core/widgets/proof_photo_field.dart'
+    show pickProofPhoto;
+import 'package:multi_vendor/core/errors/app_failure.dart' show UserMessage;
 
 import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -166,20 +167,14 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     _amountController.text = due > 0 ? trimZeros(due) : '';
     _referenceController.clear();
     var method = 'cash';
-    XFile? photo;
+    String? photoName;
     Uint8List? photoBytes;
 
     Future<void> pickPhoto(void Function() rebuild) async {
-      final picked = await ImagePicker().pickImage(
-        // A receipt in hand is photographed; on the web there is no camera
-        // to open, so it is picked from files.
-        source: kIsWeb ? ImageSource.gallery : ImageSource.camera,
-        maxWidth: 1600,
-        imageQuality: 80,
-      );
+      final picked = await pickProofPhoto(context);
       if (picked == null) return;
-      photo = picked;
-      photoBytes = await picked.readAsBytes();
+      photoName = picked.name;
+      photoBytes = picked.bytes;
       rebuild();
     }
 
@@ -316,7 +311,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 18),
                       onPressed: () {
-                        photo = null;
+                        photoName = null;
                         photoBytes = null;
                         rebuild();
                       },
@@ -334,15 +329,18 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
         if (amount == null || amount <= 0) {
           // Thrown rather than returned: the form shows it inline and keeps
           // everything the driver typed.
-          throw Exception(l10n.amountRequired);
+          throw UserMessage(l10n.amountRequired);
         }
         // A bank transfer is only verifiable against its receipt.
         if (method == 'bank_transfer' && photoBytes == null) {
-          throw Exception(l10n.proofRequiredForBank);
+          throw UserMessage(l10n.proofRequiredForBank);
         }
         final proofPath = photoBytes == null
             ? null
-            : await _repository.uploadDepositProof(photoBytes!, photo!.name);
+            : await _repository.uploadDepositProof(
+                photoBytes!,
+                photoName ?? 'receipt.jpg',
+              );
         await _repository.createDepositRequest(
           amount: amount,
           paymentMethod: method,

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kitchenin.app",
+      "sha256_cert_fingerprints": [
+        "E1:05:3B:D9:CB:9D:38:47:48:B2:2C:B1:B0:FC:06:AE:F0:05:2C:BF:87:0D:BF:9C:56:2F:F3:AD:71:46:0B:0B"
+      ]
+    }
+  }
+]

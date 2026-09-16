@@ -40,7 +40,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
   StreamSubscription<int>? _unreadSub;
 
   /// Swiped away but still inside the Undo window — kept out of any reload.
+  /// Keyed by order *and* thread: dismissing the store's conversation must
+  /// not take the rider's with it.
   final Set<String> _pendingHide = {};
+
+  static String _key(ChatConversation c) => '${c.orderId}:${c.thread}';
 
   @override
   void initState() {
@@ -61,7 +65,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       final items = await _repo.fetchConversations();
       if (!mounted) return;
       setState(() {
-        _items = items.where((c) => !_pendingHide.contains(c.orderId)).toList();
+        _items = items.where((c) => !_pendingHide.contains(_key(c))).toList();
         _error = null;
       });
     } catch (error) {
@@ -80,12 +84,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
           child: SizedBox(
             width: 480,
             height: 620,
-            child: OrderChatSheet(orderId: c.orderId, embedded: true),
+            child: OrderChatSheet(
+              orderId: c.orderId,
+              thread: c.thread,
+              embedded: true,
+            ),
           ),
         ),
       );
     } else {
-      await context.push('/order/${c.orderId}/chat');
+      await context.push('/order/${c.orderId}/chat?thread=${c.thread}');
     }
     _load();
   }
@@ -114,7 +122,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       ),
     );
     return Dismissible(
-      key: ValueKey('conversation-${c.orderId}'),
+      key: ValueKey('conversation-${_key(c)}'),
       background: background(AlignmentDirectional.centerStart),
       secondaryBackground: background(AlignmentDirectional.centerEnd),
       onDismissed: (_) => _remove(c),
@@ -125,10 +133,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
   Future<void> _remove(ChatConversation c) async {
     final l10n = context.l10n;
     final before = _items ?? const <ChatConversation>[];
-    final index = before.indexWhere((x) => x.orderId == c.orderId);
-    _pendingHide.add(c.orderId);
+    final key = _key(c);
+    final index = before.indexWhere((x) => _key(x) == key);
+    _pendingHide.add(key);
     setState(() {
-      _items = [...before]..removeWhere((x) => x.orderId == c.orderId);
+      _items = [...before]..removeWhere((x) => _key(x) == key);
     });
 
     final messenger = ScaffoldMessenger.of(context);
@@ -145,7 +154,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     // Leaving the screen before the snackbar closes still removes it: only
     // an explicit Undo keeps the conversation.
     if (reason == SnackBarClosedReason.action && mounted) {
-      _pendingHide.remove(c.orderId);
+      _pendingHide.remove(key);
       setState(() {
         final restored = [...?_items];
         restored.insert(index.clamp(0, restored.length), c);
@@ -154,10 +163,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
       return;
     }
     try {
-      await _repo.hideConversation(c.orderId);
-      _pendingHide.remove(c.orderId);
+      await _repo.hideConversation(c.orderId, thread: c.thread);
+      _pendingHide.remove(key);
     } catch (error) {
-      _pendingHide.remove(c.orderId);
+      _pendingHide.remove(key);
       if (!mounted) return;
       showFailure(context, error);
       _load();
@@ -298,11 +307,9 @@ class _ConversationTile extends StatelessWidget {
     final c = conversation;
     final unread = c.unread > 0;
     final status = OrderStatus.fromName(c.orderStatus);
-    final roleIcon = switch (c.lastSenderRole) {
-      'driver' => Icons.delivery_dining_rounded,
-      'vendor' => Icons.storefront_rounded,
-      _ => Icons.person_rounded,
-    };
+    final roleIcon = c.thread == ChatRepository.driverThread
+        ? Icons.delivery_dining_rounded
+        : Icons.storefront_rounded;
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -374,18 +381,26 @@ class _ConversationTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    [
-                      if (c.vendorName != null) c.vendorName!,
-                      status.localizedLabel(context),
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      _ThreadChip(thread: c.thread),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          [
+                            if (c.vendorName != null) c.vendorName!,
+                            status.localizedLabel(context),
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -428,6 +443,33 @@ class _ConversationTile extends StatelessWidget {
     return DateFormat.MMMd(
       Localizations.localeOf(context).languageCode,
     ).format(at);
+  }
+}
+
+/// Which of the order's two conversations a row belongs to.
+class _ThreadChip extends StatelessWidget {
+  const _ThreadChip({required this.thread});
+
+  final String thread;
+
+  @override
+  Widget build(BuildContext context) {
+    final driver = thread == ChatRepository.driverThread;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: driver ? AppColors.pistachioFill : AppColors.warmFill,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+      ),
+      child: Text(
+        driver ? context.l10n.threadDriver : context.l10n.threadStore,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+          color: driver ? AppColors.pistachioInk : AppColors.primaryDark,
+        ),
+      ),
+    );
   }
 }
 

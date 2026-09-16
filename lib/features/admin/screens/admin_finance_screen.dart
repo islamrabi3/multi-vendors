@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/errors/app_failure.dart' show UserMessage;
 import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
@@ -197,7 +198,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         final amount = double.tryParse(value.text.trim()) ?? 0;
         final max = type == 'percent' ? double.tryParse(cap.text.trim()) : null;
         if (amount < 0 || (type == 'percent' && amount > 100)) {
-          throw Exception(l10n.invalidFeePercent);
+          throw UserMessage(l10n.invalidFeePercent);
         }
         final repo = PlatformSettingsRepository();
         await repo.setServiceFee(type: type, value: amount, max: max);
@@ -206,8 +207,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         return true;
       },
     );
-    value.dispose();
-    cap.dispose();
+    disposeAfterClose([value, cap]);
     if (saved == true && mounted) showSnack(context, l10n.serviceFeeSaved);
   }
 
@@ -279,7 +279,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
       onSubmit: (_) async {
         final percent = double.tryParse(_driverShareController.text.trim());
         if (percent == null || percent < 0 || percent > 100) {
-          throw Exception(l10n.invalidFeePercent);
+          throw UserMessage(l10n.invalidFeePercent);
         }
         final updated = await _repository.setDriverShare(percent);
         if (mounted) setState(() => _driverShare = updated);

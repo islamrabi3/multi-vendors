@@ -130,6 +130,28 @@ class CatalogRepository {
         .toList();
   }
 
+  /// Every category's recommended stores in one read, as (category, rank,
+  /// store). The category page filters these locally, so switching between
+  /// "All" and a sub-category needs no round trip.
+  Future<List<({String categoryId, int rank, Vendor vendor})>>
+  fetchAllCategoryRecommendations() async {
+    final rows = await supabase
+        .from('category_recommendations')
+        .select('category_id, rank, vendors!inner($_vendorSelect)')
+        .order('rank', ascending: true);
+    return [
+      for (final row in (rows as List).cast<Map<String, dynamic>>())
+        if (row['vendors'] case final Map<String, dynamic> v)
+          if (Vendor.fromMap(v) case final vendor
+              when vendor.isActive && vendor.isApproved)
+            (
+              categoryId: row['category_id'] as String,
+              rank: ((row['rank'] as num?) ?? 0).toInt(),
+              vendor: vendor,
+            ),
+    ];
+  }
+
   /// Stores matching a query by their own name *or* by something on their
   /// menu, with up to three matching item names each.
   ///

@@ -311,9 +311,9 @@ class _TransactionTile extends StatelessWidget {
     return FinanceTxTile(
       icon: icon,
       title: title,
-      subtitle: label != null && (tx.description?.isNotEmpty ?? false)
-          ? '$time · ${tx.description}'
-          : time,
+      // The server writes descriptions in English for its own records, so a
+      // known type shows only its translated label and the time.
+      subtitle: time,
       amount: formatMoney(tx.amount.abs()),
       isCredit: tx.amount > 0,
     );

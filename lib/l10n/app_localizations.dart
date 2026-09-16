@@ -575,7 +575,7 @@ abstract class AppLocalizations {
   /// No description provided for @grossMerchandiseValue.
   ///
   /// In en, this message translates to:
-  /// **'Gross merchandise value'**
+  /// **'Total sales'**
   String get grossMerchandiseValue;
 
   /// No description provided for @a.
@@ -6750,7 +6750,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeCravingPrompt.
   ///
   /// In en, this message translates to:
-  /// **'What would you like today?'**
+  /// **'What are you eating today?'**
   String get homeCravingPrompt;
 
   /// No description provided for @railRecommendedHint.
@@ -9884,6 +9884,828 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This takes a few seconds. Please don\'t close the app.'**
   String get paymentConfirmingBody;
+
+  /// No description provided for @chooseFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get chooseFromGallery;
+
+  /// No description provided for @takePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get takePhoto;
+
+  /// No description provided for @proofImageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the image'**
+  String get proofImageUnavailable;
+
+  /// No description provided for @accountCreatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account created'**
+  String get accountCreatedTitle;
+
+  /// No description provided for @accountCreatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share these login details with the owner. The password is not shown again.'**
+  String get accountCreatedHint;
+
+  /// No description provided for @copyLoginDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copyLoginDetails;
+
+  /// No description provided for @copiedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copiedLabel;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @newStoreAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'New store'**
+  String get newStoreAccount;
+
+  /// No description provided for @newDriverAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'New driver'**
+  String get newDriverAccount;
+
+  /// No description provided for @loginDetailsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Login details'**
+  String get loginDetailsSection;
+
+  /// No description provided for @ownerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner name'**
+  String get ownerName;
+
+  /// No description provided for @passwordMin8.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 8 characters'**
+  String get passwordMin8;
+
+  /// No description provided for @generatePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate password'**
+  String get generatePassword;
+
+  /// No description provided for @storeDetailsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Store details'**
+  String get storeDetailsSection;
+
+  /// No description provided for @platformTermsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform terms'**
+  String get platformTermsSection;
+
+  /// No description provided for @storePhotosSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get storePhotosSection;
+
+  /// No description provided for @storeLogoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Logo'**
+  String get storeLogoLabel;
+
+  /// No description provided for @storeCoverLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover photo'**
+  String get storeCoverLabel;
+
+  /// No description provided for @driverDocumentsOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents (optional)'**
+  String get driverDocumentsOptional;
+
+  /// No description provided for @approveNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve now'**
+  String get approveNow;
+
+  /// No description provided for @approveNowOnHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The account can start working as soon as it\'s created.'**
+  String get approveNowOnHint;
+
+  /// No description provided for @approveNowOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The account is created as pending and waits for approval.'**
+  String get approveNowOffHint;
+
+  /// No description provided for @createStoreAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create store'**
+  String get createStoreAccount;
+
+  /// No description provided for @createDriverAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create driver'**
+  String get createDriverAccount;
+
+  /// No description provided for @errStoreLocationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the store\'s location on the map.'**
+  String get errStoreLocationRequired;
+
+  /// No description provided for @errStoreDetailsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Store name, category and address are required.'**
+  String get errStoreDetailsRequired;
+
+  /// No description provided for @addStoreAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'New store'**
+  String get addStoreAccount;
+
+  /// No description provided for @addDriverAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'New driver'**
+  String get addDriverAccount;
+
+  /// No description provided for @shareVendorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Check out {name} on KitchenIn'**
+  String shareVendorMessage(String name);
+
+  /// No description provided for @changePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get changePassword;
+
+  /// No description provided for @setAPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a password'**
+  String get setAPassword;
+
+  /// No description provided for @currentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get currentPassword;
+
+  /// No description provided for @currentPasswordWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'The current password is incorrect.'**
+  String get currentPasswordWrong;
+
+  /// No description provided for @newPasswordSameAsOld.
+  ///
+  /// In en, this message translates to:
+  /// **'The new password must be different from the current one.'**
+  String get newPasswordSameAsOld;
+
+  /// No description provided for @passwordChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed'**
+  String get passwordChanged;
+
+  /// No description provided for @savePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Save password'**
+  String get savePassword;
+
+  /// No description provided for @accountSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get accountSecurity;
+
+  /// No description provided for @soonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Soon'**
+  String get soonLabel;
+
+  /// No description provided for @comingSoonToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show as coming soon'**
+  String get comingSoonToggle;
+
+  /// No description provided for @categoryComingSoonMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is coming soon'**
+  String categoryComingSoonMessage(String name);
+
+  /// No description provided for @pickupCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickup code'**
+  String get pickupCodeTitle;
+
+  /// No description provided for @pickupCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the store for the six-digit code to collect this order.'**
+  String get pickupCodeHint;
+
+  /// No description provided for @pickupCodeVendorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Read this out to the driver when they collect the order.'**
+  String get pickupCodeVendorHint;
+
+  /// No description provided for @confirmPickup.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect'**
+  String get confirmPickup;
+
+  /// No description provided for @goToStoreSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to the store'**
+  String get goToStoreSubtitle;
+
+  /// No description provided for @errWrongPickupCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong pickup code. Ask the store to read it again.'**
+  String get errWrongPickupCode;
+
+  /// No description provided for @maintenanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get maintenanceTitle;
+
+  /// No description provided for @maintenanceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We are making some improvements. The app will be back shortly.'**
+  String get maintenanceBody;
+
+  /// No description provided for @maintenanceStateOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance mode is on'**
+  String get maintenanceStateOn;
+
+  /// No description provided for @maintenanceStateOff.
+  ///
+  /// In en, this message translates to:
+  /// **'The platform is open'**
+  String get maintenanceStateOff;
+
+  /// No description provided for @maintenanceScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers, stores and drivers see the maintenance screen and no order can be placed. Admins keep full access.'**
+  String get maintenanceScope;
+
+  /// No description provided for @maintenanceMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message to show'**
+  String get maintenanceMessage;
+
+  /// No description provided for @maintenanceTurnOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on maintenance mode'**
+  String get maintenanceTurnOn;
+
+  /// No description provided for @maintenanceTurnOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen the platform'**
+  String get maintenanceTurnOff;
+
+  /// No description provided for @maintenanceSaveMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Save message'**
+  String get maintenanceSaveMessage;
+
+  /// No description provided for @maintenanceOnToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance mode is on'**
+  String get maintenanceOnToast;
+
+  /// No description provided for @maintenanceOffToast.
+  ///
+  /// In en, this message translates to:
+  /// **'The platform is open again'**
+  String get maintenanceOffToast;
+
+  /// No description provided for @errMaintenanceMode.
+  ///
+  /// In en, this message translates to:
+  /// **'The app is under maintenance right now. Please try again shortly.'**
+  String get errMaintenanceMode;
+
+  /// No description provided for @staffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get staffTitle;
+
+  /// No description provided for @staffAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a team member'**
+  String get staffAdd;
+
+  /// No description provided for @staffIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Team logins work inside your store only. They never see sales, payouts or your plan.'**
+  String get staffIntro;
+
+  /// No description provided for @staffEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody on the team yet.'**
+  String get staffEmpty;
+
+  /// No description provided for @staffNoPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'No access yet'**
+  String get staffNoPermissions;
+
+  /// No description provided for @staffPermissionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what this person can do.'**
+  String get staffPermissionsHint;
+
+  /// No description provided for @staffPermOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Take and manage orders'**
+  String get staffPermOrders;
+
+  /// No description provided for @staffPermMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit the menu'**
+  String get staffPermMenu;
+
+  /// No description provided for @staffPermReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Read reviews'**
+  String get staffPermReviews;
+
+  /// No description provided for @staffPermSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit store settings'**
+  String get staffPermSettings;
+
+  /// No description provided for @staffPickOnePermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one permission.'**
+  String get staffPickOnePermission;
+
+  /// No description provided for @staffRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'They lose access to the store. Their login stays as a normal customer account.'**
+  String get staffRemoveConfirm;
+
+  /// No description provided for @errNoPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one permission.'**
+  String get errNoPermissions;
+
+  /// No description provided for @errAlreadyStoreOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'This account already owns a store.'**
+  String get errAlreadyStoreOwner;
+
+  /// No description provided for @staffNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account does not have access to this section.'**
+  String get staffNoAccess;
+
+  /// No description provided for @campaignsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Price campaigns'**
+  String get campaignsTitle;
+
+  /// No description provided for @campaignNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New campaign'**
+  String get campaignNew;
+
+  /// No description provided for @campaignName.
+  ///
+  /// In en, this message translates to:
+  /// **'Campaign name'**
+  String get campaignName;
+
+  /// No description provided for @campaignPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Price uplift'**
+  String get campaignPercent;
+
+  /// No description provided for @campaignPercentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu prices rise by this much while the campaign runs, and go back when it ends. Stores are still paid on their own price, so the uplift covers the discount you give the customer.'**
+  String get campaignPercentHint;
+
+  /// No description provided for @campaignScopeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All stores'**
+  String get campaignScopeAll;
+
+  /// No description provided for @campaignIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'A campaign raises menu prices for as long as it runs. Set the uplift to match the discount you are about to offer.'**
+  String get campaignIntro;
+
+  /// No description provided for @campaignEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No campaigns yet.'**
+  String get campaignEmpty;
+
+  /// No description provided for @campaignEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End campaign'**
+  String get campaignEnd;
+
+  /// No description provided for @campaignEndConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices go back to what they were. Prices a store changed during the campaign are left alone.'**
+  String get campaignEndConfirm;
+
+  /// No description provided for @campaignEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} prices restored'**
+  String campaignEnded(int count);
+
+  /// No description provided for @campaignItemsRaised.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String campaignItemsRaised(int count);
+
+  /// No description provided for @campaignStatusEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get campaignStatusEnded;
+
+  /// No description provided for @campaignStartNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Start now'**
+  String get campaignStartNow;
+
+  /// No description provided for @campaignMarkupLedger.
+  ///
+  /// In en, this message translates to:
+  /// **'Campaign uplift'**
+  String get campaignMarkupLedger;
+
+  /// No description provided for @minOrderOf.
+  ///
+  /// In en, this message translates to:
+  /// **'min order {amount}'**
+  String minOrderOf(String amount);
+
+  /// No description provided for @orderNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Order now'**
+  String get orderNow;
+
+  /// No description provided for @minOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum order'**
+  String get minOrderLabel;
+
+  /// No description provided for @minOrderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it at 0 for no minimum.'**
+  String get minOrderHint;
+
+  /// No description provided for @editCoupon.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit code'**
+  String get editCoupon;
+
+  /// No description provided for @couponUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Code updated'**
+  String get couponUpdated;
+
+  /// No description provided for @couponsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} codes for you'**
+  String couponsAvailable(int count);
+
+  /// No description provided for @couponsSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Codes you can use'**
+  String get couponsSheetTitle;
+
+  /// No description provided for @couponsSheetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a code to copy it, then paste it at checkout.'**
+  String get couponsSheetHint;
+
+  /// No description provided for @storesSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stores'**
+  String get storesSectionTitle;
+
+  /// No description provided for @swipeForCoupons.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe to see the codes you can use'**
+  String get swipeForCoupons;
+
+  /// No description provided for @favoritesEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore shops and save your favourite places to find them quickly here.'**
+  String get favoritesEmptyHint;
+
+  /// No description provided for @exploreStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore stores'**
+  String get exploreStores;
+
+  /// No description provided for @removedFromFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed from favourites'**
+  String removedFromFavorites(String name);
+
+  /// No description provided for @favoriteUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update your favourites.'**
+  String get favoriteUpdateFailed;
+
+  /// No description provided for @swipeForDiscount.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe for your discount'**
+  String get swipeForDiscount;
+
+  /// No description provided for @exploreStoresTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore stores'**
+  String get exploreStoresTitle;
+
+  /// No description provided for @redeemPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeem points'**
+  String get redeemPoints;
+
+  /// No description provided for @redeemToWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn points into wallet credit'**
+  String get redeemToWallet;
+
+  /// No description provided for @redeemRateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{points} points = {amount} wallet credit.'**
+  String redeemRateHint(int points, String amount);
+
+  /// No description provided for @redeemMinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can redeem from {points} points.'**
+  String redeemMinHint(int points);
+
+  /// No description provided for @redeemAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Points to redeem'**
+  String get redeemAmountLabel;
+
+  /// No description provided for @redeemWorth.
+  ///
+  /// In en, this message translates to:
+  /// **'Worth {amount}'**
+  String redeemWorth(String amount);
+
+  /// No description provided for @redeemDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} added to your wallet'**
+  String redeemDone(String amount);
+
+  /// No description provided for @errBelowMinRedeem.
+  ///
+  /// In en, this message translates to:
+  /// **'You need more points before you can redeem.'**
+  String get errBelowMinRedeem;
+
+  /// No description provided for @errNotEnoughPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have that many points.'**
+  String get errNotEnoughPoints;
+
+  /// No description provided for @platformRunOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'We run this store\'s orders'**
+  String get platformRunOrders;
+
+  /// No description provided for @platformRunOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders skip the store: they go straight to a driver and the admin moves them along.'**
+  String get platformRunOn;
+
+  /// No description provided for @platformRunOff.
+  ///
+  /// In en, this message translates to:
+  /// **'The store accepts and prepares its own orders.'**
+  String get platformRunOff;
+
+  /// No description provided for @platformRunBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Run by us'**
+  String get platformRunBadge;
+
+  /// No description provided for @advanceOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Move order to {status}'**
+  String advanceOrder(String status);
+
+  /// No description provided for @usernameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get usernameLabel;
+
+  /// No description provided for @usernameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Letters, numbers, dot or underscore. 3–20 characters.'**
+  String get usernameHint;
+
+  /// No description provided for @emailOrUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Email or username'**
+  String get emailOrUsername;
+
+  /// No description provided for @emailOrUsernameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'sara@email.com or sara'**
+  String get emailOrUsernameHint;
+
+  /// No description provided for @usernameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'That username is taken.'**
+  String get usernameTaken;
+
+  /// No description provided for @usernameInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 3–20 letters, numbers, dot or underscore.'**
+  String get usernameInvalid;
+
+  /// No description provided for @errUsernameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'That username is taken.'**
+  String get errUsernameTaken;
+
+  /// No description provided for @errInvalidUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 3–20 letters, numbers, dot or underscore.'**
+  String get errInvalidUsername;
+
+  /// No description provided for @errUnknownLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'No account with that username.'**
+  String get errUnknownLogin;
+
+  /// No description provided for @stageConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get stageConfirmed;
+
+  /// No description provided for @stageOnTheWay.
+  ///
+  /// In en, this message translates to:
+  /// **'On the way'**
+  String get stageOnTheWay;
+
+  /// No description provided for @couponsCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A discount is waiting'**
+  String get couponsCardTitle;
+
+  /// No description provided for @couponsCardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} codes ready to use'**
+  String couponsCardSubtitle(int count);
+
+  /// No description provided for @threadStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Store'**
+  String get threadStore;
+
+  /// No description provided for @threadDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Rider'**
+  String get threadDriver;
+
+  /// No description provided for @pickADay.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a day'**
+  String get pickADay;
+
+  /// No description provided for @ordersForDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders · {day}'**
+  String ordersForDay(String day);
 }
 
 class _AppLocalizationsDelegate

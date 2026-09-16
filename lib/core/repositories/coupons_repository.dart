@@ -72,6 +72,60 @@ class CouponsRepository {
         .toList();
   }
 
+  /// Edits a campaign. Mirrors [create] field for field, so anything an admin
+  /// could set when making a code they can also correct afterwards — the
+  /// screen only offered delete-and-retype before.
+  Future<void> edit({
+    required String id,
+    required String code,
+    required String discountType,
+    required double value,
+    double minOrderAmount = 0,
+    double? maxDiscount,
+    int? usageLimit,
+    int? perUserLimit,
+    String? vendorId,
+    DateTime? startsAt,
+    DateTime? expiresAt,
+    bool firstOrderOnly = false,
+    bool isPublic = false,
+    String? title,
+    String fundedBy = 'platform',
+  }) async {
+    await supabase
+        .from('coupons')
+        .update({
+          'code': code.toUpperCase(),
+          'discount_type': discountType,
+          'value': discountType == 'free_delivery' ? 0 : value,
+          'min_order_amount': minOrderAmount,
+          'max_discount': maxDiscount,
+          'usage_limit': usageLimit,
+          'per_user_limit': perUserLimit,
+          'vendor_id': vendorId,
+          'starts_at': startsAt?.toUtc().toIso8601String(),
+          'expires_at': expiresAt?.toUtc().toIso8601String(),
+          'first_order_only': firstOrderOnly,
+          'is_public': isPublic,
+          'title': title,
+          'funded_by': vendorId == null ? 'platform' : fundedBy,
+        })
+        .eq('id', id);
+  }
+
+  /// Codes *this* customer can use right now — the home page's list.
+  ///
+  /// The server applies the same rules checkout does, including how many times
+  /// this customer has already used each code, so a one-per-customer code
+  /// disappears once it is spent instead of sitting there to be refused.
+  Future<List<Coupon>> fetchPublicCoupons() async {
+    final data = await supabase.rpc('my_public_coupons');
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(Coupon.fromMap)
+        .toList();
+  }
+
   Future<void> update(String id, Map<String, dynamic> values) async {
     await supabase.from('coupons').update(values).eq('id', id);
   }

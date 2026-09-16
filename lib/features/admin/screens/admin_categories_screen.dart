@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:multi_vendor/core/widgets/soon_badge.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -237,6 +238,9 @@ class _CategoriesViewState extends State<_CategoriesView> {
                                     _confirmDelete(context, category),
                                 onRecommendations: () =>
                                     _showRecommendations(context, category),
+                                onComingSoon: (v) => context
+                                    .read<AdminCategoriesCubit>()
+                                    .setComingSoon(category, v),
                               ),
                             );
                           },
@@ -254,6 +258,9 @@ class _CategoriesViewState extends State<_CategoriesView> {
                               onDelete: (c) => _confirmDelete(context, c),
                               onRecommendations: (c) =>
                                   _showRecommendations(context, c),
+                              onComingSoon: (c, v) => context
+                                  .read<AdminCategoriesCubit>()
+                                  .setComingSoon(c, v),
                             );
                           },
                         ),
@@ -379,6 +386,7 @@ class _CategorySection extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onRecommendations,
+    required this.onComingSoon,
   });
 
   final VendorCategory parent;
@@ -386,6 +394,7 @@ class _CategorySection extends StatelessWidget {
   final ValueChanged<VendorCategory> onEdit;
   final ValueChanged<VendorCategory> onDelete;
   final ValueChanged<VendorCategory> onRecommendations;
+  final void Function(VendorCategory category, bool value) onComingSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -406,6 +415,7 @@ class _CategorySection extends StatelessWidget {
             onEdit: () => onEdit(parent),
             onDelete: () => onDelete(parent),
             onRecommendations: () => onRecommendations(parent),
+            onComingSoon: (v) => onComingSoon(parent, v),
           ),
           for (final child in children) ...[
             const Divider(
@@ -420,6 +430,7 @@ class _CategorySection extends StatelessWidget {
               onEdit: () => onEdit(child),
               onDelete: () => onDelete(child),
               onRecommendations: () => onRecommendations(child),
+              onComingSoon: (v) => onComingSoon(child, v),
             ),
           ],
         ],
@@ -436,6 +447,7 @@ class _CategoryRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onRecommendations,
+    required this.onComingSoon,
     this.subtitle,
     this.isChild = false,
   });
@@ -446,6 +458,7 @@ class _CategoryRow extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onRecommendations;
+  final ValueChanged<bool> onComingSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -495,17 +508,27 @@ class _CategoryRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    category.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: isChild
-                        ? const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: AppColors.ink,
-                          )
-                        : AppType.heading(15.5),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          category.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: isChild
+                              ? const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: AppColors.ink,
+                                )
+                              : AppType.heading(15.5),
+                        ),
+                      ),
+                      if (category.isComingSoon) ...[
+                        const SizedBox(width: 6),
+                        const SoonBadge(),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -517,6 +540,31 @@ class _CategoryRow extends StatelessWidget {
                       color: arabic.isEmpty
                           ? AppColors.textFaint
                           : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Tooltip(
+              message: l10n.comingSoonToggle,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 30,
+                    child: FittedBox(
+                      child: Switch(
+                        value: category.isComingSoon,
+                        onChanged: onComingSoon,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    l10n.soonLabel,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1047,45 +1095,41 @@ class _CategoryRecommendationsSheetState
     }
   }
 
+  /// Picks any number of stores at once, with "select all".
   Future<void> _add() async {
     final promoted = _picks.map((p) => p.vendor.id).toSet();
-    final available = _vendors.where((v) => !promoted.contains(v.id)).toList();
+    // Stores filed directly under this category first: they are the likely
+    // picks, and the rest stay reachable below them.
+    final available = _vendors.where((v) => !promoted.contains(v.id)).toList()
+      ..sort((a, b) {
+        final aHere = a.categoryId == widget.category.id ? 0 : 1;
+        final bHere = b.categoryId == widget.category.id ? 0 : 1;
+        if (aHere != bHere) return aHere - bHere;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
     if (available.isEmpty) return;
 
-    final chosen = await showAdaptiveSheet<Vendor>(
+    final chosen = await showAdaptiveSheet<List<Vendor>>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
       backgroundColor: AppColors.canvas,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xxl)),
-      ),
-      builder: (_) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final vendor in available)
-              ListTile(
-                title: Text(
-                  vendor.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onTap: () => Navigator.pop(context, vendor),
-              ),
-          ],
-        ),
-      ),
+      maxWidth: 520,
+      builder: (_) => _StoreMultiPicker(vendors: available),
     );
-    if (chosen == null || !mounted) return;
+    if (chosen == null || chosen.isEmpty || !mounted) return;
 
     setState(() => _busy = true);
     try {
-      await _repository.addCategoryRecommendation(
-        categoryId: widget.category.id,
-        vendorId: chosen.id,
-        // Appended, so adding never silently reshuffles the existing order.
-        rank: _picks.length,
-      );
+      var rank = _picks.length;
+      for (final vendor in chosen) {
+        await _repository.addCategoryRecommendation(
+          categoryId: widget.category.id,
+          vendorId: vendor.id,
+          // Appended, so adding never silently reshuffles the existing order.
+          rank: rank++,
+        );
+      }
       await _load();
     } catch (error) {
       if (mounted) showFailure(context, error);
@@ -1205,6 +1249,101 @@ class _CategoryRecommendationsSheetState
                 l10n.addStore,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Checkbox list of stores with "select all", returning the chosen ones.
+class _StoreMultiPicker extends StatefulWidget {
+  const _StoreMultiPicker({required this.vendors});
+
+  final List<Vendor> vendors;
+
+  @override
+  State<_StoreMultiPicker> createState() => _StoreMultiPickerState();
+}
+
+class _StoreMultiPickerState extends State<_StoreMultiPicker> {
+  final _selected = <String>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final all = _selected.length == widget.vendors.length;
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.7,
+        child: Column(
+          children: [
+            CheckboxListTile(
+              value: all
+                  ? true
+                  : _selected.isEmpty
+                  ? false
+                  : null,
+              tristate: true,
+              onChanged: (_) => setState(() {
+                if (all) {
+                  _selected.clear();
+                } else {
+                  _selected.addAll(widget.vendors.map((v) => v.id));
+                }
+              }),
+              title: Text(
+                l10n.selectAll,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            Expanded(
+              child: ListView.builder(
+                itemCount: widget.vendors.length,
+                itemBuilder: (context, i) {
+                  final vendor = widget.vendors[i];
+                  return CheckboxListTile(
+                    value: _selected.contains(vendor.id),
+                    onChanged: (checked) => setState(() {
+                      if (checked == true) {
+                        _selected.add(vendor.id);
+                      } else {
+                        _selected.remove(vendor.id);
+                      }
+                    }),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    secondary: AppNetworkImage(
+                      url: vendor.logoUrl,
+                      width: 40,
+                      height: 40,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    title: Text(
+                      vendor.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: _selected.isEmpty
+                    ? null
+                    : () => Navigator.pop(context, [
+                        for (final v in widget.vendors)
+                          if (_selected.contains(v.id)) v,
+                      ]),
+                child: Text('${l10n.add} (${_selected.length})'),
               ),
             ),
           ],

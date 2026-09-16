@@ -171,6 +171,20 @@ class AdminCategoriesCubit extends Cubit<AdminCategoriesState> {
     }
   }
 
+  /// Flips "coming soon" optimistically; rolls back if the write fails.
+  Future<void> setComingSoon(VendorCategory category, bool value) async {
+    List<VendorCategory> withValue(bool v) => [
+      for (final c in state.categories)
+        c.id == category.id ? c.copyWith(isComingSoon: v) : c,
+    ];
+    emit(state.copyWith(clearError: true, categories: withValue(value)));
+    try {
+      await _repository.setVendorCategoryComingSoon(category.id, value);
+    } catch (e) {
+      emit(state.copyWith(error: e.toString(), categories: withValue(!value)));
+    }
+  }
+
   /// Renumbers one sibling group — pass [state.topLevel] or a single
   /// parent's [state.childrenOf] result, reordered. Applied optimistically so
   /// the drag doesn't snap back while the write is in flight.

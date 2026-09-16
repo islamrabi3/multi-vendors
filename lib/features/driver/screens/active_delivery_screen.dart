@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/widgets/chat_unread_badge.dart';
 import 'package:multi_vendor/core/widgets/swipe_to_confirm.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/driver_repository.dart';
+import '../../../core/repositories/chat_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/utils/dialer.dart';
@@ -259,6 +261,9 @@ class _ActiveDeliveryView extends StatelessWidget {
               child: _Sheet(
                 order: order,
                 vendorName: state.vendorName,
+                storeLocation: state.vendorLocation,
+                onPickup: (code) =>
+                    context.read<ActiveDeliveryCubit>().confirmPickup(code),
                 destination: destination,
                 myLocation: state.myLocation,
                 busy: state.busy,
@@ -663,6 +668,8 @@ class _Sheet extends StatelessWidget {
     required this.myLocation,
     required this.busy,
     required this.onDelivered,
+    required this.onPickup,
+    required this.storeLocation,
   });
 
   final AppOrder order;
@@ -671,6 +678,13 @@ class _Sheet extends StatelessWidget {
   final LatLng? myLocation;
   final bool busy;
   final VoidCallback onDelivered;
+
+  /// Types the store's six digits. Resolves false when they are wrong.
+  final Future<bool> Function(String code) onPickup;
+  final LatLng? storeLocation;
+
+  /// Claimed but not collected: the driver is still on the way to the store.
+  bool get _collecting => order.status == OrderStatus.readyForPickup;
 
   Future<void> _call(BuildContext context) =>
       callPhone(context, order.customerPhone);
@@ -819,7 +833,9 @@ class _Sheet extends StatelessWidget {
                     iconBg: AppColors.warmFill,
                     iconColor: AppColors.primary,
                     title: vendorName ?? context.l10n.store,
-                    subtitle: context.l10n.pickedUp,
+                    subtitle: _collecting
+                        ? context.l10n.goToStoreSubtitle
+                        : context.l10n.pickedUp,
                     showConnector: true,
                   ),
                   _buildTimelineStep(
@@ -907,6 +923,7 @@ class _Sheet extends StatelessWidget {
                 Expanded(
                   child: ChatUnreadBadge(
                     orderId: order.id,
+                    thread: ChatRepository.driverThread,
                     top: -4,
                     end: 2,
                     child: _ActionIcon(
@@ -916,7 +933,10 @@ class _Sheet extends StatelessWidget {
                       onPressed: () => showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
-                        builder: (_) => OrderChatSheet(orderId: order.id),
+                        builder: (_) => OrderChatSheet(
+                          orderId: order.id,
+                          thread: ChatRepository.driverThread,
+                        ),
                       ),
                     ),
                   ),
@@ -929,15 +949,23 @@ class _Sheet extends StatelessWidget {
                     // Disabled rather than a silent tap: no destination means
                     // there is nowhere to send the driver, which used to be
                     // indistinguishable from the button not responding.
-                    onPressed: destination == null
+                    // While collecting, "navigate" means the store; after
+                    // that, the customer.
+                    onPressed:
+                        (_collecting ? storeLocation : destination) == null
                         ? null
-                        : () => launchUrl(
-                            Uri.parse(
-                              'https://www.google.com/maps/search/?api=1'
-                              '&query=${destination!.latitude},${destination!.longitude}',
-                            ),
-                            mode: LaunchMode.externalApplication,
-                          ),
+                        : () {
+                            final target = (_collecting
+                                ? storeLocation
+                                : destination)!;
+                            launchUrl(
+                              Uri.parse(
+                                'https://www.google.com/maps/search/?api=1'
+                                '&query=${target.latitude},${target.longitude}',
+                              ),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
                   ),
                 ),
               ],
@@ -946,11 +974,14 @@ class _Sheet extends StatelessWidget {
             // A swipe rather than a tap: delivery cannot be undone, and a
             // full-width button was easy to hit by accident in a pocket or on
             // a bike.
-            SwipeToConfirm(
-              label: context.l10n.swipeWhenDelivered,
-              busy: busy,
-              onConfirmed: onDelivered,
-            ),
+            if (_collecting)
+              _PickupCodeField(busy: busy, onSubmit: onPickup)
+            else
+              SwipeToConfirm(
+                label: context.l10n.swipeWhenDelivered,
+                busy: busy,
+                onConfirmed: onDelivered,
+              ),
           ],
         ),
       ),
@@ -1056,6 +1087,101 @@ class _ActionIcon extends StatelessWidget {
           ),
           tooltip: tooltip,
         ),
+      ),
+    );
+  }
+}
+
+/// Where the driver types the six digits the store reads out.
+///
+/// The order does not move until they match, so a rider cannot pick up
+/// somebody else's bag by tapping "collected" in the car park.
+class _PickupCodeField extends StatefulWidget {
+  const _PickupCodeField({required this.busy, required this.onSubmit});
+
+  final bool busy;
+  final Future<bool> Function(String code) onSubmit;
+
+  @override
+  State<_PickupCodeField> createState() => _PickupCodeFieldState();
+}
+
+class _PickupCodeFieldState extends State<_PickupCodeField> {
+  final _code = TextEditingController();
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_code.text.trim().length < 6 || widget.busy) return;
+    final ok = await widget.onSubmit(_code.text.trim());
+    if (ok && mounted) _code.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.warmFill,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.pickupCodeTitle, style: AppType.heading(15)),
+          const SizedBox(height: 2),
+          Text(
+            l10n.pickupCodeHint,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _code,
+                  autofocus: false,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  maxLength: 6,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (v) {
+                    setState(() {});
+                    if (v.length == 6) _submit();
+                  },
+                  style: AppType.mono(22, color: AppColors.ink),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '------',
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 54,
+                child: FilledButton(
+                  onPressed: widget.busy || _code.text.trim().length < 6
+                      ? null
+                      : _submit,
+                  child: widget.busy
+                      ? const ButtonSpinner(size: 18)
+                      : Text(l10n.confirmPickup),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

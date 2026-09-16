@@ -53,6 +53,9 @@ class _InboxItem {
   final ChatConversation? conversation;
 
   bool get isChat => conversation != null;
+
+  /// Which of the order's conversations this row belongs to.
+  String? get chatThread => conversation?.thread;
   bool get isOrder => orderId != null && !isChat;
 }
 
@@ -228,12 +231,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: SizedBox(
               width: 480,
               height: 620,
-              child: OrderChatSheet(orderId: item.orderId!, embedded: true),
+              child: OrderChatSheet(
+                orderId: item.orderId!,
+                thread: item.chatThread ?? 'vendor',
+                embedded: true,
+              ),
             ),
           ),
         ).then((_) => _refresh());
       } else {
-        context.push('/order/${item.orderId}/chat').then((_) => _refresh());
+        context
+            .push(
+              '/order/${item.orderId}/chat'
+              '?thread=${item.chatThread ?? 'vendor'}',
+            )
+            .then((_) => _refresh());
       }
       return;
     }
