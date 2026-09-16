@@ -5157,6 +5157,12 @@ abstract class AppLocalizations {
   /// **'An account with this email already exists.'**
   String get errUserAlreadyExists;
 
+  /// No description provided for @errTooManyAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Wait a moment and try again.'**
+  String get errTooManyAttempts;
+
   /// No description provided for @errWeakPassword.
   ///
   /// In en, this message translates to:

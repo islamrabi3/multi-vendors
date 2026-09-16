@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/errors/app_failure.dart' show UserMessage;
 import '../../../core/models/finance.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
@@ -17,6 +18,7 @@ import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
 import '../../auth/auth_cubit.dart';
+import '../../vendor/screens/vendor_schedule_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 /// Route entry for the phone flow: the vendor review view on its own page.
@@ -192,6 +194,202 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
     showSnack(context, context.l10n.termsSaved);
   }
 
+  /// Everything about the store the owner could edit themselves.
+  ///
+  /// An operator onboarding a shop in person has the details in front of them
+  /// — a corrected phone number, the real address, the minimum the owner just
+  /// agreed to — and had no way to enter any of it: the store row was the
+  /// owner's alone to write once created. The platform's commercial terms
+  /// stay in their own editor, behind their own permission.
+  Future<void> _editProfile(Vendor vendor) async {
+    final l10n = context.l10n;
+    final name = TextEditingController(text: vendor.name);
+    final description = TextEditingController(text: vendor.description ?? '');
+    final phone = TextEditingController(text: vendor.phone ?? '');
+    final address = TextEditingController(text: vendor.addressText ?? '');
+    final minOrder = TextEditingController(
+      text: vendor.minOrderAmount > 0
+          ? vendor.minOrderAmount.toStringAsFixed(0)
+          : '',
+    );
+    final prep = TextEditingController(text: '${vendor.avgPrepMinutes}');
+    final radius = TextEditingController(
+      text: vendor.deliveryRadiusKm.toStringAsFixed(1),
+    );
+    var categoryId = vendor.categoryId;
+    final categories = await _repo.fetchVendorCategories();
+    if (!mounted) return;
+
+    Widget field(
+      TextEditingController controller,
+      String label, {
+      TextInputType keyboard = TextInputType.text,
+      int maxLines = 1,
+      String? suffix,
+    }) => Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboard,
+        maxLines: maxLines,
+        decoration: InputDecoration(labelText: label, suffixText: suffix),
+      ),
+    );
+
+    final saved = await showFormDialog<bool>(
+      context: context,
+      title: l10n.storeProfile,
+      icon: Icons.storefront_rounded,
+      submitLabel: l10n.save,
+      cancelLabel: l10n.cancel,
+      contentBuilder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            field(name, l10n.storeName),
+            field(description, l10n.description, maxLines: 3),
+            field(phone, l10n.storePhone, keyboard: TextInputType.phone),
+            field(address, l10n.storeAddress, maxLines: 2),
+            // A store filed under nothing never appears when a customer
+            // browses by category, so it is offered here rather than left to
+            // whatever was picked at signup.
+            DropdownButtonFormField<String>(
+              initialValue: categories.any((c) => c.id == categoryId)
+                  ? categoryId
+                  : null,
+              isExpanded: true,
+              decoration: InputDecoration(labelText: l10n.category),
+              items: [
+                for (final category in categories)
+                  DropdownMenuItem(
+                    value: category.id,
+                    child: Text(
+                      category.label(Localizations.localeOf(context).languageCode),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (value) => setDialogState(() => categoryId = value),
+            ),
+            const SizedBox(height: AppSpace.md),
+            field(
+              minOrder,
+              l10n.minimumOrder,
+              keyboard: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            field(
+              prep,
+              l10n.avgPrepTime,
+              keyboard: TextInputType.number,
+              suffix: l10n.minShort,
+            ),
+            field(
+              radius,
+              l10n.deliveryRadius,
+              keyboard: const TextInputType.numberWithOptions(decimal: true),
+              suffix: 'km',
+            ),
+          ],
+        ),
+      ),
+      onSubmit: (_) async {
+        final storeName = name.text.trim();
+        if (storeName.isEmpty) throw UserMessage(l10n.required);
+        await VendorAdminRepository().updateVendor(vendor.id, {
+          'name': storeName,
+          'description': description.text.trim().isEmpty
+              ? null
+              : description.text.trim(),
+          'phone': phone.text.trim().isEmpty ? null : phone.text.trim(),
+          'address_text': address.text.trim().isEmpty
+              ? null
+              : address.text.trim(),
+          // Left out entirely when unset, so a store that was never filed
+          // keeps whatever it had rather than being cleared.
+          'category_id': ?categoryId,
+          'min_order_amount': double.tryParse(minOrder.text.trim()) ?? 0,
+          // A prep time of zero would promise the customer an instant
+          // kitchen, so the store's own floor of one minute applies here too.
+          'avg_prep_minutes': (int.tryParse(prep.text.trim()) ?? 20).clamp(
+            1,
+            240,
+          ),
+          'delivery_radius_km':
+              double.tryParse(radius.text.trim())?.clamp(0.5, 50) ?? 10,
+        });
+        return true;
+      },
+    );
+
+    disposeAfterClose([
+      name,
+      description,
+      phone,
+      address,
+      minOrder,
+      prep,
+      radius,
+    ]);
+    if (saved != true || !mounted) return;
+    setState(() {
+      _future = _load();
+    });
+    showSnack(context, context.l10n.saved);
+  }
+
+  /// The store's weekly opening hours, in the same editor the owner uses.
+  Future<void> _editSchedule(Vendor vendor) async {
+    await showAdaptiveSheet<void>(
+      context: context,
+      showDragHandle: true,
+      // The editor is a list of seven days: it needs a height to live in
+      // rather than the unbounded one a sheet offers.
+      builder: (sheetContext) => SizedBox(
+        height: MediaQuery.sizeOf(sheetContext).height * 0.82,
+        child: Column(
+          children: [
+            // The embedded editor drops its own app bar, so the sheet says
+            // which store's week is being set.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.schedule_rounded, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          sheetContext.l10n.operatingHoursSchedule,
+                          style: AppType.heading(16),
+                        ),
+                        Text(
+                          vendor.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: VendorScheduleScreen(vendorId: vendor.id, embedded: true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (mounted) setState(() => _future = _load());
+  }
+
   /// Drops the store's map pin on the owner's behalf.
   Future<void> _setLocation(Vendor vendor) async {
     final picked = await showLocationPicker(
@@ -310,6 +508,8 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
             child: _Body(
               vendor: vendor,
               owner: owner,
+              onEditProfile: _busy ? null : () => _editProfile(vendor),
+              onEditSchedule: _busy ? null : () => _editSchedule(vendor),
               onEditTerms:
                   _busy ||
                       !context.watch<AuthCubit>().state.can('vendors.terms')
@@ -533,6 +733,8 @@ class _Body extends StatelessWidget {
     required this.vendor,
     required this.owner,
     required this.onEditTerms,
+    this.onEditProfile,
+    this.onEditSchedule,
     this.showBack = true,
   });
 
@@ -542,6 +744,10 @@ class _Body extends StatelessWidget {
   /// Opens the platform-terms editor. Owned by the screen above, which holds
   /// the busy flag and reloads once it saves.
   final VoidCallback? onEditTerms;
+
+  /// The store's own details, and its opening hours.
+  final VoidCallback? onEditProfile;
+  final VoidCallback? onEditSchedule;
   final bool showBack;
 
   @override
@@ -695,6 +901,34 @@ class _Body extends StatelessWidget {
                       context.l10n.address,
                       vendor.addressText ?? '—',
                       last: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onEditProfile,
+                        icon: const Icon(Icons.edit_note_rounded, size: 18),
+                        label: Text(
+                          context.l10n.storeProfile,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onEditSchedule,
+                        icon: const Icon(Icons.schedule_rounded, size: 18),
+                        label: Text(
+                          context.l10n.operatingHoursSchedule,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ),
                   ],
                 ),

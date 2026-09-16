@@ -2661,6 +2661,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'An account with this email already exists.';
 
   @override
+  String get errTooManyAttempts =>
+      'Too many attempts. Wait a moment and try again.';
+
+  @override
   String get errWeakPassword => 'Password is too short.';
 
   @override

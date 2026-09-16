@@ -862,6 +862,7 @@
   "errInvalidLogin": "Incorrect email or password.",
   "errEmailNotConfirmed": "Confirm your email address first, then sign in.",
   "errUserAlreadyExists": "An account with this email already exists.",
+  "errTooManyAttempts": "Too many attempts. Wait a moment and try again.",
   "errWeakPassword": "Password is too short.",
   "errDuplicate": "That already exists.",
   "errStillReferenced": "This is still in use elsewhere and cannot be removed.",

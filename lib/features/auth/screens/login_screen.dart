@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/email.dart';
 import '../../../core/widgets/web/web_auth_frame.dart';
 import '../../../core/utils/platform_capabilities.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -59,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
       cancelLabel: l10n.cancel,
       onSubmit: (_) async {
         final email = _resetEmail.text.trim();
-        if (!email.contains('@')) throw UserMessage(l10n.enterValidEmail);
+        if (!isValidEmail(email)) throw UserMessage(l10n.enterValidEmail);
         await context.read<AuthCubit>().sendPasswordReset(email);
         return true;
       },

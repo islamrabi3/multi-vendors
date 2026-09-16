@@ -2646,6 +2646,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errUserAlreadyExists => 'يوجد حساب مسجل بهذا البريد.';
 
   @override
+  String get errTooManyAttempts =>
+      'محاولات كثيرة. انتظر قليلاً ثم حاول مرة أخرى.';
+
+  @override
   String get errWeakPassword => 'كلمة المرور قصيرة جداً.';
 
   @override

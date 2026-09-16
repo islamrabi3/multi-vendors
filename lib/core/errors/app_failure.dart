@@ -89,9 +89,13 @@ class AppFailure implements Exception {
       return AppFailure(kind: FailureKind.network, cause: error);
     }
     if (error is AuthException) {
+      final code = _codeIn(error.message);
       return AppFailure(
-        kind: FailureKind.auth,
-        code: _codeIn(error.message) ?? error.message,
+        // Only a session that is genuinely gone should read as one. A
+        // rejected email or password is something the person can correct
+        // where they are standing.
+        kind: code == null ? FailureKind.auth : FailureKind.rejected,
+        code: code ?? error.message,
         cause: error,
       );
     }
@@ -245,6 +249,8 @@ class AppFailure implements Exception {
         'STORE_LOCATION_REQUIRED' => l10n.errStoreLocationRequired,
         'STORE_DETAILS_REQUIRED' => l10n.errStoreDetailsRequired,
         'WEAK_PASSWORD' => l10n.errWeakPassword,
+        'INVALID_EMAIL' => l10n.enterAValidEmail,
+        'TOO_MANY_ATTEMPTS' => l10n.errTooManyAttempts,
         'DUPLICATE' => l10n.errDuplicate,
         'STILL_REFERENCED' => l10n.errStillReferenced,
         // Raised by the app itself rather than the server: a cubit puts the
@@ -278,6 +284,14 @@ class AppFailure implements Exception {
     'Email not confirmed': 'EMAIL_NOT_CONFIRMED',
     'User already registered': 'USER_ALREADY_EXISTS',
     'Password should be at least': 'WEAK_PASSWORD',
+    // Signing up with an address the auth server will not accept. Without
+    // these the message fell through to "your session has expired", which
+    // sent people to the login screen over a typed email.
+    'Unable to validate email address': 'INVALID_EMAIL',
+    'email address is invalid': 'INVALID_EMAIL',
+    'Email address': 'INVALID_EMAIL',
+    'For security purposes': 'TOO_MANY_ATTEMPTS',
+    'rate limit': 'TOO_MANY_ATTEMPTS',
   };
 
   static const _pgPhrases = {

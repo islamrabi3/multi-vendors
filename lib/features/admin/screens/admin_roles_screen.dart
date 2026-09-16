@@ -3,6 +3,7 @@ import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/email.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../../../core/models/admin_role.dart';
 import '../../../core/repositories/admin_roles_repository.dart';
@@ -1020,7 +1021,7 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
   }
 
   bool get _canCreate =>
-      _email.text.contains('@') &&
+      isValidEmail(_email.text) &&
       _password.text.length >= 8 &&
       _name.text.trim().isNotEmpty;
 

@@ -855,6 +855,7 @@
   "errInvalidLogin": "البريد أو كلمة المرور غير صحيحة.",
   "errEmailNotConfirmed": "أكّد بريدك الإلكتروني أولاً ثم سجّل الدخول.",
   "errUserAlreadyExists": "يوجد حساب مسجل بهذا البريد.",
+  "errTooManyAttempts": "محاولات كثيرة. انتظر قليلاً ثم حاول مرة أخرى.",
   "errWeakPassword": "كلمة المرور قصيرة جداً.",
   "errDuplicate": "هذا موجود بالفعل.",
   "errStillReferenced": "ما زال مستخدماً في مكان آخر ولا يمكن حذفه.",

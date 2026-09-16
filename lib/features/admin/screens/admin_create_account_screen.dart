@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/email.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/account_onboarding_repository.dart';
 import '../../../core/repositories/catalog_repository.dart';
@@ -173,7 +174,7 @@ class _AdminCreateAccountScreenState extends State<AdminCreateAccountScreen> {
     try {
       if (_isVendor) {
         await _repo.createVendorAccount(
-          email: _email.text,
+          email: normalizeEmail(_email.text),
           password: _password.text,
           fullName: _fullName.text,
           phone: _phone.text,
@@ -200,7 +201,7 @@ class _AdminCreateAccountScreenState extends State<AdminCreateAccountScreen> {
         );
       } else {
         await _repo.createDriverAccount(
-          email: _email.text,
+          email: normalizeEmail(_email.text),
           password: _password.text,
           fullName: _fullName.text,
           phone: _phone.text,
@@ -328,10 +329,7 @@ class _AdminCreateAccountScreenState extends State<AdminCreateAccountScreen> {
                       autocorrect: false,
                       decoration: InputDecoration(labelText: l10n.email),
                       validator: (v) =>
-                          (v == null ||
-                              !RegExp(r'^\S+@\S+\.\S+$').hasMatch(v.trim()))
-                          ? l10n.enterValidEmail
-                          : null,
+                          isValidEmail(v) ? null : l10n.enterValidEmail,
                     ),
                     TextFormField(
                       controller: _password,

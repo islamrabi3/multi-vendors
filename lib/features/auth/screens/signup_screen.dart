@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/email.dart';
 import '../../../core/widgets/web/web_auth_frame.dart';
 import '../../../core/utils/platform_capabilities.dart';
 import '../../../core/models/profile.dart';
@@ -103,7 +104,7 @@ class _SignupFormState extends State<SignupForm> {
     }
     context.read<AuthCubit>().signUp(
       username: _username.text,
-      email: _email.text,
+      email: normalizeEmail(_email.text),
       password: _password.text,
       fullName: _name.text,
       phone: _phone.text,
@@ -241,9 +242,10 @@ class _SignupFormState extends State<SignupForm> {
                     hintText: context.l10n.nameemailcom,
                     fillColor: Colors.white,
                   ),
-                  validator: (v) => (v == null || !v.contains('@'))
-                      ? context.l10n.enterAValidEmail
-                      : null,
+                  autocorrect: false,
+                  textDirection: TextDirection.ltr,
+                  validator: (v) =>
+                      isValidEmail(v) ? null : context.l10n.enterAValidEmail,
                 ),
                 const SizedBox(height: 11),
                 TextFormField(
