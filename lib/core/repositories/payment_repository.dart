@@ -121,6 +121,32 @@ class PaymentRepository {
     return null;
   }
 
+  /// Asks the server to ask Paymob what became of this checkout.
+  ///
+  /// Closing the checkout page by hand leaves no signed redirect to confirm
+  /// with, so a customer who paid and then shut the page before Paymob's own
+  /// countdown redirected was told the payment failed while the webhook was
+  /// still on its way. This settles from Paymob's own answer instead of
+  /// waiting on the webhook to arrive.
+  ///
+  /// Returns the intent status the server reports, or null when Paymob could
+  /// not be asked. Never throws: the webhook is still the other path in.
+  Future<String?> inquire(String reference) async {
+    try {
+      final response = await supabase.functions.invoke(
+        'paymob-confirm',
+        body: {'reference': reference, 'inquire': true},
+      );
+      final data = response.data;
+      if (data is Map && data['status'] is String) {
+        return data['status'] as String;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Blocks until the webhook has settled [reference], or the wait times out.
   ///
   /// The redirect back from Paymob is only a hint — the transaction is not

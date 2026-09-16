@@ -196,6 +196,17 @@ Deno.serve(async (req) => {
       return json({ error: "INTENT_RECORD_FAILED" }, 500);
     }
 
+    // Kept so paymob-confirm can ask Paymob what became of this checkout when
+    // the customer closes the page by hand and leaves no signed redirect
+    // behind. Not worth failing the payment over if the write does not land.
+    if (intention.id) {
+      const { error: idError } = await admin
+        .from("payment_intents")
+        .update({ provider_intention_id: `${intention.id}` })
+        .eq("reference", reference);
+      if (idError) console.error("intention id not recorded", idError);
+    }
+
     return json({
       checkout_url:
         `${PAYMOB_BASE}/unifiedcheckout/?publicKey=${publicKey}` +

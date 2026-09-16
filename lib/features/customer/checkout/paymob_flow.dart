@@ -38,18 +38,31 @@ Future<PaymobFlowResult> runPaymobCheckout(
   final repository = payments ?? PaymentRepository();
 
   if (tabResult == PaymobCheckoutResult.cancelled || tabResult == null) {
-    // Closing the page is not proof that nothing was paid: a customer who
-    // paid and then shut the tab a second early would otherwise be told the
-    // payment failed while the webhook was busy settling it. A short wait
-    // costs nothing and turns that into the truth.
-    final late = await repository.awaitSettlement(
+    // Closing the page is not proof that nothing was paid. Paymob's success
+    // page counts down for five seconds before it redirects, and a customer
+    // who has just seen "payment successful" closes it — which left no signed
+    // redirect to confirm with, so the app believed the webhook or nothing.
+    //
+    // So ask Paymob itself what became of this checkout. Its answer is
+    // final; only when it has no transaction to report does the wait for the
+    // webhook decide, and only then is this a genuine cancellation.
+    final answer = await repository.inquire(checkout.reference);
+    if (answer == 'paid') return PaymobFlowResult.paid;
+    if (answer == 'failed') return PaymobFlowResult.failed;
+
+    final settled = await repository.awaitSettlement(
       checkout.reference,
       timeout: const Duration(seconds: 12),
     );
-    return switch (late) {
+    return switch (settled) {
       PaymentOutcome.paid => PaymobFlowResult.paid,
       PaymentOutcome.failed => PaymobFlowResult.failed,
-      PaymentOutcome.pending => PaymobFlowResult.cancelled,
+      // One last ask: a 3-D Secure step that was still pending when the page
+      // closed has had a quarter of a minute to resolve by now.
+      PaymentOutcome.pending =>
+        await repository.inquire(checkout.reference) == 'paid'
+            ? PaymobFlowResult.paid
+            : PaymobFlowResult.cancelled,
     };
   }
 
@@ -61,6 +74,10 @@ Future<PaymobFlowResult> runPaymobCheckout(
     case PaymentOutcome.failed:
       return PaymobFlowResult.failed;
     case PaymentOutcome.pending:
+      // The webhook never came. Paymob knows either way.
+      final answer = await repository.inquire(checkout.reference);
+      if (answer == 'paid') return PaymobFlowResult.paid;
+      if (answer == 'failed') return PaymobFlowResult.failed;
       return tabResult == PaymobCheckoutResult.declined
           ? PaymobFlowResult.failed
           : PaymobFlowResult.unresolved;

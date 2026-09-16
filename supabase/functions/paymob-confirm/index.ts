@@ -11,8 +11,18 @@
 // Nothing is trusted without the HMAC: the parameters come through the
 // customer's device, so a forged "success=true" fails verification.
 //
-// Secrets required: PAYMOB_HMAC_SECRET
+// There is a second way in. A customer who pays and then closes the checkout
+// page by hand — before Paymob's own five-second countdown redirects — leaves
+// no signed redirect at all, so the app used to have nothing but the webhook
+// to go on and reported a failure whenever the webhook was a moment late.
+// Called with `inquire: true`, this asks Paymob directly what became of the
+// checkout. The answer comes from Paymob's API over our own authenticated
+// connection, so it needs no signature to be trustworthy.
+//
+// Secrets required: PAYMOB_HMAC_SECRET, PAYMOB_SECRET_KEY
 import { createClient } from "npm:@supabase/supabase-js@2";
+
+const PAYMOB_BASE = "https://accept.paymob.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,22 +106,125 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const reference = `${body.reference ?? ""}`;
+    const inquire = body.inquire === true;
     const raw = body.params;
-    if (!reference || !raw || typeof raw !== "object") {
+    if (!reference || (!inquire && (!raw || typeof raw !== "object"))) {
       return json({ error: "INVALID_REQUEST" }, 400);
     }
     const params: Record<string, string> = {};
-    for (const [k, v] of Object.entries(raw)) params[k] = `${v}`;
+    if (raw && typeof raw === "object") {
+      for (const [k, v] of Object.entries(raw)) params[k] = `${v}`;
+    }
 
     // The caller may only confirm their own payment.
     const { data: intent } = await admin
       .from("payment_intents")
-      .select("status, user_id, order_id, amount")
+      .select("status, user_id, order_id, amount, provider_intention_id")
       .eq("reference", reference)
       .maybeSingle();
     if (!intent) return json({ error: "NOT_FOUND" }, 404);
     if (intent.user_id !== user.id) return json({ error: "FORBIDDEN" }, 403);
     if (intent.status !== "pending") return json({ status: intent.status });
+
+    // Settles the intent and records the payment. Both paths end here; the
+    // difference between them is only where the verdict came from.
+    const settle = async (
+      success: boolean,
+      transactionId: string | null,
+      amountCents: number,
+      failureReason: string | null,
+      source: string,
+      payload: Record<string, unknown>,
+    ) => {
+      let outcome: unknown = null;
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const { data, error } = await admin.rpc("settle_payment_intent", {
+          p_reference: reference,
+          p_success: success,
+          p_transaction_id: transactionId,
+          p_failure_reason: success ? null : failureReason,
+        });
+        if (!error) {
+          outcome = data;
+          lastError = null;
+          break;
+        }
+        lastError = error;
+        await sleep(700 * (attempt + 1));
+      }
+      if (lastError) {
+        console.error("settle failed", reference, lastError);
+        return null;
+      }
+
+      const { count: already } = await admin
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("provider_transaction_id", transactionId ?? "");
+      if (
+        intent.order_id &&
+        !already &&
+        (outcome === "paid" || outcome === "failed")
+      ) {
+        await admin.from("payments").insert({
+          order_id: intent.order_id,
+          provider: "paymob",
+          amount: amountCents / 100,
+          status: outcome,
+          provider_transaction_id: transactionId,
+          provider_order_id: `${payload["order"] ?? ""}` || null,
+          raw_payload: { source, ...payload },
+        });
+      }
+      return outcome;
+    };
+
+    // ---- Asking Paymob directly -------------------------------------------
+    if (inquire) {
+      const secretKey = Deno.env.get("PAYMOB_SECRET_KEY");
+      const intentionId = intent.provider_intention_id;
+      if (!secretKey) return json({ error: "PAYMOB_NOT_CONFIGURED" }, 503);
+      // Checkouts opened before this id was recorded can only be settled by
+      // the webhook; saying "pending" leaves them to it.
+      if (!intentionId) return json({ status: "pending", reason: "NO_INTENTION_ID" });
+
+      const inquiry = await fetch(`${PAYMOB_BASE}/v1/intention/${intentionId}`, {
+        headers: { Authorization: `Token ${secretKey}` },
+      });
+      if (!inquiry.ok) {
+        console.error("intention inquiry failed", inquiry.status, reference);
+        return json({ status: "pending", reason: "INQUIRY_FAILED" });
+      }
+      const data = await inquiry.json();
+      const transactions = Array.isArray(data?.transactions)
+        ? data.transactions
+        : [];
+      // The last attempt is the one that counts: a customer who is declined
+      // and pays again on the same checkout has two.
+      const txn = transactions[transactions.length - 1];
+      if (!txn) return json({ status: "pending", reason: "NO_TRANSACTION" });
+      if (txn.pending === true) return json({ status: "pending" });
+
+      const success = txn.success === true;
+      const amountCents = Number(txn.amount_cents ?? 0);
+      if (success && amountCents !== Math.round(Number(intent.amount) * 100)) {
+        console.error("inquiry amount mismatch", reference, amountCents);
+        return json({ error: "AMOUNT_MISMATCH" }, 400);
+      }
+
+      const outcome = await settle(
+        success,
+        txn.id == null ? null : `${txn.id}`,
+        amountCents,
+        `${txn.data?.message ?? "declined"}`,
+        "inquiry",
+        { order: txn.order?.id ?? txn.order ?? null, transaction: txn },
+      );
+      if (outcome === null) return json({ error: "SETTLEMENT_ERROR" }, 500);
+      console.log("settled from inquiry", reference, outcome);
+      return json({ status: outcome });
+    }
 
     const received = params["hmac"];
     if (!received) return json({ status: "pending", reason: "NO_SIGNATURE" });
@@ -136,49 +249,15 @@ Deno.serve(async (req) => {
       console.error("redirect amount mismatch", reference, params["amount_cents"]);
       return json({ error: "AMOUNT_MISMATCH" }, 400);
     }
-    let outcome: unknown = null;
-    let lastError: unknown = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const { data, error } = await admin.rpc("settle_payment_intent", {
-        p_reference: reference,
-        p_success: success,
-        p_transaction_id: params["id"] ?? null,
-        p_failure_reason: success
-          ? null
-          : `${params["data.message"] ?? "declined"}`,
-      });
-      if (!error) {
-        outcome = data;
-        lastError = null;
-        break;
-      }
-      lastError = error;
-      await sleep(700 * (attempt + 1));
-    }
-    if (lastError) {
-      console.error("settle from redirect failed", reference, lastError);
-      return json({ error: "SETTLEMENT_ERROR" }, 500);
-    }
-
-    const { count: already } = await admin
-      .from("payments")
-      .select("id", { count: "exact", head: true })
-      .eq("provider_transaction_id", params["id"] ?? "");
-    if (
-      intent.order_id &&
-      !already &&
-      (outcome === "paid" || outcome === "failed")
-    ) {
-      await admin.from("payments").insert({
-        order_id: intent.order_id,
-        provider: "paymob",
-        amount: Number(params["amount_cents"] ?? 0) / 100,
-        status: outcome,
-        provider_transaction_id: params["id"] ?? null,
-        provider_order_id: params["order"] ?? null,
-        raw_payload: { source: "redirect", ...params },
-      });
-    }
+    const outcome = await settle(
+      success,
+      params["id"] ?? null,
+      Number(params["amount_cents"] ?? 0),
+      `${params["data.message"] ?? "declined"}`,
+      "redirect",
+      params,
+    );
+    if (outcome === null) return json({ error: "SETTLEMENT_ERROR" }, 500);
 
     console.log("settled from redirect", reference, outcome);
     return json({ status: outcome });
