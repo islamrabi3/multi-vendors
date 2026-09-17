@@ -464,6 +464,12 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => _bubble(context, constraints.maxWidth),
+    );
+  }
+
+  Widget _bubble(BuildContext context, double available) {
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -472,8 +478,11 @@ class _Bubble extends StatelessWidget {
           horizontal: AppSpace.lg,
           vertical: AppSpace.md - 2,
         ),
+        // Measured against the space this bubble is given, not the window:
+        // in a side pane the two are nothing alike, and on a desktop the
+        // window would let one word run half a metre.
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+          maxWidth: AppBreakpoints.bubbleWidth(available),
         ),
         decoration: BoxDecoration(
           color: mine ? AppColors.primary : AppColors.surface,

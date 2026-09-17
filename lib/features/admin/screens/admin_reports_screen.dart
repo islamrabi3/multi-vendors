@@ -449,26 +449,43 @@ class _PeriodBar extends StatelessWidget {
   }
 }
 
-/// Two-column tile grid for headline figures.
+/// Tile grid for headline figures: two across on a phone, more as the space
+/// allows.
+///
+/// Sized from the grid's own width rather than the window's. Inside the web
+/// shell those differ by the sidebar and the page's own margins, so tiles
+/// measured against the window were wider than the box holding them — and on
+/// a desktop two tiles across a whole monitor is not a grid, it is two very
+/// long labels.
 class _StatGrid extends StatelessWidget {
   const _StatGrid({required this.items});
 
   /// (label, value, accent colour or null)
   final List<(String, String, Color?)> items;
 
+  /// Narrow enough to read at a glance, wide enough for a long money figure.
+  static const _minTile = 190.0;
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth;
+        final columns = (available / _minTile).floor().clamp(2, 4);
+        final tile = (available - AppSpace.sm * (columns - 1)) / columns;
+        return _grid(tile);
+      },
+    );
+  }
+
+  Widget _grid(double tile) {
     return Wrap(
       spacing: AppSpace.sm,
       runSpacing: AppSpace.sm,
       children: [
         for (final (label, value, accent) in items)
           SizedBox(
-            width:
-                (MediaQuery.sizeOf(context).width -
-                    AppSpace.gutter * 2 -
-                    AppSpace.sm) /
-                2,
+            width: tile,
             child: Container(
               padding: const EdgeInsets.all(AppSpace.lg),
               decoration: BoxDecoration(

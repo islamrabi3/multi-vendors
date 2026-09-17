@@ -136,6 +136,20 @@ class AppBreakpoints {
   /// and must keep getting the mobile screen.
   static bool isWebWide(BuildContext context) =>
       kIsWeb && isWide(MediaQuery.sizeOf(context).width);
+
+  /// The widest a run of prose should get before it stops being readable.
+  ///
+  /// Roughly seventy characters. A message bubble sized as a fraction of the
+  /// window is fine on a phone and absurd on a monitor: a two-word reply
+  /// stretched across a metre of screen, and the eye losing the start of the
+  /// next line on a long one. Anything measured against the *window* is also
+  /// wrong the moment it sits in a pane narrower than the window.
+  static const readable = 560.0;
+
+  /// A bubble's share of the space it is actually given, capped at
+  /// [readable]. Pass the width of the container, never the window.
+  static double bubbleWidth(double available) =>
+      (available * 0.75).clamp(0.0, readable);
 }
 
 class AppRadii {

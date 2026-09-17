@@ -148,110 +148,118 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<List<ChatMessage>>(
-              stream: _messages,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const _ChatSkeleton();
-                final messages = snapshot.data!;
-                _markReadIfNew(messages);
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Text(
-                      context.l10n.noMessagesYet,
-                      style: const TextStyle(color: AppColors.textMuted),
-                    ),
-                  );
-                }
-                final currentUserId = _chatRepo.currentUserId;
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final isMe = msg.senderId == currentUserId;
-                    final timeStr = formatClock(
-                      context,
-                      msg.createdAt.toLocal(),
-                    );
-
-                    return Align(
-                      alignment: isMe
-                          ? AlignmentDirectional.centerEnd
-                          : AlignmentDirectional.centerStart,
-                      child: Container(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe ? AppColors.primary : AppColors.warmFill,
-                          borderRadius: BorderRadiusDirectional.only(
-                            topStart: const Radius.circular(16),
-                            topEnd: const Radius.circular(16),
-                            // The clipped corner points back at its author.
-                            bottomStart: isMe
-                                ? const Radius.circular(16)
-                                : const Radius.circular(4),
-                            bottomEnd: isMe
-                                ? const Radius.circular(4)
-                                : const Radius.circular(16),
-                          ).resolve(Directionality.of(context)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: isMe
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                          children: [
-                            if (msg.hasAttachment) ...[
-                              ChatAttachmentView(
-                                path: msg.attachmentPath!,
-                                name: msg.attachmentName,
-                                isImage: msg.isImageAttachment,
-                                onDark: isMe,
-                              ),
-                              if (msg.message.isNotEmpty)
-                                const SizedBox(height: 6),
-                            ],
-                            if (msg.message.isNotEmpty)
-                              Text(
-                                msg.message,
-                                style: TextStyle(
-                                  fontSize: 14.5,
-                                  color: isMe ? Colors.white : AppColors.ink,
-                                  height: 1.3,
-                                ),
-                              ),
-                            const SizedBox(height: 4),
-                            Text(
-                              timeStr,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isMe
-                                    ? Colors.white.withValues(alpha: 0.75)
-                                    : AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
+            child: LayoutBuilder(
+              builder: (context, constraints) => StreamBuilder<List<ChatMessage>>(
+                stream: _messages,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const _ChatSkeleton();
+                  final messages = snapshot.data!;
+                  _markReadIfNew(messages);
+                  if (messages.isEmpty) {
+                    return Center(
+                      child: Text(
+                        context.l10n.noMessagesYet,
+                        style: const TextStyle(color: AppColors.textMuted),
                       ),
                     );
-                  },
-                );
-              },
+                  }
+                  final currentUserId = _chatRepo.currentUserId;
+                  // The list's own width, not the window's: this sheet is a
+                  // dialog on the web and a pane inside the inbox, and neither
+                  // is as wide as the screen.
+                  final bubbleMax = AppBreakpoints.bubbleWidth(
+                    constraints.maxWidth - 32,
+                  );
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = messages[index];
+                      final isMe = msg.senderId == currentUserId;
+                      final timeStr = formatClock(
+                        context,
+                        msg.createdAt.toLocal(),
+                      );
+
+                      return Align(
+                        alignment: isMe
+                            ? AlignmentDirectional.centerEnd
+                            : AlignmentDirectional.centerStart,
+                        child: Container(
+                          constraints: BoxConstraints(maxWidth: bubbleMax),
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isMe
+                                ? AppColors.primary
+                                : AppColors.warmFill,
+                            borderRadius: BorderRadiusDirectional.only(
+                              topStart: const Radius.circular(16),
+                              topEnd: const Radius.circular(16),
+                              // The clipped corner points back at its author.
+                              bottomStart: isMe
+                                  ? const Radius.circular(16)
+                                  : const Radius.circular(4),
+                              bottomEnd: isMe
+                                  ? const Radius.circular(4)
+                                  : const Radius.circular(16),
+                            ).resolve(Directionality.of(context)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: isMe
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              if (msg.hasAttachment) ...[
+                                ChatAttachmentView(
+                                  path: msg.attachmentPath!,
+                                  name: msg.attachmentName,
+                                  isImage: msg.isImageAttachment,
+                                  onDark: isMe,
+                                ),
+                                if (msg.message.isNotEmpty)
+                                  const SizedBox(height: 6),
+                              ],
+                              if (msg.message.isNotEmpty)
+                                Text(
+                                  msg.message,
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    color: isMe ? Colors.white : AppColors.ink,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              const SizedBox(height: 4),
+                              Text(
+                                timeStr,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isMe
+                                      ? Colors.white.withValues(alpha: 0.75)
+                                      : AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ),
           SafeArea(
