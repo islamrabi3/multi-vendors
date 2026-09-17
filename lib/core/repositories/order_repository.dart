@@ -303,6 +303,19 @@ class OrderRepository {
         .toList();
   }
 
+  /// Statuses that mean "this rider has a job in hand".
+  ///
+  /// `accepted` and `preparing` are here for a store the platform runs: that
+  /// store is not in the app, so nobody ever moves its orders to
+  /// ready_for_pickup, and a rider dispatched to one saw an empty screen
+  /// until an admin pushed the order along by hand.
+  static const driverActiveStatuses = [
+    'accepted',
+    'preparing',
+    'ready_for_pickup',
+    'out_for_delivery',
+  ];
+
   /// One-shot fetch of the driver's job in progress (pull-to-refresh).
   ///
   /// Claimed-but-not-collected counts: the driver is on the way to the store
@@ -313,7 +326,7 @@ class OrderRepository {
         .from('orders')
         .select(_vendorJoin)
         .eq('driver_id', userId)
-        .inFilter('status', const ['ready_for_pickup', 'out_for_delivery'])
+        .inFilter('status', driverActiveStatuses)
         .order('created_at', ascending: false);
     return (data as List)
         .map((e) => AppOrder.fromMap(e as Map<String, dynamic>))

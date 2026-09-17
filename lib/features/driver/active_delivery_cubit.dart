@@ -198,9 +198,22 @@ class ActiveDeliveryCubit extends Cubit<ActiveDeliveryState> {
 
   /// The job in hand: an order already collected, or one claimed and waiting
   /// to be collected from the store.
+  ///
+  /// A store the platform runs is not in the app, so its orders never reach
+  /// ready_for_pickup — they are accepted by an admin and stay there until the
+  /// rider collects. Those count as waiting too; without them a rider who had
+  /// been dispatched to such a store was looking at an empty screen while the
+  /// order sat there, and only an admin could move it along.
   static AppOrder? _activeOf(List<AppOrder> orders) =>
       orders.where((o) => o.status == OrderStatus.outForDelivery).firstOrNull ??
-      orders.where((o) => o.status == OrderStatus.readyForPickup).firstOrNull;
+      orders
+          .where(
+            (o) =>
+                o.status == OrderStatus.readyForPickup ||
+                o.status == OrderStatus.accepted ||
+                o.status == OrderStatus.preparing,
+          )
+          .firstOrNull;
 
   /// Types the store's code. Returns false and surfaces the error when the
   /// code is wrong, so the field can stay on screen with what was typed.

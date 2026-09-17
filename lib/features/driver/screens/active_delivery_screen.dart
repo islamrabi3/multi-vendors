@@ -684,7 +684,14 @@ class _Sheet extends StatelessWidget {
   final LatLng? storeLocation;
 
   /// Claimed but not collected: the driver is still on the way to the store.
-  bool get _collecting => order.status == OrderStatus.readyForPickup;
+  ///
+  /// A store the platform runs never marks an order ready — it is not in the
+  /// app — so its orders wait at accepted or preparing instead. To the rider
+  /// that is the same job: go to the shop and collect.
+  bool get _collecting =>
+      order.status == OrderStatus.readyForPickup ||
+      order.status == OrderStatus.accepted ||
+      order.status == OrderStatus.preparing;
 
   Future<void> _call(BuildContext context) =>
       callPhone(context, order.customerPhone);
