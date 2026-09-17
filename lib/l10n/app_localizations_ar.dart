@@ -2735,6 +2735,38 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nameCopied => 'تم نسخ الاسم';
 
   @override
+  String get todaysMoney => 'حساب اليوم';
+
+  @override
+  String get salesToday => 'مبيعات اليوم';
+
+  @override
+  String get profitToday => 'ربح اليوم';
+
+  @override
+  String get storesShareToday => 'نصيب المتاجر';
+
+  @override
+  String get driversShareToday => 'نصيب السائقين';
+
+  @override
+  String get owedToStores => 'المستحق للمتاجر';
+
+  @override
+  String get owedToDrivers => 'المستحق للسائقين';
+
+  @override
+  String get cashHeldByDrivers => 'نقدية مع السائقين';
+
+  @override
+  String get nothingOwed => 'لا يوجد مستحق';
+
+  @override
+  String andNMore(int count) {
+    return 'و $count أخرى';
+  }
+
+  @override
   String get errWeakPassword => 'كلمة المرور قصيرة جداً.';
 
   @override

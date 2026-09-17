@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/models/finance.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/money.dart';
@@ -115,6 +116,10 @@ class _DashboardViewState extends State<_DashboardView> {
                           _AttentionRow(stats: state.stats),
                           const SizedBox(height: 14),
                           const _ManageGrid(),
+                          if (!state.moneyDenied) ...[
+                            const SizedBox(height: 18),
+                            _MoneyPanel(state: state),
+                          ],
                           const SizedBox(height: 18),
                           Row(
                             children: [
@@ -279,6 +284,10 @@ class _LiveOrdersPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (!state.moneyDenied) ...[
+          _MoneyPanel(state: state),
+          const SizedBox(height: 18),
+        ],
         Row(
           children: [
             Text(context.l10n.liveOrders, style: AppType.heading(17)),
@@ -309,6 +318,279 @@ class _LiveOrdersPanel extends StatelessWidget {
                   },
                 ),
         ),
+      ],
+    );
+  }
+}
+
+/// What the day took, and who is waiting to be paid out of it.
+///
+/// Two different kinds of number, kept visibly apart. The day's figures are a
+/// period — what was sold since midnight and what the platform kept of it.
+/// What a store or a rider is *owed* is a running balance that has nothing to
+/// do with today: settle a shop its lunchtime share and the account is still
+/// not clear. An operator reading one as the other pays the wrong amount.
+class _MoneyPanel extends StatelessWidget {
+  const _MoneyPanel({required this.state});
+
+  final AdminDashboardState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final today = state.today;
+    final stores = state.vendorBalances
+        .where((party) => party.payable > 0)
+        .toList();
+    final riders = state.driverBalances
+        .where((party) => party.payable > 0)
+        .toList();
+    final cashOut = state.driverBalances.fold<double>(
+      0,
+      (sum, party) => sum + party.cashDue,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(l10n.todaysMoney, style: AppType.heading(16)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (today == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else ...[
+            Wrap(
+              spacing: 9,
+              runSpacing: 9,
+              children: [
+                _MoneyStat(
+                  label: l10n.salesToday,
+                  value: today.grossRevenue,
+                  tone: AppColors.ink,
+                ),
+                _MoneyStat(
+                  label: l10n.profitToday,
+                  value: today.platformEarnings,
+                  tone: AppColors.successInk,
+                ),
+                _MoneyStat(
+                  label: l10n.storesShareToday,
+                  value: today.vendorEarnings,
+                ),
+                _MoneyStat(
+                  label: l10n.driversShareToday,
+                  value: today.driverEarnings,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _OwedList(
+              title: l10n.owedToStores,
+              icon: Icons.storefront_rounded,
+              parties: stores,
+            ),
+            const SizedBox(height: 14),
+            _OwedList(
+              title: l10n.owedToDrivers,
+              icon: Icons.two_wheeler_rounded,
+              parties: riders,
+            ),
+            if (cashOut > 0) ...[
+              const SizedBox(height: 12),
+              // Money the platform is owed rather than owes: cash a rider
+              // took from a customer and has not handed in.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.amberFill,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.payments_outlined,
+                      size: 16,
+                      color: AppColors.amberInk,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.cashHeldByDrivers,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.amberInk,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      formatMoney(cashOut),
+                      style: AppType.mono(13, color: AppColors.amberInk),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MoneyStat extends StatelessWidget {
+  const _MoneyStat({required this.label, required this.value, this.tone});
+
+  final String label;
+  final double value;
+  final Color? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        border: Border.all(color: AppColors.borderSoft),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppColors.textFaint),
+          ),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              formatMoney(value),
+              style: AppType.mono(15, color: tone ?? AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Who is owed what, by name, biggest first — the order an operator settles
+/// in. Capped at five with the rest counted, because this is the overview and
+/// the finance screen is where the whole list lives.
+class _OwedList extends StatelessWidget {
+  const _OwedList({
+    required this.title,
+    required this.icon,
+    required this.parties,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<PartyBalance> parties;
+
+  static const _shown = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...parties]
+      ..sort((a, b) => b.payable.compareTo(a.payable));
+    final total = sorted.fold<double>(0, (sum, p) => sum + p.payable);
+    final visible = sorted.take(_shown).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 15, color: AppColors.textMuted),
+            const SizedBox(width: 7),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              formatMoney(total),
+              style: AppType.mono(13, color: AppColors.primaryDark),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (visible.isEmpty)
+          Text(
+            context.l10n.nothingOwed,
+            style: const TextStyle(fontSize: 12, color: AppColors.textFaint),
+          )
+        else
+          for (final party in visible)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      party.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    formatMoney(party.payable),
+                    style: AppType.mono(12.5, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+        if (sorted.length > _shown)
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Text(
+              context.l10n.andNMore(sorted.length - _shown),
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textFaint),
+            ),
+          ),
       ],
     );
   }

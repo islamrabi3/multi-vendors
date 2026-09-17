@@ -5319,6 +5319,66 @@ abstract class AppLocalizations {
   /// **'Name copied'**
   String get nameCopied;
 
+  /// No description provided for @todaysMoney.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s money'**
+  String get todaysMoney;
+
+  /// No description provided for @salesToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales today'**
+  String get salesToday;
+
+  /// No description provided for @profitToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Profit today'**
+  String get profitToday;
+
+  /// No description provided for @storesShareToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Stores\' share'**
+  String get storesShareToday;
+
+  /// No description provided for @driversShareToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Riders\' share'**
+  String get driversShareToday;
+
+  /// No description provided for @owedToStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Owed to stores'**
+  String get owedToStores;
+
+  /// No description provided for @owedToDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'Owed to riders'**
+  String get owedToDrivers;
+
+  /// No description provided for @cashHeldByDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash held by riders'**
+  String get cashHeldByDrivers;
+
+  /// No description provided for @nothingOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing outstanding'**
+  String get nothingOwed;
+
+  /// No description provided for @andNMore.
+  ///
+  /// In en, this message translates to:
+  /// **'and {count} more'**
+  String andNMore(int count);
+
   /// No description provided for @errWeakPassword.
   ///
   /// In en, this message translates to:

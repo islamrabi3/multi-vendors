@@ -2750,6 +2750,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nameCopied => 'Name copied';
 
   @override
+  String get todaysMoney => 'Today\'s money';
+
+  @override
+  String get salesToday => 'Sales today';
+
+  @override
+  String get profitToday => 'Profit today';
+
+  @override
+  String get storesShareToday => 'Stores\' share';
+
+  @override
+  String get driversShareToday => 'Riders\' share';
+
+  @override
+  String get owedToStores => 'Owed to stores';
+
+  @override
+  String get owedToDrivers => 'Owed to riders';
+
+  @override
+  String get cashHeldByDrivers => 'Cash held by riders';
+
+  @override
+  String get nothingOwed => 'Nothing outstanding';
+
+  @override
+  String andNMore(int count) {
+    return 'and $count more';
+  }
+
+  @override
   String get errWeakPassword => 'Password is too short.';
 
   @override
