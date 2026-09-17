@@ -2732,6 +2732,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get menuAlreadyEmpty => 'لا يوجد منيو لحذفه في هذا المتجر.';
 
   @override
+  String get nameCopied => 'تم نسخ الاسم';
+
+  @override
   String get errWeakPassword => 'كلمة المرور قصيرة جداً.';
 
   @override

@@ -889,6 +889,7 @@
   "menuCleared": "{items} items and {sections} sections deleted",
   "@menuCleared": {"placeholders": {"items": {"type": "int"}, "sections": {"type": "int"}}},
   "menuAlreadyEmpty": "This store has no menu to delete.",
+  "nameCopied": "Name copied",
   "errWeakPassword": "Password is too short.",
   "errDuplicate": "That already exists.",
   "errStillReferenced": "This is still in use elsewhere and cannot be removed.",

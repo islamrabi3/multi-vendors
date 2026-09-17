@@ -882,6 +882,7 @@
   "menuCleared": "تم حذف {items} صنف و {sections} قسم",
   "@menuCleared": {"placeholders": {"items": {"type": "int"}, "sections": {"type": "int"}}},
   "menuAlreadyEmpty": "لا يوجد منيو لحذفه في هذا المتجر.",
+  "nameCopied": "تم نسخ الاسم",
   "errWeakPassword": "كلمة المرور قصيرة جداً.",
   "errDuplicate": "هذا موجود بالفعل.",
   "errStillReferenced": "ما زال مستخدماً في مكان آخر ولا يمكن حذفه.",

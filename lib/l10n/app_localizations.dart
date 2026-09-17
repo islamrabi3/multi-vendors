@@ -5313,6 +5313,12 @@ abstract class AppLocalizations {
   /// **'This store has no menu to delete.'**
   String get menuAlreadyEmpty;
 
+  /// No description provided for @nameCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Name copied'**
+  String get nameCopied;
+
   /// No description provided for @errWeakPassword.
   ///
   /// In en, this message translates to:

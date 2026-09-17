@@ -2747,6 +2747,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuAlreadyEmpty => 'This store has no menu to delete.';
 
   @override
+  String get nameCopied => 'Name copied';
+
+  @override
   String get errWeakPassword => 'Password is too short.';
 
   @override

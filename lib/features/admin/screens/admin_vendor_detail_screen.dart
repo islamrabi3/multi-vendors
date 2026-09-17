@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -534,10 +535,46 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
               ),
             ),
             const SizedBox(height: AppSpace.md),
-            Text(
-              vendor.name,
-              style: AppType.heading(15),
-              textAlign: TextAlign.center,
+            // Selectable, and copyable in one tap. Typing the name is here to
+            // make sure this is the store the operator means — not to make
+            // them prove they can spell it, which an Arabic shop name on an
+            // English keyboard would turn into a real obstacle.
+            Material(
+              color: AppColors.neutralFill,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final copied = context.l10n.nameCopied;
+                  await Clipboard.setData(ClipboardData(text: vendor.name));
+                  messenger
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(SnackBar(content: Text(copied)));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          vendor.name,
+                          style: AppType.heading(15),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.copy_rounded,
+                        size: 16,
+                        color: AppColors.textMuted,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: AppSpace.sm),
             TextField(
