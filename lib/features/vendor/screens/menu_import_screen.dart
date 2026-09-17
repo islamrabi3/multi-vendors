@@ -153,6 +153,7 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
         MenuImportException(code: 'URL_FETCH_FAILED') => l10n.errUrlFetchFailed,
         MenuImportException(code: 'URL_TOO_LARGE') => l10n.errUrlTooLarge,
         MenuImportException(code: 'URL_NO_CONTENT') => l10n.errUrlNoContent,
+        MenuImportException(code: 'URL_NEEDS_JS') => l10n.errUrlNeedsJs,
         _ => l10n.extractionFailed,
       }, error: true);
     }

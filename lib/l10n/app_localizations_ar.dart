@@ -2279,6 +2279,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errUrlTooLarge => 'الصفحة أكبر من أن تُقرأ.';
 
   @override
+  String get errUrlNeedsJs =>
+      'هذه الصفحة تبني المنيو داخل المتصفح، فلا يوجد ما يُقرأ. جرّب رابط المنيو نفسه أو ملف PDF أو صوراً.';
+
+  @override
   String get errUrlNoContent => 'لا يوجد نص يمكن قراءته في هذه الصفحة.';
 
   @override

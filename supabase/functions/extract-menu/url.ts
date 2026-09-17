@@ -75,6 +75,8 @@ export function assertFetchable(raw: string): URL {
 }
 
 const MAX_REDIRECTS = 4;
+/// How many of a page's own scripts are worth reading before giving up.
+const MAX_SCRIPTS = 5;
 const MAX_BYTES = 4 * 1024 * 1024;
 const TIMEOUT_MS = 20000;
 
@@ -169,6 +171,78 @@ export function htmlToText(html: string): string {
   return text.length > MAX_TEXT ? text.slice(0, MAX_TEXT) : text;
 }
 
+/// Below this, a page has not really said anything.
+const MIN_TEXT = 400;
+
+/// The scripts a page loads from its own origin, in the order it loads them.
+///
+/// Only same-origin: a menu is served by the store's own site, and following
+/// a third-party script would fetch analytics and ad code by the megabyte.
+function sameOriginScripts(html: string, pageUrl: string): string[] {
+  const base = new URL(pageUrl);
+  const found: string[] = [];
+  const patterns = [
+    /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi,
+    /<link\b[^>]*\brel\s*=\s*["']modulepreload["'][^>]*\bhref\s*=\s*["']([^"']+)["']/gi,
+  ];
+  for (const pattern of patterns) {
+    for (const match of html.matchAll(pattern)) {
+      try {
+        const url = new URL(match[1], base);
+        if (url.origin !== base.origin) continue;
+        const href = url.toString();
+        if (!found.includes(href)) found.push(href);
+      } catch {
+        // A src we cannot resolve is not one we can fetch.
+      }
+    }
+  }
+  return found;
+}
+
+/// The parts of a script that look like a menu, and nothing else.
+///
+/// A single-page app ships its menu inside the bundle, next to a few hundred
+/// kilobytes of framework that is of no interest. Rather than send all of it,
+/// this keeps a window around every place the code names something the way
+/// menu data is named — `name:`, `prices:`, `items:` — and then drops the
+/// windows that turn out to be framework code after all. What survives is
+/// `{name:"...",description:"...",prices:["90","110"]}`, which reads as
+/// clearly as a printed menu.
+export function menuLikeRegions(source: string): string {
+  const keys =
+    /(?:\bname\b|\btitle\b|\bprices?\b|\bitems\b|\bdescription\b|\bsubtitles\b|\bcategory\b|\bmenu\b)\s*:/gi;
+  const window = 900;
+  const spans: Array<[number, number]> = [];
+  for (const match of source.matchAll(keys)) {
+    const start = Math.max(0, match.index - window);
+    const end = Math.min(source.length, match.index + window);
+    const last = spans[spans.length - 1];
+    if (last && start <= last[1]) {
+      last[1] = Math.max(last[1], end);
+    } else {
+      spans.push([start, end]);
+    }
+    if (spans.length > 200) break;
+  }
+
+  const kept: string[] = [];
+  let budget = MAX_TEXT;
+  for (const [start, end] of spans) {
+    const chunk = source.slice(start, end);
+    // Menu text is words, not identifiers: either something outside the Latin
+    // alphabet, or a price list. Framework internals match neither.
+    const isMenu = /[^\x00-\x7F]/.test(chunk) ||
+      /prices?\s*:\s*\[?\s*["']?\d/.test(chunk);
+    if (!isMenu) continue;
+    const slice = chunk.slice(0, budget);
+    kept.push(slice);
+    budget -= slice.length;
+    if (budget <= 0) break;
+  }
+  return kept.join("\n...\n");
+}
+
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
@@ -178,11 +252,16 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/// What the model should be shown for this link: the page's words, or the
-/// file itself when the link points straight at a PDF or a photo of a menu.
-export function asModelInput(
+/// What the model should be shown for this link: the page's words, the data
+/// inside the scripts it loads, or the file itself when the link points
+/// straight at a PDF or a photo of a menu.
+export async function asModelInput(
   fetched: Fetched,
-): { kind: "text"; text: string } | { kind: "file"; data: string; mediaType: string } {
+): Promise<
+  | { kind: "text"; text: string }
+  | { kind: "script"; text: string }
+  | { kind: "file"; data: string; mediaType: string }
+> {
   if (fetched.contentType === "application/pdf") {
     return {
       kind: "file",
@@ -198,9 +277,47 @@ export function asModelInput(
     };
   }
   const html = new TextDecoder("utf-8", { fatal: false }).decode(fetched.bytes);
-  const text = fetched.contentType === "text/html" || html.includes("<")
-    ? htmlToText(html)
-    : html.slice(0, MAX_TEXT);
+  const isHtml = fetched.contentType === "text/html" || html.includes("<");
+  const text = isHtml ? htmlToText(html) : html.slice(0, MAX_TEXT);
+  if (text.trim().length >= MIN_TEXT) return { kind: "text", text };
+
+  // Nothing worth reading in the HTML. Increasingly that is not an empty page
+  // but a single-page app: the server sends `<div id="root"></div>` and the
+  // menu arrives when the browser runs the JavaScript. We cannot run it, but
+  // the menu is usually sitting in the bundle as data, so the bundle is read
+  // instead.
+  if (isHtml) {
+    const scripts = sameOriginScripts(html, fetched.finalUrl).slice(
+      0,
+      MAX_SCRIPTS,
+    );
+    const regions: string[] = [];
+    let budget = MAX_TEXT;
+    for (const script of scripts) {
+      if (budget <= 0) break;
+      let bundle: Fetched;
+      try {
+        bundle = await fetchDocument(assertFetchable(script));
+      } catch {
+        continue; // One unreadable bundle is not the end of the attempt.
+      }
+      const found = menuLikeRegions(
+        new TextDecoder("utf-8", { fatal: false }).decode(bundle.bytes),
+      ).slice(0, budget);
+      if (found.length === 0) continue;
+      regions.push(found);
+      budget -= found.length;
+    }
+    if (regions.length > 0) {
+      return { kind: "script", text: regions.join("\n...\n") };
+    }
+    // The page builds itself in the browser and keeps its menu somewhere we
+    // cannot reach — an API call, most likely. Worth its own answer, because
+    // "no readable text" would send the operator back to check a link that is
+    // perfectly correct.
+    throw new UrlRejected("URL_NEEDS_JS");
+  }
+
   if (text.trim().length < 40) throw new UrlRejected("URL_NO_CONTENT");
   return { kind: "text", text };
 }

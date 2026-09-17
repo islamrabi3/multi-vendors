@@ -745,6 +745,7 @@
   "errUrlNotAllowed": "That address cannot be opened.",
   "errUrlFetchFailed": "Could not open that page. Check the link and try again.",
   "errUrlTooLarge": "That page is too large to read.",
+  "errUrlNeedsJs": "That page builds its menu in the browser, so there is nothing to read. Try a link to the menu itself, a PDF, or photos.",
   "errUrlNoContent": "There was no readable text on that page.",
   "noItemsExtractedFromLink": "No menu items were found on that page.",
   "extractionFailed": "Could not read the menu. Try clearer photos.",

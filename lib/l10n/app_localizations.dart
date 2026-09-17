@@ -4461,6 +4461,12 @@ abstract class AppLocalizations {
   /// **'That page is too large to read.'**
   String get errUrlTooLarge;
 
+  /// No description provided for @errUrlNeedsJs.
+  ///
+  /// In en, this message translates to:
+  /// **'That page builds its menu in the browser, so there is nothing to read. Try a link to the menu itself, a PDF, or photos.'**
+  String get errUrlNeedsJs;
+
   /// No description provided for @errUrlNoContent.
   ///
   /// In en, this message translates to:

@@ -2289,6 +2289,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errUrlTooLarge => 'That page is too large to read.';
 
   @override
+  String get errUrlNeedsJs =>
+      'That page builds its menu in the browser, so there is nothing to read. Try a link to the menu itself, a PDF, or photos.';
+
+  @override
   String get errUrlNoContent => 'There was no readable text on that page.';
 
   @override
