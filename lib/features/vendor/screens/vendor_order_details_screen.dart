@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:multi_vendor/core/repositories/chat_repository.dart';
 import 'package:multi_vendor/core/widgets/chat_unread_badge.dart';
@@ -47,10 +49,50 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
   String? _error;
   bool _busy = false;
 
+  /// The row, watched rather than read once.
+  ///
+  /// The store reads this page while the food is being made and the rider is
+  /// on the way; everything that happens to the order after it opens happens
+  /// somewhere else. Read once, it showed "out for delivery" long after the
+  /// customer had eaten.
+  StreamSubscription<AppOrder>? _liveSubscription;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _watch();
+  }
+
+  void _watch() {
+    _liveSubscription?.cancel();
+    _liveSubscription = _repository
+        .watchOrder(widget.orderId)
+        .listen(
+          (order) {
+            if (mounted) setState(() => _order = order);
+          },
+          // A dropped socket is not worth an error over a row already on
+          // screen; the next action or reopen picks it up.
+          onError: (Object _) {},
+        );
+  }
+
+  @override
+  void didUpdateWidget(VendorOrderDetailsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The wide layout keeps one pane and points it at another order.
+    if (oldWidget.orderId != widget.orderId) {
+      _order = null;
+      _load();
+      _watch();
+    }
+  }
+
+  @override
+  void dispose() {
+    _liveSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {

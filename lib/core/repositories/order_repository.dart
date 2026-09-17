@@ -172,11 +172,35 @@ class OrderRepository {
   }
 
   /// Realtime stream of a single order row (status + payment changes).
+  ///
+  /// The row only: realtime carries what is in `orders`, so the lines and the
+  /// store's name are not in it. A screen that swaps a fetched order for one
+  /// of these loses both — see [watchOrder], which is what screens should use.
   Stream<AppOrder?> orderStream(String orderId) => supabase
       .from('orders')
       .stream(primaryKey: ['id'])
       .eq('id', orderId)
       .map((rows) => rows.isEmpty ? null : AppOrder.fromMap(rows.first));
+
+  /// The same order, whole, every time it changes.
+  ///
+  /// Realtime says *that* the row moved; this re-reads it with its items and
+  /// its store so the screen showing it does not lose half of what it was
+  /// displaying the moment a status changes. One extra read per change, and a
+  /// change is rare compared to how long an order sits on a screen.
+  Stream<AppOrder> watchOrder(String orderId) => orderStream(orderId)
+      .asyncMap((row) async {
+        if (row == null) return null;
+        try {
+          return await fetchOrder(orderId);
+        } catch (_) {
+          // The re-read failed but the row is real: better a status with no
+          // items for a moment than a screen frozen on the old status.
+          return row;
+        }
+      })
+      .where((order) => order != null)
+      .cast<AppOrder>();
 
   /// Deletes an unpaid card order after a failed or abandoned payment, so it
   /// never reaches the restaurant. No-op once the order has been paid.

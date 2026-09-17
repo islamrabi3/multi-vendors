@@ -86,7 +86,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   /// delivery done left the operator looking at "on the way" until they
   /// reloaded the page — on a monitor that exists to be watched. The first
   /// fetch still feeds the initial paint; the stream takes over from there.
-  StreamSubscription<AppOrder?>? _liveSubscription;
+  StreamSubscription<AppOrder>? _liveSubscription;
   AppOrder? _live;
   bool _busy = false;
 
@@ -106,11 +106,10 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   void _watch() {
     _liveSubscription?.cancel();
     _liveSubscription = OrderRepository()
-        .orderStream(widget.orderId)
+        .watchOrder(widget.orderId)
         .listen(
           (order) {
-            if (!mounted || order == null) return;
-            setState(() => _live = order);
+            if (mounted) setState(() => _live = order);
           },
           // A dropped socket is not worth an error screen over a row that is
           // already on display; the next reload picks it up.

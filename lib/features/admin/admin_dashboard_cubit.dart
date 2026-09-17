@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/models/order.dart';
 import '../../core/repositories/admin_repository.dart';
+import '../../core/utils/live_feed.dart';
 
 class AdminDashboardState extends Equatable {
   const AdminDashboardState({
@@ -44,18 +45,24 @@ class AdminDashboardState extends Equatable {
 
 /// Control-room feed: headline stats (RPC) plus a realtime stream of live
 /// orders, refreshed together.
+/// The overview's live board.
+///
+/// Same rules as the orders screen: a socket that quietly dies must not leave
+/// an operator looking at an order that was delivered half an hour ago.
 class AdminDashboardCubit extends Cubit<AdminDashboardState> {
   AdminDashboardCubit(this._repository) : super(const AdminDashboardState()) {
-    _subscription = _repository.liveOrdersStream().listen(
-      _onOrders,
-      onError: (Object e) =>
-          emit(state.copyWith(loading: false, error: e.toString())),
-    );
+    _feed = LiveFeed<List<AppOrder>>(
+      stream: _repository.liveOrdersStream,
+      fetch: _repository.fetchLiveOrders,
+      onData: (orders) {
+        if (!isClosed) _onOrders(orders);
+      },
+    )..start();
     refreshStats();
   }
 
   final AdminRepository _repository;
-  StreamSubscription<List<AppOrder>>? _subscription;
+  late final LiveFeed<List<AppOrder>> _feed;
 
   Future<void> refreshStats() async {
     try {
@@ -88,7 +95,7 @@ class AdminDashboardCubit extends Cubit<AdminDashboardState> {
 
   @override
   Future<void> close() {
-    _subscription?.cancel();
+    _feed.dispose();
     return super.close();
   }
 }

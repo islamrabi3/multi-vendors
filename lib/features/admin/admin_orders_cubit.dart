@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/models/order.dart';
 import '../../core/repositories/admin_repository.dart';
+import '../../core/utils/live_feed.dart';
 import '../../core/utils/paging.dart';
 
 enum OrderMonitorFilter { all, flagged, preparing, onTheWay }
@@ -140,72 +140,20 @@ class AdminOrdersState extends Equatable {
 /// an order marked delivered half an hour ago had no way to know except to
 /// reload the page. The subscription is rebuilt after any error, and a slow
 /// poll reconciles underneath it so a silently dead socket costs one interval.
-class AdminOrdersCubit extends Cubit<AdminOrdersState>
-    with WidgetsBindingObserver {
+class AdminOrdersCubit extends Cubit<AdminOrdersState> {
   AdminOrdersCubit(this._repository) : super(const AdminOrdersState()) {
-    WidgetsBinding.instance.addObserver(this);
-    _subscribe();
-    _poll = Timer.periodic(_pollInterval, (_) => _reconcile());
+    _feed = LiveFeed<List<AppOrder>>(
+      stream: _repository.liveOrdersStream,
+      fetch: _repository.fetchLiveOrders,
+      onData: (orders) {
+        if (!isClosed) _onLiveOrders(orders);
+      },
+    )..start();
     loadMore();
   }
 
   final AdminRepository _repository;
-  Timer? _poll;
-  Timer? _retry;
-  int _retryAttempt = 0;
-
-  /// Slow on purpose: the net under the socket, not how orders normally
-  /// arrive.
-  static const _pollInterval = Duration(seconds: 30);
-
-  void _subscribe() {
-    _subscription?.cancel();
-    _subscription = _repository
-        .liveOrdersStream()
-        .listen(
-          (orders) {
-            _retryAttempt = 0;
-            _onLiveOrders(orders);
-          },
-          // Not shown to the operator: the board in front of them is still
-          // valid, and the poll keeps it fresh while the socket is rebuilt.
-          onError: (Object _) => _scheduleResubscribe(),
-          onDone: _scheduleResubscribe,
-        );
-  }
-
-  /// Backs off to a minute, so a server that is genuinely down is not hammered
-  /// by every console left open in the office.
-  void _scheduleResubscribe() {
-    if (isClosed) return;
-    _retry?.cancel();
-    final seconds = (1 << _retryAttempt.clamp(0, 6)).clamp(1, 60);
-    _retryAttempt++;
-    _retry = Timer(Duration(seconds: seconds), () {
-      if (isClosed) return;
-      _subscribe();
-      _reconcile();
-    });
-  }
-
-  Future<void> _reconcile() async {
-    if (isClosed) return;
-    try {
-      await _onLiveOrders(await _repository.fetchLiveOrders());
-    } catch (_) {
-      // Offline. The next tick tries again; nothing to tell the operator.
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Coming back to the tab is when the socket is most likely to be dead and
-    // the board most likely to be wrong.
-    if (state == AppLifecycleState.resumed) {
-      _subscribe();
-      _reconcile();
-    }
-  }
+  late final LiveFeed<List<AppOrder>> _feed;
 
   /// Reads another day: the history is dropped and re-paged from that day.
   Future<void> setDay(DateTime day) async {
@@ -220,7 +168,6 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState>
     await loadMore();
   }
 
-  StreamSubscription<List<AppOrder>>? _subscription;
   Set<String> _liveIds = {};
 
   Future<void> _onLiveOrders(List<AppOrder> orders) async {
@@ -320,10 +267,7 @@ class AdminOrdersCubit extends Cubit<AdminOrdersState>
 
   @override
   Future<void> close() {
-    WidgetsBinding.instance.removeObserver(this);
-    _poll?.cancel();
-    _retry?.cancel();
-    _subscription?.cancel();
+    _feed.dispose();
     return super.close();
   }
 }
