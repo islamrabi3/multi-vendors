@@ -2263,6 +2263,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuImported => 'Menu imported successfully!';
 
   @override
+  String get importFromLink => 'Import from a link';
+
+  @override
+  String get menuUrlLabel => 'Menu page link';
+
+  @override
+  String get menuUrlHint =>
+      'Paste the store\'s menu page and we read it the same way — review before importing.';
+
+  @override
+  String get extractFromLink => 'Read this link';
+
+  @override
+  String get errInvalidUrl => 'That does not look like a web address.';
+
+  @override
+  String get errUrlNotAllowed => 'That address cannot be opened.';
+
+  @override
+  String get errUrlFetchFailed =>
+      'Could not open that page. Check the link and try again.';
+
+  @override
+  String get errUrlTooLarge => 'That page is too large to read.';
+
+  @override
+  String get errUrlNoContent => 'There was no readable text on that page.';
+
+  @override
+  String get noItemsExtractedFromLink =>
+      'No menu items were found on that page.';
+
+  @override
   String get extractionFailed => 'Could not read the menu. Try clearer photos.';
 
   @override

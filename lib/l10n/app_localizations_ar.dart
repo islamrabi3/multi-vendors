@@ -2253,6 +2253,38 @@ class AppLocalizationsAr extends AppLocalizations {
   String get menuImported => 'تم استيراد المنيو بنجاح!';
 
   @override
+  String get importFromLink => 'استيراد من رابط';
+
+  @override
+  String get menuUrlLabel => 'رابط صفحة المنيو';
+
+  @override
+  String get menuUrlHint =>
+      'الصق رابط صفحة منيو المتجر وسنقرأه بنفس الطريقة — راجع النتيجة قبل الاستيراد.';
+
+  @override
+  String get extractFromLink => 'اقرأ هذا الرابط';
+
+  @override
+  String get errInvalidUrl => 'هذا لا يبدو رابطاً صحيحاً.';
+
+  @override
+  String get errUrlNotAllowed => 'لا يمكن فتح هذا العنوان.';
+
+  @override
+  String get errUrlFetchFailed =>
+      'تعذر فتح الصفحة. تأكد من الرابط ثم حاول مرة أخرى.';
+
+  @override
+  String get errUrlTooLarge => 'الصفحة أكبر من أن تُقرأ.';
+
+  @override
+  String get errUrlNoContent => 'لا يوجد نص يمكن قراءته في هذه الصفحة.';
+
+  @override
+  String get noItemsExtractedFromLink => 'لم نعثر على أصناف في هذه الصفحة.';
+
+  @override
   String get extractionFailed => 'تعذرت قراءة المنيو. جرب صوراً أوضح.';
 
   @override

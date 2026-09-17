@@ -4413,6 +4413,66 @@ abstract class AppLocalizations {
   /// **'Menu imported successfully!'**
   String get menuImported;
 
+  /// No description provided for @importFromLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from a link'**
+  String get importFromLink;
+
+  /// No description provided for @menuUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu page link'**
+  String get menuUrlLabel;
+
+  /// No description provided for @menuUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the store\'s menu page and we read it the same way — review before importing.'**
+  String get menuUrlHint;
+
+  /// No description provided for @extractFromLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Read this link'**
+  String get extractFromLink;
+
+  /// No description provided for @errInvalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'That does not look like a web address.'**
+  String get errInvalidUrl;
+
+  /// No description provided for @errUrlNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'That address cannot be opened.'**
+  String get errUrlNotAllowed;
+
+  /// No description provided for @errUrlFetchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open that page. Check the link and try again.'**
+  String get errUrlFetchFailed;
+
+  /// No description provided for @errUrlTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'That page is too large to read.'**
+  String get errUrlTooLarge;
+
+  /// No description provided for @errUrlNoContent.
+  ///
+  /// In en, this message translates to:
+  /// **'There was no readable text on that page.'**
+  String get errUrlNoContent;
+
+  /// No description provided for @noItemsExtractedFromLink.
+  ///
+  /// In en, this message translates to:
+  /// **'No menu items were found on that page.'**
+  String get noItemsExtractedFromLink;
+
   /// No description provided for @extractionFailed.
   ///
   /// In en, this message translates to:

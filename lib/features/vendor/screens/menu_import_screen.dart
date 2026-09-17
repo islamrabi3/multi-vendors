@@ -10,14 +10,17 @@ import '../../../core/utils/menu_sheet_parser.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import 'package:multi_vendor/l10n/app_localizations.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
 
-/// A file or photos -> structured menu -> editable review -> one-shot import.
+/// A file, photos or a link -> structured menu -> editable review -> import.
 ///
-/// Two routes in, deliberately. A spreadsheet is parsed on the device because
-/// it is already structured and a model would only add cost and transcription
-/// errors to numbers that are already exact. Photos and PDFs go to the
-/// extractor, because there they are the only way to read the thing.
+/// Three routes in, deliberately. A spreadsheet is parsed on the device
+/// because it is already structured and a model would only add cost and
+/// transcription errors to numbers that are already exact. Photos and PDFs go
+/// to the extractor, because there they are the only way to read the thing.
+/// A link goes to the extractor too, but the server fetches it: only the
+/// server can decide which addresses it is willing to request.
 /// Pops with `true` when items were imported so the menu can reload.
 class MenuImportScreen extends StatefulWidget {
   const MenuImportScreen({super.key, required this.vendorId});
@@ -36,7 +39,14 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
 
   _Step _step = _Step.pick;
   final List<({Uint8List bytes, String mimeType})> _images = [];
+  final _url = TextEditingController();
   List<ExtractedCategory> _menu = [];
+
+  @override
+  void dispose() {
+    _url.dispose();
+    super.dispose();
+  }
 
   static const _maxImages = 5;
 
@@ -102,24 +112,49 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _extract() async {
+  Future<void> _extract() => _runExtraction(
+    () => _repo.extractMenu(widget.vendorId, _images),
+    emptyMessage: (l10n) => l10n.noItemsExtracted,
+  );
+
+  /// Reads the menu off a page the store already publishes.
+  Future<void> _extractFromUrl() => _runExtraction(
+    () => _repo.extractMenuFromUrl(widget.vendorId, _url.text),
+    emptyMessage: (l10n) => l10n.noItemsExtractedFromLink,
+  );
+
+  Future<void> _runExtraction(
+    Future<List<ExtractedCategory>> Function() run, {
+    required String Function(AppLocalizations l10n) emptyMessage,
+  }) async {
+    FocusScope.of(context).unfocus();
     setState(() => _step = _Step.extracting);
     try {
-      final menu = await _repo.extractMenu(widget.vendorId, _images);
+      final menu = await run();
       if (!mounted) return;
       if (menu.isEmpty) {
         setState(() => _step = _Step.pick);
-        showSnack(context, context.l10n.noItemsExtracted, error: true);
+        showSnack(context, emptyMessage(context.l10n), error: true);
         return;
       }
       setState(() {
         _menu = menu;
         _step = _Step.review;
       });
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
       setState(() => _step = _Step.pick);
-      showSnack(context, context.l10n.extractionFailed, error: true);
+      // A refused or unreadable link has its own reason; saying "try clearer
+      // photos" for a mistyped address helps nobody.
+      final l10n = context.l10n;
+      showSnack(context, switch (error) {
+        MenuImportException(code: 'INVALID_URL') => l10n.errInvalidUrl,
+        MenuImportException(code: 'URL_NOT_ALLOWED') => l10n.errUrlNotAllowed,
+        MenuImportException(code: 'URL_FETCH_FAILED') => l10n.errUrlFetchFailed,
+        MenuImportException(code: 'URL_TOO_LARGE') => l10n.errUrlTooLarge,
+        MenuImportException(code: 'URL_NO_CONTENT') => l10n.errUrlNoContent,
+        _ => l10n.extractionFailed,
+      }, error: true);
     }
   }
 
@@ -475,6 +510,83 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
           icon: const Icon(Icons.auto_awesome, size: 19),
           label: Text(context.l10n.extractMenuAction),
+        ),
+        const SizedBox(height: 22),
+        Row(
+          children: [
+            const Expanded(child: Divider(color: AppColors.border)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                context.l10n.or,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textFaint,
+                ),
+              ),
+            ),
+            const Expanded(child: Divider(color: AppColors.border)),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.link_rounded, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      context.l10n.importFromLink,
+                      style: AppType.heading(15),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                context.l10n.menuUrlHint,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  height: 1.45,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _url,
+                autocorrect: false,
+                textDirection: TextDirection.ltr,
+                keyboardType: TextInputType.url,
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) =>
+                    _url.text.trim().isEmpty ? null : _extractFromUrl(),
+                decoration: InputDecoration(
+                  labelText: context.l10n.menuUrlLabel,
+                  hintText: 'https://',
+                  prefixIcon: const Icon(Icons.public_rounded),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _url.text.trim().isEmpty ? null : _extractFromUrl,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                icon: const Icon(Icons.auto_awesome, size: 18),
+                label: Text(context.l10n.extractFromLink),
+              ),
+            ],
+          ),
         ),
       ],
     );

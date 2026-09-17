@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
+
 import '../supabase_client.dart';
 
 /// One extracted menu item, editable in the review step before import.
@@ -92,19 +94,41 @@ class MenuImportRepository {
   Future<List<ExtractedCategory>> extractMenu(
     String vendorId,
     List<({Uint8List bytes, String mimeType})> images,
-  ) async {
-    final response = await supabase.functions.invoke(
-      'extract-menu',
-      body: {
-        'vendor_id': vendorId,
-        'images': [
-          for (final image in images)
-            {'data': base64Encode(image.bytes), 'media_type': image.mimeType},
-        ],
-      },
-    );
+  ) => _extract({
+    'vendor_id': vendorId,
+    'images': [
+      for (final image in images)
+        {'data': base64Encode(image.bytes), 'media_type': image.mimeType},
+    ],
+  });
 
-    final data = response.data;
+  /// The same extraction, from a page the store already publishes its menu on.
+  ///
+  /// The link is fetched by the Edge Function rather than the device: only the
+  /// server can be trusted to decide which addresses it is willing to request,
+  /// and a browser could not read most of these pages cross-origin anyway.
+  Future<List<ExtractedCategory>> extractMenuFromUrl(
+    String vendorId,
+    String url,
+  ) => _extract({'vendor_id': vendorId, 'url': url.trim()});
+
+  Future<List<ExtractedCategory>> _extract(Map<String, dynamic> body) async {
+    final Object? data;
+    try {
+      final response = await supabase.functions.invoke(
+        'extract-menu',
+        body: body,
+      );
+      data = response.data;
+    } on FunctionException catch (error) {
+      // A refused link answers 400 with its reason in the body, which the
+      // client throws rather than returns. Without this, every rejection read
+      // as "extraction failed" and the operator never learned that the link
+      // itself was the problem.
+      final details = error.details;
+      final code = details is Map ? details['error'] : null;
+      throw MenuImportException(code?.toString() ?? 'EXTRACTION_FAILED');
+    }
     if (data is! Map) throw const MenuImportException('EXTRACTION_FAILED');
     if (data['error'] != null) {
       throw MenuImportException(data['error'].toString());
