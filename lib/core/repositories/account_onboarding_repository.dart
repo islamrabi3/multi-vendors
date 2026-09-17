@@ -87,6 +87,51 @@ class AccountOnboardingRepository {
     return driverId;
   }
 
+  /// What an operator needs to see about the person behind an account: the
+  /// login name and the email address, neither of which is on `profiles`.
+  Future<AccountLogin?> fetchLogin(String userId) async {
+    final data = await supabase.rpc(
+      'admin_account_login',
+      params: {'p_user_id': userId},
+    );
+    final row = (data as List?)?.firstOrNull as Map<String, dynamic>?;
+    if (row == null) return null;
+    return AccountLogin(
+      email: (row['email'] as String?) ?? '',
+      username: (row['username'] as String?) ?? '',
+      fullName: (row['full_name'] as String?) ?? '',
+      phone: (row['phone'] as String?) ?? '',
+    );
+  }
+
+  /// Changes the login behind a store or driver: the parts of an account that
+  /// only the service role may write.
+  ///
+  /// Only what is passed is changed, so an operator resetting a password does
+  /// not have to retype an email address to leave it alone. [phone] is the
+  /// exception: passing an empty string clears it, which is why it is only
+  /// sent when the caller means to write it.
+  Future<List<String>> updateAccount({
+    required String userId,
+    String? email,
+    String? password,
+    String? username,
+    String? fullName,
+    String? phone,
+  }) async {
+    final data = await _invoke({
+      'user_id': userId,
+      'email': ?email?.trim(),
+      'password': ?password,
+      'username': ?username?.trim(),
+      'full_name': ?fullName?.trim(),
+      'phone': ?phone?.trim(),
+    }, function: 'admin-update-account', failure: 'UPDATE_FAILED');
+    return ((data['changed'] as List?) ?? const [])
+        .map((entry) => '$entry')
+        .toList();
+  }
+
   Future<String> _uploadStoreImage(String kind, PickedImage image) async {
     final safe = image.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final path =
@@ -100,19 +145,35 @@ class AccountOnboardingRepository {
   /// The function answers errors with `{error: CODE}` and a non-2xx status,
   /// which the client raises as [FunctionException]; both shapes end up as an
   /// exception carrying the code, so the UI can say which rule failed.
-  Future<Map<String, dynamic>> _invoke(Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> _invoke(
+    Map<String, dynamic> body, {
+    String function = 'admin-create-account',
+    String failure = 'CREATE_FAILED',
+  }) async {
     try {
-      final response = await supabase.functions.invoke(
-        'admin-create-account',
-        body: body,
-      );
+      final response = await supabase.functions.invoke(function, body: body);
       final data = (response.data as Map?)?.cast<String, dynamic>() ?? {};
       if (data['error'] != null) throw Exception(data['error']);
       return data;
     } on FunctionException catch (error) {
       final details = error.details;
       final code = details is Map ? details['error'] : null;
-      throw Exception(code ?? 'CREATE_FAILED');
+      throw Exception(code ?? failure);
     }
   }
+}
+
+/// The login behind a store or driver, as an admin screen shows it.
+class AccountLogin {
+  const AccountLogin({
+    required this.email,
+    required this.username,
+    required this.fullName,
+    required this.phone,
+  });
+
+  final String email;
+  final String username;
+  final String fullName;
+  final String phone;
 }

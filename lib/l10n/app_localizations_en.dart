@@ -2702,6 +2702,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Too many attempts. Wait a moment and try again.';
 
   @override
+  String get ownerAccount => 'Owner account';
+
+  @override
+  String get ownerAccountHint => 'The login this store signs in with.';
+
+  @override
+  String get newPasswordOptional => 'New password (leave empty to keep)';
+
+  @override
+  String get accountUpdated => 'Account updated';
+
+  @override
+  String get errNothingToUpdate => 'Nothing was changed.';
+
+  @override
+  String get errUpdateFailed => 'Could not save those changes.';
+
+  @override
+  String get storeImages => 'Logo and cover';
+
+  @override
+  String get changeLogo => 'Change logo';
+
+  @override
+  String get changeCover => 'Change cover';
+
+  @override
   String get errWeakPassword => 'Password is too short.';
 
   @override
@@ -3771,9 +3798,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get signOutConfirm =>
       'You will stop receiving new orders on this device until you sign in again.';
-
-  @override
-  String get changeCover => 'Change cover';
 
   @override
   String get payAction => 'Pay';

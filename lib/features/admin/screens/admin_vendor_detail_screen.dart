@@ -7,10 +7,14 @@ import '../../../app/tokens.dart';
 import '../../../core/errors/app_failure.dart' show UserMessage;
 import '../../../core/models/finance.dart';
 import '../../../core/models/vendor.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../core/repositories/account_onboarding_repository.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/repositories/finance_repository.dart';
 import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/widgets/location_picker.dart';
+import '../../../core/utils/email.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
@@ -338,6 +342,161 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
     showSnack(context, context.l10n.saved);
   }
 
+  /// The login the store signs in with.
+  ///
+  /// An owner who forgets their password or mistyped their email at signup
+  /// rings the operator, who until now could do nothing about either: both
+  /// live in auth.users, which no client may write. Every field is optional —
+  /// what is left alone is left alone, and an empty password keeps the
+  /// current one rather than clearing it.
+  Future<void> _editAccount(Vendor vendor) async {
+    final l10n = context.l10n;
+    final accounts = AccountOnboardingRepository();
+    AccountLogin? login;
+    try {
+      login = await accounts.fetchLogin(vendor.ownerId);
+    } catch (error) {
+      if (mounted) showFailure(context, error);
+      return;
+    }
+    if (!mounted) return;
+
+    final name = TextEditingController(text: login?.fullName ?? '');
+    final phone = TextEditingController(text: login?.phone ?? '');
+    final email = TextEditingController(text: login?.email ?? '');
+    final username = TextEditingController(text: login?.username ?? '');
+    final password = TextEditingController();
+    final before = login;
+
+    final saved = await showFormDialog<bool>(
+      context: context,
+      title: l10n.ownerAccount,
+      icon: Icons.manage_accounts_rounded,
+      submitLabel: l10n.save,
+      cancelLabel: l10n.cancel,
+      contentBuilder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.ownerAccountHint,
+            style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: AppSpace.md),
+          TextField(
+            controller: name,
+            decoration: InputDecoration(labelText: l10n.ownerName),
+          ),
+          const SizedBox(height: AppSpace.md),
+          TextField(
+            controller: phone,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+            decoration: InputDecoration(labelText: l10n.phoneNumber),
+          ),
+          const SizedBox(height: AppSpace.md),
+          TextField(
+            controller: email,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            textDirection: TextDirection.ltr,
+            decoration: InputDecoration(labelText: l10n.email),
+          ),
+          const SizedBox(height: AppSpace.md),
+          TextField(
+            controller: username,
+            autocorrect: false,
+            textDirection: TextDirection.ltr,
+            decoration: InputDecoration(
+              labelText: l10n.usernameLabel,
+              helperText: l10n.usernameHint,
+              helperMaxLines: 2,
+            ),
+          ),
+          const SizedBox(height: AppSpace.md),
+          TextField(
+            controller: password,
+            obscureText: true,
+            autocorrect: false,
+            textDirection: TextDirection.ltr,
+            decoration: InputDecoration(
+              labelText: l10n.newPasswordOptional,
+              helperText: l10n.passwordMin8,
+            ),
+          ),
+        ],
+      ),
+      onSubmit: (_) async {
+        final newEmail = email.text.trim().toLowerCase();
+        if (newEmail.isNotEmpty && !isValidEmail(newEmail)) {
+          throw UserMessage(l10n.enterValidEmail);
+        }
+        if (password.text.isNotEmpty && password.text.length < 8) {
+          throw UserMessage(l10n.passwordMin8);
+        }
+        // Only what actually differs is sent: an unchanged email would still
+        // be a write to the login, and an unchanged username would still be a
+        // uniqueness check that could refuse the whole save.
+        await accounts.updateAccount(
+          userId: vendor.ownerId,
+          email: newEmail == (before?.email ?? '') ? null : newEmail,
+          password: password.text.isEmpty ? null : password.text,
+          username: username.text.trim() == (before?.username ?? '')
+              ? null
+              : username.text.trim(),
+          fullName: name.text.trim() == (before?.fullName ?? '')
+              ? null
+              : name.text.trim(),
+          phone: phone.text.trim() == (before?.phone ?? '')
+              ? null
+              : phone.text.trim(),
+        );
+        return true;
+      },
+    );
+
+    disposeAfterClose([name, phone, email, username, password]);
+    if (saved != true || !mounted) return;
+    setState(() {
+      _future = _load();
+    });
+    showSnack(context, context.l10n.accountUpdated);
+  }
+
+  /// The store's logo or its cover photo, uploaded on the owner's behalf.
+  Future<void> _pickImage(Vendor vendor, {required bool logo}) async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+    );
+    if (file == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await file.readAsBytes();
+      final safe = file.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final url = await VendorAdminRepository().uploadImage(
+        bucket: 'vendor-assets',
+        path: '${logo ? 'logo' : 'cover'}/${vendor.id}/${stamp}_$safe',
+        bytes: bytes,
+      );
+      await VendorAdminRepository().updateVendor(vendor.id, {
+        logo ? 'logo_url' : 'cover_url': url,
+      });
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _future = _load();
+      });
+      showSnack(context, context.l10n.photoUpdated);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showFailure(context, error);
+      }
+    }
+  }
+
   /// The store's weekly opening hours, in the same editor the owner uses.
   Future<void> _editSchedule(Vendor vendor) async {
     await showAdaptiveSheet<void>(
@@ -510,6 +669,14 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
               owner: owner,
               onEditProfile: _busy ? null : () => _editProfile(vendor),
               onEditSchedule: _busy ? null : () => _editSchedule(vendor),
+              onEditAccount: _busy ? null : () => _editAccount(vendor),
+              onSetLocation: _busy ? null : () => _setLocation(vendor),
+              onChangeLogo: _busy
+                  ? null
+                  : () => _pickImage(vendor, logo: true),
+              onChangeCover: _busy
+                  ? null
+                  : () => _pickImage(vendor, logo: false),
               onEditTerms:
                   _busy ||
                       !context.watch<AuthCubit>().state.can('vendors.terms')
@@ -735,6 +902,10 @@ class _Body extends StatelessWidget {
     required this.onEditTerms,
     this.onEditProfile,
     this.onEditSchedule,
+    this.onEditAccount,
+    this.onSetLocation,
+    this.onChangeLogo,
+    this.onChangeCover,
     this.showBack = true,
   });
 
@@ -748,6 +919,12 @@ class _Body extends StatelessWidget {
   /// The store's own details, and its opening hours.
   final VoidCallback? onEditProfile;
   final VoidCallback? onEditSchedule;
+
+  /// The login behind the store, its map pin, and its two photographs.
+  final VoidCallback? onEditAccount;
+  final VoidCallback? onSetLocation;
+  final VoidCallback? onChangeLogo;
+  final VoidCallback? onChangeCover;
   final bool showBack;
 
   @override
@@ -925,6 +1102,68 @@ class _Body extends StatelessWidget {
                         icon: const Icon(Icons.schedule_rounded, size: 18),
                         label: Text(
                           context.l10n.operatingHoursSchedule,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onEditAccount,
+                        icon: const Icon(
+                          Icons.manage_accounts_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          context.l10n.ownerAccount,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      // Offered whether or not the store already has a pin:
+                      // moving a shop that pinned itself wrongly is as much
+                      // the operator's job as pinning one that never did.
+                      child: OutlinedButton.icon(
+                        onPressed: onSetLocation,
+                        icon: const Icon(Icons.place_outlined, size: 18),
+                        label: Text(
+                          context.l10n.storeLocationOnMap,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onChangeLogo,
+                        icon: const Icon(Icons.image_outlined, size: 18),
+                        label: Text(
+                          context.l10n.changeLogo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onChangeCover,
+                        icon: const Icon(Icons.panorama_outlined, size: 18),
+                        label: Text(
+                          context.l10n.changeCover,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

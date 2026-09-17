@@ -5229,6 +5229,60 @@ abstract class AppLocalizations {
   /// **'Too many attempts. Wait a moment and try again.'**
   String get errTooManyAttempts;
 
+  /// No description provided for @ownerAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner account'**
+  String get ownerAccount;
+
+  /// No description provided for @ownerAccountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The login this store signs in with.'**
+  String get ownerAccountHint;
+
+  /// No description provided for @newPasswordOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'New password (leave empty to keep)'**
+  String get newPasswordOptional;
+
+  /// No description provided for @accountUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Account updated'**
+  String get accountUpdated;
+
+  /// No description provided for @errNothingToUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was changed.'**
+  String get errNothingToUpdate;
+
+  /// No description provided for @errUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save those changes.'**
+  String get errUpdateFailed;
+
+  /// No description provided for @storeImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Logo and cover'**
+  String get storeImages;
+
+  /// No description provided for @changeLogo.
+  ///
+  /// In en, this message translates to:
+  /// **'Change logo'**
+  String get changeLogo;
+
+  /// No description provided for @changeCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Change cover'**
+  String get changeCover;
+
   /// No description provided for @errWeakPassword.
   ///
   /// In en, this message translates to:
@@ -7160,12 +7214,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You will stop receiving new orders on this device until you sign in again.'**
   String get signOutConfirm;
-
-  /// No description provided for @changeCover.
-  ///
-  /// In en, this message translates to:
-  /// **'Change cover'**
-  String get changeCover;
 
   /// No description provided for @payAction.
   ///

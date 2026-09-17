@@ -2686,6 +2686,34 @@ class AppLocalizationsAr extends AppLocalizations {
       'محاولات كثيرة. انتظر قليلاً ثم حاول مرة أخرى.';
 
   @override
+  String get ownerAccount => 'حساب المالك';
+
+  @override
+  String get ownerAccountHint => 'بيانات دخول المتجر.';
+
+  @override
+  String get newPasswordOptional =>
+      'كلمة مرور جديدة (اتركها فارغة للإبقاء على الحالية)';
+
+  @override
+  String get accountUpdated => 'تم تحديث الحساب';
+
+  @override
+  String get errNothingToUpdate => 'لم يتم تغيير أي شيء.';
+
+  @override
+  String get errUpdateFailed => 'تعذر حفظ التغييرات.';
+
+  @override
+  String get storeImages => 'الشعار والغلاف';
+
+  @override
+  String get changeLogo => 'تغيير الشعار';
+
+  @override
+  String get changeCover => 'تغيير الغلاف';
+
+  @override
   String get errWeakPassword => 'كلمة المرور قصيرة جداً.';
 
   @override
@@ -3743,9 +3771,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get signOutConfirm =>
       'لن تصلك طلبات جديدة على هذا الجهاز حتى تسجل الدخول مرة أخرى.';
-
-  @override
-  String get changeCover => 'تغيير الغلاف';
 
   @override
   String get payAction => 'الدفع';

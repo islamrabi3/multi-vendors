@@ -246,6 +246,8 @@ class AppFailure implements Exception {
         'INVALID_LOGIN' => l10n.errInvalidLogin,
         'EMAIL_NOT_CONFIRMED' => l10n.errEmailNotConfirmed,
         'USER_ALREADY_EXISTS' => l10n.errUserAlreadyExists,
+        'NOTHING_TO_UPDATE' => l10n.errNothingToUpdate,
+        'UPDATE_FAILED' => l10n.errUpdateFailed,
         'STORE_LOCATION_REQUIRED' => l10n.errStoreLocationRequired,
         'STORE_DETAILS_REQUIRED' => l10n.errStoreDetailsRequired,
         'WEAK_PASSWORD' => l10n.errWeakPassword,
