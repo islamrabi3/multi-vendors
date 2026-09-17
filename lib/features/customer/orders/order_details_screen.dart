@@ -263,32 +263,7 @@ class _OrderDetailsView extends StatelessWidget {
               // Two conversations, never one room: what the customer tells
               // the rider is not the store's business, and the reverse.
               if (!order.status.isTerminal)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _ChatButton(
-                          orderId: order.id,
-                          thread: ChatRepository.vendorThread,
-                          label: context.l10n.chatWithStore,
-                          icon: Icons.storefront_rounded,
-                        ),
-                      ),
-                      if (order.driverId != null) ...[
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _ChatButton(
-                            orderId: order.id,
-                            thread: ChatRepository.driverThread,
-                            label: context.l10n.chatWithDriver,
-                            icon: Icons.two_wheeler_rounded,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                _ChatActions(order: order, platformRun: state.platformRun),
               if (order.status == OrderStatus.pending)
                 SizedBox(
                   width: double.infinity,
@@ -1254,6 +1229,55 @@ class _TipCardState extends State<_TipCard> {
 }
 
 /// One of an order's two conversations, with its own unread badge.
+/// Who the customer can talk to about this order, right now.
+///
+/// The store answers until the food leaves it; after that the rider has the
+/// order and the store can do nothing about where it is. A store the platform
+/// runs is never offered at all — it is not in the app, so nobody would read
+/// the message. When there is nobody, no button: "Report an issue" below
+/// reaches support, which is the honest answer.
+class _ChatActions extends StatelessWidget {
+  const _ChatActions({required this.order, required this.platformRun});
+
+  final AppOrder order;
+  final bool platformRun;
+
+  @override
+  Widget build(BuildContext context) {
+    final withDriver = order.driverId != null;
+    final withStore =
+        !platformRun && order.status != OrderStatus.outForDelivery;
+    if (!withDriver && !withStore) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          if (withStore)
+            Expanded(
+              child: _ChatButton(
+                orderId: order.id,
+                thread: ChatRepository.vendorThread,
+                label: context.l10n.chatWithStore,
+                icon: Icons.storefront_rounded,
+              ),
+            ),
+          if (withStore && withDriver) const SizedBox(width: 10),
+          if (withDriver)
+            Expanded(
+              child: _ChatButton(
+                orderId: order.id,
+                thread: ChatRepository.driverThread,
+                label: context.l10n.chatWithDriver,
+                icon: Icons.two_wheeler_rounded,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ChatButton extends StatelessWidget {
   const _ChatButton({
     required this.orderId,
