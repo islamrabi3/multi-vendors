@@ -128,19 +128,43 @@ void main() {
       expect(zero, isEmpty, reason: 'price_egp is a price column');
     });
 
-    test('three size rows are one dish, priced from the cheapest', () {
+    test('three size rows are one dish with a size choice', () {
       final menu = MenuSheetParser.parseCsv(sheet());
       final pizza = menu.firstWhere((c) => c.name == 'قسم البيتزا');
       final margherita = pizza.items.where(
         (i) => i.name == 'بيتزا مارجريتا',
       );
       expect(margherita.length, 1);
-      expect(margherita.single.price, 90);
-      // The sizes are not options yet, so they have to survive as words or
-      // they are lost.
-      expect(margherita.single.description, contains('صغير 90'));
-      expect(margherita.single.description, contains('كبير 135'));
-      expect(margherita.single.description, startsWith('صوص + موزاريلا'));
+      expect(margherita.single.price, 90, reason: 'the cheapest size');
+      // The description says what is on the pizza, and nothing about sizes.
+      expect(margherita.single.description, 'صوص + موزاريلا');
+
+      final sizes = margherita.single.options.single;
+      expect(sizes.label, 'Size', reason: "named after the file's own column");
+      expect(sizes.minSelect, 1, reason: 'a size must be chosen');
+      expect(sizes.maxSelect, 1, reason: 'exactly one');
+      expect(
+        sizes.options.map((o) => '${o.label} ${o.priceDelta}').toList(),
+        ['صغير 0.0', 'وسط 20.0', 'كبير 45.0'],
+        reason: 'priced as the difference from the cheapest size',
+      );
+    });
+
+    test('a dish sold in one size gains no choice', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final shawarma = menu.firstWhere((c) => c.name == 'قسم الشاورما');
+      expect(shawarma.items.single.options, isEmpty);
+    });
+
+    test('a size the file left unpriced is not offered', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final pizza = menu.firstWhere((c) => c.name == 'قسم البيتزا');
+      final half = pizza.items.firstWhere((i) => i.name == 'بيتزا نصين');
+      expect(
+        half.options.single.options.map((o) => o.label),
+        ['وسط', 'كبير'],
+        reason: '"-" is a gap in the export, not a size on sale',
+      );
     });
 
     test('an unpriced size does not become the price', () {
@@ -150,7 +174,7 @@ void main() {
       expect(half.price, 135, reason: '"-" is not a price');
     });
 
-    test('an unsized row keeps its own price and gains no size line', () {
+    test('an unsized row keeps its own price', () {
       final menu = MenuSheetParser.parseCsv(sheet());
       final shawarma = menu.firstWhere((c) => c.name == 'قسم الشاورما');
       expect(shawarma.items.single.price, 85);

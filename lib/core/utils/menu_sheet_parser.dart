@@ -118,6 +118,18 @@ class MenuSheetParser {
       throw const MenuSheetException.noNameColumn();
     }
 
+    // The size group is named after the file's own column, so an Arabic
+    // export produces "الحجم" and an English one "Size" without the parser
+    // having to know which language the shop speaks.
+    final sizeIndex = header['size'];
+    final sizeHeader = sizeIndex == null ? '' : rows.first[sizeIndex].trim();
+    // A header is written to be a column heading, not read out to a
+    // customer: "size" becomes "Size". Arabic has no case, so it is left
+    // exactly as the shop wrote it.
+    final sizeLabel = sizeHeader.isEmpty
+        ? 'Size'
+        : sizeHeader[0].toUpperCase() + sizeHeader.substring(1);
+
     String cell(List<String> row, String field) {
       final index = header[field];
       if (index == null || index >= row.length) return '';
@@ -159,7 +171,9 @@ class MenuSheetParser {
         ExtractedCategory(
           name: entry.key,
           nameAr: '',
-          items: [for (final draft in entry.value.values) draft.build()],
+          items: [
+            for (final draft in entry.value.values) draft.build(sizeLabel),
+          ],
         ),
     ];
   }
@@ -197,11 +211,10 @@ class MenuSheetParser {
 
 /// One dish while its rows are still being read.
 ///
-/// A menu with sizes arrives as several rows for the same dish. The catalogue
-/// has one price per item, so the item takes the cheapest size — what the
-/// customer sees as "from" — and the full list of sizes goes into the
-/// description, where it is at least true and legible until somebody adds
-/// proper options.
+/// A menu with sizes arrives as several rows for the same dish. The product
+/// carries one price, so the item is priced at its cheapest size and the
+/// sizes become a required choice on it — the customer picks one and pays the
+/// difference, exactly as if the store had built the options by hand.
 class _Draft {
   _Draft({
     required this.name,
@@ -230,35 +243,38 @@ class _Draft {
     return priced.reduce((a, b) => a < b ? a : b);
   }
 
-  String _sizeLine() {
-    final sized = _rows.where((r) => r.size.isNotEmpty && r.price > 0);
-    if (sized.length < 2) return '';
-    return sized
-        .map((r) => '${r.size} ${_money(r.price)}')
-        .join(' · ');
+  /// The sizes, as a choice the customer makes.
+  ///
+  /// Priced as a difference from the cheapest size, which is what the item
+  /// itself now costs: small is +0, medium +25, large +45. A size the file
+  /// left unpriced is dropped rather than offered at the base price — it is
+  /// not a size the shop sells, it is a gap in the export.
+  ExtractedOptionGroup? _sizeGroup(String label) {
+    final sized = _rows.where((r) => r.size.isNotEmpty && r.price > 0).toList();
+    // One size is not a choice; it is just the price.
+    if (sized.length < 2) return null;
+    final base = _from;
+    return ExtractedOptionGroup(
+      name: label,
+      // Exactly one: a pizza is small or large, never both and never neither.
+      minSelect: 1,
+      maxSelect: 1,
+      options: [
+        for (final row in sized)
+          ExtractedOption(name: row.size, priceDelta: row.price - base),
+      ],
+    );
   }
 
-  static String _money(double value) => value == value.roundToDouble()
-      ? value.toStringAsFixed(0)
-      : value.toStringAsFixed(2);
-
-  ExtractedItem build() {
-    final sizes = _sizeLine();
-    String withSizes(String text) {
-      if (sizes.isEmpty) return text;
-      return text.isEmpty ? sizes : '$text\n$sizes';
-    }
-
+  ExtractedItem build(String sizeLabel) {
+    final sizes = _sizeGroup(sizeLabel);
     return ExtractedItem(
       name: name,
       nameAr: nameAr,
-      description: withSizes(description),
-      // The sizes read the same in either language; repeating them is better
-      // than an Arabic description that silently loses them.
-      descriptionAr: descriptionAr.isEmpty && description.isEmpty
-          ? sizes
-          : withSizes(descriptionAr),
+      description: description,
+      descriptionAr: descriptionAr,
       price: _from,
+      options: [?sizes],
     );
   }
 }

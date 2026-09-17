@@ -5,6 +5,90 @@ import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
 import '../supabase_client.dart';
 
+/// One choice inside an option group: a size, a topping, a sauce.
+///
+/// [priceDelta] is what the choice adds to the item's own price, so a pizza
+/// priced at its small size carries +25 for medium and +45 for large. The
+/// catalogue stores one name per option rather than two, as the store's own
+/// option editor does, so the importer keeps whichever language the menu was
+/// written in.
+class ExtractedOption {
+  ExtractedOption({
+    required this.name,
+    this.nameAr = '',
+    this.priceDelta = 0,
+  });
+
+  String name;
+  String nameAr;
+  double priceDelta;
+
+  /// What the customer will see. The menu's own language wins: a shop that
+  /// wrote its sizes in Arabic should not have them read out in English.
+  String get label => nameAr.trim().isNotEmpty ? nameAr.trim() : name.trim();
+
+  factory ExtractedOption.fromMap(Map<String, dynamic> map) => ExtractedOption(
+    name: (map['name'] as String?)?.trim() ?? '',
+    nameAr: (map['name_ar'] as String?)?.trim() ?? '',
+    priceDelta: ((map['price_delta'] as num?) ?? 0).toDouble(),
+  );
+
+  Map<String, dynamic> toMap() => {
+    'name': label,
+    'price_delta': priceDelta,
+  };
+}
+
+/// A set of choices on one item: "Size", "Extras", "Choice of sauce".
+///
+/// [minSelect] and [maxSelect] are what make a size list a decision the
+/// customer has to make and a topping list a set they may add to: a size
+/// group is 1..1, toppings are 0..many.
+class ExtractedOptionGroup {
+  ExtractedOptionGroup({
+    required this.name,
+    this.nameAr = '',
+    this.minSelect = 0,
+    this.maxSelect = 1,
+    required this.options,
+  });
+
+  String name;
+  String nameAr;
+  int minSelect;
+  int maxSelect;
+  final List<ExtractedOption> options;
+
+  String get label => nameAr.trim().isNotEmpty ? nameAr.trim() : name.trim();
+  bool get isRequired => minSelect > 0;
+
+  factory ExtractedOptionGroup.fromMap(Map<String, dynamic> map) {
+    final options = ((map['options'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ExtractedOption.fromMap)
+        .where((option) => option.label.isNotEmpty)
+        .toList();
+    final max = ((map['max_select'] as num?) ?? 1).toInt();
+    final min = ((map['min_select'] as num?) ?? 0).toInt();
+    return ExtractedOptionGroup(
+      name: (map['name'] as String?)?.trim() ?? '',
+      nameAr: (map['name_ar'] as String?)?.trim() ?? '',
+      // A group that may never be chosen from is a group nobody can use, and
+      // one that demands more choices than it offers can never be satisfied.
+      maxSelect: max.clamp(1, options.isEmpty ? 1 : options.length),
+      minSelect: min.clamp(0, options.length),
+      options: options,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'name': label,
+    'min_select': minSelect,
+    'max_select': maxSelect,
+    'options': options.map((option) => option.toMap()).toList(),
+  };
+}
+
 /// One extracted menu item, editable in the review step before import.
 ///
 /// The extractor returns both languages for every name so the catalogue reads
@@ -17,13 +101,20 @@ class ExtractedItem {
     this.description = '',
     this.descriptionAr = '',
     this.price = 0,
-  });
+    List<ExtractedOptionGroup>? options,
+  }) : options = options ?? [];
 
   String name;
   String nameAr;
   String description;
   String descriptionAr;
   double price;
+
+  /// Sizes, toppings and anything else the menu offered on this item. These
+  /// used to be flattened into the description, which read as a printed menu
+  /// but left the customer unable to choose anything and the price wrong for
+  /// every size but the cheapest.
+  final List<ExtractedOptionGroup> options;
 
   /// True when the extractor gave us only one language for this item.
   bool get isMissingTranslation => name.isEmpty || nameAr.isEmpty;
@@ -34,6 +125,11 @@ class ExtractedItem {
     description: (map['description'] as String?)?.trim() ?? '',
     descriptionAr: (map['description_ar'] as String?)?.trim() ?? '',
     price: ((map['price'] as num?) ?? 0).toDouble(),
+    options: ((map['option_groups'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ExtractedOptionGroup.fromMap)
+        .where((group) => group.label.isNotEmpty && group.options.isNotEmpty)
+        .toList(),
   );
 
   Map<String, dynamic> toMap() => {
@@ -42,6 +138,7 @@ class ExtractedItem {
     'description': description,
     'description_ar': descriptionAr,
     'price': price,
+    'option_groups': options.map((group) => group.toMap()).toList(),
   };
 }
 

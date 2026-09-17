@@ -13,6 +13,72 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import 'package:multi_vendor/l10n/app_localizations.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
 
+/// One option group under an item in the review list.
+///
+/// Sizes and extras arrive as real choices now rather than a line of text in
+/// the description, so they have to be visible before import: a wrong size
+/// price is a wrong charge on every order of that dish.
+class _OptionGroupRow extends StatelessWidget {
+  const _OptionGroupRow({required this.group, required this.onRemove});
+
+  final ExtractedOptionGroup group;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 8, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            group.isRequired
+                ? Icons.radio_button_checked_rounded
+                : Icons.add_circle_outline_rounded,
+            size: 14,
+            color: AppColors.textFaint,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group.label,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    for (final option in group.options)
+                      option.priceDelta == 0
+                          ? option.label
+                          : '${option.label} +${formatMoney(option.priceDelta)}',
+                  ].join('  ·  '),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    height: 1.4,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.close, size: 14, color: AppColors.textFaint),
+            onPressed: onRemove,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A file, photos or a link -> structured menu -> editable review -> import.
 ///
 /// Three routes in, deliberately. A spreadsheet is parsed on the device
@@ -595,6 +661,10 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
 
   Widget _reviewView() {
     final total = _menu.fold<int>(0, (n, c) => n + c.items.length);
+    final options = _menu.fold<int>(
+      0,
+      (n, c) => n + c.items.fold<int>(0, (m, i) => m + i.options.length),
+    );
     return Column(
       children: [
         Padding(
@@ -611,7 +681,7 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                 ),
               ),
               Text(
-                '$total',
+                options == 0 ? '$total' : '$total · $options',
                 style: AppType.mono(14, color: AppColors.primaryDark),
               ),
             ],
@@ -671,59 +741,74 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
                       border: Border.all(color: AppColors.border),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: ListTile(
-                      dense: true,
-                      onTap: () => _editItem(item),
-                      // Both names are shown so a missing translation is
-                      // obvious before the menu is committed.
-                      title: Text(
-                        [
-                          item.name,
-                          item.nameAr,
-                        ].where((part) => part.isNotEmpty).join('  ·  '),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle:
-                          item.description.isEmpty && item.descriptionAr.isEmpty
-                          ? null
-                          : Text(
-                              [
-                                item.description,
-                                item.descriptionAr,
-                              ].where((part) => part.isNotEmpty).join('  ·  '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (item.isMissingTranslation)
-                            const Padding(
-                              padding: EdgeInsetsDirectional.only(end: 6),
-                              child: Icon(
-                                Icons.translate_rounded,
-                                size: 16,
-                                color: AppColors.amberInk,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ListTile(
+                          dense: true,
+                          onTap: () => _editItem(item),
+                          // Both names are shown so a missing translation is
+                          // obvious before the menu is committed.
+                          title: Text(
+                            [
+                              item.name,
+                              item.nameAr,
+                            ].where((part) => part.isNotEmpty).join('  ·  '),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle:
+                              item.description.isEmpty &&
+                                  item.descriptionAr.isEmpty
+                              ? null
+                              : Text(
+                                  [item.description, item.descriptionAr]
+                                      .where((part) => part.isNotEmpty)
+                                      .join('  ·  '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (item.isMissingTranslation)
+                                const Padding(
+                                  padding: EdgeInsetsDirectional.only(end: 6),
+                                  child: Icon(
+                                    Icons.translate_rounded,
+                                    size: 16,
+                                    color: AppColors.amberInk,
+                                  ),
+                                ),
+                              Text(
+                                formatMoney(item.price),
+                                style: AppType.mono(
+                                  13,
+                                  color: AppColors.primaryDark,
+                                ),
                               ),
-                            ),
-                          Text(
-                            formatMoney(item.price),
-                            style: AppType.mono(
-                              13,
-                              color: AppColors.primaryDark,
-                            ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: AppColors.textFaint,
+                                ),
+                                onPressed: () =>
+                                    setState(() => category.items.remove(item)),
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.close,
-                              size: 18,
-                              color: AppColors.textFaint,
-                            ),
-                            onPressed: () =>
-                                setState(() => category.items.remove(item)),
+                        ),
+                        // Sizes and extras, so nothing is imported that the
+                        // operator has not seen. Each group can be dropped here,
+                        // which is the one correction worth making before import:
+                        // the rest belongs in the product editor afterwards.
+                        for (final group in item.options)
+                          _OptionGroupRow(
+                            group: group,
+                            onRemove: () =>
+                                setState(() => item.options.remove(group)),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
               ],
