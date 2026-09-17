@@ -23,31 +23,69 @@ class MenuSheetParser {
   MenuSheetParser._();
 
   /// Column aliases, lowercased and stripped of spaces and underscores.
+  ///
+  /// Order matters within the map: the longer, more specific fields are tried
+  /// before the ones whose names are prefixes of them, so `description_ar`
+  /// cannot be claimed by `description`.
   static const _aliases = <String, List<String>>{
+    'name_ar': ['namear', 'arabicname', 'arabic', 'الاسمبالعربية'],
+    'description_ar': ['descriptionar', 'arabicdescription', 'الوصفبالعربية'],
     'category': ['category', 'section', 'group', 'type', 'القسم', 'الفئة'],
     'name': ['name', 'item', 'product', 'title', 'itemname', 'الصنف', 'الاسم'],
-    'name_ar': ['namear', 'arabicname', 'arabic', 'الاسمبالعربية'],
     'description': ['description', 'desc', 'details', 'الوصف'],
-    'description_ar': ['descriptionar', 'arabicdescription', 'الوصفبالعربية'],
-    'price': ['price', 'cost', 'amount', 'value', 'السعر'],
+    'price': [
+      'price',
+      'cost',
+      'amount',
+      'value',
+      'السعر',
+      'سعر',
+    ],
+    // One row per size is how most shops write a menu with sizes; without
+    // this the same dish arrives three times.
+    'size': ['size', 'variant', 'option', 'الحجم', 'المقاس'],
   };
 
   static String _normalise(String raw) =>
       raw.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '').trim();
 
   /// Maps each column index to a known field, or leaves it unmapped.
+  ///
+  /// Matched by prefix rather than exactly. A shop's own export writes
+  /// `price_egp`, `item_name`, `unit price` — all of which used to match
+  /// nothing, and a menu with no price column became a menu where every item
+  /// costs zero.
   static Map<String, int> _headerMap(List<String> header) {
     final map = <String, int>{};
-    for (var i = 0; i < header.length; i++) {
-      final cell = _normalise(header[i]);
-      if (cell.isEmpty) continue;
-      for (final entry in _aliases.entries) {
-        if (map.containsKey(entry.key)) continue;
-        if (entry.value.contains(cell)) {
-          map[entry.key] = i;
-          break;
+    final taken = <int>{};
+
+    bool claim(String field, bool Function(String cell, String alias) matches) {
+      for (var i = 0; i < header.length; i++) {
+        if (taken.contains(i)) continue;
+        final cell = _normalise(header[i]);
+        if (cell.isEmpty) continue;
+        for (final alias in _aliases[field]!) {
+          if (matches(cell, alias)) {
+            map[field] = i;
+            taken.add(i);
+            return true;
+          }
         }
       }
+      return false;
+    }
+
+    // Exact names first, across every field, so a file that does name its
+    // columns our way is never out-guessed by a loose match on another.
+    for (final field in _aliases.keys) {
+      claim(field, (cell, alias) => cell == alias);
+    }
+    for (final field in _aliases.keys) {
+      if (map.containsKey(field)) continue;
+      claim(
+        field,
+        (cell, alias) => cell.startsWith(alias) || cell.endsWith(alias),
+      );
     }
     return map;
   }
@@ -87,33 +125,42 @@ class MenuSheetParser {
     }
 
     // A LinkedHashMap keeps the file's own section order, which is the order
-    // the shop thinks in.
-    final categories = <String, List<ExtractedItem>>{};
+    // the shop thinks in. Within a section, rows are collected per dish so a
+    // menu written one-row-per-size becomes one item with its sizes listed.
+    final categories = <String, Map<String, _Draft>>{};
     for (final row in rows.skip(1)) {
       final name = cell(row, 'name');
       // Blank rows are padding in most exports, not data.
       if (name.isEmpty) continue;
 
       final category = cell(row, 'category');
-      final key = category.isEmpty ? 'Menu' : category;
-      categories
-          .putIfAbsent(key, () => [])
-          .add(
-            ExtractedItem(
-              name: name,
-              nameAr: cell(row, 'name_ar'),
-              description: cell(row, 'description'),
-              descriptionAr: cell(row, 'description_ar'),
-              price: _price(cell(row, 'price')),
-            ),
-          );
+      final categoryKey = category.isEmpty ? 'Menu' : category;
+      final description = cell(row, 'description');
+      final section = categories.putIfAbsent(categoryKey, () => {});
+      final draft = section.putIfAbsent(
+        // Same dish, same words about it: the only thing left to differ is
+        // the size. A dish that repeats with a different description is a
+        // different dish and keeps its own entry.
+        '$name|$description',
+        () => _Draft(
+          name: name,
+          nameAr: cell(row, 'name_ar'),
+          description: description,
+          descriptionAr: cell(row, 'description_ar'),
+        ),
+      );
+      draft.add(cell(row, 'size'), _price(cell(row, 'price')));
     }
 
     if (categories.isEmpty) throw const MenuSheetException.noRows();
 
     return [
       for (final entry in categories.entries)
-        ExtractedCategory(name: entry.key, nameAr: '', items: entry.value),
+        ExtractedCategory(
+          name: entry.key,
+          nameAr: '',
+          items: [for (final draft in entry.value.values) draft.build()],
+        ),
     ];
   }
 
@@ -145,6 +192,74 @@ class MenuSheetParser {
       ]);
     }
     throw const MenuSheetException.empty();
+  }
+}
+
+/// One dish while its rows are still being read.
+///
+/// A menu with sizes arrives as several rows for the same dish. The catalogue
+/// has one price per item, so the item takes the cheapest size — what the
+/// customer sees as "from" — and the full list of sizes goes into the
+/// description, where it is at least true and legible until somebody adds
+/// proper options.
+class _Draft {
+  _Draft({
+    required this.name,
+    required this.nameAr,
+    required this.description,
+    required this.descriptionAr,
+  });
+
+  final String name;
+  final String nameAr;
+  final String description;
+  final String descriptionAr;
+  final List<({String size, double price})> _rows = [];
+
+  void add(String size, double price) {
+    // A size repeated with the same price is the same line written twice,
+    // which some exports do. A price of its own is not.
+    final duplicate = _rows.any((r) => r.size == size && r.price == price);
+    if (!duplicate) _rows.add((size: size, price: price));
+  }
+
+  /// The cheapest priced size, or 0 when the file priced none of them.
+  double get _from {
+    final priced = _rows.where((r) => r.price > 0).map((r) => r.price);
+    if (priced.isEmpty) return 0;
+    return priced.reduce((a, b) => a < b ? a : b);
+  }
+
+  String _sizeLine() {
+    final sized = _rows.where((r) => r.size.isNotEmpty && r.price > 0);
+    if (sized.length < 2) return '';
+    return sized
+        .map((r) => '${r.size} ${_money(r.price)}')
+        .join(' · ');
+  }
+
+  static String _money(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(2);
+
+  ExtractedItem build() {
+    final sizes = _sizeLine();
+    String withSizes(String text) {
+      if (sizes.isEmpty) return text;
+      return text.isEmpty ? sizes : '$text\n$sizes';
+    }
+
+    return ExtractedItem(
+      name: name,
+      nameAr: nameAr,
+      description: withSizes(description),
+      // The sizes read the same in either language; repeating them is better
+      // than an Arabic description that silently loses them.
+      descriptionAr: descriptionAr.isEmpty && description.isEmpty
+          ? sizes
+          : withSizes(descriptionAr),
+      price: _from,
+    );
   }
 }
 

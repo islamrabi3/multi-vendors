@@ -98,4 +98,70 @@ void main() {
       );
     });
   });
+
+  /// A real shop's export: `price_egp` rather than `price`, `item` rather than
+  /// `name`, and one row for every size. Every price imported as zero, because
+  /// a header had to equal an alias exactly and `priceegp` equalled none — so
+  /// no price column was found at all and every lookup returned "".
+  group('a shop export with sized rows', () {
+    Uint8List sheet() => csv(
+      'category,item,description,size,price_egp,popular\n'
+      'قسم البيتزا,بيتزا مارجريتا,صوص + موزاريلا,صغير,90,\n'
+      'قسم البيتزا,بيتزا مارجريتا,صوص + موزاريلا,وسط,110,\n'
+      'قسم البيتزا,بيتزا مارجريتا,صوص + موزاريلا,كبير,135,\n'
+      'قسم البيتزا,بيتزا نصين,اختيار نوعين,صغير,-,\n'
+      'قسم البيتزا,بيتزا نصين,اختيار نوعين,وسط,135,\n'
+      'قسم البيتزا,بيتزا نصين,اختيار نوعين,كبير,155,\n'
+      'إضافات البيتزا,إضافة زيتون,,,10,\n'
+      'إضافات البيتزا,إضافة جبنة,,,15,\n'
+      'إضافات البيتزا,إضافة زيتون,,,10,\n'
+      'قسم الشاورما,شاورما كبير,,,85,yes\n',
+    );
+
+    test('reads a price column the shop named itself', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final zero = [
+        for (final category in menu)
+          for (final item in category.items)
+            if (item.price == 0) '${category.name}/${item.name}',
+      ];
+      expect(zero, isEmpty, reason: 'price_egp is a price column');
+    });
+
+    test('three size rows are one dish, priced from the cheapest', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final pizza = menu.firstWhere((c) => c.name == 'قسم البيتزا');
+      final margherita = pizza.items.where(
+        (i) => i.name == 'بيتزا مارجريتا',
+      );
+      expect(margherita.length, 1);
+      expect(margherita.single.price, 90);
+      // The sizes are not options yet, so they have to survive as words or
+      // they are lost.
+      expect(margherita.single.description, contains('صغير 90'));
+      expect(margherita.single.description, contains('كبير 135'));
+      expect(margherita.single.description, startsWith('صوص + موزاريلا'));
+    });
+
+    test('an unpriced size does not become the price', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final pizza = menu.firstWhere((c) => c.name == 'قسم البيتزا');
+      final half = pizza.items.firstWhere((i) => i.name == 'بيتزا نصين');
+      expect(half.price, 135, reason: '"-" is not a price');
+    });
+
+    test('an unsized row keeps its own price and gains no size line', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final shawarma = menu.firstWhere((c) => c.name == 'قسم الشاورما');
+      expect(shawarma.items.single.price, 85);
+      expect(shawarma.items.single.description, isEmpty);
+    });
+
+    test('a line written twice is one item', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final extras = menu.firstWhere((c) => c.name == 'إضافات البيتزا');
+      expect(extras.items.where((i) => i.name == 'إضافة زيتون').length, 1);
+      expect(extras.items.length, 2);
+    });
+  });
 }
