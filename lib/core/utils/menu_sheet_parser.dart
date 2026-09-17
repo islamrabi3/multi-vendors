@@ -30,6 +30,8 @@ class MenuSheetParser {
   static const _aliases = <String, List<String>>{
     'name_ar': ['namear', 'arabicname', 'arabic', 'الاسمبالعربية'],
     'description_ar': ['descriptionar', 'arabicdescription', 'الوصفبالعربية'],
+    'category_ar': ['categoryar', 'arabiccategory', 'sectionar'],
+    'size_ar': ['sizear', 'arabicsize'],
     'category': ['category', 'section', 'group', 'type', 'القسم', 'الفئة'],
     'name': ['name', 'item', 'product', 'title', 'itemname', 'الصنف', 'الاسم'],
     'description': ['description', 'desc', 'details', 'الوصف'],
@@ -46,22 +48,46 @@ class MenuSheetParser {
     'size': ['size', 'variant', 'option', 'الحجم', 'المقاس'],
   };
 
+  /// Which fields have an Arabic twin, and what that twin is called.
+  static const _arabicOf = <String, String>{
+    'name': 'name_ar',
+    'description': 'description_ar',
+    'category': 'category_ar',
+    'size': 'size_ar',
+  };
+
+  /// How a column says which language it holds.
+  ///
+  /// A bilingual export writes the pair as `item_ar` / `item_en`, and both
+  /// normalise to something starting with `item` — which is exactly how the
+  /// Arabic column came to be read as *the* name column and the English one
+  /// thrown away, leaving an Arabic-only catalogue from a file that had both.
+  static const _arabicSuffixes = ['ar', 'arabic', 'ara'];
+  static const _latinSuffixes = ['en', 'english', 'eng', 'latin'];
+
   static String _normalise(String raw) =>
       raw.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '').trim();
 
   /// Maps each column index to a known field, or leaves it unmapped.
   ///
-  /// Matched by prefix rather than exactly. A shop's own export writes
-  /// `price_egp`, `item_name`, `unit price` — all of which used to match
-  /// nothing, and a menu with no price column became a menu where every item
-  /// costs zero.
+  /// Three passes, narrowest first, because a loose match made too early is
+  /// how columns get stolen from one another:
+  ///
+  /// 1. Exact names, so a file that does use our own column names is never
+  ///    out-guessed by a loose match on another.
+  /// 2. A language-tagged pair — `item_ar` and `item_en` — split into the
+  ///    field and its Arabic twin. This has to beat the loose pass: `itemar`
+  ///    begins with `item`, so left to it the Arabic column became *the* name
+  ///    column and the English one was dropped on the floor.
+  /// 3. Loosely, by prefix or suffix, for the headers a shop invents:
+  ///    `price_egp`, `item_name`, `unit price`.
   static Map<String, int> _headerMap(List<String> header) {
     final map = <String, int>{};
     final taken = <int>{};
 
     bool claim(String field, bool Function(String cell, String alias) matches) {
       for (var i = 0; i < header.length; i++) {
-        if (taken.contains(i)) continue;
+        if (taken.contains(i) || map.containsKey(field)) continue;
         final cell = _normalise(header[i]);
         if (cell.isEmpty) continue;
         for (final alias in _aliases[field]!) {
@@ -75,11 +101,48 @@ class MenuSheetParser {
       return false;
     }
 
-    // Exact names first, across every field, so a file that does name its
-    // columns our way is never out-guessed by a loose match on another.
     for (final field in _aliases.keys) {
       claim(field, (cell, alias) => cell == alias);
     }
+
+    // The bilingual pass. A suffix only counts when what is left in front of
+    // it is a column we recognise, so `price_egp` is not read as English and
+    // a `year` column is not read as Arabic.
+    for (var i = 0; i < header.length; i++) {
+      if (taken.contains(i)) continue;
+      final cell = _normalise(header[i]);
+      if (cell.isEmpty) continue;
+      for (final MapEntry(key: base, value: arabic) in _arabicOf.entries) {
+        final aliases = _aliases[base]!;
+        String? field;
+        for (final suffix in _arabicSuffixes) {
+          if (cell.length > suffix.length &&
+              cell.endsWith(suffix) &&
+              aliases.contains(cell.substring(0, cell.length - suffix.length))) {
+            field = arabic;
+            break;
+          }
+        }
+        if (field == null) {
+          for (final suffix in _latinSuffixes) {
+            if (cell.length > suffix.length &&
+                cell.endsWith(suffix) &&
+                aliases.contains(
+                  cell.substring(0, cell.length - suffix.length),
+                )) {
+              field = base;
+              break;
+            }
+          }
+        }
+        if (field != null && !map.containsKey(field)) {
+          map[field] = i;
+          taken.add(i);
+          break;
+        }
+      }
+    }
+
     for (final field in _aliases.keys) {
       if (map.containsKey(field)) continue;
       claim(
@@ -114,20 +177,30 @@ class MenuSheetParser {
     if (rows.isEmpty) throw const MenuSheetException.empty();
 
     final header = _headerMap(rows.first);
-    if (!header.containsKey('name')) {
+    // An Arabic-only file names its items in Arabic and nothing else, which
+    // is still a menu.
+    if (!header.containsKey('name') && !header.containsKey('name_ar')) {
       throw const MenuSheetException.noNameColumn();
     }
 
     // The size group is named after the file's own column, so an Arabic
     // export produces "الحجم" and an English one "Size" without the parser
-    // having to know which language the shop speaks.
-    final sizeIndex = header['size'];
+    // having to know which language the shop speaks. A bilingual file names
+    // its columns `size_ar` / `size_en`, neither of which is a word to show a
+    // customer, so those get the plain word in the language the sizes
+    // themselves are written in.
+    final sizeIndex = header['size'] ?? header['size_ar'];
+    final bilingualSize =
+        header.containsKey('size') && header.containsKey('size_ar');
     final sizeHeader = sizeIndex == null ? '' : rows.first[sizeIndex].trim();
+    final taggedSize =
+        RegExp(r'[_\s-]?(ar|en|arabic|english)$', caseSensitive: false)
+            .hasMatch(sizeHeader);
     // A header is written to be a column heading, not read out to a
     // customer: "size" becomes "Size". Arabic has no case, so it is left
     // exactly as the shop wrote it.
-    final sizeLabel = sizeHeader.isEmpty
-        ? 'Size'
+    final sizeLabel = sizeHeader.isEmpty || bilingualSize || taggedSize
+        ? (header.containsKey('size_ar') ? 'الحجم' : 'Size')
         : sizeHeader[0].toUpperCase() + sizeHeader.substring(1);
 
     String cell(List<String> row, String field) {
@@ -139,40 +212,59 @@ class MenuSheetParser {
     // A LinkedHashMap keeps the file's own section order, which is the order
     // the shop thinks in. Within a section, rows are collected per dish so a
     // menu written one-row-per-size becomes one item with its sizes listed.
-    final categories = <String, Map<String, _Draft>>{};
+    final categories = <String, _Section>{};
     for (final row in rows.skip(1)) {
       final name = cell(row, 'name');
+      final nameAr = cell(row, 'name_ar');
       // Blank rows are padding in most exports, not data.
-      if (name.isEmpty) continue;
+      if (name.isEmpty && nameAr.isEmpty) continue;
 
       final category = cell(row, 'category');
-      final categoryKey = category.isEmpty ? 'Menu' : category;
+      final categoryAr = cell(row, 'category_ar');
+      // Keyed on whichever language the file actually filled in, so the two
+      // halves of one bilingual section cannot become two sections.
+      final categoryKey = [
+        category,
+        categoryAr,
+      ].where((part) => part.isNotEmpty).join('|');
       final description = cell(row, 'description');
-      final section = categories.putIfAbsent(categoryKey, () => {});
-      final draft = section.putIfAbsent(
+      final descriptionAr = cell(row, 'description_ar');
+      final section = categories.putIfAbsent(
+        categoryKey.isEmpty ? 'Menu' : categoryKey,
+        () => _Section(
+          name: category.isEmpty && categoryAr.isEmpty ? 'Menu' : category,
+          nameAr: categoryAr,
+        ),
+      );
+      final draft = section.items.putIfAbsent(
         // Same dish, same words about it: the only thing left to differ is
         // the size. A dish that repeats with a different description is a
         // different dish and keeps its own entry.
-        '$name|$description',
+        '$name|$nameAr|$description|$descriptionAr',
         () => _Draft(
           name: name,
-          nameAr: cell(row, 'name_ar'),
+          nameAr: nameAr,
           description: description,
-          descriptionAr: cell(row, 'description_ar'),
+          descriptionAr: descriptionAr,
         ),
       );
-      draft.add(cell(row, 'size'), _price(cell(row, 'price')));
+      // The size is one choice in one language: the Arabic word when the file
+      // gave one, since that is what the shop's customers read.
+      final size = cell(row, 'size_ar').isNotEmpty
+          ? cell(row, 'size_ar')
+          : cell(row, 'size');
+      draft.add(size, _price(cell(row, 'price')));
     }
 
     if (categories.isEmpty) throw const MenuSheetException.noRows();
 
     return [
-      for (final entry in categories.entries)
+      for (final section in categories.values)
         ExtractedCategory(
-          name: entry.key,
-          nameAr: '',
+          name: section.name,
+          nameAr: section.nameAr,
           items: [
-            for (final draft in entry.value.values) draft.build(sizeLabel),
+            for (final draft in section.items.values) draft.build(sizeLabel),
           ],
         ),
     ];
@@ -207,6 +299,15 @@ class MenuSheetParser {
     }
     throw const MenuSheetException.empty();
   }
+}
+
+/// One section while its rows are still being read, in both languages.
+class _Section {
+  _Section({required this.name, required this.nameAr});
+
+  final String name;
+  final String nameAr;
+  final Map<String, _Draft> items = {};
 }
 
 /// One dish while its rows are still being read.

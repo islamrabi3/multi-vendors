@@ -188,4 +188,66 @@ void main() {
       expect(extras.items.length, 2);
     });
   });
+
+  /// A bilingual export names every column twice: `item_ar` and `item_en`,
+  /// `category_ar` and `category_en`. Both halves normalise to something
+  /// starting with the same word, so the loose matching claimed the Arabic
+  /// column as *the* name column and dropped every English one — a file with
+  /// both languages imported as Arabic only.
+  group('a bilingual export', () {
+    Uint8List sheet() => csv(
+      'category_ar,category_en,item_ar,item_en,description_ar,description_en,'
+      'size_ar,size_en,price_egp\n'
+      'وافل,Waffles,وافل وايت,White Chocolate Waffle,,,,,40\n'
+      'VIP,VIP Crepes,F16,F16,بانيه + هوت دوج,Pane + hot dog,,,100\n'
+      'بيتزا,Pizza,بيتزا مارجريتا,Margherita Pizza,,,صغير,Small,80\n'
+      'بيتزا,Pizza,بيتزا مارجريتا,Margherita Pizza,,,وسط,Medium,100\n'
+      'بيتزا,Pizza,بيتزا مارجريتا,Margherita Pizza,,,كبير,Large,120\n',
+    );
+
+    test('keeps both languages for a section', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final waffles = menu.first;
+      expect(waffles.name, 'Waffles');
+      expect(waffles.nameAr, 'وافل');
+    });
+
+    test('keeps both languages for an item', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final waffle = menu.first.items.single;
+      expect(waffle.name, 'White Chocolate Waffle');
+      expect(waffle.nameAr, 'وافل وايت');
+      expect(waffle.price, 40);
+    });
+
+    test('keeps both languages for a description', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final f16 = menu[1].items.single;
+      expect(f16.description, 'Pane + hot dog');
+      expect(f16.descriptionAr, 'بانيه + هوت دوج');
+    });
+
+    test('one bilingual section, not one per language', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      expect(menu.map((c) => c.name).toList(), [
+        'Waffles',
+        'VIP Crepes',
+        'Pizza',
+      ]);
+    });
+
+    test('sizes become one choice, labelled in Arabic', () {
+      final menu = MenuSheetParser.parseCsv(sheet());
+      final pizza = menu.last.items.single;
+      expect(pizza.name, 'Margherita Pizza');
+      expect(pizza.price, 80);
+      final sizes = pizza.options.single;
+      // `size_ar` / `size_en` are column names, not words to show a customer.
+      expect(sizes.label, 'الحجم');
+      expect(
+        sizes.options.map((o) => '${o.label} ${o.priceDelta}').toList(),
+        ['صغير 0.0', 'وسط 20.0', 'كبير 40.0'],
+      );
+    });
+  });
 }
