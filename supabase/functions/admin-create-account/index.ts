@@ -151,6 +151,20 @@ Deno.serve(async (req) => {
           logo_url: vendor.logo_url || null,
           cover_url: vendor.cover_url || null,
           approval_status: approve ? "active" : "pending",
+          // Open for business straight away.
+          //
+          // `is_open` defaults to false, which is right for a shop that
+          // registered itself and is still filling in its menu — it decides
+          // when it is ready. A shop an operator sets up in person is ready
+          // now: the operator is standing in it. Leaving it closed meant
+          // signing in as the owner afterwards just to flip a switch, and
+          // until somebody did, the store was invisible to customers for no
+          // reason either of them could see.
+          //
+          // A store held back for review stays shut: it cannot take orders
+          // while it is pending anyway, and it should not open the moment it
+          // is approved without anybody saying so.
+          is_open: approve,
         })
         .select("id")
         .single();
