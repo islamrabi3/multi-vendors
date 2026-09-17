@@ -2729,6 +2729,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changeCover => 'Change cover';
 
   @override
+  String get clearMenu => 'Delete the whole menu';
+
+  @override
+  String get clearMenuWarning =>
+      'Every section and item this store has will be deleted, along with their options. Past orders keep their names and prices. This cannot be undone.';
+
+  @override
+  String get clearMenuConfirmHint => 'Type the store\'s name to confirm';
+
+  @override
+  String menuCleared(int items, int sections) {
+    return '$items items and $sections sections deleted';
+  }
+
+  @override
+  String get menuAlreadyEmpty => 'This store has no menu to delete.';
+
+  @override
   String get errWeakPassword => 'Password is too short.';
 
   @override

@@ -497,6 +497,93 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
     }
   }
 
+  /// Deletes the store's entire catalogue.
+  ///
+  /// The undo for a menu imported from the wrong source, or against the wrong
+  /// shop — otherwise a few hundred items have to go one at a time. Guarded by
+  /// typing the store's name, not by an "are you sure": this cannot be undone,
+  /// and the one mistake worth designing against is doing it to the store
+  /// beside the one intended.
+  Future<void> _clearMenu(Vendor vendor) async {
+    final l10n = context.l10n;
+    final typed = TextEditingController();
+    final confirmed = await showFormDialog<bool>(
+      context: context,
+      title: l10n.clearMenu,
+      icon: Icons.delete_forever_rounded,
+      submitLabel: l10n.delete,
+      cancelLabel: l10n.cancel,
+      contentBuilder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.dangerFill,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Text(
+                l10n.clearMenuWarning,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  height: 1.45,
+                  color: AppColors.dangerInk,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpace.md),
+            Text(
+              vendor.name,
+              style: AppType.heading(15),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpace.sm),
+            TextField(
+              controller: typed,
+              autocorrect: false,
+              onChanged: (_) => setDialogState(() {}),
+              decoration: InputDecoration(
+                labelText: l10n.clearMenuConfirmHint,
+              ),
+            ),
+          ],
+        ),
+      ),
+      onSubmit: (_) async {
+        if (typed.text.trim() != vendor.name.trim()) {
+          throw UserMessage(l10n.clearMenuConfirmHint);
+        }
+        return true;
+      },
+    );
+
+    disposeAfterClose([typed]);
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final removed = await _repo.clearVendorMenu(vendor.id);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _future = _load();
+      });
+      showSnack(
+        context,
+        removed.items == 0 && removed.sections == 0
+            ? context.l10n.menuAlreadyEmpty
+            : context.l10n.menuCleared(removed.items, removed.sections),
+      );
+    } catch (error) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showFailure(context, error);
+      }
+    }
+  }
+
   /// The store's weekly opening hours, in the same editor the owner uses.
   Future<void> _editSchedule(Vendor vendor) async {
     await showAdaptiveSheet<void>(
@@ -670,6 +757,7 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
               onEditProfile: _busy ? null : () => _editProfile(vendor),
               onEditSchedule: _busy ? null : () => _editSchedule(vendor),
               onEditAccount: _busy ? null : () => _editAccount(vendor),
+              onClearMenu: _busy ? null : () => _clearMenu(vendor),
               onSetLocation: _busy ? null : () => _setLocation(vendor),
               onChangeLogo: _busy
                   ? null
@@ -903,6 +991,7 @@ class _Body extends StatelessWidget {
     this.onEditProfile,
     this.onEditSchedule,
     this.onEditAccount,
+    this.onClearMenu,
     this.onSetLocation,
     this.onChangeLogo,
     this.onChangeCover,
@@ -922,6 +1011,9 @@ class _Body extends StatelessWidget {
 
   /// The login behind the store, its map pin, and its two photographs.
   final VoidCallback? onEditAccount;
+
+  /// Empties the store's catalogue. Destructive, and drawn as such.
+  final VoidCallback? onClearMenu;
   final VoidCallback? onSetLocation;
   final VoidCallback? onChangeLogo;
   final VoidCallback? onChangeCover;
@@ -1175,14 +1267,46 @@ class _Body extends StatelessWidget {
                 // Importing a catalogue was already possible; correcting one
                 // price in it afterwards was not, which left the operator
                 // talking a shop through a fix or importing all over again.
-                FilledButton.tonalIcon(
-                  onPressed: () =>
-                      context.push('/admin-app/menu/${vendor.id}'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                  ),
-                  icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
-                  label: Text(context.l10n.menu),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.tonalIcon(
+                        onPressed: () =>
+                            context.push('/admin-app/menu/${vendor.id}'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                        ),
+                        icon: const Icon(
+                          Icons.restaurant_menu_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          context.l10n.menu,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    // Drawn in the danger colour and placed last: it reads as
+                    // what it is rather than as another menu action.
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onClearMenu,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          foregroundColor: AppColors.dangerInk,
+                          side: const BorderSide(color: AppColors.dangerInk),
+                        ),
+                        icon: const Icon(Icons.delete_forever_rounded, size: 18),
+                        label: Text(
+                          context.l10n.clearMenu,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (vendor.description != null &&
                     vendor.description!.isNotEmpty) ...[

@@ -2714,6 +2714,24 @@ class AppLocalizationsAr extends AppLocalizations {
   String get changeCover => 'تغيير الغلاف';
 
   @override
+  String get clearMenu => 'حذف المنيو بالكامل';
+
+  @override
+  String get clearMenuWarning =>
+      'سيتم حذف كل الأقسام والأصناف في هذا المتجر ومعها الخيارات. الطلبات السابقة تحتفظ بأسمائها وأسعارها. لا يمكن التراجع عن هذا.';
+
+  @override
+  String get clearMenuConfirmHint => 'اكتب اسم المتجر للتأكيد';
+
+  @override
+  String menuCleared(int items, int sections) {
+    return 'تم حذف $items صنف و $sections قسم';
+  }
+
+  @override
+  String get menuAlreadyEmpty => 'لا يوجد منيو لحذفه في هذا المتجر.';
+
+  @override
   String get errWeakPassword => 'كلمة المرور قصيرة جداً.';
 
   @override

@@ -5283,6 +5283,36 @@ abstract class AppLocalizations {
   /// **'Change cover'**
   String get changeCover;
 
+  /// No description provided for @clearMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the whole menu'**
+  String get clearMenu;
+
+  /// No description provided for @clearMenuWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Every section and item this store has will be deleted, along with their options. Past orders keep their names and prices. This cannot be undone.'**
+  String get clearMenuWarning;
+
+  /// No description provided for @clearMenuConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the store\'s name to confirm'**
+  String get clearMenuConfirmHint;
+
+  /// No description provided for @menuCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'{items} items and {sections} sections deleted'**
+  String menuCleared(int items, int sections);
+
+  /// No description provided for @menuAlreadyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This store has no menu to delete.'**
+  String get menuAlreadyEmpty;
+
   /// No description provided for @errWeakPassword.
   ///
   /// In en, this message translates to:

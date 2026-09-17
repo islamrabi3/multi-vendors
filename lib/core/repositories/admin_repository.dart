@@ -234,6 +234,25 @@ class AdminRepository {
     );
   }
 
+  /// Deletes every section and item a store has, in one transaction.
+  ///
+  /// The undo for a catalogue imported from the wrong source or against the
+  /// wrong shop. Past orders keep the names and prices they were placed at —
+  /// they snapshot both — so nothing already sold or settled is disturbed.
+  /// Returns how much was removed, because "done" is not an answer when the
+  /// operator is about to tell a shop what happened to their menu.
+  Future<({int items, int sections})> clearVendorMenu(String vendorId) async {
+    final data = await supabase.rpc(
+      'admin_clear_vendor_menu',
+      params: {'p_vendor_id': vendorId},
+    );
+    final row = (data as Map?)?.cast<String, dynamic>() ?? const {};
+    return (
+      items: ((row['products_deleted'] as num?) ?? 0).toInt(),
+      sections: ((row['categories_deleted'] as num?) ?? 0).toInt(),
+    );
+  }
+
   Future<void> setVendorStatus(String vendorId, String status) => supabase.rpc(
     'admin_set_vendor_status',
     params: {'p_vendor_id': vendorId, 'p_status': status},
