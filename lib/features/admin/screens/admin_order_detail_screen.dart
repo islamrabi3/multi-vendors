@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/admin_repository.dart';
+import '../../../core/repositories/order_repository.dart';
 import '../../../core/utils/dialer.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -76,6 +79,15 @@ class AdminOrderDetailView extends StatefulWidget {
 class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   final _repo = AdminRepository();
   late Future<AppOrder> _future;
+
+  /// The same row, watched.
+  ///
+  /// This screen read the order once and never again, so a rider marking a
+  /// delivery done left the operator looking at "on the way" until they
+  /// reloaded the page — on a monitor that exists to be watched. The first
+  /// fetch still feeds the initial paint; the stream takes over from there.
+  StreamSubscription<AppOrder?>? _liveSubscription;
+  AppOrder? _live;
   bool _busy = false;
 
   /// True when the platform runs this store's orders, so the action bar
@@ -88,6 +100,40 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     super.initState();
     _future = _repo.fetchOrder(widget.orderId);
     _loadFlow();
+    _watch();
+  }
+
+  void _watch() {
+    _liveSubscription?.cancel();
+    _liveSubscription = OrderRepository()
+        .orderStream(widget.orderId)
+        .listen(
+          (order) {
+            if (!mounted || order == null) return;
+            setState(() => _live = order);
+          },
+          // A dropped socket is not worth an error screen over a row that is
+          // already on display; the next reload picks it up.
+          onError: (Object _) {},
+        );
+  }
+
+  @override
+  void didUpdateWidget(AdminOrderDetailView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The wide layout keeps one detail pane and points it at another order.
+    if (oldWidget.orderId != widget.orderId) {
+      _live = null;
+      _future = _repo.fetchOrder(widget.orderId);
+      _loadFlow();
+      _watch();
+    }
+  }
+
+  @override
+  void dispose() {
+    _liveSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadFlow() async {
@@ -102,6 +148,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   }
 
   void _reload() => setState(() {
+    _live = null;
     _future = _repo.fetchOrder(widget.orderId);
   });
 
@@ -238,7 +285,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
         );
       }
       return _Body(
-        order: snap.data!,
+        order: _live ?? snap.data!,
         platformRun: _platformRun,
         // Reassigning a delivery is `orders.assign`; without it the row
         // still shows who is carrying the order, just no way to change it.
@@ -255,7 +302,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     builder: (context, snap) {
       if (!snap.hasData) return const SizedBox.shrink();
       final auth = context.watch<AuthCubit>().state;
-      final order = snap.data!;
+      final order = _live ?? snap.data!;
       // Only for a store the platform runs: an ordinary store's own app is
       // where accept and ready belong.
       final next = auth.can('orders.view')

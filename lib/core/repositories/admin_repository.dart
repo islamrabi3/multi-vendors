@@ -401,6 +401,23 @@ class AdminRepository {
             .toList(),
       );
 
+  /// The same set, read once.
+  ///
+  /// The safety net under the socket: a dropped subscription looks exactly
+  /// like a quiet evening, and an operations console that silently stops
+  /// moving is worse than one that is slow.
+  Future<List<AppOrder>> fetchLiveOrders() async {
+    final data = await supabase
+        .from('orders')
+        .select('*, vendors(name, logo_url)')
+        .inFilter('status', _liveStatuses)
+        .order('created_at');
+    return (data as List)
+        .map((row) => AppOrder.fromMap(row as Map<String, dynamic>))
+        .where((order) => order.paymentMethod != 'paymob' || order.isPaid)
+        .toList();
+  }
+
   /// One page of finished orders, newest first. The unpaid-Paymob-draft rule is
   /// applied server-side so a short page always means "no more results".
   /// Finished orders, newest first. [day] narrows to one calendar day, which
