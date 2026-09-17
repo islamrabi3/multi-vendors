@@ -625,6 +625,19 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/admin-app/menu-import',
         builder: (_, _) => const AdminMenuImportScreen(),
       ),
+      // A store's menu, edited by an operator. The same screen the store
+      // uses, pointed at somebody else's shop; who may actually write is
+      // decided by the database, not by which route reached it.
+      GoRoute(
+        path: '/admin-app/menu/:vendorId',
+        builder: (_, state) =>
+            MenuScreen(vendorId: state.pathParameters['vendorId']!),
+      ),
+      GoRoute(
+        path: '/admin-app/product-editor',
+        builder: (_, state) =>
+            ProductEditorScreen(args: state.extra! as ProductEditorArgs),
+      ),
       GoRoute(
         path: '/admin-app/price-adjustment',
         builder: (_, _) => const AdminPriceAdjustmentScreen(),

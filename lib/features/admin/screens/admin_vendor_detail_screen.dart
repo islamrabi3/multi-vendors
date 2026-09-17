@@ -1171,6 +1171,19 @@ class _Body extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 9),
+                // Importing a catalogue was already possible; correcting one
+                // price in it afterwards was not, which left the operator
+                // talking a shop through a fix or importing all over again.
+                FilledButton.tonalIcon(
+                  onPressed: () =>
+                      context.push('/admin-app/menu/${vendor.id}'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                  ),
+                  icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                  label: Text(context.l10n.menu),
+                ),
                 if (vendor.description != null &&
                     vendor.description!.isNotEmpty) ...[
                   const SizedBox(height: 16),

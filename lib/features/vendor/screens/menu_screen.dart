@@ -15,17 +15,28 @@ import 'product_editor_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
 
+/// A store's menu, as the store edits it.
+///
+/// [vendorId] names a store other than the signed-in one, which is how an
+/// admin edits a shop's menu: the same screen, the same rules, pointed
+/// somewhere else. The database decides who may actually write — an admin
+/// and the store's own people, nobody else — so this is a matter of which
+/// store to load, not of what to allow.
 class MenuScreen extends StatelessWidget {
-  const MenuScreen({super.key});
+  const MenuScreen({super.key, this.vendorId});
+
+  final String? vendorId;
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthCubit>().state;
-    final vendor = auth.vendor;
-    if (vendor == null) return const LoadingView();
+    final forAdmin = vendorId != null;
+    final storeId = vendorId ?? auth.vendor?.id;
+    if (storeId == null) return const LoadingView();
     // A staff account without the menu permission is refused by the database
-    // anyway; saying so here beats a screen of controls that all fail.
-    if (!auth.canVendor('menu')) {
+    // anyway; saying so here beats a screen of controls that all fail. An
+    // admin is not vendor staff and has no such permission to check.
+    if (!forAdmin && !auth.canVendor('menu')) {
       return Scaffold(
         backgroundColor: AppColors.canvas,
         appBar: AppBar(title: Text(context.l10n.menu)),
@@ -37,14 +48,17 @@ class MenuScreen extends StatelessWidget {
     }
     return BlocProvider(
       create: (_) =>
-          MenuCubit(CatalogRepository(), VendorAdminRepository(), vendor.id),
-      child: const _MenuView(),
+          MenuCubit(CatalogRepository(), VendorAdminRepository(), storeId),
+      child: _MenuView(forAdmin: forAdmin),
     );
   }
 }
 
 class _MenuView extends StatefulWidget {
-  const _MenuView();
+  const _MenuView({this.forAdmin = false});
+
+  /// Opened from the admin area, whose shell owns a different set of routes.
+  final bool forAdmin;
 
   @override
   State<_MenuView> createState() => _MenuViewState();
@@ -155,7 +169,9 @@ class _MenuViewState extends State<_MenuView> {
   Future<void> _openEditor(BuildContext context, {Product? product}) async {
     final cubit = context.read<MenuCubit>();
     await context.push(
-      '/vendor-app/product-editor',
+      widget.forAdmin
+          ? '/admin-app/product-editor'
+          : '/vendor-app/product-editor',
       extra: ProductEditorArgs(
         vendorId: cubit.vendorId,
         categories: cubit.state.categories,
@@ -418,6 +434,12 @@ class _MenuViewState extends State<_MenuView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      // The vendor shell draws its own navigation around this screen. An
+      // admin arrives by pushing it on top of the store's page, where
+      // nothing else offers a way back.
+      appBar: widget.forAdmin
+          ? AppBar(title: Text(context.l10n.menu))
+          : null,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final split = AppBreakpoints.isSplit(constraints.maxWidth);
