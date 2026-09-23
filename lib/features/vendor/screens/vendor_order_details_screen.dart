@@ -66,16 +66,14 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
 
   void _watch() {
     _liveSubscription?.cancel();
-    _liveSubscription = _repository
-        .watchOrder(widget.orderId)
-        .listen(
-          (order) {
-            if (mounted) setState(() => _order = order);
-          },
-          // A dropped socket is not worth an error over a row already on
-          // screen; the next action or reopen picks it up.
-          onError: (Object _) {},
-        );
+    _liveSubscription = _repository.watchOrder(widget.orderId).listen(
+      (order) {
+        if (mounted) setState(() => _order = order);
+      },
+      // A dropped socket is not worth an error over a row already on
+      // screen; the next action or reopen picks it up.
+      onError: (Object _) {},
+    );
   }
 
   @override
@@ -508,6 +506,8 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
   }
 
   Widget _bottomCta(AppOrder order) {
+    // Somebody else is running this order; the store has nothing to press.
+    if (!order.orderFlow.runsThroughStore) return const SizedBox(height: 8);
     final (label, status) = switch (order.status) {
       OrderStatus.pending => (context.l10n.acceptOrder, OrderStatus.accepted),
       OrderStatus.accepted => (

@@ -1469,6 +1469,34 @@ class _ActionRow extends StatelessWidget {
     // every cubit emit — including the one that flips this while the call for
     // this exact order is in flight.
     final busy = cubit.state.isUpdating(order.id);
+    // The platform is running this one (the store was switched, or taken over
+    // for not answering). Its buttons would only meet TRANSITION_NOT_ALLOWED;
+    // say who has it instead.
+    if (!order.orderFlow.runsThroughStore && !order.status.isTerminal) {
+      return Padding(
+        padding: const EdgeInsets.only(top: AppSpace.md),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.support_agent_rounded,
+              color: AppColors.textMuted,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                context.l10n.handledByPlatform,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final child = switch (order.status) {
       OrderStatus.pending => Row(
         children: [

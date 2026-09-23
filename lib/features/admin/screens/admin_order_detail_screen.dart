@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
+import '../../../core/models/order_flow.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/utils/dialer.dart';
@@ -28,23 +29,27 @@ const _flow = [
   OrderStatus.delivered,
 ];
 
-/// The words the admin uses for those three stages. "Accepted" is the store's
-/// word for a step the store did not take; "confirmed" is ours.
+/// The words the admin uses for the stages of an order no store is running.
+/// "Ready for pickup" is the store's word for a step the store did not take;
+/// there it means the order is confirmed and out to the riders.
 String _platformStageLabel(BuildContext context, OrderStatus status) =>
     switch (status) {
-      OrderStatus.accepted => context.l10n.stageConfirmed,
+      OrderStatus.accepted ||
+      OrderStatus.preparing ||
+      OrderStatus.readyForPickup => context.l10n.stageConfirmed,
       OrderStatus.outForDelivery => context.l10n.stageOnTheWay,
       _ => status.localizedLabel(context),
     };
 
-/// The same order seen from the platform's side, when we are the ones running
-/// it: confirmed, on the way, delivered.
+/// The same order seen from the platform's side, when no store is running it:
+/// waiting, confirmed and out to the riders, on the way, delivered.
 ///
-/// "Preparing" and "ready for pickup" are stages a store reports; on a store
-/// that is not in the app nobody is there to report them, so showing them
-/// would be three rows that never light up.
+/// "Accepted" and "preparing" are stages a store reports; without a store in
+/// the loop nobody is there to report them, so showing them would be rows
+/// that never light up. A direct order skips "waiting" on its own.
 const _platformFlow = [
-  OrderStatus.accepted,
+  OrderStatus.pending,
+  OrderStatus.readyForPickup,
   OrderStatus.outForDelivery,
   OrderStatus.delivered,
 ];
@@ -90,31 +95,23 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   AppOrder? _live;
   bool _busy = false;
 
-  /// True when the platform runs this store's orders, so the action bar
-  /// offers accept/prepare/ready instead of leaving them to a store that is
-  /// not in the app.
-  bool _platformRun = false;
-
   @override
   void initState() {
     super.initState();
     _future = _repo.fetchOrder(widget.orderId);
-    _loadFlow();
     _watch();
   }
 
   void _watch() {
     _liveSubscription?.cancel();
-    _liveSubscription = OrderRepository()
-        .watchOrder(widget.orderId)
-        .listen(
-          (order) {
-            if (mounted) setState(() => _live = order);
-          },
-          // A dropped socket is not worth an error screen over a row that is
-          // already on display; the next reload picks it up.
-          onError: (Object _) {},
-        );
+    _liveSubscription = OrderRepository().watchOrder(widget.orderId).listen(
+      (order) {
+        if (mounted) setState(() => _live = order);
+      },
+      // A dropped socket is not worth an error screen over a row that is
+      // already on display; the next reload picks it up.
+      onError: (Object _) {},
+    );
   }
 
   @override
@@ -124,7 +121,6 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     if (oldWidget.orderId != widget.orderId) {
       _live = null;
       _future = _repo.fetchOrder(widget.orderId);
-      _loadFlow();
       _watch();
     }
   }
@@ -133,17 +129,6 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   void dispose() {
     _liveSubscription?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadFlow() async {
-    try {
-      final order = await _future;
-      final vendor = await _repo.fetchVendor(order.vendorId);
-      if (!mounted) return;
-      setState(() => _platformRun = vendor.isPlatformRun);
-    } catch (_) {
-      // The bar simply keeps its cancel-only shape.
-    }
   }
 
   void _reload() => setState(() {
@@ -171,16 +156,24 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
     }
   }
 
-  /// The next step this order would take if the store were doing it. Null on
-  /// a store that runs its own orders, or once the driver has it.
-  OrderStatus? _nextStatusFor(AppOrder order, bool platformRun) {
-    if (!platformRun) return null;
-    // Three steps only: confirm it, send it out, close it.
+  /// The next step an operator can take on an order no store is running.
+  /// Null on a store that runs its own orders — its own app is where accept
+  /// and ready belong.
+  ///
+  /// Accepting is sending it to the riders. After that the order waits for a
+  /// rider: it can only go out once somebody is carrying it, which the server
+  /// enforces too (`NO_DRIVER_ASSIGNED`).
+  OrderStatus? _nextStatusFor(AppOrder order) {
+    if (order.orderFlow.runsThroughStore) return null;
     return switch (order.status) {
-      OrderStatus.pending => OrderStatus.accepted,
+      // An unpaid card order is still a draft; nothing to accept yet.
+      OrderStatus.pending
+          when order.paymentMethod != 'paymob' || order.isPaid =>
+        OrderStatus.readyForPickup,
       OrderStatus.accepted ||
       OrderStatus.preparing ||
-      OrderStatus.readyForPickup => OrderStatus.outForDelivery,
+      OrderStatus.readyForPickup when order.driverId != null =>
+        OrderStatus.outForDelivery,
       OrderStatus.outForDelivery => OrderStatus.delivered,
       _ => null,
     };
@@ -285,7 +278,6 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       }
       return _Body(
         order: _live ?? snap.data!,
-        platformRun: _platformRun,
         // Reassigning a delivery is `orders.assign`; without it the row
         // still shows who is carrying the order, just no way to change it.
         onAssign: context.watch<AuthCubit>().state.can('orders.assign')
@@ -302,11 +294,7 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
       if (!snap.hasData) return const SizedBox.shrink();
       final auth = context.watch<AuthCubit>().state;
       final order = _live ?? snap.data!;
-      // Only for a store the platform runs: an ordinary store's own app is
-      // where accept and ready belong.
-      final next = auth.can('orders.view')
-          ? _nextStatusFor(order, _platformRun)
-          : null;
+      final next = auth.can('orders.view') ? _nextStatusFor(order) : null;
       return _ActionBar(
         order: order,
         busy: _busy,
@@ -389,13 +377,8 @@ class _Body extends StatelessWidget {
   const _Body({
     required this.order,
     required this.onAssign,
-    this.platformRun = false,
     this.showBack = true,
   });
-
-  /// True when the platform runs this store's orders, which shortens the
-  /// timeline to the three stages an admin actually moves through.
-  final bool platformRun;
 
   final AppOrder order;
 
@@ -563,7 +546,7 @@ class _Body extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 14),
-        _Timeline(order: order, platformRun: platformRun),
+        _Timeline(order: order),
         const SizedBox(height: 13),
         Row(
           children: [
@@ -902,25 +885,34 @@ class _ItemsCard extends StatelessWidget {
 }
 
 class _Timeline extends StatelessWidget {
-  const _Timeline({required this.order, this.platformRun = false});
+  const _Timeline({required this.order});
 
   final AppOrder order;
-  final bool platformRun;
 
   @override
   Widget build(BuildContext context) {
     final voided =
         order.status == OrderStatus.cancelled ||
         order.status == OrderStatus.rejected;
-    final flow = platformRun ? _platformFlow : _flow;
-    // A platform-run order sits in one of the store's stages until the admin
-    // sends it out; all of those read as "confirmed" here.
+    final platformRun = !order.orderFlow.runsThroughStore;
+    // A direct order never waits for anyone, so it has no "waiting" row.
+    final flow = platformRun
+        ? [
+            for (final s in _platformFlow)
+              if (s != OrderStatus.pending ||
+                  order.orderFlow == OrderFlow.platform)
+                s,
+          ]
+        : _flow;
+    // An order taken over half-way may still sit in a store's stage; all of
+    // those read as "confirmed" here.
     final effective =
         platformRun &&
-            (order.status == OrderStatus.preparing ||
-                order.status == OrderStatus.readyForPickup ||
-                order.status == OrderStatus.pending)
-        ? OrderStatus.accepted
+            (order.status == OrderStatus.accepted ||
+                order.status == OrderStatus.preparing ||
+                (order.status == OrderStatus.pending &&
+                    order.orderFlow == OrderFlow.direct))
+        ? OrderStatus.readyForPickup
         : order.status;
     final currentIndex = flow.indexOf(effective);
     return Container(
@@ -1203,7 +1195,11 @@ class _ActionBar extends StatelessWidget {
               onPressed: onAdvance,
               icon: const Icon(Icons.play_arrow_rounded, size: 20),
               label: Text(
-                context.l10n.advanceOrder(_platformStageLabel(context, next)),
+                next == OrderStatus.readyForPickup
+                    ? context.l10n.acceptAndDispatch
+                    : context.l10n.advanceOrder(
+                        _platformStageLabel(context, next),
+                      ),
               ),
             ),
             const SizedBox(height: AppSpace.sm),

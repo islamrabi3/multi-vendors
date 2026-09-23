@@ -224,6 +224,8 @@ class AppFailure implements Exception {
         'NOT_A_CARD_ORDER' => l10n.errNotACardOrder,
         'PRODUCT_UNAVAILABLE' => l10n.errProductUnavailable,
         'WRONG_PICKUP_CODE' => l10n.errWrongPickupCode,
+        'PICKUP_UNAVAILABLE' => l10n.errPickupUnavailable,
+        'NO_DRIVER_ASSIGNED' => l10n.errNoDriverAssigned,
         'MAINTENANCE_MODE' => l10n.errMaintenanceMode,
         'NO_PERMISSIONS' => l10n.errNoPermissions,
         'BELOW_MIN_REDEEM' => l10n.errBelowMinRedeem,

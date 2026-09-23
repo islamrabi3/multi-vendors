@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'order_flow.dart';
 import 'vendor_schedule.dart';
 
 class VendorCategory extends Equatable {
@@ -84,7 +85,7 @@ class Vendor extends Equatable {
     required this.approvalStatus,
     required this.autoAccept,
     this.aiMenuEnabled = false,
-    this.orderFlow = 'vendor',
+    this.orderFlow = OrderFlow.vendor,
     required this.deliveryFee,
     required this.minOrderAmount,
     required this.avgPrepMinutes,
@@ -150,11 +151,8 @@ class Vendor extends Equatable {
   /// admin. Admins can always import on a store's behalf regardless.
   final bool aiMenuEnabled;
 
-  /// `vendor` — the store accepts its own orders. `platform` — the store is
-  /// not in the app: the admin runs the order and the driver is sent without
-  /// waiting for anyone to press accept.
-  final String orderFlow;
-  bool get isPlatformRun => orderFlow == 'platform';
+  /// Who runs this store's orders — see [OrderFlow].
+  final OrderFlow orderFlow;
 
   bool get isPending => approvalStatus == 'pending';
   bool get isApproved => approvalStatus == 'active';
@@ -227,7 +225,7 @@ class Vendor extends Equatable {
     approvalStatus: (map['approval_status'] as String?) ?? 'active',
     autoAccept: (map['auto_accept'] as bool?) ?? false,
     aiMenuEnabled: (map['ai_menu_enabled'] as bool?) ?? false,
-    orderFlow: (map['order_flow'] as String?) ?? 'vendor',
+    orderFlow: OrderFlow.fromName(map['order_flow'] as String?),
     deliveryFee: ((map['delivery_fee'] as num?) ?? 0).toDouble(),
     minOrderAmount: ((map['min_order_amount'] as num?) ?? 0).toDouble(),
     avgPrepMinutes: ((map['avg_prep_minutes'] as num?) ?? 20).toInt(),

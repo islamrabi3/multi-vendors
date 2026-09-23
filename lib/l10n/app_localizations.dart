@@ -10791,30 +10791,6 @@ abstract class AppLocalizations {
   /// **'You do not have that many points.'**
   String get errNotEnoughPoints;
 
-  /// No description provided for @platformRunOrders.
-  ///
-  /// In en, this message translates to:
-  /// **'We run this store\'s orders'**
-  String get platformRunOrders;
-
-  /// No description provided for @platformRunOn.
-  ///
-  /// In en, this message translates to:
-  /// **'Orders skip the store: they go straight to a driver and the admin moves them along.'**
-  String get platformRunOn;
-
-  /// No description provided for @platformRunOff.
-  ///
-  /// In en, this message translates to:
-  /// **'The store accepts and prepares its own orders.'**
-  String get platformRunOff;
-
-  /// No description provided for @platformRunBadge.
-  ///
-  /// In en, this message translates to:
-  /// **'Run by us'**
-  String get platformRunBadge;
-
   /// No description provided for @advanceOrder.
   ///
   /// In en, this message translates to:
@@ -10922,6 +10898,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Orders · {day}'**
   String ordersForDay(String day);
+
+  /// No description provided for @orderFlowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who runs this store\'s orders'**
+  String get orderFlowTitle;
+
+  /// No description provided for @orderFlowVendor.
+  ///
+  /// In en, this message translates to:
+  /// **'Store'**
+  String get orderFlowVendor;
+
+  /// No description provided for @orderFlowPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get orderFlowPlatform;
+
+  /// No description provided for @orderFlowDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get orderFlowDirect;
+
+  /// No description provided for @orderFlowVendorDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The store accepts and prepares its own orders. A driver collects each one with the store\'s pickup code.'**
+  String get orderFlowVendorDesc;
+
+  /// No description provided for @orderFlowPlatformDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The store is not in the app. An admin accepts each order, and accepting it sends it to the drivers. The store is never asked, and no commission is charged.'**
+  String get orderFlowPlatformDesc;
+
+  /// No description provided for @orderFlowDirectDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders go straight to the drivers. The driver who takes one buys it at the store and talks to the customer directly. No commission is charged.'**
+  String get orderFlowDirectDesc;
+
+  /// No description provided for @acceptAndDispatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept and send to drivers'**
+  String get acceptAndDispatch;
+
+  /// No description provided for @handledByPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'The platform is handling this order'**
+  String get handledByPlatform;
+
+  /// No description provided for @orderNoteAwaitingConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your order to be confirmed.'**
+  String get orderNoteAwaitingConfirm;
+
+  /// No description provided for @orderNoteFindingDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order is confirmed. We\'re finding a driver for it.'**
+  String get orderNoteFindingDriver;
+
+  /// No description provided for @orderNoteDriverBuying.
+  ///
+  /// In en, this message translates to:
+  /// **'Your driver is at the store picking up your order.'**
+  String get orderNoteDriverBuying;
+
+  /// No description provided for @shoppingList.
+  ///
+  /// In en, this message translates to:
+  /// **'Order items'**
+  String get shoppingList;
+
+  /// No description provided for @shoppingListHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy exactly this at the store. Call or message the customer if something is missing.'**
+  String get shoppingListHint;
+
+  /// No description provided for @customerNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer\'s note'**
+  String get customerNote;
+
+  /// No description provided for @swipeWhenCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe when you have the order'**
+  String get swipeWhenCollected;
+
+  /// No description provided for @buyAtStoreSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to the store and buy the order'**
+  String get buyAtStoreSubtitle;
+
+  /// No description provided for @errPickupUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This store doesn\'t offer pickup. Choose delivery instead.'**
+  String get errPickupUnavailable;
+
+  /// No description provided for @errNoDriverAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign a driver before sending this order out.'**
+  String get errNoDriverAssigned;
 }
 
 class _AppLocalizationsDelegate

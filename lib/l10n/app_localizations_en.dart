@@ -5858,19 +5858,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errNotEnoughPoints => 'You do not have that many points.';
 
   @override
-  String get platformRunOrders => 'We run this store\'s orders';
-
-  @override
-  String get platformRunOn =>
-      'Orders skip the store: they go straight to a driver and the admin moves them along.';
-
-  @override
-  String get platformRunOff => 'The store accepts and prepares its own orders.';
-
-  @override
-  String get platformRunBadge => 'Run by us';
-
-  @override
   String advanceOrder(String status) {
     return 'Move order to $status';
   }
@@ -5931,4 +5918,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String ordersForDay(String day) {
     return 'Orders · $day';
   }
+
+  @override
+  String get orderFlowTitle => 'Who runs this store\'s orders';
+
+  @override
+  String get orderFlowVendor => 'Store';
+
+  @override
+  String get orderFlowPlatform => 'Admin';
+
+  @override
+  String get orderFlowDirect => 'Driver';
+
+  @override
+  String get orderFlowVendorDesc =>
+      'The store accepts and prepares its own orders. A driver collects each one with the store\'s pickup code.';
+
+  @override
+  String get orderFlowPlatformDesc =>
+      'The store is not in the app. An admin accepts each order, and accepting it sends it to the drivers. The store is never asked, and no commission is charged.';
+
+  @override
+  String get orderFlowDirectDesc =>
+      'Orders go straight to the drivers. The driver who takes one buys it at the store and talks to the customer directly. No commission is charged.';
+
+  @override
+  String get acceptAndDispatch => 'Accept and send to drivers';
+
+  @override
+  String get handledByPlatform => 'The platform is handling this order';
+
+  @override
+  String get orderNoteAwaitingConfirm =>
+      'Waiting for your order to be confirmed.';
+
+  @override
+  String get orderNoteFindingDriver =>
+      'Your order is confirmed. We\'re finding a driver for it.';
+
+  @override
+  String get orderNoteDriverBuying =>
+      'Your driver is at the store picking up your order.';
+
+  @override
+  String get shoppingList => 'Order items';
+
+  @override
+  String get shoppingListHint =>
+      'Buy exactly this at the store. Call or message the customer if something is missing.';
+
+  @override
+  String get customerNote => 'Customer\'s note';
+
+  @override
+  String get swipeWhenCollected => 'Swipe when you have the order';
+
+  @override
+  String get buyAtStoreSubtitle => 'Go to the store and buy the order';
+
+  @override
+  String get errPickupUnavailable =>
+      'This store doesn\'t offer pickup. Choose delivery instead.';
+
+  @override
+  String get errNoDriverAssigned =>
+      'Assign a driver before sending this order out.';
 }

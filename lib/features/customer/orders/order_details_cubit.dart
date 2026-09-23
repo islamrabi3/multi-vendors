@@ -21,7 +21,6 @@ class OrderDetailsState extends Equatable {
     this.hasReview = false,
     this.error,
     this.busy = false,
-    this.platformRun = false,
   });
 
   final bool loading;
@@ -33,11 +32,6 @@ class OrderDetailsState extends Equatable {
   final String? error;
   final bool busy;
 
-  /// True when the platform runs this store's orders. The store never reports
-  /// "preparing", so the tracker drops that step rather than leaving it dark
-  /// for the whole delivery.
-  final bool platformRun;
-
   OrderDetailsState copyWith({
     bool? loading,
     AppOrder? order,
@@ -47,7 +41,6 @@ class OrderDetailsState extends Equatable {
     bool? hasReview,
     String? error,
     bool? busy,
-    bool? platformRun,
     bool clearError = false,
   }) => OrderDetailsState(
     loading: loading ?? this.loading,
@@ -58,7 +51,6 @@ class OrderDetailsState extends Equatable {
     hasReview: hasReview ?? this.hasReview,
     error: clearError ? null : (error ?? this.error),
     busy: busy ?? this.busy,
-    platformRun: platformRun ?? this.platformRun,
   );
 
   @override
@@ -71,7 +63,6 @@ class OrderDetailsState extends Equatable {
     hasReview,
     error,
     busy,
-    platformRun,
   ];
 }
 
@@ -112,7 +103,6 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         ),
       );
       _maybeTrack(order);
-      _loadOrderFlow(order.vendorId);
     } catch (error) {
       emit(state.copyWith(loading: false, error: error.toString()));
       return;
@@ -126,20 +116,6 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       emit(state.copyWith(order: order));
       _maybeTrack(order);
     });
-  }
-
-  /// Which flow the store is on. Decorative: the tracker simply keeps its
-  /// four steps if this cannot be read.
-  Future<void> _loadOrderFlow(String vendorId) async {
-    try {
-      final row = await supabase
-          .from('vendors')
-          .select('order_flow')
-          .eq('id', vendorId)
-          .maybeSingle();
-      if (isClosed || row == null) return;
-      emit(state.copyWith(platformRun: row['order_flow'] == 'platform'));
-    } catch (_) {}
   }
 
   void _maybeTrack(AppOrder order) {

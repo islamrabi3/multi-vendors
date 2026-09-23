@@ -5812,19 +5812,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errNotEnoughPoints => 'نقاطك أقل من كده.';
 
   @override
-  String get platformRunOrders => 'إحنا اللي بندير طلبات المتجر';
-
-  @override
-  String get platformRunOn =>
-      'الطلبات مش بتستنى المتجر: بتروح للسائق على طول، والأدمن هو اللي بيحرّكها.';
-
-  @override
-  String get platformRunOff => 'المتجر بيستقبل طلباته ويجهزها بنفسه.';
-
-  @override
-  String get platformRunBadge => 'بندير طلباته';
-
-  @override
   String advanceOrder(String status) {
     return 'نقل الطلب إلى $status';
   }
@@ -5886,4 +5873,66 @@ class AppLocalizationsAr extends AppLocalizations {
   String ordersForDay(String day) {
     return 'طلبات · $day';
   }
+
+  @override
+  String get orderFlowTitle => 'مين بيدير طلبات المتجر';
+
+  @override
+  String get orderFlowVendor => 'المتجر';
+
+  @override
+  String get orderFlowPlatform => 'الأدمن';
+
+  @override
+  String get orderFlowDirect => 'المندوب';
+
+  @override
+  String get orderFlowVendorDesc =>
+      'المتجر بيستقبل طلباته ويجهزها بنفسه، والمندوب بيستلم كل طلب بكود الاستلام من المتجر.';
+
+  @override
+  String get orderFlowPlatformDesc =>
+      'المتجر مش على التطبيق. الأدمن بيقبل كل طلب، وأول ما يقبله بيروح للمناديب على طول من غير ما نرجع للمتجر، ومفيش عمولة على المتجر.';
+
+  @override
+  String get orderFlowDirectDesc =>
+      'الطلبات بتروح للمناديب على طول. المندوب اللي ياخد الطلب بيشتريه من المحل ويتواصل مع العميل مباشرة، ومفيش عمولة على المتجر.';
+
+  @override
+  String get acceptAndDispatch => 'اقبل وابعت للمناديب';
+
+  @override
+  String get handledByPlatform => 'الإدارة هي اللي ماسكة الطلب ده';
+
+  @override
+  String get orderNoteAwaitingConfirm => 'مستنيين تأكيد طلبك.';
+
+  @override
+  String get orderNoteFindingDriver => 'تم تأكيد طلبك، وبندوّر له على مندوب.';
+
+  @override
+  String get orderNoteDriverBuying => 'المندوب في المحل بيجيب طلبك.';
+
+  @override
+  String get shoppingList => 'محتويات الطلب';
+
+  @override
+  String get shoppingListHint =>
+      'اشتري الحاجات دي بالظبط من المحل، ولو في حاجة ناقصة كلّم العميل أو ابعتله رسالة.';
+
+  @override
+  String get customerNote => 'ملاحظة العميل';
+
+  @override
+  String get swipeWhenCollected => 'اسحب لما الطلب يبقى معاك';
+
+  @override
+  String get buyAtStoreSubtitle => 'روح المحل واشتري الطلب';
+
+  @override
+  String get errPickupUnavailable =>
+      'المتجر ده مش متاح فيه الاستلام من الفرع. اختار التوصيل.';
+
+  @override
+  String get errNoDriverAssigned => 'عيّن مندوب الأول قبل ما تطلّع الطلب.';
 }

@@ -208,6 +208,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
                     _OrderTypePicker(
                       state: state,
                       storeName: cart.vendor!.name,
+                      allowPickup: cart.vendor!.orderFlow.runsThroughStore,
                       onChanged: cubit.setOrderType,
                       onSchedule: cubit.setScheduledAt,
                     ),
@@ -1100,10 +1101,16 @@ class _OrderTypePicker extends StatelessWidget {
     required this.storeName,
     required this.onChanged,
     required this.onSchedule,
+    this.allowPickup = true,
   });
 
   final CheckoutState state;
   final String storeName;
+
+  /// Collection needs a store in the app to hand the bag over; a store the
+  /// platform runs has nobody at the counter who knows about the order. The
+  /// server refuses it too (`PICKUP_UNAVAILABLE`).
+  final bool allowPickup;
   final ValueChanged<String> onChanged;
   final ValueChanged<DateTime?> onSchedule;
 
@@ -1160,11 +1167,12 @@ class _OrderTypePicker extends StatelessWidget {
               icon: const Icon(Icons.delivery_dining_outlined, size: 18),
               label: Text(l10n.orderTypeDelivery),
             ),
-            ButtonSegment(
-              value: 'pickup',
-              icon: const Icon(Icons.storefront_outlined, size: 18),
-              label: Text(l10n.orderTypePickup),
-            ),
+            if (allowPickup)
+              ButtonSegment(
+                value: 'pickup',
+                icon: const Icon(Icons.storefront_outlined, size: 18),
+                label: Text(l10n.orderTypePickup),
+              ),
             ButtonSegment(
               value: 'scheduled',
               icon: const Icon(Icons.schedule_rounded, size: 18),

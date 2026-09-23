@@ -239,8 +239,13 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState>
   void _onOrders(List<AppOrder> orders) {
     final sorted = List<AppOrder>.of(orders)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // Only what the store is expected to answer rings the bell or gets
+    // auto-accepted; an order the platform runs is not waiting on the store.
     final pendingIds = sorted
-        .where((o) => o.status == OrderStatus.pending)
+        .where(
+          (o) =>
+              o.status == OrderStatus.pending && o.orderFlow.runsThroughStore,
+        )
         .map((o) => o.id)
         .toSet();
     final freshPending = pendingIds.difference(_knownPendingIds);
@@ -270,7 +275,10 @@ class VendorOrdersCubit extends Cubit<VendorOrdersState>
       final sorted = List<AppOrder>.of(orders)
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _knownPendingIds = sorted
-          .where((o) => o.status == OrderStatus.pending)
+          .where(
+            (o) =>
+                o.status == OrderStatus.pending && o.orderFlow.runsThroughStore,
+          )
           .map((o) => o.id)
           .toSet();
       emit(

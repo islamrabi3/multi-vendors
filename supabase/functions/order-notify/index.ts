@@ -11,6 +11,8 @@
 //
 // Request: { order_id, event }
 //   new_order        -> the store owner
+//   new_platform_order -> every admin (a store not in the app: an operator
+//                       accepts on its behalf)
 //   status_change    -> the customer
 //   ready_for_pickup -> every online driver (a job is up for grabs)
 //   driver_assigned  -> the assigned driver
@@ -33,6 +35,10 @@ function json(body: unknown, status = 200): Response {
 
 const TITLES: Record<string, Record<Lang, string>> = {
   new_order: { en: "New order! 🛒", ar: "طلب جديد! 🛒" },
+  new_platform_order: {
+    en: "Order waiting for you 🛒",
+    ar: "طلب مستنيك تقبله 🛒",
+  },
   status_change: { en: "Order update 🚚", ar: "تحديث الطلب 🚚" },
   ready_for_pickup: { en: "Delivery available 🛵", ar: "طلب متاح للتوصيل 🛵" },
   driver_assigned: { en: "You got a delivery 🛵", ar: "تم تعيين توصيل لك 🛵" },
@@ -68,6 +74,13 @@ const STATUS_BODY: Record<string, Record<Lang, string>> = {
     en: "Your order was rejected by the store.",
     ar: "تم رفض طلبك من المتجر.",
   },
+};
+
+// Without a store in the loop, ready_for_pickup means the order is confirmed
+// and a rider is being found — nothing is sitting at a counter yet.
+const FINDING_DRIVER: Record<Lang, string> = {
+  en: "Your order is confirmed. We're finding a driver for it now.",
+  ar: "تم تأكيد طلبك، وبندوّر له على مندوب دلوقتي.",
 };
 
 const STATUS_FALLBACK: Record<Lang, string> = {
@@ -130,13 +143,29 @@ function fcmMessage(
   };
 }
 
-function bodyFor(event: string, lang: Lang, status: string, label: string): string {
+function bodyFor(
+  event: string,
+  lang: Lang,
+  status: string,
+  label: string,
+  flow: string,
+): string {
   switch (event) {
     case "new_order":
       return lang === "ar"
         ? `لديك طلب جديد ${label}`
         : `You have a new order ${label}`;
+    case "new_platform_order":
+      return lang === "ar"
+        ? `الطلب ${label} مستني حد يقبله ويبعته لمندوب`
+        : `Order ${label} needs accepting and sending to a driver`;
     case "ready_for_pickup":
+      // A direct order is not waiting at a counter: the rider buys it.
+      if (flow === "direct") {
+        return lang === "ar"
+          ? `طلب ${label}: اشتريه من المحل ووصّله للعميل — اقبله الآن`
+          : `Order ${label}: buy it at the store and deliver it — claim it now`;
+      }
       return lang === "ar"
         ? `طلب ${label} جاهز للاستلام — اقبله الآن`
         : `Order ${label} is ready for pickup — claim it now`;
@@ -149,6 +178,9 @@ function bodyFor(event: string, lang: Lang, status: string, label: string): stri
         ? `تم إلغاء الطلب ${label}`
         : `Order ${label} was cancelled`;
     default:
+      if (status === "ready_for_pickup" && flow !== "vendor") {
+        return FINDING_DRIVER[lang];
+      }
       return STATUS_BODY[status]?.[lang] ?? STATUS_FALLBACK[lang];
   }
 }
@@ -177,7 +209,7 @@ Deno.serve(async (req) => {
     const { data: order } = await admin
       .from("orders")
       .select(
-        "id, order_number, status, customer_id, driver_id, vendors(owner_id)",
+        "id, order_number, status, order_flow, customer_id, driver_id, vendors(owner_id)",
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -209,6 +241,7 @@ Deno.serve(async (req) => {
         targets = (drivers ?? []).map((d) => `${d.id}`);
         break;
       }
+      case "new_platform_order":
       case "order_cancelled": {
         const { data: admins } = await admin
           .from("profiles")
@@ -256,7 +289,7 @@ Deno.serve(async (req) => {
               event,
               lang,
               TITLES[event][lang],
-              bodyFor(event, lang, status, label),
+              bodyFor(event, lang, status, label, `${order.order_flow ?? "vendor"}`),
               { order_id: `${orderId}`, event, status },
             ),
           }),

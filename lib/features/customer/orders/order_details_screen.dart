@@ -176,7 +176,7 @@ class _OrderDetailsView extends StatelessWidget {
                   ),
                 )
               else
-                _StatusStepper(order: order, platformRun: state.platformRun),
+                _StatusStepper(order: order),
               if (order.status == OrderStatus.outForDelivery) ...[
                 const SizedBox(height: 16),
                 _EtaBanner(order: order, driverLocation: state.driverLocation),
@@ -262,9 +262,8 @@ class _OrderDetailsView extends StatelessWidget {
               // the store until a driver takes it, then the driver.
               // Two conversations, never one room: what the customer tells
               // the rider is not the store's business, and the reverse.
-              if (!order.status.isTerminal)
-                _ChatActions(order: order, platformRun: state.platformRun),
-              if (order.status == OrderStatus.pending)
+              if (!order.status.isTerminal) _ChatActions(order: order),
+              if (order.customerCanCancel)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
@@ -359,13 +358,13 @@ class _OrderDetailsView extends StatelessWidget {
 }
 
 class _StatusStepper extends StatelessWidget {
-  const _StatusStepper({required this.order, this.platformRun = false});
+  const _StatusStepper({required this.order});
 
   final AppOrder order;
 
   /// On a store the platform runs, there is nobody to report "preparing", so
   /// the tracker is confirmed → on the way → delivered.
-  final bool platformRun;
+  bool get platformRun => !order.orderFlow.runsThroughStore;
 
   @override
   Widget build(BuildContext context) {
@@ -437,6 +436,23 @@ class _StatusStepper extends StatelessWidget {
     );
   }
 
+  /// What is happening before the order leaves, when no store is reporting
+  /// it: nobody has confirmed it yet, no rider has taken it yet, or the rider
+  /// is at the store buying it.
+  String? _platformNote(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (order.status) {
+      OrderStatus.pending => l10n.orderNoteAwaitingConfirm,
+      OrderStatus.accepted ||
+      OrderStatus.preparing ||
+      OrderStatus.readyForPickup =>
+        order.driverId == null
+            ? l10n.orderNoteFindingDriver
+            : l10n.orderNoteDriverBuying,
+      _ => null,
+    };
+  }
+
   /// The same card with three nodes: confirmed, on the way, delivered.
   Widget _platformStepper(BuildContext context) {
     final step = switch (order.status) {
@@ -485,6 +501,18 @@ class _StatusStepper extends StatelessWidget {
               _buildStepTime(context, order.deliveredAt),
             ],
           ),
+          if (_platformNote(context) case final note?) ...[
+            const SizedBox(height: 12),
+            Text(
+              note,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1237,16 +1265,16 @@ class _TipCardState extends State<_TipCard> {
 /// the message. When there is nobody, no button: "Report an issue" below
 /// reaches support, which is the honest answer.
 class _ChatActions extends StatelessWidget {
-  const _ChatActions({required this.order, required this.platformRun});
+  const _ChatActions({required this.order});
 
   final AppOrder order;
-  final bool platformRun;
 
   @override
   Widget build(BuildContext context) {
     final withDriver = order.driverId != null;
     final withStore =
-        !platformRun && order.status != OrderStatus.outForDelivery;
+        order.orderFlow.runsThroughStore &&
+        order.status != OrderStatus.outForDelivery;
     if (!withDriver && !withStore) return const SizedBox.shrink();
 
     return Padding(

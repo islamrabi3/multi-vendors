@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../app/tokens.dart';
 import '../../../core/errors/app_failure.dart' show UserMessage;
 import '../../../core/models/finance.dart';
+import '../../../core/models/order_flow.dart';
 import '../../../core/models/vendor.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -270,7 +271,9 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
                   DropdownMenuItem(
                     value: category.id,
                     child: Text(
-                      category.label(Localizations.localeOf(context).languageCode),
+                      category.label(
+                        Localizations.localeOf(context).languageCode,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -581,9 +584,7 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
               controller: typed,
               autocorrect: false,
               onChanged: (_) => setDialogState(() {}),
-              decoration: InputDecoration(
-                labelText: l10n.clearMenuConfirmHint,
-              ),
+              decoration: InputDecoration(labelText: l10n.clearMenuConfirmHint),
             ),
           ],
         ),
@@ -730,11 +731,11 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
     }
   }
 
-  /// Hands the store's orders to the platform, or gives them back.
-  Future<void> _setOrderFlow(bool platformRun) async {
+  /// Decides who runs the store's orders — see [OrderFlow].
+  Future<void> _setOrderFlow(OrderFlow flow) async {
     setState(() => _busy = true);
     try {
-      await _repo.setVendorOrderFlow(widget.vendorId, platformRun);
+      await _repo.setVendorOrderFlow(widget.vendorId, flow);
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -796,9 +797,7 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
               onEditAccount: _busy ? null : () => _editAccount(vendor),
               onClearMenu: _busy ? null : () => _clearMenu(vendor),
               onSetLocation: _busy ? null : () => _setLocation(vendor),
-              onChangeLogo: _busy
-                  ? null
-                  : () => _pickImage(vendor, logo: true),
+              onChangeLogo: _busy ? null : () => _pickImage(vendor, logo: true),
               onChangeCover: _busy
                   ? null
                   : () => _pickImage(vendor, logo: false),
@@ -886,28 +885,9 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
                     ),
                   ),
                   const Divider(height: 1, color: AppColors.borderSoft),
-                  SwitchListTile(
-                    value: vendor.isPlatformRun,
+                  _OrderFlowPicker(
+                    flow: vendor.orderFlow,
                     onChanged: _busy ? null : _setOrderFlow,
-                    secondary: Icon(
-                      Icons.support_agent_rounded,
-                      color: vendor.isPlatformRun
-                          ? AppColors.primary
-                          : AppColors.textMuted,
-                    ),
-                    title: Text(
-                      context.l10n.platformRunOrders,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      vendor.isPlatformRun
-                          ? context.l10n.platformRunOn
-                          : context.l10n.platformRunOff,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
                   ),
                   const Divider(height: 1, color: AppColors.borderSoft),
                   SwitchListTile(
@@ -1335,7 +1315,10 @@ class _Body extends StatelessWidget {
                           foregroundColor: AppColors.dangerInk,
                           side: const BorderSide(color: AppColors.dangerInk),
                         ),
-                        icon: const Icon(Icons.delete_forever_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.delete_forever_rounded,
+                          size: 18,
+                        ),
                         label: Text(
                           context.l10n.clearMenu,
                           maxLines: 1,
@@ -1817,4 +1800,82 @@ class _FinanceError extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Who runs this store's orders: the store, an operator, or the rider alone.
+/// See [OrderFlow].
+class _OrderFlowPicker extends StatelessWidget {
+  const _OrderFlowPicker({required this.flow, required this.onChanged});
+
+  final OrderFlow flow;
+
+  /// Null while a change is saving.
+  final ValueChanged<OrderFlow>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final description = switch (flow) {
+      OrderFlow.vendor => l10n.orderFlowVendorDesc,
+      OrderFlow.platform => l10n.orderFlowPlatformDesc,
+      OrderFlow.direct => l10n.orderFlowDirectDesc,
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.alt_route_rounded,
+                color: flow.runsThroughStore
+                    ? AppColors.textMuted
+                    : AppColors.primary,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  l10n.orderFlowTitle,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<OrderFlow>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: OrderFlow.vendor,
+                icon: const Icon(Icons.storefront_rounded, size: 18),
+                label: Text(l10n.orderFlowVendor),
+              ),
+              ButtonSegment(
+                value: OrderFlow.platform,
+                icon: const Icon(Icons.support_agent_rounded, size: 18),
+                label: Text(l10n.orderFlowPlatform),
+              ),
+              ButtonSegment(
+                value: OrderFlow.direct,
+                icon: const Icon(Icons.two_wheeler_rounded, size: 18),
+                label: Text(l10n.orderFlowDirect),
+              ),
+            ],
+            selected: {flow},
+            onSelectionChanged: onChanged == null
+                ? null
+                : (selection) {
+                    if (selection.first != flow) onChanged!(selection.first);
+                  },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
 }

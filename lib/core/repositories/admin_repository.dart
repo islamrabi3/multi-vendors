@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 
 import '../models/order.dart';
+import '../models/order_flow.dart';
 import '../models/vendor.dart';
 import '../supabase_client.dart';
 
@@ -345,14 +346,12 @@ class AdminRepository {
     return result is Map && result['hard_deleted'] == true;
   }
 
-  /// Who runs this store's orders: the store itself, or the platform.
-  Future<void> setVendorOrderFlow(String vendorId, bool platformRun) =>
+  /// Who runs this store's orders — see [OrderFlow]. Its pending orders
+  /// follow; anything already under way finishes the way it started.
+  Future<void> setVendorOrderFlow(String vendorId, OrderFlow flow) =>
       supabase.rpc(
         'admin_set_vendor_order_flow',
-        params: {
-          'p_vendor_id': vendorId,
-          'p_flow': platformRun ? 'platform' : 'vendor',
-        },
+        params: {'p_vendor_id': vendorId, 'p_flow': flow.name},
       );
 
   /// Promotes or demotes a store on the customer home's recommended rail.
@@ -591,7 +590,7 @@ class AdminRepository {
   }
 
   /// Moves an order along on the store's behalf. The server only allows this
-  /// for a store the platform runs — see `admin_set_vendor_order_flow`.
+  /// on an order the store does not run itself — see [OrderFlow].
   Future<void> setOrderStatus(String orderId, OrderStatus status) =>
       supabase.rpc(
         'update_order_status',

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'order_flow.dart';
 import 'product.dart' show localizedText;
 
 enum OrderStatus {
@@ -149,6 +150,7 @@ class AppOrder extends Equatable {
     this.pickedUpAt,
     this.deliveredAt,
     this.pickupCode,
+    this.orderFlow = OrderFlow.vendor,
   });
 
   final String id;
@@ -203,6 +205,9 @@ class AppOrder extends Equatable {
   /// collect it.
   final String? pickupCode;
 
+  /// Who runs this order, fixed when it was placed — see [OrderFlow].
+  final OrderFlow orderFlow;
+
   bool get isPaid => paymentStatus == 'paid';
   bool get isCod => paymentMethod == 'cod';
   bool get isPickup => orderType == 'pickup';
@@ -210,6 +215,15 @@ class AppOrder extends Equatable {
   /// Whether the store may see it yet.
   bool get isReleased => releasedAt != null;
   bool get isScheduled => orderType == 'scheduled';
+
+  /// Whether the customer may still walk away from it. A direct order goes to
+  /// the riders the moment it is placed, so "nobody has started on it" there
+  /// means no rider has taken it yet. Mirrors `update_order_status`.
+  bool get customerCanCancel =>
+      status == OrderStatus.pending ||
+      (orderFlow == OrderFlow.direct &&
+          status == OrderStatus.readyForPickup &&
+          driverId == null);
 
   static DateTime? _time(Object? value) =>
       value == null ? null : DateTime.parse(value as String).toLocal();
@@ -272,6 +286,7 @@ class AppOrder extends Equatable {
       pickedUpAt: _time(map['picked_up_at']),
       pickupCode: map['pickup_code'] as String?,
       deliveredAt: _time(map['delivered_at']),
+      orderFlow: OrderFlow.fromName(map['order_flow'] as String?),
     );
   }
 
@@ -291,5 +306,6 @@ class AppOrder extends Equatable {
     walletAmountUsed,
     deliveryProofUrl,
     deliveryOtp,
+    orderFlow,
   ];
 }
