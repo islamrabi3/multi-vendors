@@ -335,6 +335,7 @@ class FinanceOverview extends Equatable {
     this.cashCollected = 0,
     this.driverEarnings = 0,
     this.vendorEarnings = 0,
+    this.driverStorePurchases = 0,
     this.platformCommission = 0,
     this.platformDeliveryMargin = 0,
     this.platformServiceFees = 0,
@@ -378,6 +379,10 @@ class FinanceOverview extends Equatable {
   final double cashCollected;
   final double driverEarnings;
   final double vendorEarnings;
+
+  /// What drivers paid stores at the counter, on orders no store was running.
+  /// Paid back to the driver like an earning; the store is owed nothing.
+  final double driverStorePurchases;
   final double platformCommission;
   final double platformDeliveryMargin;
   final double platformServiceFees;
@@ -429,6 +434,7 @@ class FinanceOverview extends Equatable {
     cashCollected: money(map['cash_collected']),
     driverEarnings: money(map['driver_earnings']),
     vendorEarnings: money(map['vendor_earnings']),
+    driverStorePurchases: money(map['driver_store_purchases']),
     platformCommission: money(map['platform_commission']),
     platformDeliveryMargin: money(map['platform_delivery_margin']),
     platformServiceFees: money(map['platform_service_fees']),

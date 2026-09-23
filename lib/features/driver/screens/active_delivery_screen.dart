@@ -871,6 +871,46 @@ class _Sheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
+            // The rider is paying the store out of their own pocket. Say how
+            // much, and how it comes back, before they are at the counter.
+            if (_collecting && !order.orderFlow.runsThroughStore) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.warmFill,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: AppColors.primaryDark,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${context.l10n.buyAtStoreNote(formatMoney(order.subtotal))}. '
+                        '${order.isCod ? context.l10n.storePurchaseBackCash : context.l10n.storePurchaseBackWallet}',
+                        style: const TextStyle(
+                          color: AppColors.primaryDark,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
             // Collection instruction alert box
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

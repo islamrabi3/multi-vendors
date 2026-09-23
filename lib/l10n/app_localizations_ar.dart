@@ -5943,4 +5943,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String buyAtStoreNote(String amount) {
     return 'هتشتري الطلب ده من المحل الأول: حوالي $amount';
   }
+
+  @override
+  String get paidToStoresByDrivers => 'دفعها المناديب للمحلات';
+
+  @override
+  String get paidToStore => 'مدفوع للمحل';
+
+  @override
+  String get storePurchaseBackCash => 'هتاخده من الكاش اللي العميل هيدفعهولك.';
+
+  @override
+  String get storePurchaseBackWallet =>
+      'العميل دفع أونلاين، فالمبلغ هينزل في محفظتك مع رسوم التوصيل.';
 }

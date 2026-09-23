@@ -567,6 +567,11 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
               child: FinanceCard(
                 children: [
                   _signedRow(l10n.vendorPayouts, -o.vendorEarnings),
+                  if (o.driverStorePurchases > 0)
+                    _signedRow(
+                      l10n.paidToStoresByDrivers,
+                      -o.driverStorePurchases,
+                    ),
                   _signedRow(l10n.driverCost, -o.driverEarnings),
                   _signedRow(
                     l10n.platformFundedDiscounts,

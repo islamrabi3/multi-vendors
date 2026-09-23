@@ -1032,6 +1032,7 @@ class PlatformReport {
     this.driverCost = 0,
     this.driverTips = 0,
     this.vendorPayout = 0,
+    this.driverStorePurchases = 0,
     this.cashCollected = 0,
     this.cardCollected = 0,
     this.averageOrder = 0,
@@ -1076,6 +1077,10 @@ class PlatformReport {
   /// What the stores are owed, after their own discounts and commission.
   final double vendorPayout;
 
+  /// What drivers paid stores not in the app, at the counter. Owed back to
+  /// the drivers, not to the stores.
+  final double driverStorePurchases;
+
   /// Cash the drivers physically hold and still owe the platform.
   final double cashCollected;
   final double cardCollected;
@@ -1112,6 +1117,7 @@ class PlatformReport {
     driverCost: _money(map['driver_cost']),
     driverTips: _money(map['driver_tips']),
     vendorPayout: _money(map['vendor_payout']),
+    driverStorePurchases: _money(map['driver_store_purchases']),
     cashCollected: _money(map['cash_collected']),
     cardCollected: _money(map['card_collected']),
     averageOrder: _money(map['average_order']),

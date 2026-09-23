@@ -1851,5 +1851,9 @@
   "errPickupUnavailable": "المتجر ده مش متاح فيه الاستلام من الفرع. اختار التوصيل.",
   "errNoDriverAssigned": "عيّن مندوب الأول قبل ما تطلّع الطلب.",
   "waitingForYou": "مستنيك",
-  "buyAtStoreNote": "هتشتري الطلب ده من المحل الأول: حوالي {amount}"
+  "buyAtStoreNote": "هتشتري الطلب ده من المحل الأول: حوالي {amount}",
+  "paidToStoresByDrivers": "دفعها المناديب للمحلات",
+  "paidToStore": "مدفوع للمحل",
+  "storePurchaseBackCash": "هتاخده من الكاش اللي العميل هيدفعهولك.",
+  "storePurchaseBackWallet": "العميل دفع أونلاين، فالمبلغ هينزل في محفظتك مع رسوم التوصيل."
 }

@@ -238,6 +238,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
           // other people's money passing through, not platform costs.
           _sectionLabel(l10n.owedOut),
           _Row(label: l10n.vendorPayouts, value: _platform.vendorPayout),
+          if (_platform.driverStorePurchases > 0)
+            _Row(
+              label: l10n.paidToStoresByDrivers,
+              value: _platform.driverStorePurchases,
+            ),
           _Row(label: l10n.driverCost, value: _platform.driverCost),
           if (_platform.driverTips > 0)
             _Row(

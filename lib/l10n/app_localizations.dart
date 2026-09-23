@@ -11024,6 +11024,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You buy this order at the store first: about {amount}'**
   String buyAtStoreNote(String amount);
+
+  /// No description provided for @paidToStoresByDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid to stores by drivers'**
+  String get paidToStoresByDrivers;
+
+  /// No description provided for @paidToStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid to the store'**
+  String get paidToStore;
+
+  /// No description provided for @storePurchaseBackCash.
+  ///
+  /// In en, this message translates to:
+  /// **'You keep it from the cash the customer pays you.'**
+  String get storePurchaseBackCash;
+
+  /// No description provided for @storePurchaseBackWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'The customer paid online, so it goes into your wallet with your delivery fee.'**
+  String get storePurchaseBackWallet;
 }
 
 class _AppLocalizationsDelegate

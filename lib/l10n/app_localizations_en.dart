@@ -5992,4 +5992,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String buyAtStoreNote(String amount) {
     return 'You buy this order at the store first: about $amount';
   }
+
+  @override
+  String get paidToStoresByDrivers => 'Paid to stores by drivers';
+
+  @override
+  String get paidToStore => 'Paid to the store';
+
+  @override
+  String get storePurchaseBackCash =>
+      'You keep it from the cash the customer pays you.';
+
+  @override
+  String get storePurchaseBackWallet =>
+      'The customer paid online, so it goes into your wallet with your delivery fee.';
 }

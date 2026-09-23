@@ -1971,5 +1971,9 @@
   "errNoDriverAssigned": "Assign a driver before sending this order out.",
   "waitingForYou": "Waiting for you",
   "buyAtStoreNote": "You buy this order at the store first: about {amount}",
-  "@buyAtStoreNote": {"placeholders": {"amount": {"type": "String"}}}
+  "@buyAtStoreNote": {"placeholders": {"amount": {"type": "String"}}},
+  "paidToStoresByDrivers": "Paid to stores by drivers",
+  "paidToStore": "Paid to the store",
+  "storePurchaseBackCash": "You keep it from the cash the customer pays you.",
+  "storePurchaseBackWallet": "The customer paid online, so it goes into your wallet with your delivery fee."
 }
