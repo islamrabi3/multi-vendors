@@ -11048,6 +11048,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The customer paid online, so it goes into your wallet with your delivery fee.'**
   String get storePurchaseBackWallet;
+
+  /// No description provided for @callDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Call driver'**
+  String get callDriver;
+
+  /// No description provided for @storeChatClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'This conversation is closed. Message your driver, or reach us through Report an Issue.'**
+  String get storeChatClosed;
 }
 
 class _AppLocalizationsDelegate

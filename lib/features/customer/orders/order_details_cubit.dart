@@ -119,9 +119,14 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   }
 
   void _maybeTrack(AppOrder order) {
+    // The call button sits beside the rider's chat from the moment a rider
+    // takes the order — a direct order's rider is at the store buying it
+    // long before it is on the way. The tip card names them afterwards.
+    if (order.driverId != null) {
+      _loadDriverContact();
+    }
     if (order.status == OrderStatus.outForDelivery &&
         _trackingChannel == null) {
-      _loadDriverContact();
       // Draw something the moment the page opens, rather than waiting for the
       // driver's phone to broadcast — which may be a minute away, or never if
       // their app is asleep.

@@ -1,9 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:multi_vendor/core/repositories/chat_repository.dart';
-import 'package:multi_vendor/core/widgets/chat_unread_badge.dart';
-import 'package:multi_vendor/features/customer/orders/order_chat_sheet.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:go_router/go_router.dart';
 
@@ -277,36 +274,8 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
                   ],
                 ),
               ),
-              // The store can message the customer about this order (a
-              // missing item, a substitution) without phoning them.
-              const SizedBox(width: 8),
-              ChatUnreadBadge(
-                orderId: order.id,
-                thread: ChatRepository.vendorThread,
-                top: -4,
-                end: -4,
-                child: InkWell(
-                  onTap: () => showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) => OrderChatSheet(orderId: order.id),
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.warmFill,
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                    ),
-                    child: const Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      size: 20,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
+              // The store reaches the customer by phone only; order chat is
+              // between the customer and the rider.
               if (order.customerPhone != null) ...[
                 const SizedBox(width: 8),
                 InkWell(

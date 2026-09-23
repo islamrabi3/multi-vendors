@@ -1975,5 +1975,7 @@
   "paidToStoresByDrivers": "Paid to stores by drivers",
   "paidToStore": "Paid to the store",
   "storePurchaseBackCash": "You keep it from the cash the customer pays you.",
-  "storePurchaseBackWallet": "The customer paid online, so it goes into your wallet with your delivery fee."
+  "storePurchaseBackWallet": "The customer paid online, so it goes into your wallet with your delivery fee.",
+  "callDriver": "Call driver",
+  "storeChatClosed": "This conversation is closed. Message your driver, or reach us through Report an Issue."
 }

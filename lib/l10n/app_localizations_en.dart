@@ -6006,4 +6006,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get storePurchaseBackWallet =>
       'The customer paid online, so it goes into your wallet with your delivery fee.';
+
+  @override
+  String get callDriver => 'Call driver';
+
+  @override
+  String get storeChatClosed =>
+      'This conversation is closed. Message your driver, or reach us through Report an Issue.';
 }

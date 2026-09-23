@@ -185,10 +185,6 @@ class _OrderDetailsView extends StatelessWidget {
                   order: order,
                   driverLocation: state.driverLocation,
                 ),
-                if (state.driverContact != null) ...[
-                  const SizedBox(height: 12),
-                  _CallDriverCard(contact: state.driverContact!),
-                ],
               ],
               if (order.deliveryProofUrl != null &&
                   order.deliveryProofUrl!.isNotEmpty) ...[
@@ -252,17 +248,12 @@ class _OrderDetailsView extends StatelessWidget {
               const SizedBox(height: 24),
               // Only once a driver is actually carrying the order.
               //
-              // The thread is scoped to the order, so before a driver is
-              // assigned the messages went to the *store* while the button
-              // said "Driver / Support" — the customer was writing to someone
-              // other than who they thought. While the kitchen is still
-              // cooking there is nobody to chat to, and "Report an issue"
-              // below already reaches support.
-              // While the order is live there is always someone to talk to:
-              // the store until a driver takes it, then the driver.
+              // The rider, once one has the order: a chat and a call. The
+              // store is not offered; "Report an issue" below reaches support.
               // Two conversations, never one room: what the customer tells
               // the rider is not the store's business, and the reverse.
-              if (!order.status.isTerminal) _ChatActions(order: order),
+              if (!order.status.isTerminal)
+                _ChatActions(order: order, driverContact: state.driverContact),
               if (order.customerCanCancel)
                 SizedBox(
                   width: double.infinity,
@@ -721,33 +712,6 @@ class _TrackingMap extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CallDriverCard extends StatelessWidget {
-  const _CallDriverCard({required this.contact});
-
-  final DriverContact contact;
-
-  Future<void> _call(BuildContext context) => callPhone(context, contact.phone);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: AppColors.warmFill,
-          child: Icon(Icons.delivery_dining, color: AppColors.primary),
-        ),
-        title: Text(contact.name),
-        subtitle: Text(context.l10n.yourDeliveryDriver),
-        trailing: FilledButton.icon(
-          onPressed: () => _call(context),
-          icon: const Icon(Icons.call, size: 18),
-          label: Text(context.l10n.call),
         ),
       ),
     );
@@ -1256,50 +1220,49 @@ class _TipCardState extends State<_TipCard> {
   }
 }
 
-/// One of an order's two conversations, with its own unread badge.
-/// Who the customer can talk to about this order, right now.
+/// How the customer reaches the rider: a chat and a call.
 ///
-/// The store answers until the food leaves it; after that the rider has the
-/// order and the store can do nothing about where it is. A store the platform
-/// runs is never offered at all — it is not in the app, so nobody would read
-/// the message. When there is nobody, no button: "Report an issue" below
-/// reaches support, which is the honest answer.
+/// Only the rider. The store is never offered — whatever the customer needs
+/// from it goes through the rider or support ("Report an issue" below), so
+/// there is one person to talk to about where the order is, not two.
 class _ChatActions extends StatelessWidget {
-  const _ChatActions({required this.order});
+  const _ChatActions({required this.order, required this.driverContact});
 
   final AppOrder order;
 
+  /// The rider's name and number, once one has the order. Null until it is
+  /// loaded, which leaves the chat on its own for a moment.
+  final DriverContact? driverContact;
+
   @override
   Widget build(BuildContext context) {
-    final withDriver = order.driverId != null;
-    final withStore =
-        order.orderFlow.runsThroughStore &&
-        order.status != OrderStatus.outForDelivery;
-    if (!withDriver && !withStore) return const SizedBox.shrink();
-
+    if (order.driverId == null) return const SizedBox.shrink();
+    final contact = driverContact;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          if (withStore)
+          Expanded(
+            child: _ChatButton(
+              orderId: order.id,
+              thread: ChatRepository.driverThread,
+              label: context.l10n.chatWithDriver,
+              icon: Icons.two_wheeler_rounded,
+            ),
+          ),
+          if (contact != null) ...[
+            const SizedBox(width: 10),
             Expanded(
-              child: _ChatButton(
-                orderId: order.id,
-                thread: ChatRepository.vendorThread,
-                label: context.l10n.chatWithStore,
-                icon: Icons.storefront_rounded,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onPressed: () => callPhone(context, contact.phone),
+                icon: const Icon(Icons.call, size: 18),
+                label: Text(context.l10n.callDriver),
               ),
             ),
-          if (withStore && withDriver) const SizedBox(width: 10),
-          if (withDriver)
-            Expanded(
-              child: _ChatButton(
-                orderId: order.id,
-                thread: ChatRepository.driverThread,
-                label: context.l10n.chatWithDriver,
-                icon: Icons.two_wheeler_rounded,
-              ),
-            ),
+          ],
         ],
       ),
     );

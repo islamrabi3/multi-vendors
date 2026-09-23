@@ -262,54 +262,75 @@ class _OrderChatSheetState extends State<OrderChatSheet> {
               ),
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                12,
-                12,
-                12,
-                MediaQuery.of(context).padding.bottom > 0 ? 8 : 12,
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: context.l10n.attachSomething,
-                    onPressed: _busy ? null : _attach,
-                    icon: const Icon(Icons.attach_file_rounded, size: 21),
+          // The customer–store conversation is closed: order chat is between
+          // the customer and the rider. Old threads still read, and the
+          // server refuses anything new in them.
+          if (widget.thread == ChatRepository.vendorThread)
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  context.l10n.storeChatClosed,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12.5,
                     color: AppColors.textMuted,
                   ),
-                  Expanded(
-                    child: TextField(
-                      controller: _msgController,
-                      decoration: InputDecoration(
-                        hintText: context.l10n.typeYourMessage,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.xxl),
-                          borderSide: const BorderSide(color: AppColors.border),
+                ),
+              ),
+            )
+          else
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  12,
+                  12,
+                  12,
+                  MediaQuery.of(context).padding.bottom > 0 ? 8 : 12,
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: context.l10n.attachSomething,
+                      onPressed: _busy ? null : _attach,
+                      icon: const Icon(Icons.attach_file_rounded, size: 21),
+                      color: AppColors.textMuted,
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _msgController,
+                        decoration: InputDecoration(
+                          hintText: context.l10n.typeYourMessage,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.xxl),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  CircleAvatar(
-                    backgroundColor: AppColors.primary,
-                    child: IconButton(
-                      icon: const DirectionalIcon(
-                        Icons.send,
-                        color: Colors.white,
+                    const SizedBox(width: 8),
+                    CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      child: IconButton(
+                        icon: const DirectionalIcon(
+                          Icons.send,
+                          color: Colors.white,
+                        ),
+                        onPressed: _busy ? null : () => _sendMessage(),
                       ),
-                      onPressed: _busy ? null : () => _sendMessage(),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

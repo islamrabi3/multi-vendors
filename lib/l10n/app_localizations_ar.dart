@@ -5956,4 +5956,11 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get storePurchaseBackWallet =>
       'العميل دفع أونلاين، فالمبلغ هينزل في محفظتك مع رسوم التوصيل.';
+
+  @override
+  String get callDriver => 'اتصل بالمندوب';
+
+  @override
+  String get storeChatClosed =>
+      'المحادثة دي اتقفلت. كلّم المندوب، أو تواصل معانا من «تقديم بلاغ أو شكوى».';
 }
