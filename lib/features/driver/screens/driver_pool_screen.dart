@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/order.dart';
+import '../../../core/models/order_flow.dart';
 import '../../../core/repositories/driver_repository.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/utils/money.dart';
@@ -593,6 +594,39 @@ class _PoolCard extends StatelessWidget {
               ),
             ],
           ),
+          // A direct order is not waiting at a counter: whoever takes it buys
+          // it first, with their own money. That has to be clear before they
+          // commit, not after.
+          if (order.orderFlow == OrderFlow.direct) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.amberFill,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 16,
+                    color: AppColors.amberInk,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      context.l10n.buyAtStoreNote(formatMoney(order.subtotal)),
+                      style: const TextStyle(
+                        color: AppColors.amberInk,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           FilledButton(
             style: FilledButton.styleFrom(

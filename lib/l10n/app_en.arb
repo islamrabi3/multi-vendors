@@ -1968,5 +1968,8 @@
   "swipeWhenCollected": "Swipe when you have the order",
   "buyAtStoreSubtitle": "Go to the store and buy the order",
   "errPickupUnavailable": "This store doesn't offer pickup. Choose delivery instead.",
-  "errNoDriverAssigned": "Assign a driver before sending this order out."
+  "errNoDriverAssigned": "Assign a driver before sending this order out.",
+  "waitingForYou": "Waiting for you",
+  "buyAtStoreNote": "You buy this order at the store first: about {amount}",
+  "@buyAtStoreNote": {"placeholders": {"amount": {"type": "String"}}}
 }

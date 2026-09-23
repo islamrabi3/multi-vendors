@@ -5935,4 +5935,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errNoDriverAssigned => 'عيّن مندوب الأول قبل ما تطلّع الطلب.';
+
+  @override
+  String get waitingForYou => 'مستنيك';
+
+  @override
+  String buyAtStoreNote(String amount) {
+    return 'هتشتري الطلب ده من المحل الأول: حوالي $amount';
+  }
 }

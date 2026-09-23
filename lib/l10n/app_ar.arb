@@ -1849,5 +1849,7 @@
   "swipeWhenCollected": "اسحب لما الطلب يبقى معاك",
   "buyAtStoreSubtitle": "روح المحل واشتري الطلب",
   "errPickupUnavailable": "المتجر ده مش متاح فيه الاستلام من الفرع. اختار التوصيل.",
-  "errNoDriverAssigned": "عيّن مندوب الأول قبل ما تطلّع الطلب."
+  "errNoDriverAssigned": "عيّن مندوب الأول قبل ما تطلّع الطلب.",
+  "waitingForYou": "مستنيك",
+  "buyAtStoreNote": "هتشتري الطلب ده من المحل الأول: حوالي {amount}"
 }

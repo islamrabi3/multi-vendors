@@ -4,11 +4,12 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/models/order.dart';
+import '../../core/models/order_flow.dart';
 import '../../core/repositories/admin_repository.dart';
 import '../../core/utils/live_feed.dart';
 import '../../core/utils/paging.dart';
 
-enum OrderMonitorFilter { all, flagged, preparing, onTheWay }
+enum OrderMonitorFilter { all, toAccept, flagged, preparing, onTheWay }
 
 /// An order is "flagged" when it has been sitting in a non-terminal state past
 /// the platform SLA (stuck vendor / no driver).
@@ -55,6 +56,15 @@ class AdminOrdersState extends Equatable {
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  /// An order no store will ever accept: a platform-run store's order that
+  /// can be seen and is waiting for an operator. It needs someone now, not
+  /// after the stuck threshold. Mirrors `orders_attention` on the server.
+  static bool awaitsUs(AppOrder o) =>
+      o.orderFlow == OrderFlow.platform &&
+      o.status == OrderStatus.pending &&
+      o.isReleased &&
+      (o.paymentMethod != 'paymob' || o.isPaid);
+
   static bool isFlagged(AppOrder o) =>
       !o.status.isTerminal &&
       o.status != OrderStatus.outForDelivery &&
@@ -69,6 +79,7 @@ class AdminOrdersState extends Equatable {
 
   int get liveCount => liveOrders.length;
   int get flaggedCount => liveOrders.where(isFlagged).length;
+  int get toAcceptCount => liveOrders.where(awaitsUs).length;
 
   /// Only the unfiltered view reaches into the paged history; the other tabs
   /// are subsets of the live stream, which is always fully loaded.
@@ -77,6 +88,7 @@ class AdminOrdersState extends Equatable {
   List<AppOrder> get visible {
     final list = switch (filter) {
       OrderMonitorFilter.all => orders,
+      OrderMonitorFilter.toAccept => liveOrders.where(awaitsUs).toList(),
       OrderMonitorFilter.flagged => liveOrders.where(isFlagged).toList(),
       OrderMonitorFilter.preparing =>
         liveOrders

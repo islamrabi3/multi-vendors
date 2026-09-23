@@ -166,9 +166,11 @@ class _AdminOrderDetailViewState extends State<AdminOrderDetailView> {
   OrderStatus? _nextStatusFor(AppOrder order) {
     if (order.orderFlow.runsThroughStore) return null;
     return switch (order.status) {
-      // An unpaid card order is still a draft; nothing to accept yet.
+      // An unpaid card order is still a draft, and a scheduled one waits for
+      // its slot; nothing to accept yet.
       OrderStatus.pending
-          when order.paymentMethod != 'paymob' || order.isPaid =>
+          when order.isReleased &&
+              (order.paymentMethod != 'paymob' || order.isPaid) =>
         OrderStatus.readyForPickup,
       OrderStatus.accepted ||
       OrderStatus.preparing ||

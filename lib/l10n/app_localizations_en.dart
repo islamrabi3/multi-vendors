@@ -5984,4 +5984,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errNoDriverAssigned =>
       'Assign a driver before sending this order out.';
+
+  @override
+  String get waitingForYou => 'Waiting for you';
+
+  @override
+  String buyAtStoreNote(String amount) {
+    return 'You buy this order at the store first: about $amount';
+  }
 }

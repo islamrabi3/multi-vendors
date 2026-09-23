@@ -11012,6 +11012,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assign a driver before sending this order out.'**
   String get errNoDriverAssigned;
+
+  /// No description provided for @waitingForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you'**
+  String get waitingForYou;
+
+  /// No description provided for @buyAtStoreNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You buy this order at the store first: about {amount}'**
+  String buyAtStoreNote(String amount);
 }
 
 class _AppLocalizationsDelegate

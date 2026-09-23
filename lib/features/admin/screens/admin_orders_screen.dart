@@ -261,6 +261,15 @@ class _FilterBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 22),
         children: [
           _chip(context.l10n.all, OrderMonitorFilter.all),
+          // Kept while selected, so emptying the queue does not leave a
+          // filter on screen with no chip showing it.
+          if (state.toAcceptCount > 0 ||
+              state.filter == OrderMonitorFilter.toAccept)
+            _chip(
+              '${context.l10n.waitingForYou} ${state.toAcceptCount}',
+              OrderMonitorFilter.toAccept,
+              danger: true,
+            ),
           _chip(
             '${context.l10n.flagged} ${state.flaggedCount}',
             OrderMonitorFilter.flagged,
@@ -330,7 +339,8 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flagged = AdminOrdersState.isFlagged(order);
+    final awaitsUs = AdminOrdersState.awaitsUs(order);
+    final flagged = awaitsUs || AdminOrdersState.isFlagged(order);
     final storeName = label ?? order.vendorName ?? context.l10n.store;
     final pointer = onSelect != null;
     return HoverBuilder(
@@ -357,7 +367,12 @@ class _OrderCard extends StatelessWidget {
             boxShadow: flagged || hovered || selected ? AppShadows.card : null,
           ),
           child: flagged
-              ? _flaggedBody(context, storeName, selectable: pointer)
+              ? _flaggedBody(
+                  context,
+                  storeName,
+                  selectable: pointer,
+                  awaitsUs: awaitsUs,
+                )
               : _normalBody(context, storeName, selectable: pointer),
         ),
       ),
@@ -368,6 +383,7 @@ class _OrderCard extends StatelessWidget {
     BuildContext context,
     String storeName, {
     required bool selectable,
+    bool awaitsUs = false,
   }) {
     final mins = DateTime.now().difference(order.createdAt).inMinutes;
     return Column(
@@ -388,7 +404,9 @@ class _OrderCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '${context.l10n.stuck.toUpperCase()} $mins${context.l10n.mShort}',
+                awaitsUs
+                    ? '${context.l10n.waitingForYou.toUpperCase()} $mins${context.l10n.mShort}'
+                    : '${context.l10n.stuck.toUpperCase()} $mins${context.l10n.mShort}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
