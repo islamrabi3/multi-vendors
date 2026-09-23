@@ -222,8 +222,11 @@ class _VendorOrderDetailsViewState extends State<VendorOrderDetailsView> {
           alignment: AlignmentDirectional.centerStart,
           child: OrderTypeChip(order: order),
         ),
+        // The code is only asked for when the store hands the bag over. On an
+        // order the platform runs the driver buys it, and nobody checks one.
         if (order.status == OrderStatus.readyForPickup &&
             !order.isPickup &&
+            order.orderFlow.runsThroughStore &&
             (order.pickupCode?.isNotEmpty ?? false)) ...[
           const SizedBox(height: 12),
           _PickupCodeCard(code: order.pickupCode!),
