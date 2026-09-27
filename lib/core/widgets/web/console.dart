@@ -143,6 +143,12 @@ class ConsoleHeader extends StatelessWidget {
       ],
     );
     if (actions.isEmpty) return text;
+    // Full width whatever the parent aligns to, so the actions reach the
+    // far edge rather than sitting beside the title.
+    return SizedBox(width: double.infinity, child: _headerWrap(text));
+  }
+
+  Widget _headerWrap(Widget text) {
     return Wrap(
       alignment: WrapAlignment.spaceBetween,
       crossAxisAlignment: WrapCrossAlignment.end,

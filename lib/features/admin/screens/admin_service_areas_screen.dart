@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/models/service_area.dart';
 import '../../../core/repositories/service_area_repository.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -144,16 +145,33 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
             ),
             children: [
               if (!areas.any((a) => a.isActive)) const _CoverageNotice(),
-              for (final area in areas) ...[
-                _AreaCard(
-                  area: area,
-                  busy: _busyId == area.id,
-                  onEdit: () => _edit(area),
-                  onToggle: () => _toggle(area),
-                  onDelete: () => _delete(area),
-                ),
-                const SizedBox(height: AppSpace.sm),
-              ],
+              // A grid on a desktop pane, one area per row on a phone.
+              if (webWide)
+                ConsoleGrid(
+                  minTileWidth: 380,
+                  maxColumns: 3,
+                  children: [
+                    for (final area in areas)
+                      _AreaCard(
+                        area: area,
+                        busy: _busyId == area.id,
+                        onEdit: () => _edit(area),
+                        onToggle: () => _toggle(area),
+                        onDelete: () => _delete(area),
+                      ),
+                  ],
+                )
+              else
+                for (final area in areas) ...[
+                  _AreaCard(
+                    area: area,
+                    busy: _busyId == area.id,
+                    onEdit: () => _edit(area),
+                    onToggle: () => _toggle(area),
+                    onDelete: () => _delete(area),
+                  ),
+                  const SizedBox(height: AppSpace.sm),
+                ],
             ],
           ),
         );
@@ -172,10 +190,26 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
     );
 
     if (widget.embedded) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        floatingActionButton: fab,
-        body: list,
+      // The console page header carries the add button; no floating one.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 4),
+            child: ConsoleHeader(
+              title: l10n.serviceAreas,
+              description: l10n.pageDescServiceAreas,
+              actions: [
+                FilledButton.icon(
+                  onPressed: () => _edit(),
+                  icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+                  label: Text(l10n.addServiceArea),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: list),
+        ],
       );
     }
 

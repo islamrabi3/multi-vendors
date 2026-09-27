@@ -129,7 +129,7 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
                         ],
                       ),
                       Text(
-                        vendor.approvalStatus,
+                        _statusLabel(context, vendor.approvalStatus),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -173,7 +173,7 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
                   vendor.name,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                subtitle: Text(vendor.approvalStatus),
+                subtitle: Text(_statusLabel(context, vendor.approvalStatus)),
                 trailing: const Icon(
                   Icons.document_scanner_outlined,
                   color: AppColors.primary,
@@ -239,3 +239,11 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
     );
   }
 }
+
+/// A store's approval state in the reader's language.
+String _statusLabel(BuildContext context, String status) => switch (status) {
+  'active' => context.l10n.statusActive,
+  'pending' => context.l10n.statusPending,
+  'suspended' => context.l10n.statusSuspended,
+  _ => status,
+};

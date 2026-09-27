@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/l10n_extension.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -365,17 +366,17 @@ class _AdminDriversScreenState extends State<AdminDriversScreen> {
 
     if (widget.embedded) {
       return Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (newDriverButton != null) ...[
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: newDriverButton,
-              ),
-              const SizedBox(height: AppSpace.md),
-            ],
+            // The console page header, with this page's main action in it.
+            ConsoleHeader(
+              title: l10n.driverApprovals,
+              description: l10n.pageDescDrivers,
+              actions: [?newDriverButton],
+            ),
+            const SizedBox(height: AppSpace.xl),
             filterBar,
             if (searchField != null) ...[
               const SizedBox(height: AppSpace.sm),
@@ -753,7 +754,7 @@ class _WebDriversTable extends StatelessWidget {
           WebTableColumn(label: l10n.driversTab, flex: 3),
           WebTableColumn(label: l10n.vehicleLabel, flex: 2),
           WebTableColumn(label: l10n.submittedDocuments, flex: 2),
-          WebTableColumn(label: l10n.statusPending, width: 90),
+          WebTableColumn(label: l10n.status, width: 90),
           const WebTableColumn(label: '', width: 190),
         ],
         rows: [

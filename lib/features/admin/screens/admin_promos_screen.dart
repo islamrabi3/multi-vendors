@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/models/coupon.dart';
 import '../../../core/repositories/coupons_repository.dart';
 import '../../../core/utils/money.dart';
@@ -79,11 +80,16 @@ class _PromosView extends StatelessWidget {
 
     if (embedded) {
       return Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            header,
+            // The console page header, with this page's main action in it.
+            ConsoleHeader(
+              title: l10n.promos,
+              description: l10n.pageDescPromos,
+              actions: const [_NewButton()],
+            ),
             const SizedBox(height: AppSpace.lg),
             Expanded(child: body),
           ],

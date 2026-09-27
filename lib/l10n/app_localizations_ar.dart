@@ -6406,4 +6406,10 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get pageDescReviews =>
       'العملاء قالوا إيه عن طلباتهم. رد عليهم عشان يعرفوا إنك سامعهم.';
+
+  @override
+  String get addCategory => 'إضافة قسم';
+
+  @override
+  String get pagesSection => 'الصفحات';
 }

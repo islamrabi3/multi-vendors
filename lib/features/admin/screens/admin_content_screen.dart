@@ -124,7 +124,7 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
             AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
           ),
           children: [
-            _sectionLabel(l10n.content),
+            _sectionLabel(l10n.pagesSection),
             for (final page in data.pages)
               _Tile(
                 icon: switch (page.key) {
@@ -263,7 +263,7 @@ class _WebContentTables extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        Text(l10n.content, style: AppType.heading(20)),
+        Text(l10n.pagesSection, style: AppType.heading(20)),
         const SizedBox(height: AppSpace.lg),
         WebTable(
           columns: _pageColumnsOf(context),

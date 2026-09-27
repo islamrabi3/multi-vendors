@@ -11762,6 +11762,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'What customers said about their orders. Reply to show you are listening.'**
   String get pageDescReviews;
+
+  /// No description provided for @addCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add category'**
+  String get addCategory;
+
+  /// No description provided for @pagesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages'**
+  String get pagesSection;
 }
 
 class _AppLocalizationsDelegate

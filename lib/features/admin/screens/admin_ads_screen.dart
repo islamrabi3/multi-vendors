@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/models/banner_item.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/repositories/offers_repository.dart';
@@ -222,8 +223,27 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
 
     if (widget.embedded) {
       return Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
-        child: webContent(),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The console page header, with this page's main action in it.
+            ConsoleHeader(
+              title: l10n.adManager,
+              description: l10n.pageDescAds,
+              actions: [
+                if (canManage)
+                  FilledButton.icon(
+                    onPressed: _compose,
+                    icon: const Icon(Icons.campaign_outlined, size: 18),
+                    label: Text(l10n.newAd),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpace.xl),
+            Expanded(child: body),
+          ],
+        ),
       );
     }
 

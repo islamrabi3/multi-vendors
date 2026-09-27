@@ -2117,5 +2117,7 @@
   "pageDescOrderHistory": "Every finished order, searchable by day.",
   "pageDescPayouts": "What the platform owes you, what it has paid, and when.",
   "pageDescOpeningHours": "The hours your store takes orders, day by day. Tap a day to change it.",
-  "pageDescReviews": "What customers said about their orders. Reply to show you are listening."
+  "pageDescReviews": "What customers said about their orders. Reply to show you are listening.",
+  "addCategory": "Add category",
+  "pagesSection": "Pages"
 }

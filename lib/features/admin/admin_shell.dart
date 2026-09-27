@@ -220,6 +220,17 @@ class _AdminWebShellState extends State<_AdminWebShell> {
 
   static const _consoleBranches = {0, 2};
 
+  /// Manage pages that draw the console header themselves, because their
+  /// main action belongs in it and depends on state only the page has.
+  static const _selfHeaded = {
+    '/admin-app/drivers',
+    '/admin-app/ads',
+    '/admin-app/price-campaigns',
+    '/admin-app/promos',
+    '/admin-app/categories',
+    '/admin-app/service-areas',
+  };
+
   static bool _consoleWide(String? route, int branch) => route == null
       ? _consoleBranches.contains(branch)
       : _consolePages.contains(route);
@@ -283,7 +294,9 @@ class _AdminWebShellState extends State<_AdminWebShell> {
   /// Every Manage page opens the same way: its name, what it is for, then
   /// the page. Pages built on the console kit draw their own.
   Widget _withHeader(String route, String title, Widget screen) {
-    if (_consolePages.contains(route)) return screen;
+    if (_consolePages.contains(route) || _selfHeaded.contains(route)) {
+      return screen;
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

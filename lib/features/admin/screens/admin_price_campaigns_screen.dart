@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/repositories/price_campaign_repository.dart';
@@ -237,19 +238,23 @@ class _AdminPriceCampaignsScreenState extends State<AdminPriceCampaignsScreen> {
 
     if (widget.embedded) {
       return Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: FilledButton.icon(
-                onPressed: _create,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(l10n.campaignNew),
-              ),
+            // The console page header, with this page's main action in it.
+            ConsoleHeader(
+              title: l10n.campaignsTitle,
+              description: l10n.pageDescPriceCampaigns,
+              actions: [
+                FilledButton.icon(
+                  onPressed: _create,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(l10n.campaignNew),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpace.md),
+            const SizedBox(height: AppSpace.xl),
             Expanded(child: content),
           ],
         ),

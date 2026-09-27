@@ -628,8 +628,10 @@ class _AccountBlock extends StatelessWidget {
     final fold = IconButton(
       tooltip: collapsed ? l10n.expandSidebar : l10n.collapseSidebar,
       onPressed: _SidebarPrefs.toggle,
+      // Points the way the sidebar will move: toward its own edge to fold,
+      // away from it to open — mirrored in right-to-left.
       icon: Icon(
-        collapsed
+        collapsed == (Directionality.of(context) == TextDirection.ltr)
             ? Icons.keyboard_double_arrow_right_rounded
             : Icons.keyboard_double_arrow_left_rounded,
         size: 20,

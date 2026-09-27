@@ -6460,4 +6460,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pageDescReviews =>
       'What customers said about their orders. Reply to show you are listening.';
+
+  @override
+  String get addCategory => 'Add category';
+
+  @override
+  String get pagesSection => 'Pages';
 }

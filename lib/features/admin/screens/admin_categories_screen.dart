@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -96,44 +97,56 @@ class _CategoriesViewState extends State<_CategoriesView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
-              child: Row(
-                children: [
-                  // The title duplicated whatever chrome already named this
-                  // page — the AppBar on mobile, `WebPageChrome`'s own header
-                  // on web — everywhere except `embedded`, which has no title
-                  // anywhere else at all.
-                  if (widget.embedded)
-                    Expanded(
-                      child: Text(
-                        l10n.categoriesTab,
-                        style: AppType.display(26),
+            // Embedded in the desktop console: the console page header,
+            // with the page's actions in it as labelled buttons.
+            if (widget.embedded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 24, 22, 16),
+                child: ConsoleHeader(
+                  title: l10n.categoriesTab,
+                  description: l10n.pageDescCategories,
+                  actions: [
+                    if (state.categories.length > 4)
+                      OutlinedButton.icon(
+                        onPressed: () => _showReorder(context),
+                        icon: const Icon(Icons.swap_vert_rounded, size: 18),
+                        label: Text(l10n.reorderCategoriesTitle),
                       ),
-                    )
-                  else
-                    const Spacer(),
-                  if (state.categories.length > 4) ...[
-                    IconButton.outlined(
-                      onPressed: state.categories.isEmpty
-                          ? null
-                          : () => _showReorder(context),
-                      icon: const Icon(Icons.swap_vert_rounded),
-                      tooltip: l10n.reorderCategoriesTitle,
+                    FilledButton.icon(
+                      onPressed: () => _showEditor(context),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(l10n.addCategory),
                     ),
-                    const SizedBox(width: 8),
                   ],
-                  IconButton.filled(
-                    onPressed: () => _showEditor(context),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    if (state.categories.length > 4) ...[
+                      IconButton.outlined(
+                        onPressed: state.categories.isEmpty
+                            ? null
+                            : () => _showReorder(context),
+                        icon: const Icon(Icons.swap_vert_rounded),
+                        tooltip: l10n.reorderCategoriesTitle,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    IconButton.filled(
+                      onPressed: () => _showEditor(context),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.add_rounded),
                     ),
-                    icon: const Icon(Icons.add_rounded),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             if (state.categories.length > 6)
               Padding(
                 padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
