@@ -196,7 +196,8 @@ class _VendorReviewsScreenState extends State<VendorReviewsScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
                       children: [
-                        Center(
+                        Align(
+                          alignment: AlignmentDirectional.topStart,
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 1100),
                             child: Row(

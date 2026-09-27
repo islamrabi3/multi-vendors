@@ -202,7 +202,8 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
     if (widget.embedded) {
       return Padding(
         padding: const EdgeInsets.all(AppSpace.xl),
-        child: Center(
+        child: Align(
+          alignment: AlignmentDirectional.topStart,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 620),
             child: content,

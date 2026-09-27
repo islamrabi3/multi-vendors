@@ -14,6 +14,11 @@ import '../../auth/auth_cubit.dart';
 import 'admin_create_account_screen.dart';
 import 'admin_vendor_detail_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
+import '../../../core/models/order_flow.dart';
+import '../../../core/utils/delivery_fee_text.dart';
+import '../../../core/utils/money.dart';
+import '../../../core/widgets/web/console.dart';
+import '../../../core/widgets/web/web_table.dart';
 
 class AdminVendorsScreen extends StatelessWidget {
   const AdminVendorsScreen({super.key});
@@ -71,6 +76,15 @@ class _VendorsViewState extends State<_VendorsView> {
               listener: (context, state) => showFailure(context, state.error!),
               builder: (context, state) {
                 final cubit = context.read<AdminVendorsCubit>();
+                // The desktop console lists stores as a table the width of
+                // the screen; a store opens beside it.
+                if (AppBreakpoints.isWebWide(context)) {
+                  return _WebVendorsPage(
+                    state: state,
+                    cubit: cubit,
+                    onSearch: _onSearch,
+                  );
+                }
                 final list = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -508,19 +522,28 @@ class _PendingCard extends StatelessWidget {
     );
   }
 
-  Future<void> _reject(BuildContext context) async {
-    final ok = await AppDialogs.showConfirmDialog(
-      context: context,
-      title: context.l10n.rejectVendor,
-      message:
-          '"${vendor.name}" ${context.l10n.willBeSuspendedAndHiddenFromCustomers}',
-      confirmText: context.l10n.reject,
-      cancelText: context.l10n.cancel,
-      isDestructive: true,
-      icon: Icons.store_rounded,
-    );
-    if (ok == true) await cubit.setStatus(vendor.id, 'suspended');
-  }
+  Future<void> _reject(BuildContext context) =>
+      _rejectVendor(context, vendor, cubit);
+}
+
+/// Turns a store's application down: it is suspended and hidden from
+/// customers. Asks first.
+Future<void> _rejectVendor(
+  BuildContext context,
+  Vendor vendor,
+  AdminVendorsCubit cubit,
+) async {
+  final ok = await AppDialogs.showConfirmDialog(
+    context: context,
+    title: context.l10n.rejectVendor,
+    message:
+        '"${vendor.name}" ${context.l10n.willBeSuspendedAndHiddenFromCustomers}',
+    confirmText: context.l10n.reject,
+    cancelText: context.l10n.cancel,
+    isDestructive: true,
+    icon: Icons.store_rounded,
+  );
+  if (ok == true) await cubit.setStatus(vendor.id, 'suspended');
 }
 
 class _VendorRow extends StatelessWidget {
@@ -641,6 +664,267 @@ class _StatusPill extends StatelessWidget {
       label: context.l10n.closed,
       fill: AppColors.neutralFill,
       ink: AppColors.textMuted,
+    );
+  }
+}
+
+/// The admin's desktop store list.
+class _WebVendorsPage extends StatelessWidget {
+  const _WebVendorsPage({
+    required this.state,
+    required this.cubit,
+    required this.onSearch,
+  });
+
+  final AdminVendorsState state;
+  final AdminVendorsCubit cubit;
+  final ValueChanged<String> onSearch;
+
+  static const _columns = [
+    WebTableColumn(label: '', flex: 5),
+    WebTableColumn(label: '', width: 120),
+    WebTableColumn(label: '', width: 150),
+    WebTableColumn(label: '', width: 150),
+    WebTableColumn(label: '', width: 110),
+    WebTableColumn(label: '', width: 110),
+  ];
+
+  List<WebTableColumn> _labelled(BuildContext context) {
+    final l10n = context.l10n;
+    final labels = [
+      l10n.store,
+      l10n.status,
+      l10n.whoRunsOrders,
+      l10n.billing,
+      l10n.deliveryFee,
+      l10n.rating,
+    ];
+    return [
+      for (var i = 0; i < _columns.length; i++)
+        WebTableColumn(
+          label: labels[i],
+          flex: _columns[i].flex,
+          width: _columns[i].width,
+        ),
+    ];
+  }
+
+  void _open(BuildContext context, Vendor vendor) {
+    final width = MediaQuery.sizeOf(context).width;
+    showConsoleSidePanel<void>(
+      context,
+      title: vendor.name,
+      width: (width * 0.62).clamp(640.0, 980.0),
+      child: AdminVendorDetailView(
+        vendorId: vendor.id,
+        embedded: true,
+        onStatusChanged: cubit.load,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final columns = _labelled(context);
+    final canApprove = context.select(
+      (AuthCubit c) => c.state.can('vendors.approve'),
+    );
+    final vendors = [...state.pending, ...state.active, ...state.suspended];
+    final shown = state.filter == VendorFilter.all ? vendors : state.visible;
+
+    return InfiniteScroll(
+      onLoadMore: cubit.loadMore,
+      child: ConsolePage(
+        title: l10n.vendors,
+        description: l10n.pageDescVendors,
+        onRefresh: cubit.load,
+        actions: [
+          if (canApprove)
+            FilledButton.icon(
+              onPressed: () async {
+                final created = await AdminCreateAccountScreen.open(
+                  context,
+                  NewAccountKind.vendor,
+                );
+                if (created == true) cubit.load();
+              },
+              icon: const Icon(Icons.add_business_rounded, size: 18),
+              label: Text(l10n.addStoreAccount),
+            ),
+        ],
+        toolbar: ConsoleToolbar(
+          search: ConsoleSearchField(
+            hint: l10n.searchVendorsHint,
+            onChanged: onSearch,
+          ),
+          filters: [
+            ConsoleFilterChip(
+              label: l10n.all,
+              count: state.countFor(VendorFilter.all),
+              selected: state.filter == VendorFilter.all,
+              onSelected: () => cubit.setFilter(VendorFilter.all),
+            ),
+            ConsoleFilterChip(
+              label: l10n.pending,
+              count: state.countFor(VendorFilter.pending),
+              tone: state.countFor(VendorFilter.pending) > 0
+                  ? ConsoleTone.brand
+                  : ConsoleTone.plain,
+              selected: state.filter == VendorFilter.pending,
+              onSelected: () => cubit.setFilter(VendorFilter.pending),
+            ),
+            ConsoleFilterChip(
+              label: l10n.active,
+              count: state.counts.active,
+              selected: state.filter == VendorFilter.active,
+              onSelected: () => cubit.setFilter(VendorFilter.active),
+            ),
+            ConsoleFilterChip(
+              label: l10n.suspended,
+              count: state.counts.suspended,
+              selected: state.filter == VendorFilter.suspended,
+              onSelected: () => cubit.setFilter(VendorFilter.suspended),
+            ),
+          ],
+        ),
+        children: [
+          if (state.loading)
+            const Padding(
+              padding: EdgeInsets.all(48),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            WebTable(
+              columns: columns,
+              trailingWidth: canApprove ? 190 : 20,
+              emptyState: ConsoleEmpty(
+                icon: Icons.storefront_outlined,
+                title: l10n.noVendorsHere,
+                message: state.search.isEmpty ? null : l10n.tryAnotherSearch,
+              ),
+              rows: [
+                for (final vendor in shown)
+                  WebTableRow.aligned(
+                    key: ValueKey(vendor.id),
+                    columns: columns,
+                    trailingWidth: canApprove ? 190 : 20,
+                    onTap: () => _open(context, vendor),
+                    trailing: vendor.isPending && canApprove
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () =>
+                                    _rejectVendor(context, vendor, cubit),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.textMuted,
+                                ),
+                                child: Text(l10n.reject),
+                              ),
+                              const SizedBox(width: 6),
+                              FilledButton(
+                                onPressed: () => _open(context, vendor),
+                                child: Text(l10n.review),
+                              ),
+                            ],
+                          )
+                        : null,
+                    cells: [
+                      Row(
+                        children: [
+                          _StoreAvatar(vendor: vendor, size: 38),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  vendor.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if ((vendor.addressText ?? '').isNotEmpty)
+                                  Text(
+                                    vendor.addressText!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: vendor.isPending
+                            ? SoftBadge(
+                                label: l10n.awaitingApproval,
+                                fill: AppColors.warmFill,
+                                ink: AppColors.primaryDark,
+                              )
+                            : _StatusPill(vendor: vendor),
+                      ),
+                      Text(switch (vendor.orderFlow) {
+                        OrderFlow.vendor => l10n.orderFlowVendor,
+                        OrderFlow.platform => l10n.orderFlowPlatform,
+                        OrderFlow.direct => l10n.orderFlowDirect,
+                      }, style: const TextStyle(fontSize: 13)),
+                      Text(
+                        vendor.isSubscription
+                            ? '${l10n.subscription} · ${formatMoneyCompact(vendor.subscriptionFee)}'
+                            : '${l10n.commission} · ${trimZeros(vendor.commissionRate)}%',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        deliveryFeeAmountText(context, vendor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.mono(12.5),
+                      ),
+                      vendor.ratingCount == 0
+                          ? Text(
+                              l10n.noRatingsYet,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textFaint,
+                              ),
+                            )
+                          : Row(
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 15,
+                                  color: AppColors.rating,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${vendor.ratingAvg.toStringAsFixed(1)} '
+                                  '(${vendor.ratingCount})',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                    ],
+                  ),
+              ],
+            ),
+          PagingFooter(loading: state.loadingMore, hasMore: state.hasMore),
+        ],
+      ),
     );
   }
 }

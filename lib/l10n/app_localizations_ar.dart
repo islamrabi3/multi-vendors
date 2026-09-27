@@ -6175,4 +6175,235 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get details => 'التفاصيل';
+
+  @override
+  String get account => 'الحساب';
+
+  @override
+  String get expandSidebar => 'إظهار القائمة';
+
+  @override
+  String get collapseSidebar => 'أيقونات فقط';
+
+  @override
+  String get jumpToAnything => 'انتقل لصفحة أو طلب…';
+
+  @override
+  String get jumpToPage => 'اكتب اسم الصفحة';
+
+  @override
+  String get jumpToAnythingHint => 'اكتب اسم صفحة أو رقم طلب أو متجر';
+
+  @override
+  String get searching => 'بندوّر…';
+
+  @override
+  String get nothingMatches => 'مفيش نتايج. جرّب جزء من الاسم أو رقم الطلب.';
+
+  @override
+  String get adminConsole => 'لوحة الإدارة';
+
+  @override
+  String get fullAccess => 'صلاحيات كاملة';
+
+  @override
+  String get limitedAccess => 'صلاحيات محدودة';
+
+  @override
+  String get storeOwner => 'المالك';
+
+  @override
+  String get storeStaff => 'موظف';
+
+  @override
+  String helloName(String name) {
+    return 'أهلاً يا $name';
+  }
+
+  @override
+  String get overviewDescription =>
+      'اللي محتاجك، ودخل النهارده، واللي شغال دلوقتي.';
+
+  @override
+  String get openOrderBoard => 'افتح لوحة الطلبات';
+
+  @override
+  String get storesOpenNow => 'متاجر فاتحة دلوقتي';
+
+  @override
+  String get driversOnlineNow => 'مناديب أونلاين';
+
+  @override
+  String get noDriversOnlineHint => 'الطلبات هتستنى مندوب';
+
+  @override
+  String get allClear => 'مفيش حاجة مستنياك';
+
+  @override
+  String get allClearDescription =>
+      'الطلبات والبلاغات الجديدة والطلبات المتأخرة هتظهر هنا أول ما توصل.';
+
+  @override
+  String get needsYouNow => 'محتاجك دلوقتي';
+
+  @override
+  String liveOrdersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count طلب شغال',
+      many: '$count طلب شغال',
+      few: '$count طلبات شغالة',
+      two: 'طلبين شغالين',
+      one: 'طلب واحد شغال',
+      zero: 'مفيش طلبات شغالة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noLiveOrdersHint => 'الطلبات بتظهر هنا أول ما العميل يطلب.';
+
+  @override
+  String minutesAgoShort(int minutes) {
+    return '$minutes د';
+  }
+
+  @override
+  String get pageDescComplaints =>
+      'المشاكل اللي العملاء بلّغوا عنها في طلباتهم. اللي لسه مفتوحة مستنية رد.';
+
+  @override
+  String get pageDescSupport =>
+      'محادثات العملاء والمتاجر والمناديب اللي طلبوا مساعدة.';
+
+  @override
+  String get pageDescUsers =>
+      'كل الحسابات على المنصة. من هنا تقدر توقف حساب أو ترجّعه أو تقفله.';
+
+  @override
+  String get pageDescMaintenance =>
+      'اقفل المنصة للعملاء والمتاجر والمناديب وقت الصيانة. فريق الإدارة بيفضل داخل.';
+
+  @override
+  String get pageDescRoles => 'حسابات الفريق وصلاحيات كل دور.';
+
+  @override
+  String get pageDescAnnouncements =>
+      'ابعت إشعار للعملاء أو المتاجر أو المناديب، دلوقتي أو بعدين.';
+
+  @override
+  String get pageDescReports =>
+      'المبيعات والرسوم والمستحقات لأي فترة، للمنصة كلها أو لكل متجر ومندوب.';
+
+  @override
+  String get pageDescDrivers =>
+      'وافق على المناديب الجدد، راجع مستنداتهم، وأوقف الحسابات.';
+
+  @override
+  String get pageDescServiceAreas =>
+      'الأماكن اللي العملاء يقدروا يطلبوا فيها توصيل. أي طلب براها بيترفض.';
+
+  @override
+  String get pageDescCategories =>
+      'الأقسام اللي العملاء بيتصفحوا بيها المتاجر والأصناف.';
+
+  @override
+  String get pageDescMenuImport => 'اعمل منيو المتجر من صور أو شيت أو لينك.';
+
+  @override
+  String get pageDescPriceAdjustment =>
+      'زوّد أو قلّل أسعار متجر بنسبة في خطوة واحدة.';
+
+  @override
+  String get pageDescFinance =>
+      'اللي اتحصّل، واللي المنصة كسبته، والمستحق للمتاجر والمناديب.';
+
+  @override
+  String get pageDescSettlements =>
+      'ادفع للمتاجر والمناديب مستحقاتهم، واستلم الكاش اللي مع المناديب.';
+
+  @override
+  String get pageDescDeposits =>
+      'الكاش اللي المناديب بيقولوا سلّموه. أكّد كل واحدة لما الفلوس توصل.';
+
+  @override
+  String get pageDescPromos => 'أكواد الخصم اللي العملاء بيكتبوها وقت الدفع.';
+
+  @override
+  String get pageDescPriceCampaigns =>
+      'تغييرات مؤقتة في الأسعار على المتاجر، والفرق بيروح للمنصة.';
+
+  @override
+  String get pageDescAds =>
+      'البانرات والأماكن المميزة في الشاشة الرئيسية للعميل.';
+
+  @override
+  String get pageDescContent =>
+      'الصفحات اللي العملاء بيقروها في التطبيق: الشروط والخصوصية وعن التطبيق والمساعدة.';
+
+  @override
+  String get balances => 'الأرصدة';
+
+  @override
+  String get balancesHint => 'إجمالي مستمر، مش النهارده بس';
+
+  @override
+  String get settle => 'تسوية';
+
+  @override
+  String get status => 'الحالة';
+
+  @override
+  String get whoRunsOrders => 'مين بيدير الطلبات';
+
+  @override
+  String get billing => 'المحاسبة';
+
+  @override
+  String get rating => 'التقييم';
+
+  @override
+  String get subscription => 'اشتراك';
+
+  @override
+  String get commission => 'عمولة';
+
+  @override
+  String get tryAnotherSearch => 'جرّب اسم أو رقم تاني.';
+
+  @override
+  String get pageDescVendors =>
+      'كل المتاجر على المنصة. وافق على الجديدة، وافتح أي متجر عشان تعدّل أي حاجة فيه.';
+
+  @override
+  String get navBusiness => 'الشغل';
+
+  @override
+  String get navStoreSetup => 'إعداد المتجر';
+
+  @override
+  String get navAnalytics => 'التحليلات';
+
+  @override
+  String get navOpeningHours => 'مواعيد العمل';
+
+  @override
+  String get pageDescVendorAnalytics =>
+      'بعت إيه، وكسبت كام بعد الرسوم، والعملاء مقيّمينك إزاي.';
+
+  @override
+  String get pageDescOrderHistory =>
+      'كل الطلبات اللي خلصت، وتقدر تدوّر بالأيام.';
+
+  @override
+  String get pageDescPayouts => 'المنصة مديونة لك بكام، ودفعت كام، وإمتى.';
+
+  @override
+  String get pageDescOpeningHours =>
+      'المواعيد اللي متجرك بيستقبل فيها طلبات، يوم بيوم. دوس على أي يوم عشان تغيّره.';
+
+  @override
+  String get pageDescReviews =>
+      'العملاء قالوا إيه عن طلباتهم. رد عليهم عشان يعرفوا إنك سامعهم.';
 }

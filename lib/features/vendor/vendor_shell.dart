@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../core/repositories/console_search_repository.dart';
 import '../../core/widgets/adaptive_shell.dart';
+import '../../core/widgets/web/console.dart';
 import '../../core/widgets/web/web_shell_frame.dart';
 import '../auth/auth_cubit.dart';
 import 'screens/vendor_analytics_screen.dart';
@@ -114,14 +116,41 @@ class _VendorWebShellState extends State<_VendorWebShell> {
     final showMenu = auth.canVendor('menu');
     final tool = _toolId == null ? null : _toolScreen(_toolId!, vendor.id);
     final toolLabels = <String, String>{
-      'analytics': l10n.storeAnalyticsAndReports,
+      'analytics': l10n.navAnalytics,
       'history': l10n.ordersHistory,
       'payouts': l10n.payouts,
-      'schedule': l10n.operatingHoursSchedule,
+      'schedule': l10n.navOpeningHours,
       'reviews': l10n.reviews,
+    };
+    final toolDescriptions = <String, String>{
+      'analytics': l10n.pageDescVendorAnalytics,
+      'history': l10n.pageDescOrderHistory,
+      'payouts': l10n.pageDescPayouts,
+      'schedule': l10n.pageDescOpeningHours,
+      'reviews': l10n.pageDescReviews,
     };
 
     return WebShellFrame(
+      consoleLabel: vendor.name,
+      accountName: auth.profile?.fullName,
+      accountDetail: auth.vendorAccess.isOwner
+          ? l10n.storeOwner
+          : l10n.storeStaff,
+      search: (query) async {
+        final hits = await ConsoleSearchRepository().orders(
+          query,
+          vendorId: vendor.id,
+        );
+        if (!context.mounted) return const [];
+        return [
+          for (final hit in hits)
+            WebCommand(
+              label: l10n.orderRef(hit.label),
+              icon: Icons.receipt_long_rounded,
+              onRun: () => context.push('/vendor-app/orders/${hit.id}'),
+            ),
+        ];
+      },
       activeId: tool == null ? 'branch:${widget.shell.currentIndex}' : _toolId!,
       pageTitle: tool == null
           ? switch (widget.shell.currentIndex) {
@@ -153,13 +182,13 @@ class _VendorWebShellState extends State<_VendorWebShell> {
           ],
         ),
         WebNavSection(
-          title: l10n.storeAnalyticsAndReports,
+          title: l10n.navBusiness,
           items: [
             if (showMoney)
               WebNavItem(
                 id: 'analytics',
                 icon: Icons.insights_outlined,
-                label: l10n.storeAnalyticsAndReports,
+                label: l10n.navAnalytics,
                 onTap: () => _selectTool('analytics'),
               ),
             WebNavItem(
@@ -175,22 +204,22 @@ class _VendorWebShellState extends State<_VendorWebShell> {
                 label: l10n.payouts,
                 onTap: () => _selectTool('payouts'),
               ),
-          ],
-        ),
-        WebNavSection(
-          title: l10n.settings,
-          items: [
-            WebNavItem(
-              id: 'schedule',
-              icon: Icons.schedule_outlined,
-              label: l10n.operatingHoursSchedule,
-              onTap: () => _selectTool('schedule'),
-            ),
             WebNavItem(
               id: 'reviews',
               icon: Icons.rate_review_outlined,
               label: l10n.reviews,
               onTap: () => _selectTool('reviews'),
+            ),
+          ],
+        ),
+        WebNavSection(
+          title: l10n.navStoreSetup,
+          items: [
+            WebNavItem(
+              id: 'schedule',
+              icon: Icons.schedule_outlined,
+              label: l10n.navOpeningHours,
+              onTap: () => _selectTool('schedule'),
             ),
             WebNavItem(
               id: 'branch:2',
@@ -207,7 +236,22 @@ class _VendorWebShellState extends State<_VendorWebShell> {
         child: Stack(
           children: [
             Offstage(offstage: tool != null, child: widget.shell),
-            ?tool,
+            // Every tool page opens the same way: its name, what it is for,
+            // then the page.
+            if (tool != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
+                    child: ConsoleHeader(
+                      title: toolLabels[_toolId!]!,
+                      description: toolDescriptions[_toolId!],
+                    ),
+                  ),
+                  Expanded(child: tool),
+                ],
+              ),
           ],
         ),
       ),

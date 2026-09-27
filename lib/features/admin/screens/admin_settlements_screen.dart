@@ -572,7 +572,13 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // On the desktop console tabs sit under the page title, from its edge,
+    // rather than spread across the whole window.
+    final wideTabs = AppBreakpoints.isWebWide(context);
     final tabs = TabBar(
+      isScrollable: wideTabs,
+      tabAlignment: wideTabs ? TabAlignment.start : null,
+      padding: wideTabs ? const EdgeInsetsDirectional.only(start: 4) : null,
       labelColor: AppColors.primary,
       unselectedLabelColor: AppColors.textMuted,
       indicatorColor: AppColors.primary,
@@ -619,7 +625,10 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
         length: 3,
         child: Column(
           children: [
-            ColoredBox(color: AppColors.surface, child: tabs),
+            ColoredBox(
+              color: wideTabs ? Colors.transparent : AppColors.surface,
+              child: tabs,
+            ),
             const Divider(height: 1, thickness: 1, color: AppColors.border),
             Expanded(child: body),
           ],
@@ -708,9 +717,10 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   /// on a wide console window.
   Widget _centered(Widget child) {
     if (!AppBreakpoints.isWebWide(context)) return child;
-    return Center(
+    return Align(
+      alignment: AlignmentDirectional.topStart,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
+        constraints: const BoxConstraints(maxWidth: 880),
         child: child,
       ),
     );

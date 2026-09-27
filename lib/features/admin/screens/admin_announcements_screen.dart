@@ -125,7 +125,13 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
       (AuthCubit c) => c.state.can('notifications.send'),
     );
 
+    // On the desktop console tabs sit under the page title, from its edge,
+    // rather than spread across the whole window.
+    final wideTabs = AppBreakpoints.isWebWide(context);
     final tabs = TabBar(
+      isScrollable: wideTabs,
+      tabAlignment: wideTabs ? TabAlignment.start : null,
+      padding: wideTabs ? const EdgeInsetsDirectional.only(start: 4) : null,
       tabs: [
         Tab(text: l10n.statusSent),
         Tab(text: l10n.drafts),
@@ -153,34 +159,51 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
 
     // Wide/embedded layouts have no floating action button to hang this off,
     // so it surfaces as a button above the tabs instead.
-    final header = ColoredBox(
-      color: AppColors.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (canSend)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg,
-                AppSpace.md,
-                AppSpace.lg,
-                0,
-              ),
-              child: Row(
-                children: [
-                  const Spacer(),
+    // On the desktop console the tabs and the page's action share one row
+    // on the page itself, under its title.
+    final header = wideTabs
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.xl),
+            child: Row(
+              children: [
+                Expanded(child: tabs),
+                if (canSend)
                   FilledButton.icon(
                     onPressed: _compose,
                     icon: const Icon(Icons.campaign_outlined, size: 18),
                     label: Text(l10n.newAnnouncement),
                   ),
-                ],
-              ),
+              ],
             ),
-          tabs,
-        ],
-      ),
-    );
+          )
+        : ColoredBox(
+            color: AppColors.surface,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (canSend)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpace.lg,
+                      AppSpace.md,
+                      AppSpace.lg,
+                      0,
+                    ),
+                    child: Row(
+                      children: [
+                        const Spacer(),
+                        FilledButton.icon(
+                          onPressed: _compose,
+                          icon: const Icon(Icons.campaign_outlined, size: 18),
+                          label: Text(l10n.newAnnouncement),
+                        ),
+                      ],
+                    ),
+                  ),
+                tabs,
+              ],
+            ),
+          );
 
     if (widget.embedded) {
       return DefaultTabController(

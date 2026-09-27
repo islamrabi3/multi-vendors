@@ -206,7 +206,13 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
       (AuthCubit c) => c.state.can('staff.manage'),
     );
 
+    // On the desktop console tabs sit under the page title, from its edge,
+    // rather than spread across the whole window.
+    final wideTabs = AppBreakpoints.isWebWide(context);
     final tabs = TabBar(
+      isScrollable: wideTabs,
+      tabAlignment: wideTabs ? TabAlignment.start : null,
+      padding: wideTabs ? const EdgeInsetsDirectional.only(start: 4) : null,
       tabs: [
         Tab(text: l10n.managementRoles),
         Tab(text: l10n.staff),
@@ -247,40 +253,71 @@ class _AdminRolesScreenState extends State<AdminRolesScreen> {
 
     // Wide/embedded layouts have no app bar or FAB to hang these off, so
     // they surface as a button row above the tabs instead.
-    final header = ColoredBox(
-      color: AppColors.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (canManage)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg,
-                AppSpace.md,
-                AppSpace.lg,
-                0,
-              ),
-              child: Row(
-                children: [
-                  const Spacer(),
-                  OutlinedButton.icon(
-                    onPressed: () => _editRole(null),
-                    icon: const Icon(Icons.add_moderator_outlined, size: 18),
-                    label: Text(l10n.newRole),
-                  ),
-                  const SizedBox(width: AppSpace.sm),
-                  FilledButton.icon(
-                    onPressed: _addStaff,
-                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-                    label: Text(l10n.addStaff),
-                  ),
-                ],
-              ),
-            ),
-          tabs,
-        ],
+    final actions = [
+      OutlinedButton.icon(
+        onPressed: () => _editRole(null),
+        icon: const Icon(Icons.add_moderator_outlined, size: 18),
+        label: Text(l10n.newRole),
       ),
-    );
+      const SizedBox(width: AppSpace.sm),
+      FilledButton.icon(
+        onPressed: _addStaff,
+        icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+        label: Text(l10n.addStaff),
+      ),
+    ];
+    // On the desktop console the tabs and the page's actions share one row
+    // on the page itself, under its title.
+    final header = wideTabs
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.xl),
+            child: Row(
+              children: [
+                Expanded(child: tabs),
+                if (canManage) ...actions,
+              ],
+            ),
+          )
+        : ColoredBox(
+            color: AppColors.surface,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (canManage)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpace.lg,
+                      AppSpace.md,
+                      AppSpace.lg,
+                      0,
+                    ),
+                    child: Row(
+                      children: [
+                        const Spacer(),
+                        OutlinedButton.icon(
+                          onPressed: () => _editRole(null),
+                          icon: const Icon(
+                            Icons.add_moderator_outlined,
+                            size: 18,
+                          ),
+                          label: Text(l10n.newRole),
+                        ),
+                        const SizedBox(width: AppSpace.sm),
+                        FilledButton.icon(
+                          onPressed: _addStaff,
+                          icon: const Icon(
+                            Icons.person_add_alt_1_outlined,
+                            size: 18,
+                          ),
+                          label: Text(l10n.addStaff),
+                        ),
+                      ],
+                    ),
+                  ),
+                tabs,
+              ],
+            ),
+          );
 
     if (widget.embedded) {
       return DefaultTabController(

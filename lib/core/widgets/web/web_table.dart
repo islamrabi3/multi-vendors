@@ -216,14 +216,13 @@ class _WebTableRowLayout extends StatelessWidget {
                 _Cell(
                   column: columns[i],
                   child: Text(
-                    columns[i].label.toUpperCase(),
+                    columns[i].label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
-                      color: AppColors.textFaint,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ),

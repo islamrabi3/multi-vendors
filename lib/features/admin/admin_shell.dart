@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../core/repositories/console_search_repository.dart';
 import '../../core/widgets/adaptive_shell.dart';
+import '../../core/widgets/web/console.dart';
 import '../../core/widgets/web/web_shell_frame.dart';
 import '../auth/auth_cubit.dart';
 import 'admin_action_badges.dart';
@@ -213,15 +215,109 @@ class _AdminWebShellState extends State<_AdminWebShell> {
     _ => null,
   };
 
+  /// Routes whose screen is a ConsolePage and so manages its own width.
+  static const _consolePages = {'/admin-app/platform-settings'};
+
+  static const _consoleBranches = {0, 2};
+
+  static bool _consoleWide(String? route, int branch) => route == null
+      ? _consoleBranches.contains(branch)
+      : _consolePages.contains(route);
+
+  /// The command palette's data half: orders by number, stores by name.
+  Future<List<WebCommand>> _search(BuildContext context, String query) async {
+    final l10n = context.l10n;
+    final repo = ConsoleSearchRepository();
+    final results = await Future.wait([
+      repo.orders(query),
+      if (context.read<AuthCubit>().state.can('vendors.view'))
+        repo.stores(query)
+      else
+        Future.value(const <ConsoleHit>[]),
+    ]);
+    return [
+      for (final hit in results[0])
+        WebCommand(
+          label: l10n.orderRef(hit.label),
+          detail: hit.detail,
+          icon: Icons.receipt_long_rounded,
+          onRun: () => context.push('/admin-app/orders/${hit.id}'),
+        ),
+      for (final hit in results[1])
+        WebCommand(
+          label: hit.label,
+          detail: l10n.store,
+          icon: Icons.storefront_rounded,
+          onRun: () => context.push('/admin-app/vendors/${hit.id}'),
+        ),
+    ];
+  }
+
+  /// One line under each Manage page's title: what the page is for.
+  String? _descriptionFor(String route) {
+    final l10n = context.l10n;
+    return switch (route) {
+      '/admin-app/complaints' => l10n.pageDescComplaints,
+      '/admin-app/support' => l10n.pageDescSupport,
+      '/admin-app/users' => l10n.pageDescUsers,
+      '/admin-app/maintenance' => l10n.pageDescMaintenance,
+      '/admin-app/roles' => l10n.pageDescRoles,
+      '/admin-app/announcements' => l10n.pageDescAnnouncements,
+      '/admin-app/sales-reports' => l10n.pageDescReports,
+      '/admin-app/drivers' => l10n.pageDescDrivers,
+      '/admin-app/service-areas' => l10n.pageDescServiceAreas,
+      '/admin-app/categories' => l10n.pageDescCategories,
+      '/admin-app/menu-import' => l10n.pageDescMenuImport,
+      '/admin-app/price-adjustment' => l10n.pageDescPriceAdjustment,
+      '/admin-app/finance' => l10n.pageDescFinance,
+      '/admin-app/settlements' => l10n.pageDescSettlements,
+      '/admin-app/deposits' => l10n.pageDescDeposits,
+      '/admin-app/promos' => l10n.pageDescPromos,
+      '/admin-app/price-campaigns' => l10n.pageDescPriceCampaigns,
+      '/admin-app/ads' => l10n.pageDescAds,
+      '/admin-app/content' => l10n.pageDescContent,
+      _ => null,
+    };
+  }
+
+  /// Every Manage page opens the same way: its name, what it is for, then
+  /// the page. Pages built on the console kit draw their own.
+  Widget _withHeader(String route, String title, Widget screen) {
+    if (_consolePages.contains(route)) return screen;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
+          child: ConsoleHeader(
+            title: title,
+            description: _descriptionFor(route),
+          ),
+        ),
+        Expanded(child: screen),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final embedded = _manageRoute == null
+    final screen = _manageRoute == null
         ? null
         : _embeddedManageScreen(_manageRoute!);
+    final embedded = screen == null
+        ? null
+        : _withHeader(_manageRoute!, _manageLabel!, screen);
 
+    final auth = context.watch<AuthCubit>().state;
     return WebShellFrame(
       forStaff: true,
+      consoleLabel: l10n.adminConsole,
+      accountName: auth.profile?.fullName,
+      accountDetail: auth.permissions.contains('*')
+          ? l10n.fullAccess
+          : l10n.limitedAccess,
+      search: (query) => _search(context, query),
       activeId: _manageRoute != null
           ? 'manage:$_manageRoute'
           : 'branch:${widget.shell.currentIndex}',
@@ -234,7 +330,11 @@ class _AdminWebShellState extends State<_AdminWebShell> {
               _ => l10n.manage,
             },
       onSignOut: () => context.read<AuthCubit>().signOut(),
-      maxContentWidth: 1200,
+      // Pages built on the console kit size themselves (ConsolePage); the
+      // rest keep the cap they were laid out for.
+      maxContentWidth: _consoleWide(_manageRoute, widget.shell.currentIndex)
+          ? 1680
+          : 1200,
       sections: [
         WebNavSection(
           items: [

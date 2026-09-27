@@ -304,7 +304,13 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // On the desktop console tabs sit under the page title, from its edge,
+    // rather than spread across the whole window.
+    final wideTabs = AppBreakpoints.isWebWide(context);
     final tabs = TabBar(
+      isScrollable: wideTabs,
+      tabAlignment: wideTabs ? TabAlignment.start : null,
+      padding: wideTabs ? const EdgeInsetsDirectional.only(start: 4) : null,
       labelColor: AppColors.primary,
       unselectedLabelColor: AppColors.textMuted,
       indicatorColor: AppColors.primary,
@@ -331,7 +337,10 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         length: 2,
         child: Column(
           children: [
-            ColoredBox(color: AppColors.surface, child: tabs),
+            ColoredBox(
+              color: wideTabs ? Colors.transparent : AppColors.surface,
+              child: tabs,
+            ),
             const Divider(height: 1, thickness: 1, color: AppColors.border),
             Expanded(child: body),
           ],
@@ -368,6 +377,42 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
     );
   }
 
+  /// On a desktop console: flows for the period on the left, standing
+  /// balances and the settings that shape them on the right. Elsewhere one
+  /// capped column, flows first.
+  Widget _split(List<Widget> flows, List<Widget> positions) {
+    if (!AppBreakpoints.isWebWide(context)) {
+      return _capped([...flows, ...positions]);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 980) {
+          return _capped([...flows, ...positions]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: flows,
+              ),
+            ),
+            const SizedBox(width: AppSpace.xl),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [const SizedBox(height: 52), ...positions],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Caps content on wide windows so rows keep label and amount close.
   Widget _capped(List<Widget> children) {
     final column = Column(
@@ -375,7 +420,8 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
       children: children,
     );
     if (!AppBreakpoints.isWebWide(context)) return column;
-    return Center(
+    return Align(
+      alignment: AlignmentDirectional.topStart,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820),
         child: column,
@@ -464,235 +510,245 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: _listPadding,
         children: [
-          _capped([
-            _periodPicker(),
-            const SizedBox(height: AppSpace.md),
+          _split(
+            [
+              _periodPicker(),
+              const SizedBox(height: AppSpace.md),
 
-            // What the business kept — the bottom line. Deliberately *not*
-            // the platform ledger account's balance: that account is a
-            // clearing account and trends to zero.
-            FinanceHero(
-              tone: o.platformEarnings >= 0
-                  ? FinanceHeroTone.brand
-                  : FinanceHeroTone.warning,
-              eyebrow: l10n.platformEarnings,
-              amount: formatMoney(o.platformEarnings),
-              caption:
-                  '${l10n.grossMerchandiseValue}: ${formatMoney(o.grossRevenue)}'
-                  ' · ${l10n.ordersCount(o.totalOrders)}',
-            ),
-
-            // Money that does not add up is more urgent than any figure
-            // below it, so problems sit right under the headline.
-            FinanceSection(
-              title: l10n.needsAttention,
-              child: FinanceCard(
-                children: attention.isEmpty
-                    ? [
-                        _AttentionRow(
-                          icon: Icons.verified_rounded,
-                          tone: AppColors.successInk,
-                          text:
-                              '${l10n.booksBalanced} · ${l10n.nothingNeedsAttention}',
-                        ),
-                      ]
-                    : attention,
+              // What the business kept — the bottom line. Deliberately *not*
+              // the platform ledger account's balance: that account is a
+              // clearing account and trends to zero.
+              FinanceHero(
+                tone: o.platformEarnings >= 0
+                    ? FinanceHeroTone.brand
+                    : FinanceHeroTone.warning,
+                eyebrow: l10n.platformEarnings,
+                amount: formatMoney(o.platformEarnings),
+                caption:
+                    '${l10n.grossMerchandiseValue}: ${formatMoney(o.grossRevenue)}'
+                    ' · ${l10n.ordersCount(o.totalOrders)}',
               ),
-            ),
 
-            // The four routes are drawn from the same delivered-orders set and
-            // each order belongs to exactly one, so they sum to the total.
-            FinanceSection(
-              title: l10n.collectedFromCustomers,
-              child: FinanceCard(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpace.lg,
-                      AppSpace.lg,
-                      AppSpace.lg,
-                      AppSpace.sm,
-                    ),
-                    child: _SplitBar(
-                      parts: [
-                        (o.codRevenue, _inColors[0]),
-                        (o.cardRevenue, _inColors[1]),
-                        (o.mobileWalletRevenue, _inColors[2]),
-                        (o.appWalletRevenue, _inColors[3]),
-                      ],
-                    ),
-                  ),
-                  FinanceRow(
-                    icon: Icons.payments_rounded,
-                    tone: _inColors[0],
-                    label: l10n.cashOnDelivery,
-                    note: l10n.ordersCount(o.cashOrders),
-                    value: formatMoney(o.codRevenue),
-                  ),
-                  FinanceRow(
-                    icon: Icons.credit_card_rounded,
-                    tone: _inColors[1],
-                    label: l10n.card,
-                    note: l10n.ordersCount(o.cardOrders),
-                    value: formatMoney(o.cardRevenue),
-                  ),
-                  FinanceRow(
-                    icon: Icons.smartphone_rounded,
-                    tone: _inColors[2],
-                    label: l10n.mobileWallet,
-                    note: l10n.ordersCount(o.mobileWalletOrders),
-                    value: formatMoney(o.mobileWalletRevenue),
-                  ),
-                  FinanceRow(
-                    icon: Icons.account_balance_wallet_rounded,
-                    tone: _inColors[3],
-                    label: l10n.appWalletLabel,
-                    note: l10n.ordersCount(o.appWalletOrders),
-                    value: formatMoney(o.appWalletRevenue),
-                  ),
-                  FinanceRow(
-                    label: l10n.grossMerchandiseValue,
-                    value: formatMoney(o.grossRevenue),
-                    emphasis: true,
-                  ),
-                ],
-              ),
-            ),
-
-            // The ledger's own figures. Not joined to the block above with an
-            // equals sign: tips pass straight through and refunds and
-            // adjustments land in their own rows.
-            FinanceSection(
-              title: l10n.whereItGoes,
-              child: FinanceCard(
-                children: [
-                  _signedRow(l10n.vendorPayouts, -o.vendorEarnings),
-                  if (o.driverStorePurchases > 0)
-                    _signedRow(
-                      l10n.paidToStoresByDrivers,
-                      -o.driverStorePurchases,
-                    ),
-                  _signedRow(l10n.driverCost, -o.driverEarnings),
-                  _signedRow(
-                    l10n.platformFundedDiscounts,
-                    -o.platformDiscounts,
-                  ),
-                  _signedRow(l10n.platformCommission, o.platformCommission),
-                  _signedRow(l10n.platformShareLabel, o.platformDeliveryMargin),
-                  if (o.platformServiceFees != 0)
-                    _signedRow(l10n.serviceFee, o.platformServiceFees),
-                  if (o.earlySettlementFees != 0)
-                    _signedRow(l10n.earlySettlementFees, o.earlySettlementFees),
-                  FinanceRow(
-                    label: l10n.platformEarnings,
-                    value: _signed(o.platformEarnings),
-                    emphasis: true,
-                    tone: o.platformEarnings >= 0
-                        ? AppColors.successInk
-                        : AppColors.dangerInk,
-                  ),
-                ],
-              ),
-            ),
-
-            // Positions rather than flows, which is why they ignore the period.
-            FinanceSection(
-              title: l10n.openBalances,
-              child: FinanceCard(
-                children: [
-                  FinanceRow(
-                    icon: Icons.two_wheeler_rounded,
-                    tone: AppColors.amberInk,
-                    label: l10n.driverCashDueTotal,
-                    value: formatMoney(o.driverCashDue),
-                    onTap: () =>
-                        AdminWebNav.go(context, '/admin-app/settlements'),
-                  ),
-                  FinanceRow(
-                    icon: Icons.storefront_rounded,
-                    tone: AppColors.primary,
-                    label: l10n.vendorPayableTotal,
-                    value: formatMoney(o.vendorPayable),
-                    onTap: () =>
-                        AdminWebNav.go(context, '/admin-app/settlements'),
-                  ),
-                ],
-              ),
-            ),
-
-            FinanceSection(
-              title: l10n.moneyMovements,
-              child: FinanceCard(
-                children: [
-                  FinanceRow(
-                    icon: Icons.payments_rounded,
-                    label: l10n.cashCollectedLabel,
-                    value: formatMoney(o.cashCollected),
-                  ),
-                  FinanceRow(
-                    icon: Icons.move_to_inbox_rounded,
-                    label: l10n.cashHandedOver,
-                    value: formatMoney(o.deposits),
-                    onTap: () => AdminWebNav.go(context, '/admin-app/deposits'),
-                  ),
-                  FinanceRow(
-                    icon: Icons.account_balance_rounded,
-                    label: l10n.settlementsPaidOut,
-                    value: formatMoney(o.settlements),
-                  ),
-                  FinanceRow(
-                    icon: Icons.undo_rounded,
-                    label: l10n.refunds,
-                    value: formatMoney(o.refunds),
-                  ),
-                ],
-              ),
-            ),
-
-            // The number that decides the driver-cost and delivery-share rows
-            // above, so its control sits on the same page.
-            if (_serviceFee != null)
+              // Money that does not add up is more urgent than any figure
+              // below it, so problems sit right under the headline.
               FinanceSection(
-                title: l10n.serviceFee,
+                title: l10n.needsAttention,
                 child: FinanceCard(
-                  children: [
-                    FinanceRow(
-                      icon: Icons.receipt_long_rounded,
-                      label: _serviceFee!.isOff
-                          ? l10n.serviceFeeOff
-                          : _serviceFee!.isPercent
-                          ? l10n.serviceFeeSummaryPercent(
-                              trimZeros(_serviceFee!.value),
-                            )
-                          : l10n.serviceFeeFixed,
-                      value: _serviceFee!.isOff
-                          ? '—'
-                          : _serviceFee!.isPercent
-                          ? '${trimZeros(_serviceFee!.value)}%'
-                          : formatMoney(_serviceFee!.value),
-                      onTap: _editServiceFee,
-                    ),
-                  ],
+                  children: attention.isEmpty
+                      ? [
+                          _AttentionRow(
+                            icon: Icons.verified_rounded,
+                            tone: AppColors.successInk,
+                            text:
+                                '${l10n.booksBalanced} · ${l10n.nothingNeedsAttention}',
+                          ),
+                        ]
+                      : attention,
                 ),
               ),
-            if (_driverShare != null)
+
+              // The four routes are drawn from the same delivered-orders set and
+              // each order belongs to exactly one, so they sum to the total.
               FinanceSection(
-                title: l10n.driverShareTitle,
+                title: l10n.collectedFromCustomers,
                 child: FinanceCard(
                   children: [
-                    FinanceRow(
-                      icon: Icons.tune_rounded,
-                      label: l10n.driverShareSummary(
-                        trimZeros(_driverShare!),
-                        trimZeros(100 - _driverShare!),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpace.lg,
+                        AppSpace.lg,
+                        AppSpace.lg,
+                        AppSpace.sm,
                       ),
-                      value: '${trimZeros(_driverShare!)}%',
-                      onTap: _editDriverShare,
+                      child: _SplitBar(
+                        parts: [
+                          (o.codRevenue, _inColors[0]),
+                          (o.cardRevenue, _inColors[1]),
+                          (o.mobileWalletRevenue, _inColors[2]),
+                          (o.appWalletRevenue, _inColors[3]),
+                        ],
+                      ),
+                    ),
+                    FinanceRow(
+                      icon: Icons.payments_rounded,
+                      tone: _inColors[0],
+                      label: l10n.cashOnDelivery,
+                      note: l10n.ordersCount(o.cashOrders),
+                      value: formatMoney(o.codRevenue),
+                    ),
+                    FinanceRow(
+                      icon: Icons.credit_card_rounded,
+                      tone: _inColors[1],
+                      label: l10n.card,
+                      note: l10n.ordersCount(o.cardOrders),
+                      value: formatMoney(o.cardRevenue),
+                    ),
+                    FinanceRow(
+                      icon: Icons.smartphone_rounded,
+                      tone: _inColors[2],
+                      label: l10n.mobileWallet,
+                      note: l10n.ordersCount(o.mobileWalletOrders),
+                      value: formatMoney(o.mobileWalletRevenue),
+                    ),
+                    FinanceRow(
+                      icon: Icons.account_balance_wallet_rounded,
+                      tone: _inColors[3],
+                      label: l10n.appWalletLabel,
+                      note: l10n.ordersCount(o.appWalletOrders),
+                      value: formatMoney(o.appWalletRevenue),
+                    ),
+                    FinanceRow(
+                      label: l10n.grossMerchandiseValue,
+                      value: formatMoney(o.grossRevenue),
+                      emphasis: true,
                     ),
                   ],
                 ),
               ),
-          ]),
+
+              // The ledger's own figures. Not joined to the block above with an
+              // equals sign: tips pass straight through and refunds and
+              // adjustments land in their own rows.
+              FinanceSection(
+                title: l10n.whereItGoes,
+                child: FinanceCard(
+                  children: [
+                    _signedRow(l10n.vendorPayouts, -o.vendorEarnings),
+                    if (o.driverStorePurchases > 0)
+                      _signedRow(
+                        l10n.paidToStoresByDrivers,
+                        -o.driverStorePurchases,
+                      ),
+                    _signedRow(l10n.driverCost, -o.driverEarnings),
+                    _signedRow(
+                      l10n.platformFundedDiscounts,
+                      -o.platformDiscounts,
+                    ),
+                    _signedRow(l10n.platformCommission, o.platformCommission),
+                    _signedRow(
+                      l10n.platformShareLabel,
+                      o.platformDeliveryMargin,
+                    ),
+                    if (o.platformServiceFees != 0)
+                      _signedRow(l10n.serviceFee, o.platformServiceFees),
+                    if (o.earlySettlementFees != 0)
+                      _signedRow(
+                        l10n.earlySettlementFees,
+                        o.earlySettlementFees,
+                      ),
+                    FinanceRow(
+                      label: l10n.platformEarnings,
+                      value: _signed(o.platformEarnings),
+                      emphasis: true,
+                      tone: o.platformEarnings >= 0
+                          ? AppColors.successInk
+                          : AppColors.dangerInk,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            [
+              // Positions rather than flows, which is why they ignore the period.
+              FinanceSection(
+                title: l10n.openBalances,
+                child: FinanceCard(
+                  children: [
+                    FinanceRow(
+                      icon: Icons.two_wheeler_rounded,
+                      tone: AppColors.amberInk,
+                      label: l10n.driverCashDueTotal,
+                      value: formatMoney(o.driverCashDue),
+                      onTap: () =>
+                          AdminWebNav.go(context, '/admin-app/settlements'),
+                    ),
+                    FinanceRow(
+                      icon: Icons.storefront_rounded,
+                      tone: AppColors.primary,
+                      label: l10n.vendorPayableTotal,
+                      value: formatMoney(o.vendorPayable),
+                      onTap: () =>
+                          AdminWebNav.go(context, '/admin-app/settlements'),
+                    ),
+                  ],
+                ),
+              ),
+
+              FinanceSection(
+                title: l10n.moneyMovements,
+                child: FinanceCard(
+                  children: [
+                    FinanceRow(
+                      icon: Icons.payments_rounded,
+                      label: l10n.cashCollectedLabel,
+                      value: formatMoney(o.cashCollected),
+                    ),
+                    FinanceRow(
+                      icon: Icons.move_to_inbox_rounded,
+                      label: l10n.cashHandedOver,
+                      value: formatMoney(o.deposits),
+                      onTap: () =>
+                          AdminWebNav.go(context, '/admin-app/deposits'),
+                    ),
+                    FinanceRow(
+                      icon: Icons.account_balance_rounded,
+                      label: l10n.settlementsPaidOut,
+                      value: formatMoney(o.settlements),
+                    ),
+                    FinanceRow(
+                      icon: Icons.undo_rounded,
+                      label: l10n.refunds,
+                      value: formatMoney(o.refunds),
+                    ),
+                  ],
+                ),
+              ),
+
+              // The number that decides the driver-cost and delivery-share rows
+              // above, so its control sits on the same page.
+              if (_serviceFee != null)
+                FinanceSection(
+                  title: l10n.serviceFee,
+                  child: FinanceCard(
+                    children: [
+                      FinanceRow(
+                        icon: Icons.receipt_long_rounded,
+                        label: _serviceFee!.isOff
+                            ? l10n.serviceFeeOff
+                            : _serviceFee!.isPercent
+                            ? l10n.serviceFeeSummaryPercent(
+                                trimZeros(_serviceFee!.value),
+                              )
+                            : l10n.serviceFeeFixed,
+                        value: _serviceFee!.isOff
+                            ? '—'
+                            : _serviceFee!.isPercent
+                            ? '${trimZeros(_serviceFee!.value)}%'
+                            : formatMoney(_serviceFee!.value),
+                        onTap: _editServiceFee,
+                      ),
+                    ],
+                  ),
+                ),
+              if (_driverShare != null)
+                FinanceSection(
+                  title: l10n.driverShareTitle,
+                  child: FinanceCard(
+                    children: [
+                      FinanceRow(
+                        icon: Icons.tune_rounded,
+                        label: l10n.driverShareSummary(
+                          trimZeros(_driverShare!),
+                          trimZeros(100 - _driverShare!),
+                        ),
+                        value: '${trimZeros(_driverShare!)}%',
+                        onTap: _editDriverShare,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );

@@ -16,6 +16,8 @@ import '../admin_dashboard_cubit.dart';
 import 'admin_order_detail_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../admin_shell.dart' show AdminWebNav;
+import '../admin_action_badges.dart';
+import '../../../core/widgets/web/console.dart';
 import 'admin_manage_screen.dart' show adminManageGroups;
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -53,6 +55,15 @@ class _DashboardViewState extends State<_DashboardView> {
           return BlocBuilder<AdminDashboardCubit, AdminDashboardState>(
             builder: (context, state) {
               final cubit = context.read<AdminDashboardCubit>();
+              // The desktop console gets a page of its own rather than the
+              // tablet's split view: an action queue, the day's money, and
+              // the live board beside who is owed.
+              if (webWide) {
+                return _WebOverview(
+                  state: state,
+                  onRefresh: cubit.refreshStats,
+                );
+              }
               if (split) {
                 return Column(
                   children: [
@@ -525,8 +536,7 @@ class _OwedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sorted = [...parties]
-      ..sort((a, b) => b.payable.compareTo(a.payable));
+    final sorted = [...parties]..sort((a, b) => b.payable.compareTo(a.payable));
     final total = sorted.fold<double>(0, (sum, p) => sum + p.payable);
     final visible = sorted.take(_shown).toList();
 
@@ -588,7 +598,10 @@ class _OwedList extends StatelessWidget {
             padding: const EdgeInsets.only(top: 5),
             child: Text(
               context.l10n.andNMore(sorted.length - _shown),
-              style: const TextStyle(fontSize: 11.5, color: AppColors.textFaint),
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: AppColors.textFaint,
+              ),
             ),
           ),
       ],
@@ -1282,4 +1295,546 @@ class AdminOrdersStuck {
       !o.status.isTerminal &&
       o.status != OrderStatus.outForDelivery &&
       DateTime.now().difference(o.createdAt) > const Duration(minutes: 20);
+}
+
+/// The admin's desktop Overview.
+///
+/// One question first — "does anything need me?" — answered by the action
+/// queue, which is the only loud thing on the page. Then the day's money, then
+/// the live board beside the balances an operator settles from.
+class _WebOverview extends StatelessWidget {
+  const _WebOverview({required this.state, required this.onRefresh});
+
+  final AdminDashboardState state;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final auth = context.watch<AuthCubit>().state;
+    final name = auth.profile?.fullName.trim().split(RegExp(r'\s+')).first;
+    final today = state.today;
+    final stats = state.stats;
+
+    return ConsolePage(
+      title: name == null || name.isEmpty
+          ? l10n.overview
+          : l10n.helloName(name),
+      description: l10n.overviewDescription,
+      onRefresh: onRefresh,
+      actions: [
+        OutlinedButton.icon(
+          onPressed: () => context.go('/admin-app/orders'),
+          icon: const Icon(Icons.receipt_long_rounded, size: 18),
+          label: Text(l10n.openOrderBoard),
+        ),
+      ],
+      children: [
+        const _ActionQueue(),
+        const SizedBox(height: AppSpace.xxl),
+        Text(l10n.today, style: AppType.heading(17)),
+        const SizedBox(height: AppSpace.md),
+        ConsoleGrid(
+          minTileWidth: 170,
+          maxColumns: 5,
+          children: [
+            ConsoleStat(
+              label: l10n.grossMerchandiseValue,
+              value: formatMoney(stats.gmvToday),
+              icon: Icons.shopping_bag_outlined,
+            ),
+            ConsoleStat(
+              label: l10n.orders,
+              value: '${stats.ordersToday}',
+              icon: Icons.receipt_long_outlined,
+              onTap: () => context.go('/admin-app/orders'),
+            ),
+            if (!state.moneyDenied && today != null) ...[
+              ConsoleStat(
+                label: l10n.profitToday,
+                value: formatMoney(today.platformEarnings),
+                icon: Icons.trending_up_rounded,
+                tone: today.platformEarnings > 0
+                    ? ConsoleTone.good
+                    : ConsoleTone.plain,
+                onTap: () => AdminWebNav.go(context, '/admin-app/finance'),
+              ),
+            ],
+            ConsoleStat(
+              label: l10n.storesOpenNow,
+              value: '${stats.vendorsOpen} / ${stats.vendorsActive}',
+              icon: Icons.store_mall_directory_outlined,
+              onTap: () => context.go('/admin-app/vendors'),
+            ),
+            ConsoleStat(
+              label: l10n.driversOnlineNow,
+              value: '${stats.driversOnline}',
+              icon: Icons.two_wheeler_rounded,
+              tone: stats.driversOnline == 0 && stats.ordersToday > 0
+                  ? ConsoleTone.warn
+                  : ConsoleTone.plain,
+              hint: stats.driversOnline == 0 ? l10n.noDriversOnlineHint : null,
+              onTap: () => AdminWebNav.go(context, '/admin-app/drivers'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.xxl),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final board = _LiveBoard(state: state);
+            final money = state.moneyDenied
+                ? null
+                : _BalancesPanel(state: state);
+            if (constraints.maxWidth < 980 || money == null) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  board,
+                  if (money != null) ...[
+                    const SizedBox(height: AppSpace.lg),
+                    money,
+                  ],
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: board),
+                const SizedBox(width: AppSpace.lg),
+                Expanded(flex: 2, child: money),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Everything waiting on staff, from the same live counts as the sidebar
+/// badges. Each item is a door to where it is dealt with; when nothing is
+/// waiting, the queue says so in one calm line instead of a row of zeros.
+class _ActionQueue extends StatelessWidget {
+  const _ActionQueue();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final badges = AdminActionBadges.instance;
+    final items =
+        <({String key, IconData icon, String label, VoidCallback go})>[
+          (
+            key: AdminActionBadges.ordersAttention,
+            icon: Icons.receipt_long_rounded,
+            label: l10n.ordersNeedAttention,
+            go: () => context.go('/admin-app/orders'),
+          ),
+          (
+            key: AdminActionBadges.supportAwaiting,
+            icon: Icons.support_agent_rounded,
+            label: l10n.openSupportThreads,
+            go: () => AdminWebNav.go(context, '/admin-app/support'),
+          ),
+          (
+            key: AdminActionBadges.reportsPending,
+            icon: Icons.report_problem_outlined,
+            label: l10n.customerReports,
+            go: () => AdminWebNav.go(context, '/admin-app/complaints'),
+          ),
+          (
+            key: AdminActionBadges.vendorsPending,
+            icon: Icons.storefront_rounded,
+            label: l10n.vendorsToApprove,
+            go: () => context.go('/admin-app/vendors'),
+          ),
+          (
+            key: AdminActionBadges.driversPending,
+            icon: Icons.delivery_dining_rounded,
+            label: l10n.driversToApprove,
+            go: () => AdminWebNav.go(context, '/admin-app/drivers'),
+          ),
+          (
+            key: AdminActionBadges.settlementRequests,
+            icon: Icons.handshake_outlined,
+            label: l10n.settlementsTitle,
+            go: () => AdminWebNav.go(context, '/admin-app/settlements'),
+          ),
+          (
+            key: AdminActionBadges.depositsPending,
+            icon: Icons.account_balance_outlined,
+            label: l10n.depositsAwaitingReview,
+            go: () => AdminWebNav.go(context, '/admin-app/deposits'),
+          ),
+        ];
+    final listenables = [for (final i in items) badges.countFor(i.key)];
+
+    return ListenableBuilder(
+      listenable: Listenable.merge(listenables),
+      builder: (context, _) {
+        final waiting = [
+          for (var i = 0; i < items.length; i++)
+            if (listenables[i].value > 0)
+              (item: items[i], count: listenables[i].value),
+        ];
+        final total = waiting.fold<int>(0, (sum, w) => sum + w.count);
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: waiting.isEmpty ? AppColors.surface : AppColors.ink,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: waiting.isEmpty ? AppColors.border : AppColors.ink,
+            ),
+          ),
+          child: waiting.isEmpty
+              ? Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: AppColors.successFill,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: AppColors.successInk,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.allClear, style: AppType.heading(16)),
+                          Text(
+                            l10n.allClearDescription,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          l10n.needsYouNow,
+                          style: AppType.heading(17, color: Colors.white),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.onDarkPistachio,
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                          child: Text(
+                            '$total',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final w in waiting)
+                          _QueueItem(
+                            icon: w.item.icon,
+                            label: w.item.label,
+                            count: w.count,
+                            onTap: w.item.go,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _QueueItem extends StatelessWidget {
+  const _QueueItem({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.inkElevated,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        hoverColor: Colors.white.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: AppColors.onDarkPistachio),
+              const SizedBox(width: 10),
+              Text('$count', style: AppType.display(20, color: Colors.white)),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 200),
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.25,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                Directionality.of(context) == TextDirection.rtl
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
+                size: 18,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The orders still moving, newest first, as a dense list. A row opens the
+/// order beside the board rather than taking the operator away from it.
+class _LiveBoard extends StatelessWidget {
+  const _LiveBoard({required this.state});
+
+  final AdminDashboardState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final orders = state.liveOrders;
+    return ConsolePanel(
+      title: l10n.liveOrders,
+      subtitle: l10n.liveOrdersCount(orders.length),
+      trailing: const Padding(
+        padding: EdgeInsets.only(top: 4, right: 8),
+        child: _UpdatingDot(),
+      ),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+      child: state.loading
+          ? const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : orders.isEmpty
+          ? ConsoleEmpty(
+              icon: Icons.receipt_long_outlined,
+              title: l10n.noLiveOrdersRightNow,
+              message: l10n.noLiveOrdersHint,
+            )
+          : Column(
+              children: [
+                for (final order in orders.take(12))
+                  _LiveRow(
+                    order: order,
+                    store:
+                        state.vendorLabels[order.vendorId]?.name ??
+                        order.vendorName ??
+                        l10n.store,
+                  ),
+                if (orders.length > 12)
+                  TextButton(
+                    onPressed: () => context.go('/admin-app/orders'),
+                    child: Text(l10n.andNMore(orders.length - 12)),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+class _LiveRow extends StatelessWidget {
+  const _LiveRow({required this.order, required this.store});
+
+  final AppOrder order;
+  final String store;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final minutes = DateTime.now().difference(order.createdAt).inMinutes;
+    final stuck = AdminOrdersStuck.isStuck(order);
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.sm),
+      onTap: () => showConsoleSidePanel<void>(
+        context,
+        title: l10n.orderRef(order.orderNumber),
+        child: AdminOrderDetailView(orderId: order.id, embedded: true),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 92,
+              child: Text(
+                order.orderNumber,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.mono(12.5, color: AppColors.textSecondary),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                '$store → ${order.customerName ?? l10n.customer}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 70,
+              child: Text(
+                l10n.minutesAgoShort(minutes),
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: stuck ? FontWeight.w800 : FontWeight.w500,
+                  color: stuck ? AppColors.dangerInk : AppColors.textMuted,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 130,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OrderStatusChip(status: order.status),
+              ),
+            ),
+            SizedBox(
+              width: 100,
+              child: Text(
+                formatMoney(order.total),
+                textAlign: TextAlign.end,
+                style: AppType.mono(13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Who is owed money right now, and cash the platform is owed back. Running
+/// balances, not today's figures — those are in the stat row above.
+class _BalancesPanel extends StatelessWidget {
+  const _BalancesPanel({required this.state});
+
+  final AdminDashboardState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final stores = state.vendorBalances.where((p) => p.payable > 0).toList();
+    final riders = state.driverBalances.where((p) => p.payable > 0).toList();
+    final cashOut = state.driverBalances.fold<double>(
+      0,
+      (sum, party) => sum + party.cashDue,
+    );
+    return ConsolePanel(
+      title: l10n.balances,
+      subtitle: l10n.balancesHint,
+      trailing: TextButton(
+        onPressed: () => AdminWebNav.go(context, '/admin-app/settlements'),
+        child: Text(l10n.settle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _OwedList(
+            title: l10n.owedToStores,
+            icon: Icons.storefront_rounded,
+            parties: stores,
+          ),
+          const Divider(height: 28, color: AppColors.borderSoft),
+          _OwedList(
+            title: l10n.owedToDrivers,
+            icon: Icons.two_wheeler_rounded,
+            parties: riders,
+          ),
+          if (cashOut > 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.amberFill,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.payments_outlined,
+                    size: 16,
+                    color: AppColors.amberInk,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.cashHeldByDrivers,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.amberInk,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    formatMoney(cashOut),
+                    style: AppType.mono(13, color: AppColors.amberInk),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

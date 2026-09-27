@@ -339,7 +339,8 @@ class _VendorPayoutsScreenState extends State<VendorPayoutsScreen> {
       children: children,
     );
     if (!AppBreakpoints.isWebWide(context)) return column;
-    return Center(
+    return Align(
+      alignment: AlignmentDirectional.topStart,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820),
         child: column,

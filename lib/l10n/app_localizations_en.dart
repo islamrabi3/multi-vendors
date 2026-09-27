@@ -6228,4 +6228,236 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get details => 'Details';
+
+  @override
+  String get account => 'Account';
+
+  @override
+  String get expandSidebar => 'Show labels';
+
+  @override
+  String get collapseSidebar => 'Icons only';
+
+  @override
+  String get jumpToAnything => 'Jump to a page or order…';
+
+  @override
+  String get jumpToPage => 'Type a page name';
+
+  @override
+  String get jumpToAnythingHint => 'Type a page, an order number or a store';
+
+  @override
+  String get searching => 'Searching…';
+
+  @override
+  String get nothingMatches =>
+      'Nothing matches. Try part of a name or an order number.';
+
+  @override
+  String get adminConsole => 'Admin console';
+
+  @override
+  String get fullAccess => 'Full access';
+
+  @override
+  String get limitedAccess => 'Limited access';
+
+  @override
+  String get storeOwner => 'Owner';
+
+  @override
+  String get storeStaff => 'Staff';
+
+  @override
+  String helloName(String name) {
+    return 'Hello, $name';
+  }
+
+  @override
+  String get overviewDescription =>
+      'What needs you, what today has made, and what is moving right now.';
+
+  @override
+  String get openOrderBoard => 'Open order board';
+
+  @override
+  String get storesOpenNow => 'Stores open now';
+
+  @override
+  String get driversOnlineNow => 'Drivers online';
+
+  @override
+  String get noDriversOnlineHint => 'Orders will wait for a driver';
+
+  @override
+  String get allClear => 'Nothing is waiting on you';
+
+  @override
+  String get allClearDescription =>
+      'New requests, reports and stuck orders will show up here as they come in.';
+
+  @override
+  String get needsYouNow => 'Needs you now';
+
+  @override
+  String liveOrdersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count orders moving',
+      one: '1 order moving',
+      zero: 'Nothing moving',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noLiveOrdersHint =>
+      'Orders appear here the moment a customer places one.';
+
+  @override
+  String minutesAgoShort(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get pageDescComplaints =>
+      'Problems customers reported about their orders. Pending ones are waiting for an answer.';
+
+  @override
+  String get pageDescSupport =>
+      'Conversations with customers, stores and drivers who asked for help.';
+
+  @override
+  String get pageDescUsers =>
+      'Every account on the platform. Block, restore or close an account from here.';
+
+  @override
+  String get pageDescMaintenance =>
+      'Close the platform to customers, stores and drivers while you work on it. Staff keep access.';
+
+  @override
+  String get pageDescRoles =>
+      'Staff accounts and what each role is allowed to do.';
+
+  @override
+  String get pageDescAnnouncements =>
+      'Send a notification to customers, stores or drivers, now or later.';
+
+  @override
+  String get pageDescReports =>
+      'Sales, fees and payouts for any period, platform-wide or per store and driver.';
+
+  @override
+  String get pageDescDrivers =>
+      'Approve new drivers, check their documents, and suspend accounts.';
+
+  @override
+  String get pageDescServiceAreas =>
+      'Where customers can order delivery. Orders outside every area are refused.';
+
+  @override
+  String get pageDescCategories =>
+      'The categories customers browse stores and dishes by.';
+
+  @override
+  String get pageDescMenuImport =>
+      'Build a store\'s menu from photos, a spreadsheet or a link.';
+
+  @override
+  String get pageDescPriceAdjustment =>
+      'Raise or lower a store\'s prices by a percentage in one step.';
+
+  @override
+  String get pageDescFinance =>
+      'What was collected, what the platform kept, and what is owed to stores and drivers.';
+
+  @override
+  String get pageDescSettlements =>
+      'Pay stores and drivers what they are owed, and collect cash drivers are holding.';
+
+  @override
+  String get pageDescDeposits =>
+      'Cash drivers say they handed over. Confirm each one once the money is in.';
+
+  @override
+  String get pageDescPromos => 'Coupon codes customers enter at checkout.';
+
+  @override
+  String get pageDescPriceCampaigns =>
+      'Temporary price changes across stores, with the difference kept by the platform.';
+
+  @override
+  String get pageDescAds =>
+      'Banners and featured spots on the customer home screen.';
+
+  @override
+  String get pageDescContent =>
+      'Pages customers read in the app: terms, privacy, about, and help.';
+
+  @override
+  String get balances => 'Balances';
+
+  @override
+  String get balancesHint => 'Running totals, not just today';
+
+  @override
+  String get settle => 'Settle';
+
+  @override
+  String get status => 'Status';
+
+  @override
+  String get whoRunsOrders => 'Orders run by';
+
+  @override
+  String get billing => 'Billing';
+
+  @override
+  String get rating => 'Rating';
+
+  @override
+  String get subscription => 'Subscription';
+
+  @override
+  String get commission => 'Commission';
+
+  @override
+  String get tryAnotherSearch => 'Try another name or phone number.';
+
+  @override
+  String get pageDescVendors =>
+      'Every store on the platform. Approve new ones, and open a store to change anything about it.';
+
+  @override
+  String get navBusiness => 'Business';
+
+  @override
+  String get navStoreSetup => 'Store setup';
+
+  @override
+  String get navAnalytics => 'Analytics';
+
+  @override
+  String get navOpeningHours => 'Opening hours';
+
+  @override
+  String get pageDescVendorAnalytics =>
+      'What you sold, what you earned after fees, and how customers rate you.';
+
+  @override
+  String get pageDescOrderHistory => 'Every finished order, searchable by day.';
+
+  @override
+  String get pageDescPayouts =>
+      'What the platform owes you, what it has paid, and when.';
+
+  @override
+  String get pageDescOpeningHours =>
+      'The hours your store takes orders, day by day. Tap a day to change it.';
+
+  @override
+  String get pageDescReviews =>
+      'What customers said about their orders. Reply to show you are listening.';
 }

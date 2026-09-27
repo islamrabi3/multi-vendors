@@ -314,7 +314,8 @@ class _VendorOrdersHistoryScreenState extends State<VendorOrdersHistoryScreen> {
         onRefresh: _load,
         // Centred and capped on the web: a day's orders stretched across a
         // 1200px pane put the amount a long way from the order it belongs to.
-        child: Center(
+        child: Align(
+          alignment: AlignmentDirectional.topStart,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 820),
             child: Column(

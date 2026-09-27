@@ -292,7 +292,8 @@ class _VendorScheduleScreenState extends State<VendorScheduleScreen> {
                 AppSpace.xxl + MediaQuery.paddingOf(context).bottom,
               ),
               children: [
-                Center(
+                Align(
+                  alignment: AlignmentDirectional.topStart,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1000),
                     child: Column(

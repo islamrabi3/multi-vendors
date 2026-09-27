@@ -59,7 +59,7 @@ class ConsolePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final list = ListView(
-      padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
       children: [
         Align(
           alignment: AlignmentDirectional.topStart,
@@ -327,11 +327,13 @@ class ConsoleStat extends StatelessWidget {
         ],
       ),
     );
+    // Only a warning fills the tile; a good number is just a green number.
+    final loud = tone == ConsoleTone.warn || tone == ConsoleTone.danger;
     return Material(
-      color: tone.fill ?? AppColors.surface,
+      color: loud ? tone.fill! : AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        side: BorderSide(color: tone.edge ?? AppColors.border),
+        side: BorderSide(color: loud ? tone.edge! : AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: onTap == null ? body : InkWell(onTap: onTap, child: body),
@@ -666,4 +668,81 @@ class ConsoleFilterChip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Slides [child] in from the end edge over the page, for looking at one
+/// thing (an order, a store) without losing the list it came from. Closes on
+/// the barrier, Escape, or its own close button.
+Future<T?> showConsoleSidePanel<T>(
+  BuildContext context, {
+  required String title,
+  required Widget child,
+  double width = 620,
+}) {
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: AppColors.ink.withValues(alpha: 0.24),
+    transitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (context, _, _) => Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: Material(
+        color: AppColors.canvas,
+        elevation: 0,
+        child: Container(
+          width: width,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            boxShadow: AppShadows.dialog,
+            color: AppColors.canvas,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                height: 64,
+                color: AppColors.surface,
+                padding: const EdgeInsetsDirectional.only(start: 24, end: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.heading(17),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              Expanded(child: child),
+            ],
+          ),
+        ),
+      ),
+    ),
+    transitionBuilder: (context, animation, _, child) {
+      final rtl = Directionality.of(context) == TextDirection.rtl;
+      return SlideTransition(
+        position:
+            Tween<Offset>(
+              begin: Offset(rtl ? -0.25 : 0.25, 0),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
+        child: FadeTransition(opacity: animation, child: child),
+      );
+    },
+  );
 }

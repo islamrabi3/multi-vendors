@@ -71,10 +71,8 @@ class _PromosView extends StatelessWidget {
     // everywhere except `embedded`, which has no title anywhere else at all.
     final header = Row(
       children: [
-        if (embedded)
-          Expanded(child: Text(l10n.promos, style: AppType.display(26)))
-        else
-          const Spacer(),
+        // The console draws this page's title above it.
+        const Spacer(),
         const _NewButton(),
       ],
     );

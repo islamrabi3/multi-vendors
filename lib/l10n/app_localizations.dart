@@ -11378,6 +11378,390 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Details'**
   String get details;
+
+  /// No description provided for @account.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get account;
+
+  /// No description provided for @expandSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Show labels'**
+  String get expandSidebar;
+
+  /// No description provided for @collapseSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons only'**
+  String get collapseSidebar;
+
+  /// No description provided for @jumpToAnything.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to a page or order…'**
+  String get jumpToAnything;
+
+  /// No description provided for @jumpToPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a page name'**
+  String get jumpToPage;
+
+  /// No description provided for @jumpToAnythingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a page, an order number or a store'**
+  String get jumpToAnythingHint;
+
+  /// No description provided for @searching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching…'**
+  String get searching;
+
+  /// No description provided for @nothingMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches. Try part of a name or an order number.'**
+  String get nothingMatches;
+
+  /// No description provided for @adminConsole.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin console'**
+  String get adminConsole;
+
+  /// No description provided for @fullAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Full access'**
+  String get fullAccess;
+
+  /// No description provided for @limitedAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited access'**
+  String get limitedAccess;
+
+  /// No description provided for @storeOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get storeOwner;
+
+  /// No description provided for @storeStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff'**
+  String get storeStaff;
+
+  /// No description provided for @helloName.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello, {name}'**
+  String helloName(String name);
+
+  /// No description provided for @overviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What needs you, what today has made, and what is moving right now.'**
+  String get overviewDescription;
+
+  /// No description provided for @openOrderBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Open order board'**
+  String get openOrderBoard;
+
+  /// No description provided for @storesOpenNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Stores open now'**
+  String get storesOpenNow;
+
+  /// No description provided for @driversOnlineNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Drivers online'**
+  String get driversOnlineNow;
+
+  /// No description provided for @noDriversOnlineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders will wait for a driver'**
+  String get noDriversOnlineHint;
+
+  /// No description provided for @allClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is waiting on you'**
+  String get allClear;
+
+  /// No description provided for @allClearDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'New requests, reports and stuck orders will show up here as they come in.'**
+  String get allClearDescription;
+
+  /// No description provided for @needsYouNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you now'**
+  String get needsYouNow;
+
+  /// No description provided for @liveOrdersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing moving} =1{1 order moving} other{{count} orders moving}}'**
+  String liveOrdersCount(int count);
+
+  /// No description provided for @noLiveOrdersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders appear here the moment a customer places one.'**
+  String get noLiveOrdersHint;
+
+  /// No description provided for @minutesAgoShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String minutesAgoShort(int minutes);
+
+  /// No description provided for @pageDescComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'Problems customers reported about their orders. Pending ones are waiting for an answer.'**
+  String get pageDescComplaints;
+
+  /// No description provided for @pageDescSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversations with customers, stores and drivers who asked for help.'**
+  String get pageDescSupport;
+
+  /// No description provided for @pageDescUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Every account on the platform. Block, restore or close an account from here.'**
+  String get pageDescUsers;
+
+  /// No description provided for @pageDescMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the platform to customers, stores and drivers while you work on it. Staff keep access.'**
+  String get pageDescMaintenance;
+
+  /// No description provided for @pageDescRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff accounts and what each role is allowed to do.'**
+  String get pageDescRoles;
+
+  /// No description provided for @pageDescAnnouncements.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a notification to customers, stores or drivers, now or later.'**
+  String get pageDescAnnouncements;
+
+  /// No description provided for @pageDescReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales, fees and payouts for any period, platform-wide or per store and driver.'**
+  String get pageDescReports;
+
+  /// No description provided for @pageDescDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve new drivers, check their documents, and suspend accounts.'**
+  String get pageDescDrivers;
+
+  /// No description provided for @pageDescServiceAreas.
+  ///
+  /// In en, this message translates to:
+  /// **'Where customers can order delivery. Orders outside every area are refused.'**
+  String get pageDescServiceAreas;
+
+  /// No description provided for @pageDescCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'The categories customers browse stores and dishes by.'**
+  String get pageDescCategories;
+
+  /// No description provided for @pageDescMenuImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Build a store\'s menu from photos, a spreadsheet or a link.'**
+  String get pageDescMenuImport;
+
+  /// No description provided for @pageDescPriceAdjustment.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise or lower a store\'s prices by a percentage in one step.'**
+  String get pageDescPriceAdjustment;
+
+  /// No description provided for @pageDescFinance.
+  ///
+  /// In en, this message translates to:
+  /// **'What was collected, what the platform kept, and what is owed to stores and drivers.'**
+  String get pageDescFinance;
+
+  /// No description provided for @pageDescSettlements.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay stores and drivers what they are owed, and collect cash drivers are holding.'**
+  String get pageDescSettlements;
+
+  /// No description provided for @pageDescDeposits.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash drivers say they handed over. Confirm each one once the money is in.'**
+  String get pageDescDeposits;
+
+  /// No description provided for @pageDescPromos.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon codes customers enter at checkout.'**
+  String get pageDescPromos;
+
+  /// No description provided for @pageDescPriceCampaigns.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary price changes across stores, with the difference kept by the platform.'**
+  String get pageDescPriceCampaigns;
+
+  /// No description provided for @pageDescAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Banners and featured spots on the customer home screen.'**
+  String get pageDescAds;
+
+  /// No description provided for @pageDescContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages customers read in the app: terms, privacy, about, and help.'**
+  String get pageDescContent;
+
+  /// No description provided for @balances.
+  ///
+  /// In en, this message translates to:
+  /// **'Balances'**
+  String get balances;
+
+  /// No description provided for @balancesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Running totals, not just today'**
+  String get balancesHint;
+
+  /// No description provided for @settle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle'**
+  String get settle;
+
+  /// No description provided for @status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get status;
+
+  /// No description provided for @whoRunsOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders run by'**
+  String get whoRunsOrders;
+
+  /// No description provided for @billing.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing'**
+  String get billing;
+
+  /// No description provided for @rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
+  String get rating;
+
+  /// No description provided for @subscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription'**
+  String get subscription;
+
+  /// No description provided for @commission.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission'**
+  String get commission;
+
+  /// No description provided for @tryAnotherSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another name or phone number.'**
+  String get tryAnotherSearch;
+
+  /// No description provided for @pageDescVendors.
+  ///
+  /// In en, this message translates to:
+  /// **'Every store on the platform. Approve new ones, and open a store to change anything about it.'**
+  String get pageDescVendors;
+
+  /// No description provided for @navBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Business'**
+  String get navBusiness;
+
+  /// No description provided for @navStoreSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Store setup'**
+  String get navStoreSetup;
+
+  /// No description provided for @navAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics'**
+  String get navAnalytics;
+
+  /// No description provided for @navOpeningHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening hours'**
+  String get navOpeningHours;
+
+  /// No description provided for @pageDescVendorAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'What you sold, what you earned after fees, and how customers rate you.'**
+  String get pageDescVendorAnalytics;
+
+  /// No description provided for @pageDescOrderHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Every finished order, searchable by day.'**
+  String get pageDescOrderHistory;
+
+  /// No description provided for @pageDescPayouts.
+  ///
+  /// In en, this message translates to:
+  /// **'What the platform owes you, what it has paid, and when.'**
+  String get pageDescPayouts;
+
+  /// No description provided for @pageDescOpeningHours.
+  ///
+  /// In en, this message translates to:
+  /// **'The hours your store takes orders, day by day. Tap a day to change it.'**
+  String get pageDescOpeningHours;
+
+  /// No description provided for @pageDescReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'What customers said about their orders. Reply to show you are listening.'**
+  String get pageDescReviews;
 }
 
 class _AppLocalizationsDelegate
