@@ -19,6 +19,7 @@ import 'screens/admin_finance_screen.dart';
 import 'screens/admin_manage_screen.dart';
 import 'screens/admin_menu_import_screen.dart';
 import 'screens/admin_maintenance_screen.dart';
+import 'screens/admin_platform_settings_screen.dart';
 import 'screens/admin_price_campaigns_screen.dart';
 import 'screens/admin_price_adjustment_screen.dart';
 import 'screens/admin_promos_screen.dart';
@@ -201,6 +202,9 @@ class _AdminWebShellState extends State<_AdminWebShell> {
       embedded: true,
     ),
     '/admin-app/finance' => const AdminFinanceScreen(embedded: true),
+    '/admin-app/platform-settings' => const AdminPlatformSettingsScreen(
+      embedded: true,
+    ),
     '/admin-app/settlements' => const AdminSettlementsScreen(embedded: true),
     '/admin-app/deposits' => const AdminDepositsScreen(embedded: true),
     '/admin-app/promos' => const AdminPromosScreen(embedded: true),

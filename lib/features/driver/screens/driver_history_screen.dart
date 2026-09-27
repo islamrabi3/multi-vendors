@@ -3,6 +3,7 @@ import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/models/order.dart';
 import '../../../core/repositories/order_repository.dart';
 import '../../../core/widgets/common.dart';
@@ -227,7 +228,7 @@ class _WeekHero extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${context.l10n.egp} ${weekTotal.toStringAsFixed(0)}',
+            '$currencySymbol ${weekTotal.toStringAsFixed(0)}',
             style: AppType.display(34, color: Colors.white),
           ),
           const SizedBox(height: 14),

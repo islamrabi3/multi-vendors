@@ -27,7 +27,21 @@
 //   flow that is the one thing worse than an error message.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PAYMOB_BASE = "https://accept.paymob.com";
+// Paymob runs a separate host per region (accept. for Egypt, ksa. for Saudi
+// Arabia, …). Egypt unless PAYMOB_BASE_URL says otherwise.
+const PAYMOB_BASE = Deno.env.get("PAYMOB_BASE_URL") ?? "https://accept.paymob.com";
+
+// The billing country Paymob expects for the platform's currency. Paymob
+// only accepts the currency its account was opened in, so these follow the
+// currency rather than the customer.
+const COUNTRY_FOR_CURRENCY: Record<string, string> = {
+  EGP: "EG",
+  SAR: "SA",
+  AED: "AE",
+  OMR: "OM",
+  JOD: "JO",
+  PKR: "PK",
+};
 const REDIRECT_URL = "https://payment-complete.local/";
 
 const TOPUP_MIN = 10;
@@ -123,6 +137,15 @@ Deno.serve(async (req) => {
       reference = `order-${order.id}-${crypto.randomUUID().slice(0, 8)}`;
     }
 
+    // The platform's currency, as the admin set it. Amounts are stored in it
+    // already; Paymob is only told which it is. Always hundredths, the unit
+    // paymob-webhook and paymob-confirm check the paid amount against.
+    const { data: settings } = await admin
+      .from("platform_settings")
+      .select("currency_code")
+      .eq("id", 1)
+      .maybeSingle();
+    const currency = `${settings?.currency_code ?? "EGP"}`;
     const amountCents = Math.round(amountEgp * 100);
 
     const { data: profile } = await admin
@@ -143,7 +166,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         amount: amountCents,
-        currency: "EGP",
+        currency,
         payment_methods: [Number(chosenIntegrationId)],
         special_reference: reference,
         notification_url: `${supabaseUrl}/functions/v1/paymob-webhook`,
@@ -159,7 +182,8 @@ Deno.serve(async (req) => {
           building: "NA",
           city: "NA",
           state: "NA",
-          country: "EG",
+          country: COUNTRY_FOR_CURRENCY[currency] ??
+            Deno.env.get("PAYMOB_COUNTRY") ?? "EG",
         },
         extras: { kind, channel, order_id: orderId, user_id: user.id },
       }),

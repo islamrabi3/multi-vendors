@@ -1,3 +1,4 @@
+import 'package:multi_vendor/core/utils/delivery_fee_text.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -5,7 +6,6 @@ import '../../app/tokens.dart';
 import '../models/vendor.dart';
 import '../utils/category_emoji.dart';
 import '../utils/l10n_extension.dart';
-import '../utils/money.dart';
 import 'common.dart';
 
 /// A titled, horizontally scrolling row of stores — the home page's
@@ -141,7 +141,7 @@ class StoreRailCard extends StatelessWidget {
     final l10n = context.l10n;
     final km = distanceKm;
     final open = vendor.isOpenNow();
-    final free = vendor.deliveryFee == 0;
+    final free = isFreeDelivery(vendor, km: km);
     final logo = vendor.logoUrl;
 
     final cardWidth = fullWidth ? double.infinity : width;
@@ -298,7 +298,7 @@ class StoreRailCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              '· ${free ? l10n.freeDelivery : l10n.deliveryFeeLabel(formatMoney(vendor.deliveryFee))}',
+                              '· ${deliveryFeeText(context, vendor, km: km)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

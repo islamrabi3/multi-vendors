@@ -13,6 +13,7 @@ import 'core/config/app_config.dart';
 import 'app/locale_cubit.dart' show AppLanguage;
 import 'features/auth/screens/app_onboarding_screen.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/platform_config_service.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 Future<void> main() async {
@@ -60,6 +61,13 @@ Future<void> main() async {
 
   await AppOnboarding.load();
   await AppLanguage.load();
+  // Before the first frame, so amounts never flash the wrong currency. Capped:
+  // a slow network must not hold the app on a blank screen — it starts on
+  // the defaults and the live channel catches up.
+  await PlatformConfigService.instance.start().timeout(
+    const Duration(seconds: 4),
+    onTimeout: () {},
+  );
 
   runApp(const MultiVendorApp());
 }

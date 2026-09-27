@@ -97,10 +97,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get storeAddress => 'عنوان المتجر';
 
   @override
-  String get deliveryFeeEgp => 'رسوم التوصيل (جنيه)';
+  String deliveryFeeEgp(String currency) {
+    return 'رسوم التوصيل ($currency)';
+  }
 
   @override
-  String get minOrderEgp => 'الحد الأدنى للطلب (جنيه)';
+  String minOrderEgp(String currency) {
+    return 'الحد الأدنى للطلب ($currency)';
+  }
 
   @override
   String get averagePrepTimeMinutes => 'متوسط وقت التحضير (دقائق)';
@@ -208,7 +212,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get percentage => 'نسبة مئوية';
 
   @override
-  String get fixedEgp => 'مبلغ ثابت (جنيه)';
+  String fixedEgp(String currency) {
+    return 'مبلغ ثابت ($currency)';
+  }
 
   @override
   String get createCoupon => 'إنشاء كوبون';
@@ -482,7 +488,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get optionName => 'اسم الخيار';
 
   @override
-  String get extraPriceEgp => 'السعر الإضافي (جنيه)';
+  String extraPriceEgp(String currency) {
+    return 'السعر الإضافي ($currency)';
+  }
 
   @override
   String get productName => 'اسم المنتج';
@@ -1493,7 +1501,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get discountPercent => 'نسبة الخصم %';
 
   @override
-  String get discountAmountEgp => 'قيمة الخصم (ج.م)';
+  String discountAmountEgp(String currency) {
+    return 'قيمة الخصم ($currency)';
+  }
 
   @override
   String get prep => 'التحضير';
@@ -1541,7 +1551,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get placeOrderAndPay => 'تأكيد الطلب والدفع';
 
   @override
-  String get payTheDriverInEgp => 'الدفع للسائق بالجنيه المصري';
+  String payTheDriverInEgp(String currency) {
+    return 'الدفع للسائق بعملة $currency';
+  }
 
   @override
   String get visaMastercardMeeza => 'فيزا، ماستركارد، ميزة';
@@ -5152,7 +5164,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get topUpPending => 'جارٍ التأكيد مع البنك. اسحب للتحديث بعد قليل.';
 
   @override
-  String get topUpInvalidAmount => 'أدخل مبلغاً بين 10 و20,000 جنيه.';
+  String topUpInvalidAmount(String currency) {
+    return 'أدخل مبلغاً بين 10 و20,000 $currency.';
+  }
 
   @override
   String get topUpUnavailable => 'الدفع بالبطاقة غير متاح حالياً. حاول لاحقاً.';
@@ -5221,7 +5235,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get keepOrder => 'الإبقاء على الطلب';
 
   @override
-  String get payAtPickup => 'ادفع عند الاستلام، بالجنيه';
+  String payAtPickup(String currency) {
+    return 'ادفع عند الاستلام، بعملة $currency';
+  }
 
   @override
   String get readyForPickupIn => 'جاهز للاستلام خلال';
@@ -5963,4 +5979,176 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get storeChatClosed =>
       'المحادثة دي اتقفلت. كلّم المندوب، أو تواصل معانا من «تقديم بلاغ أو شكوى».';
+
+  @override
+  String deliveryFeeFrom(String fee) {
+    return 'توصيل من $fee';
+  }
+
+  @override
+  String fromAmount(String amount) {
+    return 'من $amount';
+  }
+
+  @override
+  String get platformSettings => 'إعدادات المنصة';
+
+  @override
+  String get platformSettingsDescription =>
+      'طريقة حساب رسوم التوصيل والعملة اللي المنصة شغالة بيها. الاتنين بيتطبقوا على كل المتاجر وكل الطلبات الجديدة.';
+
+  @override
+  String get platformSettingsReadOnly =>
+      'تقدر تشوف الإعدادات دي بس مش تغيّرها. تغييرها محتاج صلاحية تعديل الحسابات.';
+
+  @override
+  String get deliveryPricing => 'رسوم التوصيل';
+
+  @override
+  String get deliveryPricingHint =>
+      'بتتطبق على الطلبات اللي تتعمل بعد الحفظ. الطلبات القديمة بتفضل برسومها.';
+
+  @override
+  String get deliveryPricingMode => 'طريقة حساب التوصيل';
+
+  @override
+  String get deliveryModeStore => 'رسوم كل متجر';
+
+  @override
+  String get deliveryModeDistance => 'حسب المسافة';
+
+  @override
+  String get deliveryModeStoreHelp =>
+      'كل متجر بياخد الرسوم الثابتة اللي متحددة في صفحته.';
+
+  @override
+  String get deliveryModeDistanceHelp =>
+      'سعر واحد لكل المتاجر: رسوم أساسية، وعليها سعر لكل كيلو بعد مسافة معيّنة.';
+
+  @override
+  String get deliveryBaseFee => 'الرسوم الأساسية';
+
+  @override
+  String get deliveryBaseFeeHelp => 'أقل حاجة بيتكلفها أي توصيل.';
+
+  @override
+  String get deliveryBaseKm => 'الرسوم الأساسية بتغطي';
+
+  @override
+  String get deliveryBaseKmHelp =>
+      'المسافة من المتجر اللي داخلة في الرسوم الأساسية.';
+
+  @override
+  String get deliveryPerKm => 'كل كيلو زيادة';
+
+  @override
+  String get deliveryPerKmHelp =>
+      'بيتضاف عن كل كيلو بيبدأ بعد المسافة دي. يعني 10.2 كم والمغطى 10 كم تتحسب كيلو واحد زيادة.';
+
+  @override
+  String get deliveryExamples => 'العميل هيدفع كام';
+
+  @override
+  String get deliveryExamplesHelp =>
+      'المسافة المباشرة من المتجر لمكان التوصيل.';
+
+  @override
+  String deliveryExample(String km) {
+    return '$km كم';
+  }
+
+  @override
+  String get deliveryPricingInvalid => 'اكتب رقم صفر أو أكبر في كل خانة.';
+
+  @override
+  String get saveDeliveryPricing => 'حفظ رسوم التوصيل';
+
+  @override
+  String get deliveryPricingSaved => 'اتحفظت رسوم التوصيل';
+
+  @override
+  String get currency => 'العملة';
+
+  @override
+  String get currencyHint =>
+      'المنصة شغالة بعملة واحدة. ضيف العملات اللي محتاجها واختار المستخدمة.';
+
+  @override
+  String get addCurrency => 'إضافة عملة';
+
+  @override
+  String get editCurrency => 'تعديل العملة';
+
+  @override
+  String get useCurrency => 'استخدمها';
+
+  @override
+  String get inUse => 'مستخدمة';
+
+  @override
+  String currencyFormatPreview(String sample) {
+    return 'بتظهر كده: $sample';
+  }
+
+  @override
+  String get currencyPaymentsNote =>
+      'تغيير العملة بيغيّر اسمها على كل المبالغ، ومش بيحوّل الأسعار. الدفع بالكارت بيشتغل بس بعملة حساب Paymob بتاعك.';
+
+  @override
+  String switchCurrencyTitle(String code) {
+    return 'التحويل لـ $code؟';
+  }
+
+  @override
+  String get switchCurrencyMessage =>
+      'كل الأسعار والرسوم والأرصدة هتظهر بالعملة دي على طول. الأرقام نفسها مش هتتغير، فلو محتاجة تتحوّل عدّل الأسعار الأول.';
+
+  @override
+  String switchCurrencyConfirm(String code) {
+    return 'حوّل لـ $code';
+  }
+
+  @override
+  String currencySwitched(String code) {
+    return 'المنصة بقت شغالة بـ $code';
+  }
+
+  @override
+  String currencySaved(String code) {
+    return 'اتحفظت $code';
+  }
+
+  @override
+  String deleteCurrencyTitle(String code) {
+    return 'حذف $code؟';
+  }
+
+  @override
+  String get deleteCurrencyMessage => 'مش هتظهر هنا تاني، وتقدر تضيفها بعدين.';
+
+  @override
+  String get currencyCode => 'كود العملة';
+
+  @override
+  String get currencyCodeHelp => '3 حروف، مثلاً SAR';
+
+  @override
+  String get currencyName => 'الاسم';
+
+  @override
+  String get currencySymbol => 'الرمز';
+
+  @override
+  String get currencyDecimals => 'عدد الخانات العشرية';
+
+  @override
+  String get errCurrencyInUse =>
+      'دي العملة اللي المنصة شغالة بيها. حوّل لعملة تانية الأول.';
+
+  @override
+  String get errInvalidCurrencyCode => 'كود العملة 3 حروف، زي SAR.';
+
+  @override
+  String get storeFeeUnusedByDistance =>
+      'التوصيل دلوقتي بيتحسب بالمسافة لكل المتاجر، فالرسوم دي مش بتتحسب. هترجع تتطبق لو رجعت الإعداد من إعدادات المنصة.';
 }

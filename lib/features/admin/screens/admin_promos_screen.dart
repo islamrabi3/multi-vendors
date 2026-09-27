@@ -855,7 +855,7 @@ class _CouponFormState extends State<_CouponForm> {
                 ButtonSegment(
                   value: _CouponKind.fixed,
                   label: Text(
-                    l10n.fixedEgp,
+                    l10n.fixedEgp(currencySymbol),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -882,7 +882,7 @@ class _CouponFormState extends State<_CouponForm> {
                 decoration: InputDecoration(
                   labelText: _kind == _CouponKind.percentage
                       ? l10n.discountPercent
-                      : l10n.discountAmountEgp,
+                      : l10n.discountAmountEgp(currencySymbol),
                 ),
               ),
             ],

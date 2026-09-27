@@ -1,3 +1,4 @@
+import '../models/platform_config.dart';
 import '../services/maintenance_gate.dart';
 import '../supabase_client.dart';
 
@@ -78,5 +79,48 @@ class PlatformSettingsRepository {
   }) => supabase.rpc(
     'admin_set_service_fee',
     params: {'p_type': type, 'p_value': value, 'p_max': max},
+  );
+
+  /// Every currency the admin has added, the active one included.
+  Future<List<AppCurrency>> currencies() async {
+    final rows = await supabase.from('currencies').select().order('code');
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(AppCurrency.fromMap)
+        .toList();
+  }
+
+  /// Adds [currency], or updates it when its code already exists. Admin
+  /// only; needs `finance.adjust`.
+  Future<void> saveCurrency(AppCurrency currency) => supabase.rpc(
+    'admin_upsert_currency',
+    params: {
+      'p_code': currency.code,
+      'p_name': currency.name,
+      'p_name_ar': currency.nameAr,
+      'p_symbol': currency.symbol,
+      'p_symbol_ar': currency.symbolAr,
+      'p_decimals': currency.decimals,
+    },
+  );
+
+  /// Refused with `CURRENCY_IN_USE` for the platform's current currency.
+  Future<void> deleteCurrency(String code) =>
+      supabase.rpc('admin_delete_currency', params: {'p_code': code});
+
+  /// Makes [code] the platform's currency. Relabels every amount; converts
+  /// none.
+  Future<void> setCurrency(String code) =>
+      supabase.rpc('admin_set_currency', params: {'p_code': code});
+
+  /// Admin only; needs `finance.adjust`. See [DeliveryFeeRule].
+  Future<void> setDeliveryPricing(DeliveryFeeRule rule) => supabase.rpc(
+    'admin_set_delivery_pricing',
+    params: {
+      'p_mode': rule.mode,
+      'p_base_fee': rule.baseFee,
+      'p_base_km': rule.baseKm,
+      'p_per_km_fee': rule.perKmFee,
+    },
   );
 }

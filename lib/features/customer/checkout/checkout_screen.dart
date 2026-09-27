@@ -1,3 +1,5 @@
+import 'package:multi_vendor/core/models/platform_config.dart';
+import 'package:multi_vendor/core/services/platform_config_service.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:multi_vendor/core/utils/address_format.dart';
@@ -158,8 +160,30 @@ class _CheckoutViewState extends State<_CheckoutView> {
           final discount = state.couponDiscount ?? 0;
           // Collection has nothing to deliver, so nothing to charge for it.
           // The server recomputes this; the screen must not promise otherwise.
+          // Priced the way the platform is set to — the store's own fee, or by
+          // distance from the store to this address — exactly as
+          // compute_delivery_fee will charge it.
+          final vendor = cart.vendor!;
+          final address =
+              state.selectedAddress ??
+              (state.addresses.isEmpty ? null : state.addresses.first);
+          final km =
+              vendor.lat != null &&
+                  vendor.lng != null &&
+                  address?.lat != null &&
+                  address?.lng != null
+              ? distanceKm(
+                  vendor.lat!,
+                  vendor.lng!,
+                  address!.lat!,
+                  address.lng!,
+                )
+              : null;
           final deliveryFee = state.chargesDelivery
-              ? cart.vendor!.deliveryFee
+              ? PlatformConfigService.instance.current.delivery.feeFor(
+                  storeFee: vendor.deliveryFee,
+                  km: km,
+                )
               : 0.0;
           final serviceFee = state.serviceFee.feeFor(cart.subtotal);
           // Same order of operations as place_order: the discount can never
@@ -245,8 +269,8 @@ class _CheckoutViewState extends State<_CheckoutView> {
                       icon: Icons.payments_rounded,
                       title: context.l10n.cashOnDelivery,
                       subtitle: state.isPickup
-                          ? context.l10n.payAtPickup
-                          : context.l10n.payTheDriverInEgp,
+                          ? context.l10n.payAtPickup(currencySymbol)
+                          : context.l10n.payTheDriverInEgp(currencySymbol),
                       selected: state.paymentMethod == 'cod',
                       onTap: () => cubit.selectPaymentMethod('cod'),
                     ),
@@ -414,8 +438,17 @@ class _CheckoutViewState extends State<_CheckoutView> {
                           ),
                           if (state.chargesDelivery)
                             _SummaryRow(
-                              label: context.l10n.deliveryFee,
-                              value: cart.vendor!.deliveryFee,
+                              label:
+                                  km != null &&
+                                      PlatformConfigService
+                                          .instance
+                                          .current
+                                          .delivery
+                                          .byDistance
+                                  ? '${context.l10n.deliveryFee} · '
+                                        '${km.toStringAsFixed(1)} ${context.l10n.km}'
+                                  : context.l10n.deliveryFee,
+                              value: deliveryFee,
                             ),
                           if (serviceFee > 0)
                             _SummaryRow(

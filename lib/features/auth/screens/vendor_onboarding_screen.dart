@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/catalog_repository.dart';
 import '../../../core/widgets/common.dart';
@@ -243,7 +244,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                   controller: _minOrder,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: context.l10n.minOrderEgp,
+                    labelText: context.l10n.minOrderEgp(currencySymbol),
                   ),
                 ),
                 const SizedBox(height: 20),

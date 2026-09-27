@@ -104,7 +104,7 @@ class _WalletScreenState extends State<WalletScreen> {
       );
     } on PaymentException catch (error) {
       fail(switch (error.code) {
-        'INVALID_TOPUP_AMOUNT' => l10n.topUpInvalidAmount,
+        'INVALID_TOPUP_AMOUNT' => l10n.topUpInvalidAmount(currencySymbol),
         'PAYMOB_NOT_CONFIGURED' => l10n.topUpUnavailable,
         _ => l10n.topUpOpenFailed,
       });
@@ -171,7 +171,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 children: [
                   for (final preset in const [50, 100, 200, 500])
                     ChoiceChip(
-                      label: Text('$preset ${context.l10n.egp}'),
+                      label: Text('$preset $currencySymbol'),
                       selected: current == preset,
                       onSelected: (selected) {
                         if (!selected) return;
@@ -216,7 +216,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 controller: amount,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: context.l10n.egp,
+                  labelText: currencySymbol,
                   prefixIcon: const Icon(Icons.payments_outlined, size: 20),
                 ),
                 // Keeps the chip selection in step with typed input.

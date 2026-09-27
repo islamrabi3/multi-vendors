@@ -1,3 +1,5 @@
+import 'package:multi_vendor/core/services/platform_config_service.dart';
+import 'package:multi_vendor/core/utils/delivery_fee_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -130,7 +132,16 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: InputDecoration(labelText: context.l10n.deliveryFee),
+              decoration: InputDecoration(
+                labelText: context.l10n.deliveryFee,
+                // Distance pricing replaces every store's own fee; saying so
+                // here stops an admin tuning a number nobody is charged.
+                helperText:
+                    PlatformConfigService.instance.current.delivery.byDistance
+                    ? context.l10n.storeFeeUnusedByDistance
+                    : null,
+                helperMaxLines: 3,
+              ),
             ),
             const SizedBox(height: AppSpace.md),
             SegmentedButton<String>(
@@ -1133,7 +1144,7 @@ class _Body extends StatelessWidget {
                   children: [
                     _stat(
                       context.l10n.deliveryFee,
-                      formatMoney(vendor.deliveryFee),
+                      deliveryFeeAmountText(context, vendor),
                     ),
                     const SizedBox(width: 9),
                     _stat(

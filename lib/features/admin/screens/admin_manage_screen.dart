@@ -129,6 +129,12 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           badgeKey: AdminActionBadges.depositsPending,
           permission: 'finance.settle',
         ),
+        ManageNavItem(
+          icon: Icons.tune_rounded,
+          label: l10n.platformSettings,
+          route: '/admin-app/platform-settings',
+          permission: 'reports.view',
+        ),
       ],
     ),
     (

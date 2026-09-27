@@ -374,9 +374,9 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
                 decimal: true,
               ),
               decoration: InputDecoration(
-                labelText: context.l10n.extraPriceEgp,
+                labelText: context.l10n.extraPriceEgp(currencySymbol),
                 prefixIcon: const Icon(Icons.payments_outlined),
-                suffixText: 'EGP',
+                suffixText: currencySymbol,
               ),
             ),
             const SizedBox(height: 24),
@@ -752,7 +752,7 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
               decoration: InputDecoration(
                 labelText: context.l10n.price,
                 prefixIcon: const Icon(Icons.payments_outlined),
-                suffixText: 'EGP',
+                suffixText: currencySymbol,
               ),
               validator: (v) => double.tryParse(v ?? '') == null
                   ? context.l10n.enterAValidPrice

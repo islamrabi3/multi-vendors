@@ -1,10 +1,10 @@
+import 'package:multi_vendor/core/utils/delivery_fee_text.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/favorites_repository.dart';
-import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -261,7 +261,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                         const SizedBox(height: 2),
                                         Text(
                                           '${context.l10n.minutesRange(vendor.avgPrepMinutes, vendor.avgPrepMinutes + 10)}'
-                                          ' · ${context.l10n.deliveryFeeLabel(formatMoney(vendor.deliveryFee))}',
+                                          ' · ${deliveryFeeText(context, vendor)}',
                                           style: const TextStyle(
                                             fontSize: 12.5,
                                             color: AppColors.textMuted,

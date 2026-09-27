@@ -1,3 +1,4 @@
+import 'package:multi_vendor/core/utils/delivery_fee_text.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter/rendering.dart';
@@ -742,7 +743,7 @@ class _VendorHeader extends StatelessWidget {
     final l10n = context.l10n;
     final open = vendor.isOpenNow();
     final closing = vendor.closingTime();
-    final free = vendor.deliveryFee == 0;
+    final free = isFreeDelivery(vendor);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -884,9 +885,7 @@ class _VendorHeader extends StatelessWidget {
                       iconColor: free
                           ? AppColors.successInk
                           : AppColors.primary,
-                      value: free
-                          ? l10n.freeDelivery
-                          : formatMoney(vendor.deliveryFee),
+                      value: deliveryFeeAmountText(context, vendor),
                       label: l10n.deliveryFee,
                     ),
                   ),

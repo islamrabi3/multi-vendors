@@ -1,3 +1,4 @@
+import 'package:multi_vendor/core/utils/delivery_fee_text.dart';
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
@@ -213,7 +214,7 @@ class HomeState extends Equatable {
 
     add(
       HomeRail.freeDelivery,
-      vendors.where((v) => v.isOpenNow() && v.deliveryFee == 0),
+      vendors.where((v) => v.isOpenNow() && isFreeDelivery(v)),
     );
     return result;
   }

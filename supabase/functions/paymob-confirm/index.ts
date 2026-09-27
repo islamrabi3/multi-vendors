@@ -22,7 +22,8 @@
 // Secrets required: PAYMOB_HMAC_SECRET, PAYMOB_SECRET_KEY
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PAYMOB_BASE = "https://accept.paymob.com";
+// Egypt unless PAYMOB_BASE_URL names another Paymob region.
+const PAYMOB_BASE = Deno.env.get("PAYMOB_BASE_URL") ?? "https://accept.paymob.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

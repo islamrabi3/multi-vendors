@@ -225,6 +225,8 @@ class AppFailure implements Exception {
         'PRODUCT_UNAVAILABLE' => l10n.errProductUnavailable,
         'WRONG_PICKUP_CODE' => l10n.errWrongPickupCode,
         'PICKUP_UNAVAILABLE' => l10n.errPickupUnavailable,
+        'CURRENCY_IN_USE' => l10n.errCurrencyInUse,
+        'INVALID_CURRENCY_CODE' => l10n.errInvalidCurrencyCode,
         'NO_DRIVER_ASSIGNED' => l10n.errNoDriverAssigned,
         'MAINTENANCE_MODE' => l10n.errMaintenanceMode,
         'NO_PERMISSIONS' => l10n.errNoPermissions,

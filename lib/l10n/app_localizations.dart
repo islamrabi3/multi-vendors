@@ -275,14 +275,14 @@ abstract class AppLocalizations {
   /// No description provided for @deliveryFeeEgp.
   ///
   /// In en, this message translates to:
-  /// **'Delivery fee (EGP)'**
-  String get deliveryFeeEgp;
+  /// **'Delivery fee ({currency})'**
+  String deliveryFeeEgp(String currency);
 
   /// No description provided for @minOrderEgp.
   ///
   /// In en, this message translates to:
-  /// **'Min order (EGP)'**
-  String get minOrderEgp;
+  /// **'Min order ({currency})'**
+  String minOrderEgp(String currency);
 
   /// No description provided for @averagePrepTimeMinutes.
   ///
@@ -497,8 +497,8 @@ abstract class AppLocalizations {
   /// No description provided for @fixedEgp.
   ///
   /// In en, this message translates to:
-  /// **'Fixed EGP'**
-  String get fixedEgp;
+  /// **'Fixed {currency}'**
+  String fixedEgp(String currency);
 
   /// No description provided for @createCoupon.
   ///
@@ -1043,8 +1043,8 @@ abstract class AppLocalizations {
   /// No description provided for @extraPriceEgp.
   ///
   /// In en, this message translates to:
-  /// **'Extra price (EGP)'**
-  String get extraPriceEgp;
+  /// **'Extra price ({currency})'**
+  String extraPriceEgp(String currency);
 
   /// No description provided for @productName.
   ///
@@ -2963,8 +2963,8 @@ abstract class AppLocalizations {
   /// No description provided for @discountAmountEgp.
   ///
   /// In en, this message translates to:
-  /// **'Discount amount (EGP)'**
-  String get discountAmountEgp;
+  /// **'Discount amount ({currency})'**
+  String discountAmountEgp(String currency);
 
   /// No description provided for @prep.
   ///
@@ -3054,8 +3054,8 @@ abstract class AppLocalizations {
   /// No description provided for @payTheDriverInEgp.
   ///
   /// In en, this message translates to:
-  /// **'Pay the driver in EGP'**
-  String get payTheDriverInEgp;
+  /// **'Pay the driver in {currency}'**
+  String payTheDriverInEgp(String currency);
 
   /// No description provided for @visaMastercardMeeza.
   ///
@@ -9588,8 +9588,8 @@ abstract class AppLocalizations {
   /// No description provided for @topUpInvalidAmount.
   ///
   /// In en, this message translates to:
-  /// **'Enter an amount between 10 and 20,000 EGP.'**
-  String get topUpInvalidAmount;
+  /// **'Enter an amount between 10 and 20,000 {currency}.'**
+  String topUpInvalidAmount(String currency);
 
   /// No description provided for @topUpUnavailable.
   ///
@@ -9714,8 +9714,8 @@ abstract class AppLocalizations {
   /// No description provided for @payAtPickup.
   ///
   /// In en, this message translates to:
-  /// **'Pay at pickup, in EGP'**
-  String get payAtPickup;
+  /// **'Pay at pickup, in {currency}'**
+  String payAtPickup(String currency);
 
   /// No description provided for @readyForPickupIn.
   ///
@@ -11060,6 +11060,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This conversation is closed. Message your driver, or reach us through Report an Issue.'**
   String get storeChatClosed;
+
+  /// No description provided for @deliveryFeeFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'from {fee} delivery'**
+  String deliveryFeeFrom(String fee);
+
+  /// No description provided for @fromAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'from {amount}'**
+  String fromAmount(String amount);
+
+  /// No description provided for @platformSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform settings'**
+  String get platformSettings;
+
+  /// No description provided for @platformSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How delivery is priced and which currency the platform runs in. Both apply to every store and every new order.'**
+  String get platformSettingsDescription;
+
+  /// No description provided for @platformSettingsReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'You can see these settings but not change them. Changing them needs the finance adjustment permission.'**
+  String get platformSettingsReadOnly;
+
+  /// No description provided for @deliveryPricing.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery pricing'**
+  String get deliveryPricing;
+
+  /// No description provided for @deliveryPricingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to orders placed after you save. Orders already placed keep their fee.'**
+  String get deliveryPricingHint;
+
+  /// No description provided for @deliveryPricingMode.
+  ///
+  /// In en, this message translates to:
+  /// **'How delivery is priced'**
+  String get deliveryPricingMode;
+
+  /// No description provided for @deliveryModeStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Each store\'s fee'**
+  String get deliveryModeStore;
+
+  /// No description provided for @deliveryModeDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'By distance'**
+  String get deliveryModeDistance;
+
+  /// No description provided for @deliveryModeStoreHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Every store charges the flat fee set on its own page.'**
+  String get deliveryModeStoreHelp;
+
+  /// No description provided for @deliveryModeDistanceHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'One price for every store: a base fee, plus a rate for each kilometre beyond a set distance.'**
+  String get deliveryModeDistanceHelp;
+
+  /// No description provided for @deliveryBaseFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Base fee'**
+  String get deliveryBaseFee;
+
+  /// No description provided for @deliveryBaseFeeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'What every delivery costs at least.'**
+  String get deliveryBaseFeeHelp;
+
+  /// No description provided for @deliveryBaseKm.
+  ///
+  /// In en, this message translates to:
+  /// **'Base fee covers'**
+  String get deliveryBaseKm;
+
+  /// No description provided for @deliveryBaseKmHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance from the store included in the base fee.'**
+  String get deliveryBaseKmHelp;
+
+  /// No description provided for @deliveryPerKm.
+  ///
+  /// In en, this message translates to:
+  /// **'Each extra kilometre'**
+  String get deliveryPerKm;
+
+  /// No description provided for @deliveryPerKmHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Added for every started kilometre past that distance. 10.2 km with 10 km covered counts one extra kilometre.'**
+  String get deliveryPerKmHelp;
+
+  /// No description provided for @deliveryExamples.
+  ///
+  /// In en, this message translates to:
+  /// **'What customers pay'**
+  String get deliveryExamples;
+
+  /// No description provided for @deliveryExamplesHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Straight-line distance from the store to the delivery pin.'**
+  String get deliveryExamplesHelp;
+
+  /// No description provided for @deliveryExample.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km'**
+  String deliveryExample(String km);
+
+  /// No description provided for @deliveryPricingInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number of zero or more in each field.'**
+  String get deliveryPricingInvalid;
+
+  /// No description provided for @saveDeliveryPricing.
+  ///
+  /// In en, this message translates to:
+  /// **'Save delivery pricing'**
+  String get saveDeliveryPricing;
+
+  /// No description provided for @deliveryPricingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery pricing saved'**
+  String get deliveryPricingSaved;
+
+  /// No description provided for @currency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currency;
+
+  /// No description provided for @currencyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The platform runs in one currency. Add the ones you need and choose which is in use.'**
+  String get currencyHint;
+
+  /// No description provided for @addCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Add currency'**
+  String get addCurrency;
+
+  /// No description provided for @editCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit currency'**
+  String get editCurrency;
+
+  /// No description provided for @useCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Use'**
+  String get useCurrency;
+
+  /// No description provided for @inUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get inUse;
+
+  /// No description provided for @currencyFormatPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows as {sample}'**
+  String currencyFormatPreview(String sample);
+
+  /// No description provided for @currencyPaymentsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching currency relabels every amount; it doesn\'t convert prices. Card payments only work in the currency your Paymob account was opened in.'**
+  String get currencyPaymentsNote;
+
+  /// No description provided for @switchCurrencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {code}?'**
+  String switchCurrencyTitle(String code);
+
+  /// No description provided for @switchCurrencyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Every price, fee and balance will show in this currency straight away. The numbers stay the same, so update prices first if they need converting.'**
+  String get switchCurrencyMessage;
+
+  /// No description provided for @switchCurrencyConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {code}'**
+  String switchCurrencyConfirm(String code);
+
+  /// No description provided for @currencySwitched.
+  ///
+  /// In en, this message translates to:
+  /// **'The platform now runs in {code}'**
+  String currencySwitched(String code);
+
+  /// No description provided for @currencySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} saved'**
+  String currencySaved(String code);
+
+  /// No description provided for @deleteCurrencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {code}?'**
+  String deleteCurrencyTitle(String code);
+
+  /// No description provided for @deleteCurrencyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'It will no longer be offered here. You can add it again later.'**
+  String get deleteCurrencyMessage;
+
+  /// No description provided for @currencyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency code'**
+  String get currencyCode;
+
+  /// No description provided for @currencyCodeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Three letters, for example SAR'**
+  String get currencyCodeHelp;
+
+  /// No description provided for @currencyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get currencyName;
+
+  /// No description provided for @currencySymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbol'**
+  String get currencySymbol;
+
+  /// No description provided for @currencyDecimals.
+  ///
+  /// In en, this message translates to:
+  /// **'Decimal places'**
+  String get currencyDecimals;
+
+  /// No description provided for @errCurrencyInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the currency the platform runs in. Switch to another one first.'**
+  String get errCurrencyInUse;
+
+  /// No description provided for @errInvalidCurrencyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'A currency code is three letters, like SAR.'**
+  String get errInvalidCurrencyCode;
+
+  /// No description provided for @storeFeeUnusedByDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery is priced by distance for every store right now, so this fee is not charged. It applies again if you switch back in Platform settings.'**
+  String get storeFeeUnusedByDistance;
 }
 
 class _AppLocalizationsDelegate

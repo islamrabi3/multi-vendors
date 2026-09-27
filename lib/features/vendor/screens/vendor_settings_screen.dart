@@ -1,3 +1,4 @@
+import 'package:multi_vendor/core/utils/delivery_fee_text.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_vendor/core/errors/app_failure.dart' show UserMessage;
 import 'package:flutter/services.dart';
@@ -493,9 +494,7 @@ class _VendorSettingsScreenState extends State<VendorSettingsScreen> {
             _Row(
               icon: Icons.delivery_dining_rounded,
               label: l10n.deliveryFee,
-              value: vendor.deliveryFee == 0
-                  ? l10n.freeDelivery
-                  : formatMoney(vendor.deliveryFee),
+              value: deliveryFeeAmountText(context, vendor),
               locked: true,
             ),
             _Row(

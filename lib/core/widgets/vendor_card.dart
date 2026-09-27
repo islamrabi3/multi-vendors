@@ -1,3 +1,4 @@
+import 'package:multi_vendor/core/utils/delivery_fee_text.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,6 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../../app/tokens.dart';
 import '../models/vendor.dart';
 import '../utils/category_emoji.dart';
-import '../utils/money.dart';
 import 'common.dart';
 
 /// The store row used everywhere a list of stores appears.
@@ -267,8 +267,8 @@ class _MetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final free = vendor.deliveryFee == 0;
     final km = distanceKm;
+    final free = isFreeDelivery(vendor, km: km);
     final parts = <String>[
       if (km != null)
         '${km < 10 ? km.toStringAsFixed(1) : km.round()} ${context.l10n.kmUnit}',
@@ -276,9 +276,7 @@ class _MetaRow extends StatelessWidget {
         vendor.totalPrepMinutes,
         vendor.totalPrepMinutes + 10,
       ),
-      free
-          ? context.l10n.freeDelivery
-          : context.l10n.deliveryFeeLabel(formatMoney(vendor.deliveryFee)),
+      deliveryFeeText(context, vendor, km: km),
     ];
 
     return Row(

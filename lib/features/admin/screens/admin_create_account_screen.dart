@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/utils/email.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/account_onboarding_repository.dart';
@@ -449,7 +450,7 @@ class _AdminCreateAccountScreenState extends State<AdminCreateAccountScreen> {
                           Expanded(
                             child: _NumberField(
                               controller: _minOrder,
-                              label: l10n.minOrderEgp,
+                              label: l10n.minOrderEgp(currencySymbol),
                             ),
                           ),
                           const SizedBox(width: AppSpace.md),

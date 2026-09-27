@@ -98,10 +98,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storeAddress => 'Store address';
 
   @override
-  String get deliveryFeeEgp => 'Delivery fee (EGP)';
+  String deliveryFeeEgp(String currency) {
+    return 'Delivery fee ($currency)';
+  }
 
   @override
-  String get minOrderEgp => 'Min order (EGP)';
+  String minOrderEgp(String currency) {
+    return 'Min order ($currency)';
+  }
 
   @override
   String get averagePrepTimeMinutes => 'Average prep time (minutes)';
@@ -209,7 +213,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get percentage => 'Percentage';
 
   @override
-  String get fixedEgp => 'Fixed EGP';
+  String fixedEgp(String currency) {
+    return 'Fixed $currency';
+  }
 
   @override
   String get createCoupon => 'Create coupon';
@@ -483,7 +489,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get optionName => 'Option name';
 
   @override
-  String get extraPriceEgp => 'Extra price (EGP)';
+  String extraPriceEgp(String currency) {
+    return 'Extra price ($currency)';
+  }
 
   @override
   String get productName => 'Product name';
@@ -1494,7 +1502,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discountPercent => 'Discount %';
 
   @override
-  String get discountAmountEgp => 'Discount amount (EGP)';
+  String discountAmountEgp(String currency) {
+    return 'Discount amount ($currency)';
+  }
 
   @override
   String get prep => 'Prep';
@@ -1543,7 +1553,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get placeOrderAndPay => 'Place order & pay';
 
   @override
-  String get payTheDriverInEgp => 'Pay the driver in EGP';
+  String payTheDriverInEgp(String currency) {
+    return 'Pay the driver in $currency';
+  }
 
   @override
   String get visaMastercardMeeza => 'Visa, Mastercard, Meeza';
@@ -5186,7 +5198,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Still confirming with the bank. Pull to refresh in a moment.';
 
   @override
-  String get topUpInvalidAmount => 'Enter an amount between 10 and 20,000 EGP.';
+  String topUpInvalidAmount(String currency) {
+    return 'Enter an amount between 10 and 20,000 $currency.';
+  }
 
   @override
   String get topUpUnavailable =>
@@ -5258,7 +5272,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepOrder => 'Keep order';
 
   @override
-  String get payAtPickup => 'Pay at pickup, in EGP';
+  String payAtPickup(String currency) {
+    return 'Pay at pickup, in $currency';
+  }
 
   @override
   String get readyForPickupIn => 'Ready for pickup in';
@@ -6013,4 +6029,179 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get storeChatClosed =>
       'This conversation is closed. Message your driver, or reach us through Report an Issue.';
+
+  @override
+  String deliveryFeeFrom(String fee) {
+    return 'from $fee delivery';
+  }
+
+  @override
+  String fromAmount(String amount) {
+    return 'from $amount';
+  }
+
+  @override
+  String get platformSettings => 'Platform settings';
+
+  @override
+  String get platformSettingsDescription =>
+      'How delivery is priced and which currency the platform runs in. Both apply to every store and every new order.';
+
+  @override
+  String get platformSettingsReadOnly =>
+      'You can see these settings but not change them. Changing them needs the finance adjustment permission.';
+
+  @override
+  String get deliveryPricing => 'Delivery pricing';
+
+  @override
+  String get deliveryPricingHint =>
+      'Applies to orders placed after you save. Orders already placed keep their fee.';
+
+  @override
+  String get deliveryPricingMode => 'How delivery is priced';
+
+  @override
+  String get deliveryModeStore => 'Each store\'s fee';
+
+  @override
+  String get deliveryModeDistance => 'By distance';
+
+  @override
+  String get deliveryModeStoreHelp =>
+      'Every store charges the flat fee set on its own page.';
+
+  @override
+  String get deliveryModeDistanceHelp =>
+      'One price for every store: a base fee, plus a rate for each kilometre beyond a set distance.';
+
+  @override
+  String get deliveryBaseFee => 'Base fee';
+
+  @override
+  String get deliveryBaseFeeHelp => 'What every delivery costs at least.';
+
+  @override
+  String get deliveryBaseKm => 'Base fee covers';
+
+  @override
+  String get deliveryBaseKmHelp =>
+      'Distance from the store included in the base fee.';
+
+  @override
+  String get deliveryPerKm => 'Each extra kilometre';
+
+  @override
+  String get deliveryPerKmHelp =>
+      'Added for every started kilometre past that distance. 10.2 km with 10 km covered counts one extra kilometre.';
+
+  @override
+  String get deliveryExamples => 'What customers pay';
+
+  @override
+  String get deliveryExamplesHelp =>
+      'Straight-line distance from the store to the delivery pin.';
+
+  @override
+  String deliveryExample(String km) {
+    return '$km km';
+  }
+
+  @override
+  String get deliveryPricingInvalid =>
+      'Enter a number of zero or more in each field.';
+
+  @override
+  String get saveDeliveryPricing => 'Save delivery pricing';
+
+  @override
+  String get deliveryPricingSaved => 'Delivery pricing saved';
+
+  @override
+  String get currency => 'Currency';
+
+  @override
+  String get currencyHint =>
+      'The platform runs in one currency. Add the ones you need and choose which is in use.';
+
+  @override
+  String get addCurrency => 'Add currency';
+
+  @override
+  String get editCurrency => 'Edit currency';
+
+  @override
+  String get useCurrency => 'Use';
+
+  @override
+  String get inUse => 'In use';
+
+  @override
+  String currencyFormatPreview(String sample) {
+    return 'Shows as $sample';
+  }
+
+  @override
+  String get currencyPaymentsNote =>
+      'Switching currency relabels every amount; it doesn\'t convert prices. Card payments only work in the currency your Paymob account was opened in.';
+
+  @override
+  String switchCurrencyTitle(String code) {
+    return 'Switch to $code?';
+  }
+
+  @override
+  String get switchCurrencyMessage =>
+      'Every price, fee and balance will show in this currency straight away. The numbers stay the same, so update prices first if they need converting.';
+
+  @override
+  String switchCurrencyConfirm(String code) {
+    return 'Switch to $code';
+  }
+
+  @override
+  String currencySwitched(String code) {
+    return 'The platform now runs in $code';
+  }
+
+  @override
+  String currencySaved(String code) {
+    return '$code saved';
+  }
+
+  @override
+  String deleteCurrencyTitle(String code) {
+    return 'Delete $code?';
+  }
+
+  @override
+  String get deleteCurrencyMessage =>
+      'It will no longer be offered here. You can add it again later.';
+
+  @override
+  String get currencyCode => 'Currency code';
+
+  @override
+  String get currencyCodeHelp => 'Three letters, for example SAR';
+
+  @override
+  String get currencyName => 'Name';
+
+  @override
+  String get currencySymbol => 'Symbol';
+
+  @override
+  String get currencyDecimals => 'Decimal places';
+
+  @override
+  String get errCurrencyInUse =>
+      'This is the currency the platform runs in. Switch to another one first.';
+
+  @override
+  String get errInvalidCurrencyCode =>
+      'A currency code is three letters, like SAR.';
+
+  @override
+  String get storeFeeUnusedByDistance =>
+      'Delivery is priced by distance for every store right now, so this fee is not charged. It applies again if you switch back in Platform settings.';
 }

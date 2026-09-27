@@ -197,7 +197,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             style: AppType.mono(18, weight: FontWeight.w800),
             decoration: InputDecoration(
               labelText: l10n.depositAmount,
-              suffixText: l10n.egp,
+              suffixText: currencySymbol,
             ),
           ),
           const SizedBox(height: AppSpace.lg),

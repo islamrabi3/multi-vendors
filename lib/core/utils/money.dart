@@ -1,21 +1,39 @@
 import 'package:intl/intl.dart';
 
+import '../models/platform_config.dart';
+import '../services/platform_config_service.dart';
+
 // Pinned to `en`: the app sets `Intl.defaultLocale` to the UI language so
 // dates read in Arabic, and amounts must not change separators with it.
+//
+// The currency is the platform's, read live from [PlatformConfigService]:
+// the admin picks it, so nothing here may assume pounds.
 
-final _egp = NumberFormat.currency(
-  locale: 'en',
-  symbol: 'EGP ',
-  decimalDigits: 2,
-);
+AppCurrency get currentCurrency =>
+    PlatformConfigService.instance.current.currency;
 
-String formatMoney(num amount) => _egp.format(amount);
+/// The symbol for the UI language in use, e.g. `EGP` or `SAR`.
+String get currencySymbol {
+  final language = (Intl.defaultLocale ?? 'en').split(RegExp('[_-]')).first;
+  return currentCurrency.symbolFor(language);
+}
 
-final _egpWhole = NumberFormat.currency(
-  locale: 'en',
-  symbol: 'EGP ',
-  decimalDigits: 0,
-);
+final _formats = <String, NumberFormat>{};
+
+NumberFormat _format(int decimals) {
+  final symbol = currencySymbol;
+  return _formats.putIfAbsent(
+    '$symbol|$decimals',
+    () => NumberFormat.currency(
+      locale: 'en',
+      symbol: '$symbol ',
+      decimalDigits: decimals,
+    ),
+  );
+}
+
+String formatMoney(num amount) =>
+    _format(currentCurrency.decimals).format(amount);
 
 /// Drops the decimals when there are none to show: `EGP 5` rather than
 /// `EGP 5.00`.
@@ -25,7 +43,7 @@ final _egpWhole = NumberFormat.currency(
 /// being ellipsised away, which is worse than useless on a button whose whole
 /// job is to say how much you are about to send.
 String formatMoneyCompact(num amount) => amount == amount.roundToDouble()
-    ? _egpWhole.format(amount)
+    ? _format(0).format(amount)
     : formatMoney(amount);
 
 /// A bare number with no currency and no trailing `.0`: `1.5`, `2`, `0.25`.
