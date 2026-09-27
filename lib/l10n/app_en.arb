@@ -2119,5 +2119,9 @@
   "pageDescOpeningHours": "The hours your store takes orders, day by day. Tap a day to change it.",
   "pageDescReviews": "What customers said about their orders. Reply to show you are listening.",
   "addCategory": "Add category",
-  "pagesSection": "Pages"
+  "pagesSection": "Pages",
+  "reassign": "Reassign",
+  "readyTab": "Ready",
+  "ordersToday": "Orders today",
+  "pickConversation": "Pick a conversation to read it and reply."
 }

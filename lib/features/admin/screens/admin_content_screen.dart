@@ -213,12 +213,11 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
       AppSpace.sm,
     ),
     child: Text(
-      text.toUpperCase(),
+      text,
       style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.2,
-        color: AppColors.textMuted,
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textSecondary,
       ),
     ),
   );

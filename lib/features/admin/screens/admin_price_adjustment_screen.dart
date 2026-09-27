@@ -429,7 +429,18 @@ class _AdminPriceAdjustmentScreenState
     );
 
     if (widget.embedded) {
-      return Padding(padding: const EdgeInsets.all(AppSpace.xl), child: body);
+      // A form: capped so a percentage and its scope read as one line of
+      // thought rather than two ends of a monitor.
+      return Padding(
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: Align(
+          alignment: AlignmentDirectional.topStart,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: body,
+          ),
+        ),
+      );
     }
 
     if (webWide) {

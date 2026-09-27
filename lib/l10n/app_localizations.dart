@@ -11774,6 +11774,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pages'**
   String get pagesSection;
+
+  /// No description provided for @reassign.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign'**
+  String get reassign;
+
+  /// No description provided for @readyTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get readyTab;
+
+  /// No description provided for @ordersToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders today'**
+  String get ordersToday;
+
+  /// No description provided for @pickConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a conversation to read it and reply.'**
+  String get pickConversation;
 }
 
 class _AppLocalizationsDelegate

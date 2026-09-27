@@ -454,8 +454,9 @@ class _SupportSplitView extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: selected == null
                 ? Center(
+                    // Staff are choosing a conversation, not starting one.
                     child: EmptyView(
-                      message: l10n.supportChatEmpty,
+                      message: l10n.pickConversation,
                       icon: Icons.support_agent_outlined,
                     ),
                   )

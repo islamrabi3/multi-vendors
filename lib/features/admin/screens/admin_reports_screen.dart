@@ -401,12 +401,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
       AppSpace.sm,
     ),
     child: Text(
-      text.toUpperCase(),
+      text,
       style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.2,
-        color: AppColors.textMuted,
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textSecondary,
       ),
     ),
   );
@@ -601,11 +600,10 @@ class _TotalBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label.toUpperCase(),
+            label,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
               color: Colors.white.withValues(alpha: 0.6),
             ),
           ),

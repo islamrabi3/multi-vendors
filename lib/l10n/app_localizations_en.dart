@@ -6466,4 +6466,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pagesSection => 'Pages';
+
+  @override
+  String get reassign => 'Reassign';
+
+  @override
+  String get readyTab => 'Ready';
+
+  @override
+  String get ordersToday => 'Orders today';
+
+  @override
+  String get pickConversation => 'Pick a conversation to read it and reply.';
 }

@@ -863,10 +863,10 @@ class _KpiBar extends StatelessWidget {
       child: Row(
         children: [
           if (showRevenue) ...[
-            _stat(formatMoney(revenue), l10n.itemSales),
+            _stat(formatMoney(revenue), l10n.salesToday),
             _divider(),
           ],
-          _stat('$orders', l10n.orders),
+          _stat('$orders', l10n.ordersToday),
           _divider(),
           _stat('$avgPrep ${l10n.min}', l10n.avgPrep),
         ],
@@ -1084,25 +1084,35 @@ class _FilterTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-      child: Row(
-        children: [
-          _tab(context.l10n.newText, incoming, _OrderFilter.incoming, context),
-          const SizedBox(width: 10),
-          _tab(
-            context.l10n.preparing,
-            preparing,
-            _OrderFilter.preparing,
-            context,
-          ),
-          const SizedBox(width: 10),
-          _tab(context.l10n.ready, ready, _OrderFilter.ready, context),
-          const SizedBox(width: 10),
-          // History is paged, so it carries no count badge.
-          _tab(context.l10n.past, null, _OrderFilter.past, context),
-        ],
+    // Held to the start edge: centred, the filters drifted away from the
+    // list they filter on a wide pane.
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+        child: Row(
+          children: [
+            _tab(
+              context.l10n.newText,
+              incoming,
+              _OrderFilter.incoming,
+              context,
+            ),
+            const SizedBox(width: 10),
+            _tab(
+              context.l10n.preparing,
+              preparing,
+              _OrderFilter.preparing,
+              context,
+            ),
+            const SizedBox(width: 10),
+            _tab(context.l10n.readyTab, ready, _OrderFilter.ready, context),
+            const SizedBox(width: 10),
+            // History is paged, so it carries no count badge.
+            _tab(context.l10n.past, null, _OrderFilter.past, context),
+          ],
+        ),
       ),
     );
   }

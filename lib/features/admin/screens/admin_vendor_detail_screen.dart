@@ -1396,12 +1396,11 @@ class _Body extends StatelessWidget {
   );
 
   Widget _label(String text) => Text(
-    text.toUpperCase(),
+    text,
     style: const TextStyle(
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: FontWeight.w700,
-      letterSpacing: 1,
-      color: AppColors.textFaint,
+      color: AppColors.textMuted,
     ),
   );
 

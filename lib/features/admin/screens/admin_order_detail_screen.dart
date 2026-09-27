@@ -10,6 +10,7 @@ import '../../../core/models/order.dart';
 import '../../../core/models/order_flow.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/repositories/order_repository.dart';
+import '../../../core/supabase_client.dart';
 import '../../../core/utils/dialer.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
@@ -555,7 +556,7 @@ class _Body extends StatelessWidget {
             Expanded(
               child: _party(
                 context,
-                context.l10n.vendors.toUpperCase(),
+                context.l10n.store,
                 order.vendorName ?? context.l10n.store,
                 order.addressSummary.isEmpty ? '—' : context.l10n.store,
                 phone: order.vendorPhone,
@@ -565,7 +566,7 @@ class _Body extends StatelessWidget {
             Expanded(
               child: _party(
                 context,
-                context.l10n.customer.toUpperCase(),
+                context.l10n.customer,
                 order.customerName ?? context.l10n.customer,
                 order.addressSummary,
                 phone: order.customerPhone,
@@ -678,9 +679,9 @@ class _Body extends StatelessWidget {
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textFaint,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
                 ),
               ),
               const SizedBox(height: 2),
@@ -1016,25 +1017,71 @@ class _Timeline extends StatelessWidget {
   }
 }
 
-class _DriverRow extends StatelessWidget {
+class _DriverRow extends StatefulWidget {
   const _DriverRow({required this.order, required this.onAssign});
 
   final AppOrder order;
   final VoidCallback? onAssign;
 
   @override
+  State<_DriverRow> createState() => _DriverRowState();
+}
+
+/// Who is carrying the order, by name, with their number one press away —
+/// "assigned" alone told an operator nothing they could act on.
+class _DriverRowState extends State<_DriverRow> {
+  ({String name, String? phone})? _driver;
+  String? _loadedFor;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_DriverRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.order.driverId != widget.order.driverId) _load();
+  }
+
+  Future<void> _load() async {
+    final id = widget.order.driverId;
+    if (id == null || id == _loadedFor) return;
+    _loadedFor = id;
+    try {
+      final row = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('id', id)
+          .maybeSingle();
+      if (!mounted || row == null || widget.order.driverId != id) return;
+      setState(
+        () => _driver = (
+          name: (row['full_name'] as String?)?.trim().isNotEmpty == true
+              ? row['full_name'] as String
+              : context.l10n.driver,
+          phone: row['phone'] as String?,
+        ),
+      );
+    } catch (_) {
+      // The row keeps saying "assigned"; nothing else depends on the name.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final order = widget.order;
+    final l10n = context.l10n;
     final assigned = order.driverId != null;
     // Null onAssign means this member of staff holds no `orders.assign`, so
     // the row still says who is carrying the order and offers no button.
-    final canAssign = onAssign != null && !order.status.isTerminal && !assigned;
+    final canAssign = widget.onAssign != null && !order.status.isTerminal;
+    final driver = assigned ? _driver : null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
         color: assigned ? AppColors.successFill : AppColors.amberFill,
-        border: Border.all(
-          color: assigned ? AppColors.successFill : AppColors.amberFill,
-        ),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -1050,45 +1097,43 @@ class _DriverRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.driver,
+                  l10n.driver,
                   style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                     color: assigned ? AppColors.successInk : AppColors.amberInk,
                   ),
                 ),
                 Text(
-                  assigned ? context.l10n.assigned : context.l10n.notAssigned,
+                  !assigned ? l10n.notAssigned : driver?.name ?? l10n.assigned,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: 13.5,
                     color: AppColors.ink,
                   ),
                 ),
               ],
             ),
           ),
+          if ((driver?.phone ?? '').isNotEmpty)
+            IconButton(
+              tooltip: l10n.callDriver,
+              onPressed: () => callPhone(context, driver!.phone),
+              icon: const Icon(Icons.call_rounded, size: 19),
+              color: AppColors.successInk,
+            ),
           if (canAssign)
-            GestureDetector(
-              onTap: onAssign,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.ink,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  context.l10n.assign,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.5,
-                  ),
-                ),
+            TextButton(
+              onPressed: widget.onAssign,
+              style: TextButton.styleFrom(
+                backgroundColor: assigned ? Colors.white : AppColors.ink,
+                foregroundColor: assigned ? AppColors.ink : Colors.white,
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
               ),
+              child: Text(assigned ? l10n.reassign : l10n.assign),
             ),
         ],
       ),

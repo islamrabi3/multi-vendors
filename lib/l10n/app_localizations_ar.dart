@@ -6412,4 +6412,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pagesSection => 'الصفحات';
+
+  @override
+  String get reassign => 'غيّر المندوب';
+
+  @override
+  String get readyTab => 'جاهز';
+
+  @override
+  String get ordersToday => 'طلبات النهارده';
+
+  @override
+  String get pickConversation => 'اختار محادثة عشان تقراها وترد.';
 }
