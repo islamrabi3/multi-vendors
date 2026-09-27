@@ -858,9 +858,10 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
           if (vendor.isApproved &&
               context.watch<AuthCubit>().state.can('vendors.promote'))
             Container(
+              // Spaced from the summary above it, which ends flush.
               margin: const EdgeInsets.fromLTRB(
                 AppSpace.gutter,
-                0,
+                AppSpace.md,
                 AppSpace.gutter,
                 AppSpace.sm,
               ),
