@@ -1904,5 +1904,11 @@
   "currencyDecimals": "عدد الخانات العشرية",
   "errCurrencyInUse": "دي العملة اللي المنصة شغالة بيها. حوّل لعملة تانية الأول.",
   "errInvalidCurrencyCode": "كود العملة 3 حروف، زي SAR.",
-  "storeFeeUnusedByDistance": "التوصيل دلوقتي بيتحسب بالمسافة لكل المتاجر، فالرسوم دي مش بتتحسب. هترجع تتطبق لو رجعت الإعداد من إعدادات المنصة."
+  "storeFeeUnusedByDistance": "التوصيل دلوقتي بيتحسب بالمسافة لكل المتاجر، فالرسوم دي مش بتتحسب. هترجع تتطبق لو رجعت الإعداد من إعدادات المنصة.",
+  "buyAndDeliver": "اشتري ووصّل",
+  "pickUpAndDeliver": "استلم ووصّل",
+  "buildingShort": "عمارة {value}",
+  "floorShort": "دور {value}",
+  "apartmentShort": "شقة {value}",
+  "details": "التفاصيل"
 }

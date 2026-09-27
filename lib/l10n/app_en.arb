@@ -2041,5 +2041,14 @@
   "currencyDecimals": "Decimal places",
   "errCurrencyInUse": "This is the currency the platform runs in. Switch to another one first.",
   "errInvalidCurrencyCode": "A currency code is three letters, like SAR.",
-  "storeFeeUnusedByDistance": "Delivery is priced by distance for every store right now, so this fee is not charged. It applies again if you switch back in Platform settings."
+  "storeFeeUnusedByDistance": "Delivery is priced by distance for every store right now, so this fee is not charged. It applies again if you switch back in Platform settings.",
+  "buyAndDeliver": "Buy and deliver",
+  "pickUpAndDeliver": "Pick up and deliver",
+  "buildingShort": "Bldg {value}",
+  "@buildingShort": {"placeholders": {"value": {"type": "String"}}},
+  "floorShort": "Floor {value}",
+  "@floorShort": {"placeholders": {"value": {"type": "String"}}},
+  "apartmentShort": "Apt {value}",
+  "@apartmentShort": {"placeholders": {"value": {"type": "String"}}},
+  "details": "Details"
 }

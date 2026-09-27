@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/driver_order_details_sheet.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -628,36 +630,59 @@ class _PoolCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success,
-              minimumSize: const Size.fromHeight(48),
-              textStyle: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w700,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(13),
-              ),
-            ),
-            onPressed: enabled ? onClaim : null,
-            // The cash variant is three pieces plus an amount, and in Arabic
-            // it ran past a fixed-height button and was simply cut off — the
-            // driver could not read what they were about to collect. Scaling
-            // down keeps the whole label legible at any width instead.
-            child: claiming
-                ? const ButtonSpinner()
-                : FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      order.isCod
-                          ? '${context.l10n.claimCollect} '
-                                '${formatMoney(order.total)} '
-                                '${context.l10n.cash}'
-                          : context.l10n.claimDelivery,
-                      maxLines: 1,
+          Row(
+            children: [
+              // Before claiming, the whole order: what is in the bag, where it
+              // goes, what to collect. A driver should not have to accept a
+              // job to find out what it is.
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
                     ),
                   ),
+                  onPressed: () => showDriverOrderDetails(context, order),
+                  icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                  label: Text(context.l10n.details),
+                ),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    minimumSize: const Size.fromHeight(48),
+                    textStyle: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                  ),
+                  onPressed: enabled ? onClaim : null,
+                  // The cash variant is three pieces plus an amount, and in Arabic
+                  // it ran past a fixed-height button and was simply cut off — the
+                  // driver could not read what they were about to collect. Scaling
+                  // down keeps the whole label legible at any width instead.
+                  child: claiming
+                      ? const ButtonSpinner()
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            order.isCod
+                                ? '${context.l10n.claimCollect} '
+                                      '${formatMoney(order.total)} '
+                                      '${context.l10n.cash}'
+                                : context.l10n.claimDelivery,
+                            maxLines: 1,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

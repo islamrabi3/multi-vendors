@@ -6151,4 +6151,28 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get storeFeeUnusedByDistance =>
       'التوصيل دلوقتي بيتحسب بالمسافة لكل المتاجر، فالرسوم دي مش بتتحسب. هترجع تتطبق لو رجعت الإعداد من إعدادات المنصة.';
+
+  @override
+  String get buyAndDeliver => 'اشتري ووصّل';
+
+  @override
+  String get pickUpAndDeliver => 'استلم ووصّل';
+
+  @override
+  String buildingShort(String value) {
+    return 'عمارة $value';
+  }
+
+  @override
+  String floorShort(String value) {
+    return 'دور $value';
+  }
+
+  @override
+  String apartmentShort(String value) {
+    return 'شقة $value';
+  }
+
+  @override
+  String get details => 'التفاصيل';
 }

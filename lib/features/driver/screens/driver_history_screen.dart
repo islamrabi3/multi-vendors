@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/driver_order_details_sheet.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:intl/intl.dart';
 
@@ -299,6 +301,17 @@ class _TripTile extends StatelessWidget {
       label?.name ?? context.l10n.store,
       if (street != null && street.isNotEmpty) street,
     ].join(' → ');
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => showDriverOrderDetails(context, order),
+        borderRadius: BorderRadius.circular(15),
+        child: _tile(context, title),
+      ),
+    );
+  }
+
+  Widget _tile(BuildContext context, String title) {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(

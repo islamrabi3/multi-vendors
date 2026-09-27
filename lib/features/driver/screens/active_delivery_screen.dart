@@ -23,6 +23,7 @@ import '../../../core/widgets/common.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../customer/orders/order_chat_sheet.dart';
 import '../active_delivery_cubit.dart';
+import '../widgets/driver_order_details_sheet.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 
 class ActiveDeliveryScreen extends StatelessWidget {
@@ -698,15 +699,6 @@ class _Sheet extends StatelessWidget {
   Future<void> _call(BuildContext context) =>
       callPhone(context, order.customerPhone);
 
-  /// What to buy. Only offered when the rider is the one buying — a store in
-  /// the app packs the bag itself.
-  void _showShoppingList(BuildContext context) => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => _ShoppingListSheet(order: order),
-  );
-
   /// The store's own line, for the problems only the restaurant can answer:
   /// a missing item, a wrong bag, a shutter that is still down.
   ///
@@ -963,15 +955,17 @@ class _Sheet extends StatelessWidget {
             // down to a sliver.
             Row(
               children: [
-                if (!order.orderFlow.runsThroughStore)
-                  Expanded(
-                    child: _ActionIcon(
-                      icon: Icons.receipt_long_rounded,
-                      color: AppColors.primaryDark,
-                      tooltip: context.l10n.shoppingList,
-                      onPressed: () => _showShoppingList(context),
-                    ),
+                // The whole order — items, notes, money — on every trip: a
+                // rider checking the bag at the counter needs it as much as
+                // one buying it.
+                Expanded(
+                  child: _ActionIcon(
+                    icon: Icons.receipt_long_rounded,
+                    color: AppColors.primaryDark,
+                    tooltip: context.l10n.orderDetails,
+                    onPressed: () => showDriverOrderDetails(context, order),
                   ),
+                ),
                 if (order.customerPhone != null)
                   Expanded(
                     child: _ActionIcon(
@@ -1259,129 +1253,6 @@ class _PickupCodeFieldState extends State<_PickupCodeField> {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// The order as the customer placed it, for a rider who is buying it at the
-/// counter: every line with its quantity and options, and the customer's note.
-class _ShoppingListSheet extends StatelessWidget {
-  const _ShoppingListSheet({required this.order});
-
-  final AppOrder order;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final language = Localizations.localeOf(context).languageCode;
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.75,
-        ),
-        child: FutureBuilder<List<OrderItem>>(
-          future: OrderRepository().fetchOrderItems(order.id),
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (snap.hasError) {
-              return Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  l10n.couldNotLoadThisOrder,
-                  textAlign: TextAlign.center,
-                ),
-              );
-            }
-            final items = snap.data ?? const <OrderItem>[];
-            final note = order.customerNotes?.trim() ?? '';
-            return ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              children: [
-                Text(l10n.shoppingList, style: AppType.heading(18)),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.shoppingListHint,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                for (final item in items)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 36,
-                          child: Text(
-                            '${item.quantity}×',
-                            style: AppType.mono(
-                              15,
-                              color: AppColors.primaryDark,
-                              weight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.nameFor(language),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14.5,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              if (item.optionNames.isNotEmpty)
-                                Text(
-                                  item.optionNames.join(' · '),
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          formatMoney(item.lineTotal),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (note.isNotEmpty) ...[
-                  const Divider(height: 20),
-                  Text(
-                    l10n.customerNote,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(note, style: const TextStyle(fontSize: 14)),
-                ],
-              ],
-            );
-          },
-        ),
       ),
     );
   }

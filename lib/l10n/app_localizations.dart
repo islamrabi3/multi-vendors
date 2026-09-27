@@ -11342,6 +11342,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delivery is priced by distance for every store right now, so this fee is not charged. It applies again if you switch back in Platform settings.'**
   String get storeFeeUnusedByDistance;
+
+  /// No description provided for @buyAndDeliver.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy and deliver'**
+  String get buyAndDeliver;
+
+  /// No description provided for @pickUpAndDeliver.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick up and deliver'**
+  String get pickUpAndDeliver;
+
+  /// No description provided for @buildingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Bldg {value}'**
+  String buildingShort(String value);
+
+  /// No description provided for @floorShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Floor {value}'**
+  String floorShort(String value);
+
+  /// No description provided for @apartmentShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Apt {value}'**
+  String apartmentShort(String value);
+
+  /// No description provided for @details.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get details;
 }
 
 class _AppLocalizationsDelegate

@@ -6204,4 +6204,28 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get storeFeeUnusedByDistance =>
       'Delivery is priced by distance for every store right now, so this fee is not charged. It applies again if you switch back in Platform settings.';
+
+  @override
+  String get buyAndDeliver => 'Buy and deliver';
+
+  @override
+  String get pickUpAndDeliver => 'Pick up and deliver';
+
+  @override
+  String buildingShort(String value) {
+    return 'Bldg $value';
+  }
+
+  @override
+  String floorShort(String value) {
+    return 'Floor $value';
+  }
+
+  @override
+  String apartmentShort(String value) {
+    return 'Apt $value';
+  }
+
+  @override
+  String get details => 'Details';
 }
