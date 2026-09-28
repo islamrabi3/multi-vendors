@@ -6987,4 +6987,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get moneyOverview => 'ملخص الحسابات';
+
+  @override
+  String get passwordHint => 'كلمة المرور بتاعتك';
 }

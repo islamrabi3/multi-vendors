@@ -90,8 +90,18 @@ class _LoginScreenState extends State<LoginScreen> {
     final webWide = AppBreakpoints.isWebWide(context);
     final body = BlocListener<AuthCubit, AppAuthState>(
       listenWhen: (previous, current) =>
-          previous.error != current.error && current.error != null,
-      listener: (context, state) => showFailure(context, state.error!),
+          (previous.error != current.error && current.error != null) ||
+          (previous.status != AuthStatus.authenticated &&
+              current.status == AuthStatus.authenticated),
+      listener: (context, state) {
+        // Signed in: the password has done its job and is not kept, so
+        // nothing is left in the field if this screen is ever shown again.
+        if (state.status == AuthStatus.authenticated) {
+          _password.clear();
+          return;
+        }
+        showFailure(context, state.error!);
+      },
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -167,10 +177,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _password,
                     obscureText: _obscurePassword,
+                    enableSuggestions: false,
+                    autocorrect: false,
                     style: const TextStyle(fontSize: 18, letterSpacing: 1.5),
                     decoration: InputDecoration(
-                      hintText: context.l10n.emptyString,
-                      hintStyle: const TextStyle(letterSpacing: 1.5),
+                      // Words, not a row of dots: dots in an empty field
+                      // read as a password the app had remembered.
+                      hintText: context.l10n.passwordHint,
+                      hintStyle: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textFaint,
+                      ),
                       fillColor: Colors.white,
                       // An icon reads at a glance in either language; the old
                       // "Show"/"Hide" button was a literal English word baked

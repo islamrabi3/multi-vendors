@@ -12698,6 +12698,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Money overview'**
   String get moneyOverview;
+
+  /// No description provided for @passwordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password'**
+  String get passwordHint;
 }
 
 class _AppLocalizationsDelegate

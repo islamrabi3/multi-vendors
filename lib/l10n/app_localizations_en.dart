@@ -7033,4 +7033,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get moneyOverview => 'Money overview';
+
+  @override
+  String get passwordHint => 'Your password';
 }

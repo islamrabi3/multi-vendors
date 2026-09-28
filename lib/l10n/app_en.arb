@@ -2291,5 +2291,6 @@
   "searchAds": "Search ads",
   "adsEmptyBody": "Put a banner, a video or a featured store in front of customers, on the screen you choose.",
   "videoLabel": "Video",
-  "moneyOverview": "Money overview"
+  "moneyOverview": "Money overview",
+  "passwordHint": "Your password"
 }
