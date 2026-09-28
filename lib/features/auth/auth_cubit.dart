@@ -367,11 +367,20 @@ class AuthCubit extends Cubit<AppAuthState> {
     emit(state.copyWith(busy: true, clearMessages: true));
     try {
       await _repository.updatePassword(password);
-      clearPasswordRecovery();
-      emit(state.copyWith(busy: false));
+    } on AuthException catch (error) {
+      // Supabase refuses a "new" password equal to the current one. The
+      // person has proved they own the account and now knows its password,
+      // which is everything a reset is for — so this ends the reset rather
+      // than stranding them on the form with a server message.
+      if (error.code != 'same_password') {
+        emit(state.copyWith(busy: false, error: error.message));
+        return;
+      }
     } catch (error) {
       emit(state.copyWith(busy: false, error: error.toString()));
+      return;
     }
+    emit(state.copyWith(busy: false, passwordRecovery: false));
   }
 
   /// Role picked on the signup screen, applied once the social sign-up lands.

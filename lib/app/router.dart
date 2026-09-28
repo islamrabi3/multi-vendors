@@ -166,6 +166,26 @@ String? _orderLinkForRole(UserRole role, String location) {
   };
 }
 
+/// Screens that only exist to hold someone until a condition is met. Once
+/// every gate in the redirect has passed, standing on one of these means it
+/// is done, and the user goes to their home.
+///
+/// `/reset-password` is here because the router lets a customer open any
+/// path outside the partner consoles: without it, a customer who had just
+/// set a new password stayed on the form.
+const _gateOnlyPaths = {
+  '/splash',
+  '/choose-role',
+  '/add-phone',
+  '/accept-terms',
+  '/onboarding',
+  '/vendor-onboarding',
+  '/reset-password',
+};
+
+@visibleForTesting
+bool isGateOnlyPath(String location) => _gateOnlyPaths.contains(location);
+
 bool _allowedForRole(UserRole role, String location) {
   if (_sharedPaths.contains(location)) return true;
   if (_customerOrderLink.firstMatch(location)?.group(2) != null) return true;
@@ -288,12 +308,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
       }
       final roleOrderLink = _orderLinkForRole(role, location);
       if (roleOrderLink != null) return roleOrderLink;
-      if (location == '/splash' ||
-          location == '/choose-role' ||
-          location == '/add-phone' ||
-          location == '/accept-terms' ||
-          location == '/onboarding' ||
-          location == '/vendor-onboarding' ||
+      if (isGateOnlyPath(location) ||
           _authPaths.contains(location) ||
           !_allowedForRole(role, location)) {
         return _roleHome(role);

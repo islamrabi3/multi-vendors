@@ -46,8 +46,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     final body = BlocListener<AuthCubit, AppAuthState>(
       listenWhen: (previous, current) =>
-          previous.error != current.error && current.error != null,
-      listener: (context, state) => showFailure(context, state.error!),
+          (previous.error != current.error && current.error != null) ||
+          (previous.passwordRecovery && !current.passwordRecovery),
+      listener: (context, state) {
+        if (state.error != null) {
+          showFailure(context, state.error!);
+          return;
+        }
+        // The app-wide messenger outlives this screen, so the confirmation
+        // is still there on the page the router moves on to.
+        showSnack(context, context.l10n.passwordChanged);
+      },
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
