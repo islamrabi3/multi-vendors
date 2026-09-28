@@ -1995,5 +1995,10 @@
   "applyToAllStores": "طبّق على كل المتاجر",
   "applyFeeToAllTitle": "تخلّي رسوم التوصيل {fee} في كل المتاجر؟",
   "applyFeeToAllMessage": "رسوم التوصيل في كل المتاجر هتتغير للمبلغ ده دلوقتي. الطلبات القديمة بتفضل برسومها.",
-  "storesFeeUpdated": "{count, plural, =0{كل المتاجر كانت بالرسوم دي أصلاً} =1{اتحدّث متجر واحد} =2{اتحدّث متجرين} few{اتحدّث {count} متاجر} many{اتحدّث {count} متجر} other{اتحدّث {count} متجر}}"
+  "storesFeeUpdated": "{count, plural, =0{كل المتاجر كانت بالرسوم دي أصلاً} =1{اتحدّث متجر واحد} =2{اتحدّث متجرين} few{اتحدّث {count} متاجر} many{اتحدّث {count} متجر} other{اتحدّث {count} متجر}}",
+  "exportMenu": "تصدير المنيو",
+  "exportAsExcel": "إكسل (‎.xlsx)",
+  "exportAsCsv": "CSV (‎.csv)",
+  "menuEmptyNothingToExport": "المتجر ده لسه مفيهوش أصناف تتصدّر.",
+  "menuExported": "{count, plural, =1{اتصدّر صنف واحد} =2{اتصدّر صنفين} few{اتصدّر {count} أصناف} many{اتصدّر {count} صنف} other{اتصدّر {count} صنف}}"
 }

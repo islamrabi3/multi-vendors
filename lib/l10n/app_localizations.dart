@@ -11888,6 +11888,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{Every store already charged that} =1{1 store updated} other{{count} stores updated}}'**
   String storesFeeUpdated(int count);
+
+  /// No description provided for @exportMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Export menu'**
+  String get exportMenu;
+
+  /// No description provided for @exportAsExcel.
+  ///
+  /// In en, this message translates to:
+  /// **'Excel (.xlsx)'**
+  String get exportAsExcel;
+
+  /// No description provided for @exportAsCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV (.csv)'**
+  String get exportAsCsv;
+
+  /// No description provided for @menuEmptyNothingToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'This store has no dishes to export yet.'**
+  String get menuEmptyNothingToExport;
+
+  /// No description provided for @menuExported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Exported 1 dish} other{Exported {count} dishes}}'**
+  String menuExported(int count);
 }
 
 class _AppLocalizationsDelegate

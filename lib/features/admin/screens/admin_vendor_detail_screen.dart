@@ -10,7 +10,11 @@ import '../../../app/tokens.dart';
 import '../../../core/errors/app_failure.dart' show UserMessage;
 import '../../../core/models/finance.dart';
 import '../../../core/models/order_flow.dart';
+import '../../../core/models/product.dart';
 import '../../../core/models/vendor.dart';
+import '../../../core/repositories/catalog_repository.dart';
+import '../../../core/utils/file_save.dart';
+import '../../../core/utils/menu_export.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/repositories/account_onboarding_repository.dart';
@@ -519,6 +523,42 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
   /// typing the store's name, not by an "are you sure": this cannot be undone,
   /// and the one mistake worth designing against is doing it to the store
   /// beside the one intended.
+  /// Downloads the store's whole menu — sold-out dishes included — as a
+  /// spreadsheet in the importer's own columns.
+  Future<void> _exportMenu(Vendor vendor, MenuExportFormat format) async {
+    final l10n = context.l10n;
+    setState(() => _busy = true);
+    try {
+      final catalog = CatalogRepository();
+      final results = await Future.wait([
+        catalog.fetchMenuCategories(vendor.id),
+        catalog.fetchProducts(vendor.id, includeUnavailable: true),
+      ]);
+      final products = results[1] as List<Product>;
+      if (products.isEmpty) {
+        if (mounted) showSnack(context, l10n.menuEmptyNothingToExport);
+        return;
+      }
+      final rows = MenuExport.rows(
+        categories: results[0] as List<ProductCategory>,
+        products: products,
+      );
+      final excel = format == MenuExportFormat.excel;
+      final saved = await saveBytesAsFile(
+        fileName: '${safeFileName(vendor.name)}-menu.${excel ? 'xlsx' : 'csv'}',
+        bytes: excel ? MenuExport.excel(rows) : MenuExport.csv(rows),
+        extensions: [excel ? 'xlsx' : 'csv'],
+      );
+      if (saved && mounted) {
+        showSnack(context, l10n.menuExported(products.length));
+      }
+    } catch (error) {
+      if (mounted) showFailure(context, error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _clearMenu(Vendor vendor) async {
     final l10n = context.l10n;
     final typed = TextEditingController();
@@ -807,6 +847,9 @@ class _AdminVendorDetailViewState extends State<AdminVendorDetailView> {
               onEditSchedule: _busy ? null : () => _editSchedule(vendor),
               onEditAccount: _busy ? null : () => _editAccount(vendor),
               onClearMenu: _busy ? null : () => _clearMenu(vendor),
+              onExportMenu: _busy
+                  ? null
+                  : (format) => _exportMenu(vendor, format),
               onSetLocation: _busy ? null : () => _setLocation(vendor),
               onChangeLogo: _busy ? null : () => _pickImage(vendor, logo: true),
               onChangeCover: _busy
@@ -1021,6 +1064,7 @@ class _Body extends StatelessWidget {
     this.onEditSchedule,
     this.onEditAccount,
     this.onClearMenu,
+    this.onExportMenu,
     this.onSetLocation,
     this.onChangeLogo,
     this.onChangeCover,
@@ -1043,6 +1087,9 @@ class _Body extends StatelessWidget {
 
   /// Empties the store's catalogue. Destructive, and drawn as such.
   final VoidCallback? onClearMenu;
+
+  /// Downloads the menu as a spreadsheet the importer can read back.
+  final ValueChanged<MenuExportFormat>? onExportMenu;
   final VoidCallback? onSetLocation;
   final VoidCallback? onChangeLogo;
   final VoidCallback? onChangeCover;
@@ -1313,6 +1360,50 @@ class _Body extends StatelessWidget {
                           context.l10n.menu,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: PopupMenuButton<MenuExportFormat>(
+                        enabled: onExportMenu != null,
+                        tooltip: context.l10n.exportMenu,
+                        onSelected: onExportMenu,
+                        position: PopupMenuPosition.under,
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: MenuExportFormat.excel,
+                            child: ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.table_view_rounded),
+                              title: Text(context.l10n.exportAsExcel),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: MenuExportFormat.csv,
+                            child: ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.description_outlined),
+                              title: Text(context.l10n.exportAsCsv),
+                            ),
+                          ),
+                        ],
+                        child: IgnorePointer(
+                          child: OutlinedButton.icon(
+                            onPressed: onExportMenu == null ? null : () {},
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46),
+                            ),
+                            icon: const Icon(
+                              Icons.file_download_outlined,
+                              size: 18,
+                            ),
+                            label: Text(
+                              context.l10n.exportMenu,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1890,3 +1981,6 @@ class _OrderFlowPicker extends StatelessWidget {
     );
   }
 }
+
+/// The two spreadsheet kinds a menu exports to.
+enum MenuExportFormat { excel, csv }

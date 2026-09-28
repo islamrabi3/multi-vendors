@@ -2142,5 +2142,11 @@
   "@applyFeeToAllTitle": {"placeholders": {"fee": {"type": "String"}}},
   "applyFeeToAllMessage": "Every store's delivery fee changes to this now. Orders already placed keep the fee they were charged.",
   "storesFeeUpdated": "{count, plural, =0{Every store already charged that} =1{1 store updated} other{{count} stores updated}}",
-  "@storesFeeUpdated": {"placeholders": {"count": {"type": "int"}}}
+  "@storesFeeUpdated": {"placeholders": {"count": {"type": "int"}}},
+  "exportMenu": "Export menu",
+  "exportAsExcel": "Excel (.xlsx)",
+  "exportAsCsv": "CSV (.csv)",
+  "menuEmptyNothingToExport": "This store has no dishes to export yet.",
+  "menuExported": "{count, plural, =1{Exported 1 dish} other{Exported {count} dishes}}",
+  "@menuExported": {"placeholders": {"count": {"type": "int"}}}
 }

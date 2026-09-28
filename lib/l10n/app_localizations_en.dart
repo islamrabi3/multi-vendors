@@ -6544,4 +6544,28 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get exportMenu => 'Export menu';
+
+  @override
+  String get exportAsExcel => 'Excel (.xlsx)';
+
+  @override
+  String get exportAsCsv => 'CSV (.csv)';
+
+  @override
+  String get menuEmptyNothingToExport =>
+      'This store has no dishes to export yet.';
+
+  @override
+  String menuExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Exported $count dishes',
+      one: 'Exported 1 dish',
+    );
+    return '$_temp0';
+  }
 }

@@ -6493,4 +6493,30 @@ class AppLocalizationsAr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get exportMenu => 'تصدير المنيو';
+
+  @override
+  String get exportAsExcel => 'إكسل (‎.xlsx)';
+
+  @override
+  String get exportAsCsv => 'CSV (‎.csv)';
+
+  @override
+  String get menuEmptyNothingToExport => 'المتجر ده لسه مفيهوش أصناف تتصدّر.';
+
+  @override
+  String menuExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'اتصدّر $count صنف',
+      many: 'اتصدّر $count صنف',
+      few: 'اتصدّر $count أصناف',
+      two: 'اتصدّر صنفين',
+      one: 'اتصدّر صنف واحد',
+    );
+    return '$_temp0';
+  }
 }
