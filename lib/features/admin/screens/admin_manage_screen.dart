@@ -15,7 +15,8 @@ import 'package:multi_vendor/core/utils/l10n_extension.dart';
 List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
   final l10n = context.l10n;
   final auth = context.watch<AuthCubit>().state;
-  bool can(ManageNavItem item) => auth.can(item.permission);
+  bool can(ManageNavItem item) =>
+      item.anyPermission?.any(auth.can) ?? auth.can(item.permission);
 
   final groups = <(String, List<ManageNavItem>)>[
     (
@@ -140,23 +141,17 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
     (
       l10n.growth,
       [
+        // Coupons, price campaigns and home-screen ads, as tabs of one page.
         ManageNavItem(
-          icon: Icons.local_offer_outlined,
-          label: l10n.promos,
-          route: '/admin-app/promos',
+          icon: Icons.campaign_outlined,
+          label: l10n.marketing,
+          route: '/admin-app/marketing',
           permission: 'promos.manage',
-        ),
-        ManageNavItem(
-          icon: Icons.trending_up_rounded,
-          label: l10n.campaignsTitle,
-          route: '/admin-app/price-campaigns',
-          permission: 'catalog.manage',
-        ),
-        ManageNavItem(
-          icon: Icons.ad_units_outlined,
-          label: l10n.adManager,
-          route: '/admin-app/ads',
-          permission: 'ads.manage',
+          anyPermission: const [
+            'promos.manage',
+            'catalog.manage',
+            'ads.manage',
+          ],
         ),
         ManageNavItem(
           icon: Icons.article_outlined,
@@ -298,6 +293,7 @@ class ManageNavItem {
     required this.route,
     required this.permission,
     this.badgeKey,
+    this.anyPermission,
   });
 
   final IconData icon;
@@ -314,6 +310,10 @@ class ManageNavItem {
   /// Hiding is courtesy — the screen behind it and every RPC it calls check
   /// again — but a console full of buttons that refuse is not a console.
   final String permission;
+
+  /// Shown when the admin holds any one of these — for a page that gathers
+  /// several tools, each with its own permission. Overrides [permission].
+  final List<String>? anyPermission;
 }
 
 class _ManageRow extends StatelessWidget {

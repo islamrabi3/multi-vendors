@@ -21,6 +21,7 @@ import '../features/auth/screens/splash_screen.dart';
 import '../core/repositories/payment_repository.dart' show PaymobCheckout;
 import '../core/services/maintenance_gate.dart';
 import '../features/admin/screens/admin_maintenance_screen.dart';
+import '../features/admin/screens/admin_marketing_screen.dart';
 import '../features/admin/screens/admin_platform_settings_screen.dart';
 import '../features/admin/screens/admin_price_campaigns_screen.dart';
 import '../features/auth/screens/change_password_screen.dart';
@@ -582,6 +583,10 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/admin-app/maintenance',
         builder: (_, _) => const AdminMaintenanceScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/marketing',
+        builder: (_, _) => const AdminMarketingScreen(),
       ),
       GoRoute(
         path: '/admin-app/platform-settings',

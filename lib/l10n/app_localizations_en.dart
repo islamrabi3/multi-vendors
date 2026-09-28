@@ -6693,4 +6693,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get importProbLocation =>
       'Location is missing — add lat and lng, or a Google Maps link';
+
+  @override
+  String get marketing => 'Marketing';
+
+  @override
+  String get pageDescMarketing =>
+      'Coupon codes, price campaigns and home-screen ads — what brings customers back.';
 }

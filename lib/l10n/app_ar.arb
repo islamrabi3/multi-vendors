@@ -2035,5 +2035,7 @@
   "importProbMissingStore": "اسم المتجر ناقص",
   "importProbCategory": "التصنيف مش موجود — استخدم اسم من التصنيفات",
   "importProbAddress": "العنوان ناقص",
-  "importProbLocation": "الموقع ناقص — ضيف lat و lng أو لينك جوجل ماب"
+  "importProbLocation": "الموقع ناقص — ضيف lat و lng أو لينك جوجل ماب",
+  "marketing": "التسويق",
+  "pageDescMarketing": "أكواد الخصم وحملات الأسعار وإعلانات الشاشة الرئيسية — اللي بيرجّع العملاء."
 }

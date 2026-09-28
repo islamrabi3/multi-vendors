@@ -2185,5 +2185,7 @@
   "importProbMissingStore": "Store name is missing",
   "importProbCategory": "Category not found — use a name from Categories",
   "importProbAddress": "Address is missing",
-  "importProbLocation": "Location is missing — add lat and lng, or a Google Maps link"
+  "importProbLocation": "Location is missing — add lat and lng, or a Google Maps link",
+  "marketing": "Marketing",
+  "pageDescMarketing": "Coupon codes, price campaigns and home-screen ads — what brings customers back."
 }

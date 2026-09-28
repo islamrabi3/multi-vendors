@@ -12128,6 +12128,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Location is missing — add lat and lng, or a Google Maps link'**
   String get importProbLocation;
+
+  /// No description provided for @marketing.
+  ///
+  /// In en, this message translates to:
+  /// **'Marketing'**
+  String get marketing;
+
+  /// No description provided for @pageDescMarketing.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon codes, price campaigns and home-screen ads — what brings customers back.'**
+  String get pageDescMarketing;
 }
 
 class _AppLocalizationsDelegate

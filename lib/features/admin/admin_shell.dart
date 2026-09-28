@@ -21,6 +21,7 @@ import 'screens/admin_finance_screen.dart';
 import 'screens/admin_manage_screen.dart';
 import 'screens/admin_menu_import_screen.dart';
 import 'screens/admin_maintenance_screen.dart';
+import 'screens/admin_marketing_screen.dart';
 import 'screens/admin_platform_settings_screen.dart';
 import 'screens/admin_price_campaigns_screen.dart';
 import 'screens/admin_price_adjustment_screen.dart';
@@ -210,13 +211,17 @@ class _AdminWebShellState extends State<_AdminWebShell> {
     '/admin-app/settlements' => const AdminSettlementsScreen(embedded: true),
     '/admin-app/deposits' => const AdminDepositsScreen(embedded: true),
     '/admin-app/promos' => const AdminPromosScreen(embedded: true),
+    '/admin-app/marketing' => const AdminMarketingScreen(embedded: true),
     '/admin-app/ads' => const AdminAdsScreen(embedded: true),
     '/admin-app/content' => const AdminContentScreen(embedded: true),
     _ => null,
   };
 
   /// Routes whose screen is a ConsolePage and so manages its own width.
-  static const _consolePages = {'/admin-app/platform-settings'};
+  static const _consolePages = {
+    '/admin-app/platform-settings',
+    '/admin-app/marketing',
+  };
 
   static const _consoleBranches = {0, 2};
 
@@ -229,6 +234,7 @@ class _AdminWebShellState extends State<_AdminWebShell> {
     '/admin-app/promos',
     '/admin-app/categories',
     '/admin-app/service-areas',
+    '/admin-app/marketing',
   };
 
   static bool _consoleWide(String? route, int branch) => route == null

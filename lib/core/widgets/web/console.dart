@@ -121,6 +121,28 @@ class ConsoleHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Inside a tab the tab already names the page: keep what it is for and
+    // its action, drop the second title.
+    if (ConsoleTabScope.of(context)) {
+      final note = description == null
+          ? const SizedBox.shrink()
+          : Text(
+              description!,
+              style: const TextStyle(
+                fontSize: 13.5,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
+            );
+      if (actions.isEmpty) return note;
+      return Row(
+        children: [
+          Expanded(child: note),
+          const SizedBox(width: AppSpace.lg),
+          Wrap(spacing: AppSpace.sm, children: actions),
+        ],
+      );
+    }
     final text = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -751,4 +773,17 @@ Future<T?> showConsoleSidePanel<T>(
       );
     },
   );
+}
+
+/// Marks a page that is shown as one tab of a larger console page, so its
+/// [ConsoleHeader] shrinks to a one-line toolbar instead of repeating a title
+/// the tab bar already shows.
+class ConsoleTabScope extends InheritedWidget {
+  const ConsoleTabScope({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ConsoleTabScope>() != null;
+
+  @override
+  bool updateShouldNotify(ConsoleTabScope oldWidget) => false;
 }

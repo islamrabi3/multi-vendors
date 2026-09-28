@@ -6646,4 +6646,11 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get importProbLocation =>
       'الموقع ناقص — ضيف lat و lng أو لينك جوجل ماب';
+
+  @override
+  String get marketing => 'التسويق';
+
+  @override
+  String get pageDescMarketing =>
+      'أكواد الخصم وحملات الأسعار وإعلانات الشاشة الرئيسية — اللي بيرجّع العملاء.';
 }
