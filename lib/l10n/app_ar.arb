@@ -1570,8 +1570,8 @@
   "showPassword": "إظهار كلمة المرور",
   "hidePassword": "إخفاء كلمة المرور",
   "resetPasswordTitle": "إعادة تعيين كلمة المرور",
-  "resetPasswordSubtitle": "سنرسل رابطًا لتعيين كلمة مرور جديدة.",
-  "sendResetLink": "إرسال الرابط",
+  "resetPasswordSubtitle": "هنبعتلك إيميل فيه كود ولينك عشان تعمل كلمة سر جديدة.",
+  "sendResetLink": "ابعت الإيميل",
   "resetLinkSent": "إذا كان هذا البريد مسجّلًا، فرابط إعادة التعيين في طريقه إليه",
   "setNewPasswordTitle": "تعيين كلمة مرور جديدة",
   "setNewPasswordSubtitle": "اختر كلمة مرور لحسابك.",
@@ -1980,5 +1980,14 @@
   "reassign": "غيّر المندوب",
   "readyTab": "جاهز",
   "ordersToday": "طلبات النهارده",
-  "pickConversation": "اختار محادثة عشان تقراها وترد."
+  "pickConversation": "اختار محادثة عشان تقراها وترد.",
+  "enterResetCodeTitle": "اكتب الكود",
+  "enterResetCodeBody": "لو {email} عليه حساب، بعتناله إيميل. اكتب الكود اللي فيه هنا، أو دوس على اللينك من نفس الجهاز. ممكن ياخد دقيقة، وبص في الـ Spam كمان.",
+  "verifyCode": "تأكيد",
+  "resendCode": "ابعت كود جديد",
+  "resendCodeIn": "ابعت كود جديد بعد {seconds} ث",
+  "resetCodeResent": "كود جديد في الطريق",
+  "resetLinkAlsoWorks": "وممكن كمان تدوس على اللينك اللي في الإيميل من نفس الجهاز.",
+  "errInvalidResetCode": "الكود ده غلط أو انتهى. شوف آخر إيميل، أو ابعت كود جديد.",
+  "errResetRateLimited": "لسه باعتين كود من شوية. استنى دقيقة قبل ما تطلب كود تاني."
 }

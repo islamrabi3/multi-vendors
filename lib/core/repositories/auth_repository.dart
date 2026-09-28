@@ -248,6 +248,15 @@ class AuthRepository {
   Future<void> sendPasswordResetEmail(String email) =>
       supabase.auth.resetPasswordForEmail(email, redirectTo: _oauthRedirect);
 
+  /// Trades the code from the reset email for a recovery session.
+  ///
+  /// The code works on any device, unlike the link, which only completes in
+  /// the browser that asked for it (PKCE) and on a phone only when the app's
+  /// deep link is allow-listed. Needs the reset email template to include
+  /// `{{ .Token }}` (Auth > Email Templates > Reset password).
+  Future<void> verifyRecoveryCode(String email, String code) => supabase.auth
+      .verifyOTP(email: email, token: code, type: OtpType.recovery);
+
   /// Sets a new password on the current session — the recovery session a
   /// reset link produces, or an ordinary one for a signed-in user changing it
   /// by choice.

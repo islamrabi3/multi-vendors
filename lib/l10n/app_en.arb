@@ -1669,8 +1669,8 @@
   "showPassword": "Show password",
   "hidePassword": "Hide password",
   "resetPasswordTitle": "Reset your password",
-  "resetPasswordSubtitle": "We will email a link to set a new one.",
-  "sendResetLink": "Send link",
+  "resetPasswordSubtitle": "We'll email you a code and a link to set a new one.",
+  "sendResetLink": "Send email",
   "resetLinkSent": "If that email has an account, a reset link is on its way",
   "setNewPasswordTitle": "Set a new password",
   "setNewPasswordSubtitle": "Choose a password for your account.",
@@ -2123,5 +2123,16 @@
   "reassign": "Reassign",
   "readyTab": "Ready",
   "ordersToday": "Orders today",
-  "pickConversation": "Pick a conversation to read it and reply."
+  "pickConversation": "Pick a conversation to read it and reply.",
+  "enterResetCodeTitle": "Enter the code",
+  "enterResetCodeBody": "If {email} has an account, we've emailed it. Type the code from the email here, or tap its link on this device. It can take a minute — check spam too.",
+  "@enterResetCodeBody": {"placeholders": {"email": {"type": "String"}}},
+  "verifyCode": "Verify",
+  "resendCode": "Send a new code",
+  "resendCodeIn": "Send a new code in {seconds}s",
+  "@resendCodeIn": {"placeholders": {"seconds": {"type": "int"}}},
+  "resetCodeResent": "A new code is on its way",
+  "resetLinkAlsoWorks": "You can also tap the link in the email on this device.",
+  "errInvalidResetCode": "That code is wrong or has expired. Check the latest email, or send a new code.",
+  "errResetRateLimited": "A code was sent a moment ago. Wait a minute before asking for another."
 }

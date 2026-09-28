@@ -9336,13 +9336,13 @@ abstract class AppLocalizations {
   /// No description provided for @resetPasswordSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'We will email a link to set a new one.'**
+  /// **'We\'ll email you a code and a link to set a new one.'**
   String get resetPasswordSubtitle;
 
   /// No description provided for @sendResetLink.
   ///
   /// In en, this message translates to:
-  /// **'Send link'**
+  /// **'Send email'**
   String get sendResetLink;
 
   /// No description provided for @resetLinkSent.
@@ -11798,6 +11798,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick a conversation to read it and reply.'**
   String get pickConversation;
+
+  /// No description provided for @enterResetCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code'**
+  String get enterResetCodeTitle;
+
+  /// No description provided for @enterResetCodeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If {email} has an account, we\'ve emailed it. Type the code from the email here, or tap its link on this device. It can take a minute — check spam too.'**
+  String enterResetCodeBody(String email);
+
+  /// No description provided for @verifyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verifyCode;
+
+  /// No description provided for @resendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a new code'**
+  String get resendCode;
+
+  /// No description provided for @resendCodeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a new code in {seconds}s'**
+  String resendCodeIn(int seconds);
+
+  /// No description provided for @resetCodeResent.
+  ///
+  /// In en, this message translates to:
+  /// **'A new code is on its way'**
+  String get resetCodeResent;
+
+  /// No description provided for @resetLinkAlsoWorks.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also tap the link in the email on this device.'**
+  String get resetLinkAlsoWorks;
+
+  /// No description provided for @errInvalidResetCode.
+  ///
+  /// In en, this message translates to:
+  /// **'That code is wrong or has expired. Check the latest email, or send a new code.'**
+  String get errInvalidResetCode;
+
+  /// No description provided for @errResetRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'A code was sent a moment ago. Wait a minute before asking for another.'**
+  String get errResetRateLimited;
 }
 
 class _AppLocalizationsDelegate

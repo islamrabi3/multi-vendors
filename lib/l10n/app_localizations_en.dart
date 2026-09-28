@@ -5058,10 +5058,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resetPasswordTitle => 'Reset your password';
 
   @override
-  String get resetPasswordSubtitle => 'We will email a link to set a new one.';
+  String get resetPasswordSubtitle =>
+      'We\'ll email you a code and a link to set a new one.';
 
   @override
-  String get sendResetLink => 'Send link';
+  String get sendResetLink => 'Send email';
 
   @override
   String get resetLinkSent =>
@@ -6478,4 +6479,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pickConversation => 'Pick a conversation to read it and reply.';
+
+  @override
+  String get enterResetCodeTitle => 'Enter the code';
+
+  @override
+  String enterResetCodeBody(String email) {
+    return 'If $email has an account, we\'ve emailed it. Type the code from the email here, or tap its link on this device. It can take a minute — check spam too.';
+  }
+
+  @override
+  String get verifyCode => 'Verify';
+
+  @override
+  String get resendCode => 'Send a new code';
+
+  @override
+  String resendCodeIn(int seconds) {
+    return 'Send a new code in ${seconds}s';
+  }
+
+  @override
+  String get resetCodeResent => 'A new code is on its way';
+
+  @override
+  String get resetLinkAlsoWorks =>
+      'You can also tap the link in the email on this device.';
+
+  @override
+  String get errInvalidResetCode =>
+      'That code is wrong or has expired. Check the latest email, or send a new code.';
+
+  @override
+  String get errResetRateLimited =>
+      'A code was sent a moment ago. Wait a minute before asking for another.';
 }

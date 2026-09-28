@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthChangeEvent, AuthException;
 import 'package:url_launcher/url_launcher.dart' show closeInAppWebView;
 
 import '../../core/models/pending_policy.dart';
@@ -321,8 +322,41 @@ class AuthCubit extends Cubit<AppAuthState> {
     }
   }
 
-  Future<void> sendPasswordReset(String email) =>
-      _repository.sendPasswordResetEmail(email.trim());
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _repository.sendPasswordResetEmail(email.trim());
+    } on AuthException catch (error) {
+      // Supabase allows one reset email a minute per address (and a handful
+      // an hour overall on its built-in mailer); say so rather than showing a
+      // raw English sentence.
+      final text = error.message.toLowerCase();
+      if (error.statusCode == '429' ||
+          text.contains('rate limit') ||
+          text.contains('security purposes')) {
+        throw Exception('RESET_RATE_LIMITED');
+      }
+      rethrow;
+    }
+  }
+
+  /// Signs in with the code from the reset email and holds the session at
+  /// `/reset-password` until a new password is set — the same gate the
+  /// emailed link leads to.
+  ///
+  /// The flag is raised before the session exists, so the router's first
+  /// look at the new session already routes to the gate.
+  Future<void> verifyRecoveryCode(String email, String code) async {
+    emit(state.copyWith(passwordRecovery: true));
+    try {
+      await _repository.verifyRecoveryCode(email.trim(), code.trim());
+    } on AuthException {
+      emit(state.copyWith(passwordRecovery: false));
+      throw Exception('INVALID_RESET_CODE');
+    } catch (_) {
+      emit(state.copyWith(passwordRecovery: false));
+      rethrow;
+    }
+  }
 
   /// Releases the `/reset-password` gate once a new password is set — this is
   /// the only way out of it, since the redirect otherwise reroutes anything

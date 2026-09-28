@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:multi_vendor/core/errors/app_failure.dart' show UserMessage;
+import 'package:flutter/services.dart';
+import 'package:multi_vendor/core/errors/app_failure.dart'
+    show AppFailure, UserMessage;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -67,7 +71,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (sent == true && mounted) {
-      showSnack(context, l10n.resetLinkSent);
+      // The email carries both a link and a code. The code is the one that
+      // works everywhere — another device, a phone without the app's link
+      // set up — so it is asked for right here.
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => BlocProvider.value(
+          value: context.read<AuthCubit>(),
+          child: _ResetCodeDialog(email: _resetEmail.text.trim()),
+        ),
+      );
     }
   }
 
@@ -377,5 +391,163 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(backgroundColor: AppColors.canvas, body: body);
+  }
+}
+
+/// Step two of a password reset: the code from the email. A correct code
+/// signs in with a recovery session, and the router takes it from there to
+/// the new-password screen.
+class _ResetCodeDialog extends StatefulWidget {
+  const _ResetCodeDialog({required this.email});
+
+  final String email;
+
+  @override
+  State<_ResetCodeDialog> createState() => _ResetCodeDialogState();
+}
+
+class _ResetCodeDialogState extends State<_ResetCodeDialog> {
+  final _code = TextEditingController();
+  bool _busy = false;
+  String? _error;
+  int _cooldown = 60;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCooldown();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _code.dispose();
+    super.dispose();
+  }
+
+  void _startCooldown() {
+    _timer?.cancel();
+    setState(() => _cooldown = 60);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() => _cooldown--);
+      if (_cooldown <= 0) t.cancel();
+    });
+  }
+
+  bool get _complete => _code.text.trim().length >= 6;
+
+  Future<void> _verify() async {
+    if (!_complete || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<AuthCubit>().verifyRecoveryCode(
+        widget.email,
+        _code.text,
+      );
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = AppFailure.from(error).message(context.l10n);
+      });
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() => _error = null);
+    try {
+      await context.read<AuthCubit>().sendPasswordReset(widget.email);
+      if (!mounted) return;
+      _startCooldown();
+      showSnack(context, context.l10n.resetCodeResent);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = AppFailure.from(error).message(context.l10n));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      icon: const Icon(Icons.mark_email_read_rounded, color: AppColors.primary),
+      title: Text(l10n.enterResetCodeTitle),
+      content: SizedBox(
+        width: 380,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.enterResetCodeBody(widget.email),
+              style: const TextStyle(
+                fontSize: 13.5,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpace.lg),
+            TextField(
+              controller: _code,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 10,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (_) => setState(() => _error = null),
+              onSubmitted: (_) => _verify(),
+              style: AppType.mono(24, color: AppColors.ink),
+              decoration: InputDecoration(
+                counterText: '',
+                hintText: '••••••',
+                errorText: _error,
+                errorMaxLines: 3,
+              ),
+            ),
+            const SizedBox(height: AppSpace.sm),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                onPressed: _cooldown > 0 || _busy ? null : _resend,
+                child: Text(
+                  _cooldown > 0
+                      ? l10n.resendCodeIn(_cooldown)
+                      : l10n.resendCode,
+                ),
+              ),
+            ),
+            Text(
+              l10n.resetLinkAlsoWorks,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _complete && !_busy ? _verify : null,
+          child: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(l10n.verifyCode),
+        ),
+      ],
+    );
   }
 }

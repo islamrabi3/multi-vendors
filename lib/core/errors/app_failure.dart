@@ -224,6 +224,8 @@ class AppFailure implements Exception {
         'NOT_A_CARD_ORDER' => l10n.errNotACardOrder,
         'PRODUCT_UNAVAILABLE' => l10n.errProductUnavailable,
         'WRONG_PICKUP_CODE' => l10n.errWrongPickupCode,
+        'INVALID_RESET_CODE' => l10n.errInvalidResetCode,
+        'RESET_RATE_LIMITED' => l10n.errResetRateLimited,
         'PICKUP_UNAVAILABLE' => l10n.errPickupUnavailable,
         'CURRENCY_IN_USE' => l10n.errCurrencyInUse,
         'INVALID_CURRENCY_CODE' => l10n.errInvalidCurrencyCode,

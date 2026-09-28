@@ -5026,10 +5026,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get resetPasswordTitle => 'إعادة تعيين كلمة المرور';
 
   @override
-  String get resetPasswordSubtitle => 'سنرسل رابطًا لتعيين كلمة مرور جديدة.';
+  String get resetPasswordSubtitle =>
+      'هنبعتلك إيميل فيه كود ولينك عشان تعمل كلمة سر جديدة.';
 
   @override
-  String get sendResetLink => 'إرسال الرابط';
+  String get sendResetLink => 'ابعت الإيميل';
 
   @override
   String get resetLinkSent =>
@@ -6424,4 +6425,38 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pickConversation => 'اختار محادثة عشان تقراها وترد.';
+
+  @override
+  String get enterResetCodeTitle => 'اكتب الكود';
+
+  @override
+  String enterResetCodeBody(String email) {
+    return 'لو $email عليه حساب، بعتناله إيميل. اكتب الكود اللي فيه هنا، أو دوس على اللينك من نفس الجهاز. ممكن ياخد دقيقة، وبص في الـ Spam كمان.';
+  }
+
+  @override
+  String get verifyCode => 'تأكيد';
+
+  @override
+  String get resendCode => 'ابعت كود جديد';
+
+  @override
+  String resendCodeIn(int seconds) {
+    return 'ابعت كود جديد بعد $seconds ث';
+  }
+
+  @override
+  String get resetCodeResent => 'كود جديد في الطريق';
+
+  @override
+  String get resetLinkAlsoWorks =>
+      'وممكن كمان تدوس على اللينك اللي في الإيميل من نفس الجهاز.';
+
+  @override
+  String get errInvalidResetCode =>
+      'الكود ده غلط أو انتهى. شوف آخر إيميل، أو ابعت كود جديد.';
+
+  @override
+  String get errResetRateLimited =>
+      'لسه باعتين كود من شوية. استنى دقيقة قبل ما تطلب كود تاني.';
 }
