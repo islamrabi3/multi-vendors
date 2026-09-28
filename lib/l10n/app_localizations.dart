@@ -11918,6 +11918,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{Exported 1 dish} other{Exported {count} dishes}}'**
   String menuExported(int count);
+
+  /// No description provided for @importStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Import stores'**
+  String get importStores;
+
+  /// No description provided for @importStoresIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Create many store accounts at once from a spreadsheet or a JSON file. Every row is checked before anything is created, and each store gets its own login, exactly as if you had added it by hand.'**
+  String get importStoresIntro;
+
+  /// No description provided for @importStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Start from the template'**
+  String get importStep1;
+
+  /// No description provided for @importStep1Hint.
+  ///
+  /// In en, this message translates to:
+  /// **'One store per row. Required: store name, category, email, address, and a location (lat and lng, or a Google Maps link). Leave the password empty and a strong one is made up.'**
+  String get importStep1Hint;
+
+  /// No description provided for @importStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your file'**
+  String get importStep2;
+
+  /// No description provided for @importStep2Hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Column names can be in English or Arabic, in any order. Extra columns are ignored.'**
+  String get importStep2Hint;
+
+  /// No description provided for @downloadTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Download template (.csv)'**
+  String get downloadTemplate;
+
+  /// No description provided for @chooseStoresFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file'**
+  String get chooseStoresFile;
+
+  /// No description provided for @storesFileTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV, Excel (.xlsx) or JSON'**
+  String get storesFileTypes;
+
+  /// No description provided for @chooseAnotherFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another file'**
+  String get chooseAnotherFile;
+
+  /// No description provided for @importRowsReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to create'**
+  String get importRowsReady;
+
+  /// No description provided for @importRowsWithProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'Need fixing'**
+  String get importRowsWithProblems;
+
+  /// No description provided for @importCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'created'**
+  String get importCreated;
+
+  /// No description provided for @importFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not be created'**
+  String get importFailed;
+
+  /// No description provided for @showOnlyProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'Show only these'**
+  String get showOnlyProblems;
+
+  /// No description provided for @showAllRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Show every row'**
+  String get showAllRows;
+
+  /// No description provided for @importProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating {done} of {total}…'**
+  String importProgress(int done, int total);
+
+  /// No description provided for @importFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished. Rows that need fixing were skipped; correct them in the file and import it again.'**
+  String get importFinished;
+
+  /// No description provided for @importApproveNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve and open these stores now'**
+  String get importApproveNow;
+
+  /// No description provided for @importApproveNowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: they wait in Pending until you review each one.'**
+  String get importApproveNowHint;
+
+  /// No description provided for @createNStores.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Create 1 store} other{Create {count} stores}}'**
+  String createNStores(int count);
+
+  /// No description provided for @downloadResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Download results'**
+  String get downloadResults;
+
+  /// No description provided for @importPasswordsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The results file has the passwords that were made up. Share each with its store, then delete the file.'**
+  String get importPasswordsNote;
+
+  /// No description provided for @importErrEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'That file has no stores in it.'**
+  String get importErrEmpty;
+
+  /// No description provided for @importErrNoEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'No email column found. Start from the template, or name a column \"email\".'**
+  String get importErrNoEmail;
+
+  /// No description provided for @importErrUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'That file couldn\'t be read. Save it as CSV, Excel (.xlsx) or JSON and try again.'**
+  String get importErrUnreadable;
+
+  /// No description provided for @importProbMissingEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email is missing'**
+  String get importProbMissingEmail;
+
+  /// No description provided for @importProbBadEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email doesn\'t look right'**
+  String get importProbBadEmail;
+
+  /// No description provided for @importProbDuplicateEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Same email as an earlier row'**
+  String get importProbDuplicateEmail;
+
+  /// No description provided for @importProbShortPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is under 8 characters'**
+  String get importProbShortPassword;
+
+  /// No description provided for @importProbMissingOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner name is missing'**
+  String get importProbMissingOwner;
+
+  /// No description provided for @importProbMissingStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Store name is missing'**
+  String get importProbMissingStore;
+
+  /// No description provided for @importProbCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category not found — use a name from Categories'**
+  String get importProbCategory;
+
+  /// No description provided for @importProbAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address is missing'**
+  String get importProbAddress;
+
+  /// No description provided for @importProbLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is missing — add lat and lng, or a Google Maps link'**
+  String get importProbLocation;
 }
 
 class _AppLocalizationsDelegate

@@ -6568,4 +6568,129 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get importStores => 'Import stores';
+
+  @override
+  String get importStoresIntro =>
+      'Create many store accounts at once from a spreadsheet or a JSON file. Every row is checked before anything is created, and each store gets its own login, exactly as if you had added it by hand.';
+
+  @override
+  String get importStep1 => 'Start from the template';
+
+  @override
+  String get importStep1Hint =>
+      'One store per row. Required: store name, category, email, address, and a location (lat and lng, or a Google Maps link). Leave the password empty and a strong one is made up.';
+
+  @override
+  String get importStep2 => 'Choose your file';
+
+  @override
+  String get importStep2Hint =>
+      'Column names can be in English or Arabic, in any order. Extra columns are ignored.';
+
+  @override
+  String get downloadTemplate => 'Download template (.csv)';
+
+  @override
+  String get chooseStoresFile => 'Choose a file';
+
+  @override
+  String get storesFileTypes => 'CSV, Excel (.xlsx) or JSON';
+
+  @override
+  String get chooseAnotherFile => 'Choose another file';
+
+  @override
+  String get importRowsReady => 'Ready to create';
+
+  @override
+  String get importRowsWithProblems => 'Need fixing';
+
+  @override
+  String get importCreated => 'created';
+
+  @override
+  String get importFailed => 'Could not be created';
+
+  @override
+  String get showOnlyProblems => 'Show only these';
+
+  @override
+  String get showAllRows => 'Show every row';
+
+  @override
+  String importProgress(int done, int total) {
+    return 'Creating $done of $total…';
+  }
+
+  @override
+  String get importFinished =>
+      'Finished. Rows that need fixing were skipped; correct them in the file and import it again.';
+
+  @override
+  String get importApproveNow => 'Approve and open these stores now';
+
+  @override
+  String get importApproveNowHint =>
+      'Off: they wait in Pending until you review each one.';
+
+  @override
+  String createNStores(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Create $count stores',
+      one: 'Create 1 store',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get downloadResults => 'Download results';
+
+  @override
+  String get importPasswordsNote =>
+      'The results file has the passwords that were made up. Share each with its store, then delete the file.';
+
+  @override
+  String get importErrEmpty => 'That file has no stores in it.';
+
+  @override
+  String get importErrNoEmail =>
+      'No email column found. Start from the template, or name a column \"email\".';
+
+  @override
+  String get importErrUnreadable =>
+      'That file couldn\'t be read. Save it as CSV, Excel (.xlsx) or JSON and try again.';
+
+  @override
+  String get importProbMissingEmail => 'Email is missing';
+
+  @override
+  String get importProbBadEmail => 'Email doesn\'t look right';
+
+  @override
+  String get importProbDuplicateEmail => 'Same email as an earlier row';
+
+  @override
+  String get importProbShortPassword => 'Password is under 8 characters';
+
+  @override
+  String get importProbMissingOwner => 'Owner name is missing';
+
+  @override
+  String get importProbMissingStore => 'Store name is missing';
+
+  @override
+  String get importProbCategory =>
+      'Category not found — use a name from Categories';
+
+  @override
+  String get importProbAddress => 'Address is missing';
+
+  @override
+  String get importProbLocation =>
+      'Location is missing — add lat and lng, or a Google Maps link';
 }

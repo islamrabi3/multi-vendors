@@ -12,6 +12,7 @@ import '../../../core/widgets/common.dart';
 import '../admin_vendors_cubit.dart';
 import '../../auth/auth_cubit.dart';
 import 'admin_create_account_screen.dart';
+import '../vendor_import/vendor_import_view.dart';
 import 'admin_vendor_detail_screen.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../../../core/models/order_flow.dart';
@@ -103,6 +104,18 @@ class _VendorsViewState extends State<_VendorsView> {
                               style: AppType.display(26),
                             ),
                           ),
+                          if (context.select(
+                            (AuthCubit c) => c.state.can('vendors.approve'),
+                          ))
+                            IconButton(
+                              tooltip: context.l10n.importStores,
+                              onPressed: () async {
+                                if (await openVendorImport(context)) {
+                                  cubit.load();
+                                }
+                              },
+                              icon: const Icon(Icons.upload_file_rounded),
+                            ),
                           if (context.select(
                             (AuthCubit c) => c.state.can('vendors.approve'),
                           ))
@@ -740,6 +753,14 @@ class _WebVendorsPage extends StatelessWidget {
         description: l10n.pageDescVendors,
         onRefresh: cubit.load,
         actions: [
+          if (canApprove)
+            OutlinedButton.icon(
+              onPressed: () async {
+                if (await openVendorImport(context)) cubit.load();
+              },
+              icon: const Icon(Icons.upload_file_rounded, size: 18),
+              label: Text(l10n.importStores),
+            ),
           if (canApprove)
             FilledButton.icon(
               onPressed: () async {

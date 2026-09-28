@@ -6519,4 +6519,131 @@ class AppLocalizationsAr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get importStores => 'استيراد متاجر';
+
+  @override
+  String get importStoresIntro =>
+      'اعمل حسابات لمتاجر كتير مرة واحدة من شيت أو ملف JSON. كل سطر بيتراجع قبل ما أي حاجة تتعمل، وكل متجر بياخد حساب دخول خاص بيه زي ما تكون ضفته بإيدك.';
+
+  @override
+  String get importStep1 => 'ابدأ من النموذج';
+
+  @override
+  String get importStep1Hint =>
+      'متجر في كل سطر. المطلوب: اسم المتجر، التصنيف، الإيميل، العنوان، والموقع (lat و lng أو لينك جوجل ماب). لو سيبت كلمة السر فاضية هنعمل واحدة قوية.';
+
+  @override
+  String get importStep2 => 'اختار الملف';
+
+  @override
+  String get importStep2Hint =>
+      'أسماء الأعمدة ممكن تكون عربي أو إنجليزي وبأي ترتيب. الأعمدة الزيادة بتتجاهل.';
+
+  @override
+  String get downloadTemplate => 'تحميل النموذج (‎.csv)';
+
+  @override
+  String get chooseStoresFile => 'اختار ملف';
+
+  @override
+  String get storesFileTypes => 'CSV أو إكسل (‎.xlsx) أو JSON';
+
+  @override
+  String get chooseAnotherFile => 'اختار ملف تاني';
+
+  @override
+  String get importRowsReady => 'جاهزة للإنشاء';
+
+  @override
+  String get importRowsWithProblems => 'محتاجة تتصلح';
+
+  @override
+  String get importCreated => 'اتعملت';
+
+  @override
+  String get importFailed => 'ماتعملتش';
+
+  @override
+  String get showOnlyProblems => 'اعرض دول بس';
+
+  @override
+  String get showAllRows => 'اعرض كل السطور';
+
+  @override
+  String importProgress(int done, int total) {
+    return 'بنعمل $done من $total…';
+  }
+
+  @override
+  String get importFinished =>
+      'خلصنا. السطور اللي محتاجة تصليح اتسابت؛ صلّحها في الملف واستورده تاني.';
+
+  @override
+  String get importApproveNow => 'وافق على المتاجر دي وافتحها دلوقتي';
+
+  @override
+  String get importApproveNowHint =>
+      'لو مقفول: هيستنوا في المعلّق لحد ما تراجع كل واحد.';
+
+  @override
+  String createNStores(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'اعمل $count متجر',
+      many: 'اعمل $count متجر',
+      few: 'اعمل $count متاجر',
+      two: 'اعمل متجرين',
+      one: 'اعمل متجر واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get downloadResults => 'تحميل النتيجة';
+
+  @override
+  String get importPasswordsNote =>
+      'ملف النتيجة فيه كلمات السر اللي اتعملت. ابعت لكل متجر كلمة السر بتاعته وبعدين امسح الملف.';
+
+  @override
+  String get importErrEmpty => 'الملف ده مفيهوش متاجر.';
+
+  @override
+  String get importErrNoEmail =>
+      'مفيش عمود للإيميل. ابدأ من النموذج أو سمّي عمود \"email\".';
+
+  @override
+  String get importErrUnreadable =>
+      'الملف ده ماتقراش. احفظه CSV أو إكسل (‎.xlsx) أو JSON وجرّب تاني.';
+
+  @override
+  String get importProbMissingEmail => 'الإيميل ناقص';
+
+  @override
+  String get importProbBadEmail => 'الإيميل شكله غلط';
+
+  @override
+  String get importProbDuplicateEmail => 'نفس إيميل سطر قبله';
+
+  @override
+  String get importProbShortPassword => 'كلمة السر أقل من 8 حروف';
+
+  @override
+  String get importProbMissingOwner => 'اسم المالك ناقص';
+
+  @override
+  String get importProbMissingStore => 'اسم المتجر ناقص';
+
+  @override
+  String get importProbCategory => 'التصنيف مش موجود — استخدم اسم من التصنيفات';
+
+  @override
+  String get importProbAddress => 'العنوان ناقص';
+
+  @override
+  String get importProbLocation =>
+      'الموقع ناقص — ضيف lat و lng أو لينك جوجل ماب';
 }
