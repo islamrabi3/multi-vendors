@@ -4,8 +4,8 @@ import '../../../app/tokens.dart';
 import '../../../core/models/vendor.dart';
 import '../../../core/repositories/admin_repository.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
-import '../../../core/widgets/web/web_table.dart';
 import '../../vendor/screens/menu_import_screen.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -32,6 +32,9 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
   final _repo = AdminRepository();
   late Future<List<Vendor>> _future;
   String _search = '';
+
+  /// Desktop: the store whose menu is being built in the right-hand pane.
+  Vendor? _selected;
 
   @override
   void initState() {
@@ -88,61 +91,6 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
             icon: Icons.storefront_outlined,
           );
         }
-        // A bare list of name + status cards stretches into wasted
-        // whitespace at web width, so wide screens get a dense table instead
-        // — the list content and the tap target are otherwise identical.
-        if (webWide) {
-          return SingleChildScrollView(
-            child: WebTable(
-              columns: [
-                WebTableColumn(label: l10n.store, flex: 3),
-                WebTableColumn(label: l10n.statusLabel, flex: 1),
-              ],
-              rows: [
-                for (final vendor in vendors)
-                  WebTableRow.aligned(
-                    onTap: () => _openImport(vendor),
-                    columns: [
-                      WebTableColumn(label: '', flex: 3),
-                      WebTableColumn(label: '', flex: 1),
-                    ],
-                    cells: [
-                      Row(
-                        children: [
-                          AppNetworkImage(
-                            url: vendor.logoUrl,
-                            width: 32,
-                            height: 32,
-                            borderRadius: BorderRadius.circular(AppRadii.sm),
-                          ),
-                          const SizedBox(width: AppSpace.sm),
-                          Expanded(
-                            child: Text(
-                              vendor.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        _statusLabel(context, vendor.approvalStatus),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          );
-        }
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(
             AppSpace.gutter,
@@ -185,37 +133,15 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
       },
     );
 
-    if (widget.embedded) {
-      return Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            searchField,
-            const SizedBox(height: AppSpace.lg),
-            Expanded(child: list),
-          ],
-        ),
-      );
-    }
-
     if (webWide) {
+      final page = _webPage();
+      if (widget.embedded) return page;
       return WebPageChrome(
         forStaff: true,
         activeId: 'manage:/admin-app/menu-import',
         sections: adminManageWebSections(context),
         pageTitle: l10n.importMenuFromPhotos,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              searchField,
-              const SizedBox(height: AppSpace.lg),
-              Expanded(child: list),
-            ],
-          ),
-        ),
+        child: page,
       );
     }
 
@@ -235,6 +161,194 @@ class _AdminMenuImportScreenState extends State<AdminMenuImportScreen> {
           ),
           Expanded(child: list),
         ],
+      ),
+    );
+  }
+
+  /// Desktop: stores down the side, the chosen store's import beside them —
+  /// the operator never leaves the console, and can move to the next store
+  /// as soon as one is done.
+  Widget _webPage() {
+    final l10n = context.l10n;
+    final selected = _selected;
+    final picker = Container(
+      width: 340,
+      decoration: const BoxDecoration(
+        border: BorderDirectional(end: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+            child: ConsoleSearchField(
+              hint: l10n.searchByName,
+              onChanged: (value) => setState(() => _search = value.trim()),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+          Expanded(
+            child: FutureBuilder<List<Vendor>>(
+              future: _future,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const LoadingView();
+                }
+                if (snap.hasError) {
+                  return FailureView(error: snap.error!, onRetry: _reload);
+                }
+                final query = _search.toLowerCase();
+                final vendors = [
+                  for (final v in snap.data ?? const <Vendor>[])
+                    if (query.isEmpty || v.name.toLowerCase().contains(query))
+                      v,
+                ];
+                if (vendors.isEmpty) {
+                  return ConsoleEmpty(
+                    icon: Icons.storefront_outlined,
+                    title: l10n.noVendorsHere,
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  itemCount: vendors.length,
+                  itemBuilder: (context, i) {
+                    final vendor = vendors[i];
+                    final isSelected = vendor.id == selected?.id;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 1,
+                      ),
+                      child: Material(
+                        color: isSelected
+                            ? AppColors.warmFill
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(AppRadii.md),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                          onTap: () => setState(() => _selected = vendor),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                AppNetworkImage(
+                                  url: vendor.logoUrl,
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.sm,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        vendor.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: isSelected
+                                              ? AppColors.primary
+                                              : AppColors.ink,
+                                        ),
+                                      ),
+                                      Text(
+                                        _statusLabel(
+                                          context,
+                                          vendor.approvalStatus,
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            picker,
+            Expanded(
+              child: selected == null
+                  ? Center(
+                      child: ConsoleEmpty(
+                        icon: Icons.menu_book_outlined,
+                        title: l10n.chooseStoreTitle,
+                        message: l10n.chooseStoreBody,
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                          child: Row(
+                            children: [
+                              AppNetworkImage(
+                                url: selected.logoUrl,
+                                width: 36,
+                                height: 36,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.sm,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  selected.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppType.heading(18),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: MenuImportScreen(
+                            // A new store starts a fresh import rather than
+                            // inheriting the last one's photos.
+                            key: ValueKey(selected.id),
+                            vendorId: selected.id,
+                            embedded: true,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

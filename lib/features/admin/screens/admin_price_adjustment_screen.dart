@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:multi_vendor/core/utils/time_format.dart';
 import 'package:flutter/services.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
@@ -11,7 +12,9 @@ import '../../../core/repositories/admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
+import '../../../core/widgets/web/web_table.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 
 /// Moves menu prices across the marketplace in one action.
@@ -148,7 +151,7 @@ class _AdminPriceAdjustmentScreenState
         ? '${value.abs().toStringAsFixed(value.abs() % 1 == 0 ? 0 : 2)}%'
         : formatMoney(value.abs());
     final target = switch (_scope) {
-      _Scope.all => l10n.scopeAllProducts,
+      _Scope.all => l10n.scopeAllProductsInline,
       _Scope.vendor => _vendorName ?? l10n.scopeOneStore,
       _Scope.category => _categoryName ?? l10n.scopeOneCategory,
     };
@@ -207,6 +210,171 @@ class _AdminPriceAdjustmentScreenState
     final l10n = context.l10n;
     final webWide = AppBreakpoints.isWebWide(context);
 
+    final typeSegments = SegmentedButton<_Mode>(
+      segments: [
+        ButtonSegment(
+          value: _Mode.percent,
+          label: Text(
+            l10n.percentage,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          icon: const Icon(Icons.percent_rounded),
+        ),
+        ButtonSegment(
+          value: _Mode.fixed,
+          label: Text(
+            l10n.fixedAmount,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          icon: const Icon(Icons.attach_money_rounded),
+        ),
+      ],
+      selected: {_mode},
+      onSelectionChanged: (values) => setState(() => _mode = values.first),
+    );
+    final directionSegments = SegmentedButton<bool>(
+      segments: [
+        ButtonSegment(
+          value: true,
+          label: Text(
+            l10n.increase,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          icon: const Icon(Icons.trending_up_rounded),
+        ),
+        ButtonSegment(
+          value: false,
+          label: Text(
+            l10n.decrease,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          icon: const Icon(Icons.trending_down_rounded),
+        ),
+      ],
+      selected: {_increase},
+      onSelectionChanged: (values) => setState(() => _increase = values.first),
+    );
+    final valueField = TextField(
+      controller: _valueController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+      onChanged: (_) => setState(() {}),
+      decoration: InputDecoration(
+        labelText: _mode == _Mode.percent
+            ? l10n.percentValue
+            : l10n.amountValue,
+        suffixText: _mode == _Mode.percent ? '%' : currencySymbol,
+      ),
+    );
+    final scopePicker = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RadioGroup<_Scope>(
+          groupValue: _scope,
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _scope = value);
+            _refreshCount();
+          },
+          child: Column(
+            children: [
+              for (final scope in _Scope.values)
+                RadioListTile<_Scope>(
+                  value: scope,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    switch (scope) {
+                      _Scope.all => l10n.scopeAllProducts,
+                      _Scope.vendor => l10n.scopeOneStore,
+                      _Scope.category => l10n.scopeOneCategory,
+                    },
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (_scope == _Scope.vendor) ...[
+          const SizedBox(height: AppSpace.sm),
+          _VendorSearchField(
+            repository: _repository,
+            selected: _vendor,
+            onSelected: (vendor) {
+              setState(() => _vendor = vendor);
+              _refreshCount();
+            },
+          ),
+        ],
+        if (_scope == _Scope.category) ...[
+          const SizedBox(height: AppSpace.sm),
+          DropdownButtonFormField<String>(
+            initialValue: _categoryId,
+            isExpanded: true,
+            decoration: InputDecoration(labelText: l10n.category),
+            items: [
+              for (final category in _categories)
+                DropdownMenuItem(
+                  value: category.id,
+                  child: Text(
+                    category.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (value) {
+              setState(() => _categoryId = value);
+              _refreshCount();
+            },
+          ),
+        ],
+      ],
+    );
+    final ready = !_applying && _signedValue != null && _scopeChosen;
+    final applyButton = FilledButton.icon(
+      onPressed: ready ? _apply : null,
+      icon: _applying
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Icon(Icons.check_rounded),
+      label: Text(
+        l10n.applyToAllProducts,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+
+    if (webWide) {
+      final page = _webPage(
+        typeSegments: typeSegments,
+        directionSegments: directionSegments,
+        valueField: valueField,
+        scopePicker: scopePicker,
+        applyButton: applyButton,
+      );
+      if (widget.embedded) return page;
+      return WebPageChrome(
+        forStaff: true,
+        activeId: 'manage:/admin-app/price-adjustment',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.priceAdjustment,
+        child: page,
+      );
+    }
+
     final body = ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpace.gutter,
@@ -220,74 +388,11 @@ class _AdminPriceAdjustmentScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SegmentedButton<_Mode>(
-                segments: [
-                  ButtonSegment(
-                    value: _Mode.percent,
-                    label: Text(
-                      l10n.percentage,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    icon: const Icon(Icons.percent_rounded),
-                  ),
-                  ButtonSegment(
-                    value: _Mode.fixed,
-                    label: Text(
-                      l10n.fixedAmount,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    icon: const Icon(Icons.attach_money_rounded),
-                  ),
-                ],
-                selected: {_mode},
-                onSelectionChanged: (values) =>
-                    setState(() => _mode = values.first),
-              ),
+              typeSegments,
               const SizedBox(height: AppSpace.md),
-              SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(
-                    value: true,
-                    label: Text(
-                      l10n.increase,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    icon: const Icon(Icons.trending_up_rounded),
-                  ),
-                  ButtonSegment(
-                    value: false,
-                    label: Text(
-                      l10n.decrease,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    icon: const Icon(Icons.trending_down_rounded),
-                  ),
-                ],
-                selected: {_increase},
-                onSelectionChanged: (values) =>
-                    setState(() => _increase = values.first),
-              ),
+              directionSegments,
               const SizedBox(height: AppSpace.md),
-              TextField(
-                controller: _valueController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  labelText: _mode == _Mode.percent
-                      ? l10n.percentValue
-                      : l10n.amountValue,
-                  suffixText: _mode == _Mode.percent ? '%' : null,
-                ),
-              ),
+              valueField,
             ],
           ),
         ),
@@ -297,87 +402,9 @@ class _AdminPriceAdjustmentScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              RadioGroup<_Scope>(
-                groupValue: _scope,
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _scope = value);
-                  _refreshCount();
-                },
-                child: Column(
-                  children: [
-                    for (final scope in _Scope.values)
-                      RadioListTile<_Scope>(
-                        value: scope,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          switch (scope) {
-                            _Scope.all => l10n.scopeAllProducts,
-                            _Scope.vendor => l10n.scopeOneStore,
-                            _Scope.category => l10n.scopeOneCategory,
-                          },
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (_scope == _Scope.vendor)
-                _VendorSearchField(
-                  repository: _repository,
-                  selected: _vendor,
-                  onSelected: (vendor) {
-                    setState(() => _vendor = vendor);
-                    _refreshCount();
-                  },
-                ),
-              if (_scope == _Scope.category)
-                DropdownButtonFormField<String>(
-                  initialValue: _categoryId,
-                  isExpanded: true,
-                  decoration: InputDecoration(labelText: l10n.category),
-                  items: [
-                    for (final category in _categories)
-                      DropdownMenuItem(
-                        value: category.id,
-                        child: Text(
-                          category.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _categoryId = value);
-                    _refreshCount();
-                  },
-                ),
+              scopePicker,
               const SizedBox(height: AppSpace.sm),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.inventory_2_outlined,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      _counting
-                          ? l10n.counting
-                          : l10n.productsInScope(_affected ?? 0),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              _ScopeCount(counting: _counting, affected: _affected),
             ],
           ),
         ),
@@ -389,7 +416,7 @@ class _AdminPriceAdjustmentScreenState
             borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
           child: Text(
-            _summary(context),
+            _signedValue == null ? l10n.enterAmountFirst : _summary(context),
             style: const TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w700,
@@ -399,26 +426,7 @@ class _AdminPriceAdjustmentScreenState
           ),
         ),
         const SizedBox(height: AppSpace.md),
-        FilledButton.icon(
-          onPressed: _applying || _signedValue == null || !_scopeChosen
-              ? null
-              : _apply,
-          icon: _applying
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.check_rounded),
-          label: Text(
-            l10n.applyToAllProducts,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        applyButton,
         if (_history.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xxl),
           Text(l10n.recentAdjustments, style: AppType.heading(17)),
@@ -428,35 +436,247 @@ class _AdminPriceAdjustmentScreenState
       ],
     );
 
-    if (widget.embedded) {
-      // A form: capped so a percentage and its scope read as one line of
-      // thought rather than two ends of a monitor.
-      return Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
-        child: Align(
-          alignment: AlignmentDirectional.topStart,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860),
-            child: body,
-          ),
-        ),
-      );
-    }
-
-    if (webWide) {
-      return WebPageChrome(
-        forStaff: true,
-        activeId: 'manage:/admin-app/price-adjustment',
-        sections: adminManageWebSections(context),
-        pageTitle: l10n.priceAdjustment,
-        child: Padding(padding: const EdgeInsets.all(AppSpace.xl), child: body),
-      );
-    }
-
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(l10n.priceAdjustment)),
       body: body,
+    );
+  }
+
+  /// Desktop: the change on the left, what it will do on the right — kept in
+  /// view while the form is filled in — and the record of past runs below.
+  Widget _webPage({
+    required Widget typeSegments,
+    required Widget directionSegments,
+    required Widget valueField,
+    required Widget scopePicker,
+    required Widget applyButton,
+  }) {
+    final l10n = context.l10n;
+    final value = _signedValue;
+
+    final form = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ConsolePanel(
+          title: l10n.adjustmentType,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ConsoleFieldRow(label: l10n.typeColumn, child: typeSegments),
+              const SizedBox(height: AppSpace.lg),
+              ConsoleFieldRow(
+                label: l10n.directionLabel,
+                child: directionSegments,
+              ),
+              const SizedBox(height: AppSpace.lg),
+              ConsoleFieldRow(
+                label: l10n.howMuchLabel,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: SizedBox(width: 220, child: valueField),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpace.lg),
+        ConsolePanel(
+          title: l10n.appliesTo,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: scopePicker,
+        ),
+      ],
+    );
+
+    final preview = ConsolePanel(
+      title: l10n.previewLabel,
+      tone: value == null ? ConsoleTone.plain : ConsoleTone.brand,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            value == null ? l10n.enterAmountFirst : _summary(context),
+            style: TextStyle(
+              fontSize: value == null ? 14 : 16,
+              height: 1.4,
+              fontWeight: value == null ? FontWeight.w500 : FontWeight.w700,
+              color: value == null ? AppColors.textSecondary : AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: AppSpace.lg),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: AppSpace.md),
+          _ScopeCount(counting: _counting, affected: _affected, large: true),
+          const SizedBox(height: AppSpace.lg),
+          applyButton,
+          const SizedBox(height: AppSpace.md),
+          Text(
+            l10n.priceAdjustGuard,
+            style: const TextStyle(
+              fontSize: 12.5,
+              height: 1.45,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final columns = [
+      WebTableColumn(label: l10n.changeColumn, width: 130),
+      WebTableColumn(label: l10n.scopeColumn, flex: 3),
+      WebTableColumn(label: l10n.byColumn, flex: 2),
+      WebTableColumn(label: l10n.whenColumn, width: 190),
+      WebTableColumn(label: l10n.productsColumn, width: 100, numeric: true),
+    ];
+    final language = Localizations.localeOf(context).languageCode;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 48),
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 900) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  form,
+                  const SizedBox(height: AppSpace.lg),
+                  preview,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: form),
+                const SizedBox(width: AppSpace.lg),
+                SizedBox(width: 360, child: preview),
+              ],
+            );
+          },
+        ),
+        if (_history.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xxl),
+          Text(l10n.recentAdjustments, style: AppType.heading(17)),
+          const SizedBox(height: AppSpace.md),
+          WebTable(
+            columns: columns,
+            trailingWidth: 0,
+            rows: [
+              for (final row in _history)
+                WebTableRow.aligned(
+                  columns: columns,
+                  trailingWidth: 0,
+                  cells: [
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: _ChangeBadge(row: row),
+                    ),
+                    Text(
+                      _historyScope(row),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    Text(
+                      (row['profiles'] as Map?)?['full_name'] as String? ?? '—',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      switch (DateTime.tryParse(
+                        row['created_at'] as String? ?? '',
+                      )?.toLocal()) {
+                        final at? =>
+                          '${DateFormat.yMMMd(language).format(at)} · ${formatClock(context, at)}',
+                        null => '—',
+                      },
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '${((row['affected_count'] as num?) ?? 0).toInt()}',
+                      style: AppType.mono(13.5, weight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// What a past run touched, by name where the row still has one.
+  String _historyScope(Map<String, dynamic> row) {
+    final l10n = context.l10n;
+    final arabic = Localizations.localeOf(context).languageCode == 'ar';
+    return switch (row['scope'] as String?) {
+      'vendor' =>
+        (row['vendors'] as Map?)?['name'] as String? ?? l10n.scopeOneStore,
+      'category' => switch (row['vendor_categories'] as Map?) {
+        final c? =>
+          (arabic ? c['name_ar'] as String? : null) ??
+              c['name'] as String? ??
+              l10n.scopeOneCategory,
+        null => l10n.scopeOneCategory,
+      },
+      _ => l10n.scopeAllProducts,
+    };
+  }
+}
+
+/// How many products the change reaches — the number that makes it safe to
+/// press apply.
+class _ScopeCount extends StatelessWidget {
+  const _ScopeCount({
+    required this.counting,
+    required this.affected,
+    this.large = false,
+  });
+
+  final bool counting;
+  final int? affected;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Row(
+      children: [
+        Icon(
+          Icons.inventory_2_outlined,
+          size: large ? 18 : 16,
+          color: AppColors.textMuted,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            counting ? l10n.counting : l10n.productsInScope(affected ?? 0),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: large ? 14 : 12.5,
+              color: large ? AppColors.ink : AppColors.textMuted,
+              fontWeight: large ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -484,6 +704,27 @@ class _Card extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+/// A past run's change, signed and coloured by direction.
+class _ChangeBadge extends StatelessWidget {
+  const _ChangeBadge({required this.row});
+
+  final Map<String, dynamic> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = row['mode'] as String? ?? 'percent';
+    final value = ((row['value'] as num?) ?? 0).toDouble();
+    final label = mode == 'percent'
+        ? '${value > 0 ? '+' : ''}${value.toStringAsFixed(value % 1 == 0 ? 0 : 2)}%'
+        : '${value > 0 ? '+' : '-'}${formatMoney(value.abs())}';
+    return SoftBadge(
+      label: label,
+      fill: value >= 0 ? AppColors.successFill : AppColors.dangerFill,
+      ink: value >= 0 ? AppColors.successInk : AppColors.dangerInk,
     );
   }
 }

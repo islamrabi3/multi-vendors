@@ -263,7 +263,7 @@ class _CouponTable extends StatelessWidget {
       WebTableColumn(label: l10n.couponCode, flex: 2),
       WebTableColumn(label: l10n.discount, flex: 2),
       WebTableColumn(label: l10n.couponAppliesTo, flex: 2),
-      WebTableColumn(label: l10n.used, width: 120),
+      WebTableColumn(label: l10n.usesColumn, width: 120),
       WebTableColumn(label: l10n.expiresLabel, width: 120),
       WebTableColumn(label: l10n.statusLabel, width: 104),
     ];

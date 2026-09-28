@@ -9,6 +9,7 @@ import '../../../core/repositories/menu_import_repository.dart';
 import '../../../core/utils/menu_sheet_parser.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/console.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import 'package:multi_vendor/l10n/app_localizations.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
@@ -89,9 +90,20 @@ class _OptionGroupRow extends StatelessWidget {
 /// server can decide which addresses it is willing to request.
 /// Pops with `true` when items were imported so the menu can reload.
 class MenuImportScreen extends StatefulWidget {
-  const MenuImportScreen({super.key, required this.vendorId});
+  const MenuImportScreen({
+    super.key,
+    required this.vendorId,
+    this.embedded = false,
+    this.onImported,
+  });
 
   final String vendorId;
+
+  /// Drawn inside a console page rather than pushed as its own screen: no
+  /// app bar, and a finished import calls [onImported] and starts over
+  /// instead of popping.
+  final bool embedded;
+  final VoidCallback? onImported;
 
   @override
   State<MenuImportScreen> createState() => _MenuImportScreenState();
@@ -233,6 +245,11 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
       await _repo.importMenu(widget.vendorId, menu);
       if (!mounted) return;
       showSnack(context, context.l10n.menuImported);
+      if (widget.embedded) {
+        _startOver();
+        widget.onImported?.call();
+        return;
+      }
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -401,17 +418,255 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
     descriptionAr.dispose();
   }
 
+  void _startOver() => setState(() {
+    _images.clear();
+    _url.clear();
+    _menu = [];
+    _step = _Step.pick;
+  });
+
   @override
   Widget build(BuildContext context) {
+    final body = LayoutBuilder(
+      builder: (context, constraints) {
+        // The desktop layouts need room for three sources side by side and
+        // a review table; anything narrower keeps the phone layout.
+        final wide = constraints.maxWidth >= 760;
+        return switch (_step) {
+          _Step.extracting => _busyView(context.l10n.extractingMenu),
+          _Step.importing => _busyView(context.l10n.importAll),
+          _Step.pick => wide ? _widePickView() : _pickView(),
+          _Step.review => wide ? _wideReviewView() : _reviewView(),
+        };
+      },
+    );
+    if (widget.embedded) return body;
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(context.l10n.importMenuFromPhotos)),
-      body: switch (_step) {
-        _Step.extracting => _busyView(context.l10n.extractingMenu),
-        _Step.importing => _busyView(context.l10n.importAll),
-        _Step.pick => _pickView(),
-        _Step.review => _reviewView(),
-      },
+      body: body,
+    );
+  }
+
+  // ── Desktop ─────────────────────────────────────────────────────────────
+
+  /// The three ways in, side by side and each explained, then the photos
+  /// waiting to be read.
+  Widget _widePickView() {
+    final l10n = context.l10n;
+    final canAddMore = _images.length < _maxImages;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      children: [
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _SourcePanel(
+                  icon: Icons.table_chart_outlined,
+                  title: l10n.importSourceFile,
+                  body: l10n.importSourceFileHint,
+                  action: OutlinedButton.icon(
+                    onPressed: canAddMore ? _pickFile : null,
+                    icon: const Icon(Icons.upload_file_outlined, size: 18),
+                    label: Text(l10n.chooseFile),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: _SourcePanel(
+                  icon: Icons.photo_library_outlined,
+                  title: l10n.importSourcePhotos,
+                  body: l10n.importSourcePhotosHint,
+                  action: OutlinedButton.icon(
+                    onPressed: canAddMore ? _pickImages : null,
+                    icon: const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      size: 18,
+                    ),
+                    label: Text(l10n.addPhotos),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: _SourcePanel(
+                  icon: Icons.link_rounded,
+                  title: l10n.importFromLink,
+                  body: l10n.menuUrlHint,
+                  action: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _url,
+                        autocorrect: false,
+                        textDirection: TextDirection.ltr,
+                        keyboardType: TextInputType.url,
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: (_) =>
+                            _url.text.trim().isEmpty ? null : _extractFromUrl(),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          hintText: 'https://',
+                          prefixIcon: Icon(Icons.public_rounded, size: 18),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.sm),
+                      OutlinedButton.icon(
+                        onPressed: _url.text.trim().isEmpty
+                            ? null
+                            : _extractFromUrl,
+                        icon: const Icon(Icons.auto_awesome, size: 17),
+                        label: Text(l10n.extractFromLink),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_images.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.lg),
+          ConsolePanel(
+            title: l10n.importSourcePhotos,
+            subtitle: l10n.photosAdded(_images.length, _maxImages),
+            trailing: FilledButton.icon(
+              onPressed: _extract,
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: Text(l10n.extractMenuAction),
+            ),
+            child: Wrap(
+              spacing: AppSpace.sm,
+              runSpacing: AppSpace.sm,
+              children: [
+                for (var i = 0; i < _images.length; i++)
+                  SizedBox(width: 132, height: 132, child: _thumb(i)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _thumb(int i) => Stack(
+    fit: StackFit.expand,
+    children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        // A PDF has no thumbnail; decoding its bytes as an image would
+        // throw, so it gets an icon instead.
+        child: _images[i].mimeType == 'application/pdf'
+            ? Container(
+                color: AppColors.warmFill,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.picture_as_pdf_rounded,
+                  color: AppColors.primary,
+                  size: 30,
+                ),
+              )
+            : Image.memory(_images[i].bytes, fit: BoxFit.cover),
+      ),
+      PositionedDirectional(
+        top: 4,
+        end: 4,
+        child: IconButton.filled(
+          tooltip: context.l10n.delete,
+          visualDensity: VisualDensity.compact,
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.black54,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(28, 28),
+          ),
+          onPressed: () => setState(() => _images.removeAt(i)),
+          icon: const Icon(Icons.close, size: 15),
+        ),
+      ),
+    ],
+  );
+
+  /// The extracted menu as a table per section, with the decision — import
+  /// or start over — at the top where the count is.
+  Widget _wideReviewView() {
+    final l10n = context.l10n;
+    final total = _menu.fold<int>(0, (n, c) => n + c.items.length);
+    final options = _menu.fold<int>(
+      0,
+      (n, c) => n + c.items.fold<int>(0, (m, i) => m + i.options.length),
+    );
+    final missing = _menu.fold<int>(
+      0,
+      (n, c) =>
+          n +
+          (c.isMissingTranslation ? 1 : 0) +
+          c.items.where((i) => i.isMissingTranslation).length,
+    );
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.reviewExtractedMenu, style: AppType.heading(17)),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      l10n.itemsAndOptions(total, options),
+                      if (missing > 0) l10n.missingTranslations(missing),
+                    ].join(' · '),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: missing > 0
+                          ? AppColors.amberInk
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.reviewItemsHint,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpace.lg),
+            TextButton(onPressed: _startOver, child: Text(l10n.startOver)),
+            const SizedBox(width: AppSpace.sm),
+            FilledButton.icon(
+              onPressed: total == 0 ? null : _import,
+              icon: const Icon(Icons.download_done_rounded, size: 19),
+              label: Text('${l10n.importAll} ($total)'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.lg),
+        for (final category in _menu)
+          if (category.items.isNotEmpty) ...[
+            _ReviewSection(
+              category: category,
+              onEditCategory: () => _editCategory(category),
+              onEditItem: _editItem,
+              onRemoveItem: (item) =>
+                  setState(() => category.items.remove(item)),
+              onRemoveGroup: (item, group) =>
+                  setState(() => item.options.remove(group)),
+            ),
+            const SizedBox(height: AppSpace.md),
+          ],
+      ],
     );
   }
 
@@ -827,6 +1082,237 @@ class _MenuImportScreenState extends State<MenuImportScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One way into the importer on the desktop layout: what it is, what it
+/// does with what you give it, and the control that starts it.
+class _SourcePanel extends StatelessWidget {
+  const _SourcePanel({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Expanded(child: Text(title, style: AppType.heading(15))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const Spacer(),
+          const SizedBox(height: AppSpace.lg),
+          action,
+        ],
+      ),
+    );
+  }
+}
+
+/// One extracted section as a table: both names, the options, the price.
+class _ReviewSection extends StatelessWidget {
+  const _ReviewSection({
+    required this.category,
+    required this.onEditCategory,
+    required this.onEditItem,
+    required this.onRemoveItem,
+    required this.onRemoveGroup,
+  });
+
+  final ExtractedCategory category;
+  final VoidCallback onEditCategory;
+  final ValueChanged<ExtractedItem> onEditItem;
+  final ValueChanged<ExtractedItem> onRemoveItem;
+  final void Function(ExtractedItem item, ExtractedOptionGroup group)
+  onRemoveGroup;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    const muted = TextStyle(fontSize: 12.5, color: AppColors.textMuted);
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: onEditCategory,
+            child: Container(
+              color: AppColors.canvas,
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      [
+                        category.name,
+                        category.nameAr,
+                      ].where((part) => part.isNotEmpty).join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.heading(14.5),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('${category.items.length}', style: muted),
+                  if (category.isMissingTranslation) ...[
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: l10n.missingTranslations(1),
+                      child: const Icon(
+                        Icons.translate_rounded,
+                        size: 15,
+                        color: AppColors.amberInk,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          for (final item in category.items) ...[
+            const Divider(height: 1, color: AppColors.borderSoft),
+            InkWell(
+              onTap: () => onEditItem(item),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 4, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name.isEmpty ? '—' : item.name,
+                            textDirection: TextDirection.ltr,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          if (item.description.isNotEmpty)
+                            Text(
+                              item.description,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: muted,
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.md),
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.nameAr.isEmpty ? '—' : item.nameAr,
+                            textDirection: TextDirection.rtl,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: item.nameAr.isEmpty
+                                  ? AppColors.amberInk
+                                  : AppColors.ink,
+                            ),
+                          ),
+                          if (item.descriptionAr.isNotEmpty)
+                            Text(
+                              item.descriptionAr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textDirection: TextDirection.rtl,
+                              style: muted,
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.md),
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final group in item.options)
+                            _OptionGroupRow(
+                              group: group,
+                              onRemove: () => onRemoveGroup(item, group),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.md),
+                    SizedBox(
+                      width: 110,
+                      child: Align(
+                        alignment: AlignmentDirectional.topEnd,
+                        child: Text(
+                          formatMoney(item.price),
+                          style: AppType.mono(13.5, weight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l10n.delete,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: AppColors.textMuted,
+                      ),
+                      onPressed: () => onRemoveItem(item),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

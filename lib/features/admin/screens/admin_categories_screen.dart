@@ -101,7 +101,7 @@ class _CategoriesViewState extends State<_CategoriesView> {
             // with the page's actions in it as labelled buttons.
             if (widget.embedded)
               Padding(
-                padding: const EdgeInsets.fromLTRB(22, 24, 22, 16),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
                 child: ConsoleHeader(
                   title: l10n.categoriesTab,
                   description: l10n.pageDescCategories,
@@ -147,7 +147,35 @@ class _CategoriesViewState extends State<_CategoriesView> {
                   ],
                 ),
               ),
-            if (state.categories.length > 6)
+            if (webWide && state.categories.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 340,
+                      child: ConsoleSearchField(
+                        hint: l10n.searchCategoriesHint,
+                        onChanged: (v) => setState(() => _query = v),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.lg),
+                    Expanded(
+                      child: Text(
+                        l10n.categoriesSummary(
+                          state.categories.length,
+                          state.categories.where((c) => c.isComingSoon).length,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (state.categories.length > 6)
               Padding(
                 padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
                 child: TextField(
@@ -216,7 +244,9 @@ class _CategoriesViewState extends State<_CategoriesView> {
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: () => context.read<AdminCategoriesCubit>().load(),
-                  child: searching
+                  child: webWide
+                      ? _table(context, state, searching ? matches : null)
+                      : searching
                       ? ListView.builder(
                           padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
                           physics: const AlwaysScrollableScrollPhysics(),
@@ -304,6 +334,99 @@ class _CategoriesViewState extends State<_CategoriesView> {
       // correctly on its own.
       appBar: AppBar(title: Text(l10n.categoriesTab)),
       body: SafeArea(top: false, bottom: false, child: content),
+    );
+  }
+
+  /// Desktop: every category in one table — kinds of shop as group rows,
+  /// their cuisines under them — with one labelled column for "coming soon"
+  /// instead of a switch and a caption on every row.
+  Widget _table(
+    BuildContext context,
+    AdminCategoriesState state,
+    List<VendorCategory>? matches,
+  ) {
+    final l10n = context.l10n;
+    final cubit = context.read<AdminCategoriesCubit>();
+    Widget row(VendorCategory category, {required bool isChild, String? sub}) =>
+        _CategoryRow(
+          category: category,
+          isChild: isChild,
+          subtitle: sub,
+          onEdit: () => _showEditor(context, category: category),
+          onDelete: () => _confirmDelete(context, category),
+          onRecommendations: () => _showRecommendations(context, category),
+          onComingSoon: (v) => cubit.setComingSoon(category, v),
+        );
+    const divider = Divider(
+      height: 1,
+      thickness: 1,
+      color: AppColors.borderSoft,
+    );
+
+    final rows = <Widget>[];
+    if (matches != null) {
+      for (final category in matches) {
+        final parent = category.parentId == null
+            ? null
+            : state.categories
+                  .where((c) => c.id == category.parentId)
+                  .firstOrNull;
+        if (rows.isNotEmpty) rows.add(divider);
+        rows.add(
+          row(
+            category,
+            isChild: false,
+            sub: parent == null
+                ? l10n.subcategoriesCount(state.childrenOf(category.id).length)
+                : parent.name,
+          ),
+        );
+      }
+    } else {
+      for (final parent in state.topLevel) {
+        final children = state.childrenOf(parent.id);
+        if (rows.isNotEmpty) {
+          rows.add(const Divider(height: 1, color: AppColors.border));
+        }
+        rows.add(
+          ColoredBox(
+            color: AppColors.canvas.withValues(alpha: 0.6),
+            child: row(
+              parent,
+              isChild: false,
+              sub: l10n.subcategoriesCount(children.length),
+            ),
+          ),
+        );
+        for (final child in children) {
+          rows
+            ..add(divider)
+            ..add(row(child, isChild: true));
+        }
+      }
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 48),
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _CategoryTableHeader(),
+              const Divider(height: 1, thickness: 1, color: AppColors.border),
+              ...rows,
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -483,6 +606,8 @@ class _CategoryRow extends StatelessWidget {
       ?subtitle,
     ].join(' · ');
 
+    if (AppBreakpoints.isWebWide(context)) return _wide(context, arabic);
+
     return InkWell(
       onTap: onEdit,
       child: Padding(
@@ -607,6 +732,164 @@ class _CategoryRow extends StatelessWidget {
     );
   }
 
+  /// One row of the desktop table; columns match [_CategoryTableHeader].
+  Widget _wide(BuildContext context, String arabic) {
+    final l10n = context.l10n;
+    final thumb = isChild ? 34.0 : 40.0;
+    return InkWell(
+      onTap: onEdit,
+      hoverColor: AppColors.canvas,
+      child: Padding(
+        padding: _CategoryTableHeader.padding,
+        child: Row(
+          children: [
+            Expanded(
+              flex: _CategoryTableHeader.nameFlex,
+              child: Row(
+                children: [
+                  if (isChild)
+                    const Padding(
+                      padding: EdgeInsetsDirectional.only(start: 8, end: 10),
+                      child: Icon(
+                        Icons.subdirectory_arrow_right_rounded,
+                        size: 18,
+                        color: AppColors.textFaint,
+                      ),
+                    ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    child: SizedBox(
+                      width: thumb,
+                      height: thumb,
+                      child: (category.imageUrl?.isNotEmpty ?? false)
+                          ? AppNetworkImage(url: category.imageUrl!)
+                          : Container(
+                              color: AppColors.warmFill,
+                              child: Icon(
+                                Icons.grid_view_rounded,
+                                size: thumb * 0.45,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: isChild ? 14 : 15,
+                        fontWeight: isChild ? FontWeight.w600 : FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              flex: _CategoryTableHeader.arabicFlex,
+              child: Text(
+                arabic.isEmpty ? l10n.noArabicName : arabic,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: arabic.isEmpty
+                      ? AppColors.amberInk
+                      : AppColors.textSecondary,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              flex: _CategoryTableHeader.subFlex,
+              child: Text(
+                subtitle ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: _CategoryTableHeader.soonWidth,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Tooltip(
+                  message: l10n.comingSoonToggle,
+                  child: Switch(
+                    value: category.isComingSoon,
+                    onChanged: onComingSoon,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: _CategoryTableHeader.actionsWidth,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _action(
+                    icon: Icons.edit_outlined,
+                    color: AppColors.textSecondary,
+                    tooltip: l10n.edit,
+                    onTap: onEdit,
+                  ),
+                  PopupMenuButton<VoidCallback>(
+                    tooltip: l10n.moreActions,
+                    icon: const Icon(
+                      Icons.more_horiz_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+                    onSelected: (action) => action(),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: onRecommendations,
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 19,
+                            color: AppColors.primary,
+                          ),
+                          title: Text(l10n.recommendedStores),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: onDelete,
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 19,
+                            color: AppColors.dangerInk,
+                          ),
+                          title: Text(
+                            l10n.delete,
+                            style: const TextStyle(color: AppColors.dangerInk),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _action({
     required IconData icon,
     required Color color,
@@ -619,6 +902,56 @@ class _CategoryRow extends StatelessWidget {
       icon: Icon(icon, size: 19),
       color: color,
       visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+/// Column labels for the desktop categories table, and the widths its rows
+/// share.
+class _CategoryTableHeader extends StatelessWidget {
+  const _CategoryTableHeader();
+
+  static const nameFlex = 4;
+  static const arabicFlex = 3;
+  static const subFlex = 2;
+  static const soonWidth = 120.0;
+  static const actionsWidth = 96.0;
+  static const padding = EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    const style = TextStyle(
+      fontSize: 12.5,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textMuted,
+    );
+    return Container(
+      color: AppColors.surface,
+      padding: padding.add(const EdgeInsets.symmetric(vertical: 4)),
+      child: Row(
+        children: [
+          Expanded(
+            flex: nameFlex,
+            child: Text(l10n.category, style: style),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            flex: arabicFlex,
+            child: Text(l10n.arabicNameColumn, style: style),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            flex: subFlex,
+            child: Text(l10n.subcategoriesColumn, style: style),
+          ),
+          SizedBox(
+            width: soonWidth,
+            child: Text(l10n.comingSoonColumn, style: style),
+          ),
+          const SizedBox(width: actionsWidth),
+        ],
+      ),
     );
   }
 }

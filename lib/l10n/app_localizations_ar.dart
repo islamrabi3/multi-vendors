@@ -2240,7 +2240,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get categoriesTab => 'التصنيفات';
 
   @override
-  String get importMenuFromPhotos => 'استيراد المنيو من الصور';
+  String get importMenuFromPhotos => 'استيراد المنيو';
 
   @override
   String get importMenuHint =>
@@ -6314,7 +6314,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pageDescPriceAdjustment =>
-      'زوّد أو قلّل أسعار متجر بنسبة في خطوة واحدة.';
+      'زوّد أو قلّل الأسعار بنسبة أو بمبلغ ثابت — على المنصة كلها أو متجر واحد أو تصنيف واحد.';
 
   @override
   String get pageDescFinance =>
@@ -6653,4 +6653,237 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get pageDescMarketing =>
       'أكواد الخصم وحملات الأسعار وإعلانات الشاشة الرئيسية — اللي بيرجّع العملاء.';
+
+  @override
+  String get withOpenBalance => 'عليهم رصيد مفتوح';
+
+  @override
+  String get filterOpenBalance => 'رصيد مفتوح';
+
+  @override
+  String get settleAction => 'تسوية';
+
+  @override
+  String get outstandingColumn => 'المستحق';
+
+  @override
+  String partiesTotal(int count) {
+    return '$count إجمالاً';
+  }
+
+  @override
+  String get driverCashDueHint => 'نقدية حصّلها السائقون ولسه معاهم';
+
+  @override
+  String get storePayablesHint => 'المستحق للمتاجر على المنصة حالياً';
+
+  @override
+  String get waitingForReview => 'في انتظار المراجعة';
+
+  @override
+  String requestsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count طلب',
+      many: '$count طلبًا',
+      few: '$count طلبات',
+      two: 'طلبان',
+      one: 'طلب واحد',
+      zero: 'لا توجد طلبات',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String earlyPayoutsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count صرف مبكر',
+      one: 'صرف مبكر واحد',
+      zero: 'لا يوجد صرف مبكر',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get requestedOn => 'تاريخ الطلب';
+
+  @override
+  String get partyColumn => 'المتجر أو السائق';
+
+  @override
+  String get typeColumn => 'النوع';
+
+  @override
+  String get depositsEmptyTitle => 'لا يوجد ما يحتاج مراجعة';
+
+  @override
+  String get depositsEmptyBody =>
+      'لما سائق يقول إنه ورّد نقدية، هتظهر هنا عشان تراجعها على البنك أو الخزنة.';
+
+  @override
+  String get requestsEmptyBody =>
+      'طلبات الصرف من المتاجر والسائقين بتظهر هنا، والصرف المبكر الأول.';
+
+  @override
+  String get exportCsv => 'تصدير CSV';
+
+  @override
+  String get platformEarningsHint => 'ما تحتفظ به المنصة من الطلبات المسلّمة';
+
+  @override
+  String get orderValueSection => 'قيمة الطلبات';
+
+  @override
+  String get orderValueHint => 'اللي دفعه العملاء قبل توزيع الحصص';
+
+  @override
+  String get owedOutHint => 'أموال الآخرين اللي بتعدي على المنصة';
+
+  @override
+  String get paymentMix => 'طريقة دفع العملاء';
+
+  @override
+  String shareOfTotal(String percent) {
+    return '$percent من الإجمالي';
+  }
+
+  @override
+  String get discountsColumn => 'الخصومات';
+
+  @override
+  String get commissionColumn => 'العمولة';
+
+  @override
+  String get subscriptionShort => 'اشتراك';
+
+  @override
+  String get reportExported => 'تم حفظ التقرير';
+
+  @override
+  String get previewLabel => 'معاينة';
+
+  @override
+  String get enterAmountFirst => 'اكتب القيمة عشان تشوف التغيير.';
+
+  @override
+  String get directionLabel => 'الاتجاه';
+
+  @override
+  String get howMuchLabel => 'القيمة';
+
+  @override
+  String get changeColumn => 'التغيير';
+
+  @override
+  String get productsColumn => 'المنتجات';
+
+  @override
+  String get whenColumn => 'الوقت';
+
+  @override
+  String get priceAdjustGuard =>
+      'الأسعار عمرها ما تنزل عن الحد الأدنى للمنصة، وكل تعديل بيتسجل تحت عشان تقدر ترجّعه.';
+
+  @override
+  String get chooseStoreTitle => 'اختر متجر';
+
+  @override
+  String get chooseStoreBody =>
+      'اختر متجر من القائمة عشان تبني المنيو بتاعه من ملف أو صور أو رابط.';
+
+  @override
+  String get importSourceFile => 'جدول بيانات أو PDF';
+
+  @override
+  String get importSourceFileHint =>
+      'ملفات CSV و Excel بتتقري زي ما هي بالظبط، وملف PDF بيتقري زي الصورة.';
+
+  @override
+  String get importSourcePhotos => 'صور المنيو';
+
+  @override
+  String get importSourcePhotosHint =>
+      'لحد ٥ صور. بنقرا كل قسم وصنف وانت تراجعهم قبل ما يتحفظ أي حاجة.';
+
+  @override
+  String photosAdded(int count, int max) {
+    return '$count من $max';
+  }
+
+  @override
+  String get chooseFile => 'اختر ملف';
+
+  @override
+  String get reviewItemsHint =>
+      'راجع الأسماء باللغتين وكل الأسعار. اضغط على أي صنف لتعديله، واحذف اللي مش عايز تستورده.';
+
+  @override
+  String get startOver => 'ابدأ من جديد';
+
+  @override
+  String itemsAndOptions(int items, int options) {
+    return '$items صنف · $options مجموعة اختيارات';
+  }
+
+  @override
+  String missingTranslations(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ترجمات ناقصة',
+      one: 'ترجمة واحدة ناقصة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String categoriesSummary(int count, int soon) {
+    return '$count تصنيف · $soon قريباً';
+  }
+
+  @override
+  String get comingSoonColumn => 'قريباً';
+
+  @override
+  String get arabicNameColumn => 'الاسم بالعربي';
+
+  @override
+  String get subcategoriesColumn => 'التصنيفات الفرعية';
+
+  @override
+  String get recommendedStores => 'المتاجر المرشّحة';
+
+  @override
+  String areasSummary(int active, int total) {
+    return '$active من $total مناطق بتستقبل طلبات';
+  }
+
+  @override
+  String areaRadiusShort(String km) {
+    return 'نطاق $km كم';
+  }
+
+  @override
+  String get moreActions => 'إجراءات أخرى';
+
+  @override
+  String get scopeAllProductsInline => 'كل المنتجات على المنصة';
+
+  @override
+  String get scopeColumn => 'طُبّق على';
+
+  @override
+  String get byColumn => 'بواسطة';
+
+  @override
+  String get usesColumn => 'مرات الاستخدام';
+
+  @override
+  String get photoSection => 'الصورة';
+
+  @override
+  String get availabilitySection => 'التوفر';
 }

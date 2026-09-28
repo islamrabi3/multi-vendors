@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -37,6 +39,16 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
   final _repo = ServiceAreaRepository();
   late Stream<List<ServiceArea>> _stream = _repo.serviceAreasStream();
   String? _busyId;
+
+  /// Desktop: the overview map, and the area it is zoomed to.
+  final _mapController = MapController();
+  String? _focusedId;
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
 
   /// Resubscribes and resolves once the new stream has actually produced a
   /// list, so pull-to-refresh holds its spinner until there is something to
@@ -195,7 +207,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 24, 22, 4),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
             child: ConsoleHeader(
               title: l10n.serviceAreas,
               description: l10n.pageDescServiceAreas,
@@ -208,7 +220,7 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
               ],
             ),
           ),
-          Expanded(child: list),
+          Expanded(child: _webBody()),
         ],
       );
     }
@@ -233,6 +245,232 @@ class _AdminServiceAreasScreenState extends State<AdminServiceAreasScreen> {
       floatingActionButton: fab,
       body: SafeArea(top: false, child: list),
     );
+  }
+
+  /// Desktop: every area on one map — where the platform delivers, at a
+  /// glance — with the list that edits them beside it.
+  Widget _webBody() {
+    final l10n = context.l10n;
+    final languageCode = Localizations.localeOf(context).languageCode;
+    return StreamBuilder<List<ServiceArea>>(
+      stream: _stream,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const _AreasSkeleton();
+        }
+        if (snap.hasError) {
+          return FailureView(error: snap.error!, onRetry: _reload);
+        }
+        final areas = snap.data ?? const <ServiceArea>[];
+        final active = areas.where((a) => a.isActive).length;
+
+        final list = Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                color: AppColors.canvas,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Text(
+                  l10n.areasSummary(active, areas.length),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              Expanded(
+                child: areas.isEmpty
+                    ? SingleChildScrollView(
+                        child: ConsoleEmpty(
+                          icon: Icons.map_outlined,
+                          title: l10n.noServiceAreasYet,
+                          message: l10n.coverageEverywhereNote,
+                          action: FilledButton.icon(
+                            onPressed: () => _edit(),
+                            icon: const Icon(
+                              Icons.add_location_alt_outlined,
+                              size: 18,
+                            ),
+                            label: Text(l10n.addServiceArea),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: areas.length,
+                        separatorBuilder: (_, _) => const Divider(
+                          height: 1,
+                          color: AppColors.borderSoft,
+                        ),
+                        itemBuilder: (context, i) {
+                          final area = areas[i];
+                          return _AreaListRow(
+                            area: area,
+                            name: area.displayName(languageCode),
+                            focused: area.id == _focusedId,
+                            busy: _busyId == area.id,
+                            onFocus: () => _focus(area),
+                            onEdit: () => _edit(area),
+                            onToggle: () => _toggle(area),
+                            onDelete: () => _delete(area),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (areas.isNotEmpty && active == 0) const _CoverageNotice(),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        child: DecoratedBox(
+                          position: DecorationPosition.foreground,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.border),
+                            borderRadius: BorderRadius.circular(AppRadii.lg),
+                          ),
+                          child: _overviewMap(areas, languageCode),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.lg),
+                    SizedBox(width: 400, child: list),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _overviewMap(List<ServiceArea> areas, String languageCode) {
+    final bounds = _boundsOf(areas);
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        // Cairo when there is nothing to frame yet.
+        initialCenter: const LatLng(30.0444, 31.2357),
+        initialZoom: 10,
+        initialCameraFit: bounds == null
+            ? null
+            : CameraFit.bounds(
+                bounds: bounds,
+                padding: const EdgeInsets.all(48),
+              ),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.multiVendors.app',
+        ),
+        CircleLayer(
+          circles: [
+            for (final area in areas)
+              CircleMarker(
+                point: LatLng(area.lat, area.lng),
+                radius: area.radiusKm * 1000,
+                useRadiusInMeter: true,
+                color: (area.isActive ? AppColors.primary : AppColors.textFaint)
+                    .withValues(alpha: area.id == _focusedId ? 0.24 : 0.12),
+                borderColor: area.isActive
+                    ? AppColors.primary
+                    : AppColors.textMuted,
+                borderStrokeWidth: area.id == _focusedId ? 3 : 1.5,
+              ),
+          ],
+        ),
+        MarkerLayer(
+          markers: [
+            for (final area in areas)
+              Marker(
+                point: LatLng(area.lat, area.lng),
+                width: 180,
+                height: 30,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _focus(area),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        border: Border.all(
+                          color: area.isActive
+                              ? AppColors.primary
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: Text(
+                        area.displayName(languageCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: area.isActive
+                              ? AppColors.primary
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const RichAttributionWidget(
+          attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+        ),
+      ],
+    );
+  }
+
+  void _focus(ServiceArea area) {
+    setState(() => _focusedId = area.id);
+    final bounds = _boundsOf([area]);
+    if (bounds == null) return;
+    _mapController.fitCamera(
+      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(48)),
+    );
+  }
+
+  /// The box that holds every circle whole.
+  static LatLngBounds? _boundsOf(List<ServiceArea> areas) {
+    if (areas.isEmpty) return null;
+    final points = <LatLng>[];
+    for (final area in areas) {
+      final dLat = area.radiusKm / 111.0;
+      final dLng =
+          area.radiusKm / (111.0 * math.cos(area.lat * math.pi / 180).abs());
+      points
+        ..add(LatLng(area.lat - dLat, area.lng - dLng))
+        ..add(LatLng(area.lat + dLat, area.lng + dLng));
+    }
+    return LatLngBounds.fromPoints(points);
   }
 }
 
@@ -455,6 +693,112 @@ class _AreaCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One area in the desktop list: name and radius, its state, and the three
+/// things to do with it. Clicking the row frames it on the map.
+class _AreaListRow extends StatelessWidget {
+  const _AreaListRow({
+    required this.area,
+    required this.name,
+    required this.focused,
+    required this.busy,
+    required this.onFocus,
+    required this.onEdit,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  final ServiceArea area;
+  final String name;
+  final bool focused;
+  final bool busy;
+  final VoidCallback onFocus;
+  final VoidCallback onEdit;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final km = area.radiusKm.toStringAsFixed(area.radiusKm % 1 == 0 ? 0 : 1);
+    return Material(
+      color: focused ? AppColors.warmFill : Colors.transparent,
+      child: InkWell(
+        onTap: onFocus,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 8, 10),
+          child: Row(
+            children: [
+              Icon(
+                Icons.radio_button_checked_rounded,
+                size: 16,
+                color: area.isActive ? AppColors.primary : AppColors.textFaint,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        l10n.areaRadiusShort(km),
+                        area.isActive ? l10n.active : l10n.areaInactive,
+                      ].join(' · '),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: area.isActive
+                            ? AppColors.successInk
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (busy)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: ButtonSpinner(size: 18, color: AppColors.primary),
+                )
+              else ...[
+                TextButton(onPressed: onEdit, child: Text(l10n.edit)),
+                IconButton(
+                  onPressed: onToggle,
+                  tooltip: area.isActive
+                      ? l10n.deactivateArea
+                      : l10n.activateArea,
+                  icon: Icon(
+                    area.isActive
+                        ? Icons.pause_circle_outline
+                        : Icons.play_circle_outline,
+                    size: 20,
+                  ),
+                  color: AppColors.textSecondary,
+                ),
+                IconButton(
+                  onPressed: onDelete,
+                  tooltip: l10n.delete,
+                  color: AppColors.dangerInk,
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

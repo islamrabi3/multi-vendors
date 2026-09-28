@@ -12,6 +12,7 @@ import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/utils/settlement_format.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/finance_widgets.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../../core/widgets/web/web_table.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
@@ -302,40 +303,15 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
         ? _WebDepositsTable(requests: _requests, onReview: _review)
         : _MobileList(requests: _requests, onReview: _review);
 
-    if (widget.embedded) {
-      return Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            filter,
-            const SizedBox(height: AppSpace.lg),
-            Expanded(child: body),
-          ],
-        ),
-      );
-    }
-
     if (webWide) {
+      final page = _webPage(context);
+      if (widget.embedded) return page;
       return WebPageChrome(
         forStaff: true,
         activeId: 'manage:/admin-app/deposits',
         sections: adminManageWebSections(context),
         pageTitle: l10n.depositsAwaitingReview,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: filter,
-              ),
-              const SizedBox(height: AppSpace.lg),
-              Expanded(child: body),
-            ],
-          ),
-        ),
+        child: page,
       );
     }
 
@@ -362,6 +338,80 @@ class _AdminDepositsScreenState extends State<AdminDepositsScreen> {
       ),
     );
   }
+
+  /// The desktop page: what is waiting and how much, a filter, the table.
+  Widget _webPage(BuildContext context) {
+    final l10n = context.l10n;
+    final waiting = AdminActionBadges.instance
+        .countFor(AdminActionBadges.depositsPending)
+        .value;
+    final pendingRows = _requests.where((r) => r.isPending).toList();
+    final pendingTotal = pendingRows.fold<double>(
+      0,
+      (sum, r) => sum + r.amount,
+    );
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 48),
+        children: [
+          if (_pendingOnly && pendingRows.isNotEmpty) ...[
+            ConsoleGrid(
+              maxColumns: 3,
+              children: [
+                ConsoleStat(
+                  label: l10n.waitingForReview,
+                  value: formatMoney(pendingTotal),
+                  hint: l10n.requestsCount(pendingRows.length),
+                  icon: Icons.move_to_inbox_rounded,
+                  tone: pendingRows.isEmpty
+                      ? ConsoleTone.plain
+                      : ConsoleTone.warn,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpace.xl),
+          ],
+          ConsoleToolbar(
+            filters: [
+              ConsoleFilterChip(
+                label: l10n.pending,
+                count: waiting > 0 ? waiting : null,
+                selected: _pendingOnly,
+                onSelected: () {
+                  if (_pendingOnly) return;
+                  setState(() => _pendingOnly = true);
+                  _load();
+                },
+              ),
+              ConsoleFilterChip(
+                label: l10n.all,
+                selected: !_pendingOnly,
+                onSelected: () {
+                  if (!_pendingOnly) return;
+                  setState(() => _pendingOnly = false);
+                  _load();
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          if (_loading)
+            const SizedBox(height: 240, child: LoadingView())
+          else if (_error != null)
+            SizedBox(
+              height: 320,
+              child: ErrorView(message: _error!, onRetry: _load),
+            )
+          else
+            _WebDepositsTable(requests: _requests, onReview: _review),
+        ],
+      ),
+    );
+  }
 }
 
 class _WebDepositsTable extends StatelessWidget {
@@ -379,76 +429,84 @@ class _WebDepositsTable extends StatelessWidget {
     final columns = [
       WebTableColumn(label: l10n.driverLabel, flex: 3),
       WebTableColumn(label: l10n.settlementMethod, flex: 2),
+      WebTableColumn(label: l10n.settlementReference, flex: 2),
       WebTableColumn(label: l10n.dateLabel, width: 130),
-      WebTableColumn(label: l10n.amountValue, width: 130),
       WebTableColumn(label: l10n.statusLabel, width: 120),
+      WebTableColumn(label: l10n.amountValue, width: 130, numeric: true),
     ];
-    return SingleChildScrollView(
-      child: WebTable(
-        trailingWidth: 90,
-        emptyState: EmptyView(
-          message: l10n.noDepositsPending,
-          icon: Icons.account_balance_outlined,
-        ),
-        columns: columns,
-        rows: [
-          for (final request in requests)
-            WebTableRow.aligned(
-              trailingWidth: 90,
-              // A tap opens the review sheet — proof photo and notes first,
-              // approve/reject inside it — rather than a one-tap approve on
-              // the driver's word alone right here in the row.
-              onTap: () => onReview(request),
-              columns: columns,
-              cells: [
-                Text(
-                  request.driverName ?? l10n.driversTab,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  settlementMethodLabel(context, request.paymentMethod),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                Text(
-                  DateFormat.yMMMd(language).format(request.createdAt),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                Text(
-                  formatMoney(request.amount),
-                  maxLines: 1,
-                  style: AppType.mono(14, weight: FontWeight.w800),
-                ),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: _StatusBadge(request: request),
-                ),
-              ],
-              trailing: request.isPending
-                  ? _MiniButton(
-                      label: l10n.review,
-                      tone: AppColors.primary,
-                      filled: true,
-                      onTap: () => onReview(request),
-                    )
-                  : const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.textFaint,
-                    ),
-            ),
-        ],
+    return WebTable(
+      trailingWidth: 90,
+      emptyState: ConsoleEmpty(
+        icon: Icons.account_balance_outlined,
+        title: l10n.depositsEmptyTitle,
+        message: l10n.depositsEmptyBody,
       ),
+      columns: columns,
+      rows: [
+        for (final request in requests)
+          WebTableRow.aligned(
+            trailingWidth: 90,
+            // A tap opens the review sheet — proof photo and notes first,
+            // approve/reject inside it — rather than a one-tap approve on
+            // the driver's word alone right here in the row.
+            onTap: () => onReview(request),
+            columns: columns,
+            cells: [
+              Text(
+                request.driverName ?? l10n.driversTab,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                settlementMethodLabel(context, request.paymentMethod),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                (request.reference?.isNotEmpty ?? false)
+                    ? request.reference!
+                    : '—',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.mono(12.5, color: AppColors.textSecondary),
+              ),
+              Text(
+                DateFormat.yMMMd(language).format(request.createdAt),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: _StatusBadge(request: request),
+              ),
+              Text(
+                formatMoney(request.amount),
+                maxLines: 1,
+                style: AppType.mono(14, weight: FontWeight.w800),
+              ),
+            ],
+            trailing: request.isPending
+                ? _MiniButton(
+                    label: l10n.review,
+                    tone: AppColors.primary,
+                    filled: true,
+                    onTap: () => onReview(request),
+                  )
+                : const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textFaint,
+                  ),
+          ),
+      ],
     );
   }
 }

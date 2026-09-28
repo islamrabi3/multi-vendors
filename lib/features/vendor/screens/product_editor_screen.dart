@@ -9,6 +9,7 @@ import '../../../core/repositories/vendor_admin_repository.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/console.dart';
 import 'package:multi_vendor/core/utils/l10n_extension.dart';
 import '../../../core/widgets/web/adaptive_sheet.dart';
 
@@ -483,425 +484,505 @@ class _ProductEditorScreenState extends State<ProductEditorScreen> {
   Widget build(BuildContext context) {
     final product = _product;
     final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+
+    Widget photo({required double height}) => GestureDetector(
+      onTap: _uploading ? null : _pickImage,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        child: Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            AppNetworkImage(
+              url: _imageUrl,
+              height: height,
+              width: double.infinity,
+            ),
+            Container(
+              color: _imageUrl != null ? Colors.black26 : Colors.black45,
+              width: double.infinity,
+              height: height,
+            ),
+            if (_uploading)
+              const Positioned.fill(
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              )
+            else
+              Positioned.fill(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _imageUrl != null
+                            ? Icons.edit_outlined
+                            : Icons.add_photo_alternate_outlined,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _imageUrl != null
+                            ? l10n.tapToChangePhoto
+                            : l10n.tapToAddPhoto,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    final nameEn = TextFormField(
+      controller: _name,
+      textCapitalization: TextCapitalization.words,
+      textDirection: TextDirection.ltr,
+      decoration: InputDecoration(
+        labelText: '${l10n.productName} · ${l10n.english}',
+        prefixIcon: const Icon(Icons.fastfood_outlined),
+      ),
+      validator: (v) => (v == null || v.trim().isEmpty) ? l10n.required : null,
+    );
+    // Optional: customers reading the other language fall back to the
+    // canonical name, so a store can list items in one language only.
+    final nameAr = TextFormField(
+      controller: _nameAr,
+      textDirection: TextDirection.rtl,
+      decoration: InputDecoration(
+        labelText: '${l10n.productName} · ${l10n.arabic}',
+        prefixIcon: const Icon(Icons.translate_rounded),
+      ),
+    );
+    final descriptionEn = TextFormField(
+      controller: _description,
+      maxLines: 3,
+      textCapitalization: TextCapitalization.sentences,
+      textDirection: TextDirection.ltr,
+      decoration: InputDecoration(
+        labelText: '${l10n.description} · ${l10n.english}',
+        alignLabelWithHint: true,
+        prefixIcon: const Padding(
+          padding: EdgeInsetsDirectional.only(bottom: 40),
+          child: Icon(Icons.notes_outlined),
+        ),
+      ),
+    );
+    final descriptionAr = TextFormField(
+      controller: _descriptionAr,
+      maxLines: 3,
+      textDirection: TextDirection.rtl,
+      decoration: InputDecoration(
+        labelText: '${l10n.description} · ${l10n.arabic}',
+        alignLabelWithHint: true,
+        prefixIcon: const Padding(
+          padding: EdgeInsetsDirectional.only(bottom: 40),
+          child: Icon(Icons.translate_rounded),
+        ),
+      ),
+    );
+
+    Widget switchTile({
+      required String title,
+      required String subtitle,
+      required bool value,
+      required ValueChanged<bool> onChanged,
+      EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 2,
+      ),
+    }) => SwitchListTile(
+      contentPadding: padding,
+      // The narrow desktop column needs the explanation's second line.
+      isThreeLine: padding == EdgeInsets.zero,
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14.5,
+          color: AppColors.ink,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+      ),
+      value: value,
+      activeThumbColor: Colors.white,
+      activeTrackColor: AppColors.success,
+      inactiveThumbColor: Colors.white,
+      inactiveTrackColor: AppColors.border,
+      onChanged: onChanged,
+    );
+
+    Widget availableTile({EdgeInsetsGeometry? padding}) => switchTile(
+      title: l10n.availableForOrdering,
+      subtitle: _isAvailable
+          ? l10n.customersCanAddThisToTheirCart
+          : l10n.hiddenFromCustomers,
+      value: _isAvailable,
+      onChanged: (v) => setState(() => _isAvailable = v),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    );
+
+    // Stock. A restaurant leaves this off and nothing changes; a pharmacy or
+    // grocery turns it on and the item stops being orderable at zero without
+    // anyone remembering to hide it.
+    Widget stock({EdgeInsetsGeometry? padding, bool stacked = false}) {
+      final quantity = TextFormField(
+        controller: _stock,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(labelText: l10n.stockQuantity),
+      );
+      final threshold = TextFormField(
+        controller: _lowStock,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(
+          labelText: l10n.lowStockThreshold,
+          helperText: l10n.lowStockThresholdHint,
+          helperMaxLines: 2,
+        ),
+      );
+      return Column(
+        children: [
+          switchTile(
+            title: l10n.trackStock,
+            subtitle: _trackStock ? l10n.trackStockOn : l10n.trackStockOff,
+            value: _trackStock,
+            onChanged: (v) => setState(() => _trackStock = v),
+            padding:
+                padding ??
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          ),
+          if (_trackStock)
+            Padding(
+              padding: stacked
+                  ? const EdgeInsets.only(top: 8)
+                  : const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: stacked
+                  ? Column(
+                      children: [
+                        quantity,
+                        const SizedBox(height: 12),
+                        threshold,
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: quantity),
+                        const SizedBox(width: 12),
+                        Expanded(child: threshold),
+                      ],
+                    ),
+            ),
+        ],
+      );
+    }
+
+    final price = TextFormField(
+      controller: _price,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
+        labelText: l10n.price,
+        prefixIcon: const Icon(Icons.payments_outlined),
+        suffixText: currencySymbol,
+      ),
+      validator: (v) =>
+          double.tryParse(v ?? '') == null ? l10n.enterAValidPrice : null,
+    );
+    final section = InkWell(
+      onTap: widget.args.categories.isEmpty ? null : _pickCategory,
+      borderRadius: BorderRadius.circular(12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: l10n.section,
+          prefixIcon: const Icon(Icons.category_outlined),
+          suffixIcon: const Icon(Icons.arrow_drop_down),
+          enabled: widget.args.categories.isNotEmpty,
+        ),
+        child: Text(
+          _selectedCategoryName ??
+              (widget.args.categories.isEmpty
+                  ? l10n.noSectionsAddOneFirst
+                  : l10n.selectSection),
+          style: TextStyle(
+            color: _categoryId == null ? Theme.of(context).hintColor : null,
+          ),
+        ),
+      ),
+    );
+
+    final addGroup = TextButton.icon(
+      onPressed: _saving ? null : _addOptionGroup,
+      icon: const Icon(Icons.add_rounded, size: 18),
+      label: Text(
+        l10n.addGroup,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    );
+    Widget optionsNote(String text) => Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(color: AppColors.textMuted, fontSize: 13.5),
+        textAlign: TextAlign.center,
+      ),
+    );
+    final options = <Widget>[
+      if (product == null)
+        optionsNote(l10n.saveProductFirstToOption)
+      else if (product.optionGroups.isEmpty)
+        optionsNote(l10n.noOptionGroupsYet)
+      else
+        for (final group in product.optionGroups)
+          _OptionGroupCard(
+            group: group,
+            onAddOption: () => _addOption(group),
+            onDeleteGroup: () async {
+              await _admin.deleteOptionGroup(group.id);
+              await _reloadProduct();
+            },
+            onDeleteOption: (optionId) async {
+              await _admin.deleteOption(optionId);
+              await _reloadProduct();
+            },
+          ),
+    ];
+    final saveLabel = _saving
+        ? const SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          )
+        : Text(
+            product == null ? l10n.createProduct : l10n.saveChanges,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          );
+
+    final wide = MediaQuery.sizeOf(context).width >= 1000;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(
-          product == null ? context.l10n.newProduct : context.l10n.editProduct,
-        ),
+        title: Text(product == null ? l10n.newProduct : l10n.editProduct),
         actions: [
           if (product != null)
             IconButton(
-              tooltip: context.l10n.deleteProduct,
+              tooltip: l10n.deleteProduct,
               icon: Icon(Icons.delete_outline_rounded, color: scheme.error),
               onPressed: _confirmDelete,
             ),
+          if (wide) ...[
+            const SizedBox(width: 8),
+            FilledButton(onPressed: _saving ? null : _save, child: saveLabel),
+            const SizedBox(width: 16),
+          ],
         ],
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-          children: [
-            // Image picker widget
-            GestureDetector(
-              onTap: _uploading ? null : _pickImage,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadii.xl),
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    AppNetworkImage(
-                      url: _imageUrl,
-                      height: 180,
-                      width: double.infinity,
-                    ),
-                    Container(
-                      color: _imageUrl != null
-                          ? Colors.black26
-                          : Colors.black45,
-                      width: double.infinity,
-                      height: 180,
-                    ),
-                    if (_uploading)
-                      const Positioned.fill(
-                        child: Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        ),
-                      )
-                    else
-                      Positioned.fill(
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _imageUrl != null
-                                    ? Icons.edit_outlined
-                                    : Icons.add_photo_alternate_outlined,
-                                color: Colors.white,
-                                size: 36,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _imageUrl != null
-                                    ? context.l10n.tapToChangePhoto
-                                    : context.l10n.tapToAddPhoto,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Basic Info Section
-            _SectionLabel(context.l10n.basicInfo),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _name,
-              textCapitalization: TextCapitalization.words,
-              textDirection: TextDirection.ltr,
-              decoration: InputDecoration(
-                labelText:
-                    '${context.l10n.productName} · ${context.l10n.english}',
-                prefixIcon: const Icon(Icons.fastfood_outlined),
-              ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? context.l10n.required
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            // Optional: customers reading the other language fall back to the
-            // canonical name, so a store can list items in one language only.
-            TextFormField(
-              controller: _nameAr,
-              textDirection: TextDirection.rtl,
-              decoration: InputDecoration(
-                labelText:
-                    '${context.l10n.productName} · ${context.l10n.arabic}',
-                prefixIcon: const Icon(Icons.translate_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _description,
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-              textDirection: TextDirection.ltr,
-              decoration: InputDecoration(
-                labelText:
-                    '${context.l10n.description} · ${context.l10n.english}',
-                alignLabelWithHint: true,
-                prefixIcon: const Padding(
-                  padding: EdgeInsetsDirectional.only(bottom: 40),
-                  child: Icon(Icons.notes_outlined),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _descriptionAr,
-              maxLines: 3,
-              textDirection: TextDirection.rtl,
-              decoration: InputDecoration(
-                labelText:
-                    '${context.l10n.description} · ${context.l10n.arabic}',
-                alignLabelWithHint: true,
-                prefixIcon: const Padding(
-                  padding: EdgeInsetsDirectional.only(bottom: 40),
-                  child: Icon(Icons.translate_rounded),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: SwitchListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 2,
-                ),
-                title: Text(
-                  context.l10n.availableForOrdering,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.5,
-                    color: AppColors.ink,
-                  ),
-                ),
-                subtitle: Text(
-                  _isAvailable
-                      ? context.l10n.customersCanAddThisToTheirCart
-                      : context.l10n.hiddenFromCustomers,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                value: _isAvailable,
-                activeThumbColor: Colors.white,
-                activeTrackColor: AppColors.success,
-                inactiveThumbColor: Colors.white,
-                inactiveTrackColor: AppColors.border,
-                onChanged: (v) => setState(() => _isAvailable = v),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Stock. A restaurant leaves this off and nothing changes; a
-            // pharmacy or grocery turns it on and the item stops being
-            // orderable at zero without anyone remembering to hide it.
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
+        child: wide
+            ? _wideBody(
+                photo: photo(height: 220),
+                names: [nameEn, nameAr],
+                descriptions: [descriptionEn, descriptionAr],
+                pricing: [price, section],
+                availability: [
+                  availableTile(padding: EdgeInsets.zero),
+                  const Divider(height: 24, color: AppColors.borderSoft),
+                  stock(padding: EdgeInsets.zero, stacked: true),
+                ],
+                addGroup: addGroup,
+                options: options,
+              )
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                 children: [
-                  SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 2,
+                  photo(height: 180),
+                  const SizedBox(height: 24),
+                  _SectionLabel(l10n.basicInfo),
+                  const SizedBox(height: 12),
+                  nameEn,
+                  const SizedBox(height: 12),
+                  nameAr,
+                  const SizedBox(height: 12),
+                  descriptionEn,
+                  const SizedBox(height: 12),
+                  descriptionAr,
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      border: Border.all(color: AppColors.border),
                     ),
-                    title: Text(
-                      context.l10n.trackStock,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.5,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    subtitle: Text(
-                      _trackStock
-                          ? context.l10n.trackStockOn
-                          : context.l10n.trackStockOff,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    value: _trackStock,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: AppColors.success,
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: AppColors.border,
-                    onChanged: (v) => setState(() => _trackStock = v),
+                    child: availableTile(),
                   ),
-                  if (_trackStock)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _stock,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                labelText: context.l10n.stockQuantity,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _lowStock,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                labelText: context.l10n.lowStockThreshold,
-                                helperText: context.l10n.lowStockThresholdHint,
-                                helperMaxLines: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      border: Border.all(color: AppColors.border),
                     ),
+                    child: stock(),
+                  ),
+                  const SizedBox(height: 24),
+                  _SectionLabel(l10n.pricingAndCategory),
+                  const SizedBox(height: 12),
+                  price,
+                  const SizedBox(height: 12),
+                  section,
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      _SectionLabel(l10n.options),
+                      const Spacer(),
+                      addGroup,
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ...options,
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // Pricing & category section
-            _SectionLabel(context.l10n.pricingAndCategory),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _price,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: context.l10n.price,
-                prefixIcon: const Icon(Icons.payments_outlined),
-                suffixText: currencySymbol,
-              ),
-              validator: (v) => double.tryParse(v ?? '') == null
-                  ? context.l10n.enterAValidPrice
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: widget.args.categories.isEmpty ? null : _pickCategory,
-              borderRadius: BorderRadius.circular(12),
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: context.l10n.section,
-                  prefixIcon: const Icon(Icons.category_outlined),
-                  suffixIcon: const Icon(Icons.arrow_drop_down),
-                  enabled: widget.args.categories.isNotEmpty,
-                ),
-                child: Text(
-                  _selectedCategoryName ??
-                      (widget.args.categories.isEmpty
-                          ? context.l10n.noSectionsAddOneFirst
-                          : context.l10n.selectSection),
-                  style: TextStyle(
-                    color: _categoryId == null
-                        ? Theme.of(context).hintColor
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Options list
-            Row(
-              children: [
-                _SectionLabel(context.l10n.options),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _saving ? null : _addOptionGroup,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(
-                    context.l10n.addGroup,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            if (product == null)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                ),
-                child: Text(
-                  context.l10n.saveProductFirstToOption,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 13.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            else if (product.optionGroups.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                ),
-                child: Text(
-                  context.l10n.noOptionGroupsYet,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 13.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            else
-              for (final group in product.optionGroups)
-                _OptionGroupCard(
-                  group: group,
-                  onAddOption: () => _addOption(group),
-                  onDeleteGroup: () async {
-                    await _admin.deleteOptionGroup(group.id);
-                    await _reloadProduct();
-                  },
-                  onDeleteOption: (optionId) async {
-                    await _admin.deleteOption(optionId);
-                    await _reloadProduct();
-                  },
-                ),
-          ],
-        ),
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.borderSoft)),
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: SafeArea(
-          child: Container(
-            height: 54,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadii.lg),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.25),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(54),
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
+      bottomNavigationBar: wide
+          ? null
+          : Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(top: BorderSide(color: AppColors.borderSoft)),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: SafeArea(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                  ),
+                  onPressed: _saving ? null : _save,
+                  child: saveLabel,
                 ),
               ),
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+            ),
+    );
+  }
+
+  /// Desktop: what the dish is (names, descriptions, options) on the left;
+  /// how it sells (photo, price, section, availability) on the right. Save
+  /// sits in the title bar rather than in a bar across the whole window.
+  Widget _wideBody({
+    required Widget photo,
+    required List<Widget> names,
+    required List<Widget> descriptions,
+    required List<Widget> pricing,
+    required List<Widget> availability,
+    required Widget addGroup,
+    required List<Widget> options,
+  }) {
+    final l10n = context.l10n;
+    Widget pair(List<Widget> fields) => Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: fields[0]),
+        const SizedBox(width: 16),
+        Expanded(child: fields[1]),
+      ],
+    );
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 48),
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1160),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ConsolePanel(
+                        title: l10n.basicInfo,
+                        child: Column(
+                          children: [
+                            pair(names),
+                            const SizedBox(height: 16),
+                            pair(descriptions),
+                          ],
+                        ),
                       ),
-                    )
-                  : Text(
-                      product == null
-                          ? context.l10n.createProduct
-                          : context.l10n.saveChanges,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                      const SizedBox(height: 16),
+                      ConsolePanel(
+                        title: l10n.options,
+                        trailing: addGroup,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: options,
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 20),
+                SizedBox(
+                  width: 360,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ConsolePanel(
+                        title: l10n.photoSection,
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                        child: photo,
+                      ),
+                      const SizedBox(height: 16),
+                      ConsolePanel(
+                        title: l10n.pricingAndCategory,
+                        child: Column(
+                          children: [
+                            pricing[0],
+                            const SizedBox(height: 16),
+                            pricing[1],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ConsolePanel(
+                        title: l10n.availabilitySection,
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                        child: Column(children: availability),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -914,12 +995,11 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(
-      text.toUpperCase(),
+      text,
       style: const TextStyle(
         color: AppColors.primary,
         fontWeight: FontWeight.w800,
-        fontSize: 12,
-        letterSpacing: 1.1,
+        fontSize: 13.5,
       ),
     ),
   );

@@ -809,7 +809,12 @@ class AdminRepository {
   }) async {
     final rows = await supabase
         .from('price_adjustments')
-        .select()
+        // Names alongside ids, so the history can say what each run touched
+        // and who ran it.
+        .select(
+          '*, vendors(name), vendor_categories(name, name_ar), '
+          'profiles(full_name)',
+        )
         .order('created_at', ascending: false)
         .limit(limit);
     return (rows as List).cast<Map<String, dynamic>>();

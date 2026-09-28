@@ -3342,7 +3342,7 @@ abstract class AppLocalizations {
   /// No description provided for @deliveredOrders.
   ///
   /// In en, this message translates to:
-  /// **'Delivered Orders'**
+  /// **'Delivered orders'**
   String get deliveredOrders;
 
   /// No description provided for @cancelledOrders.
@@ -4368,7 +4368,7 @@ abstract class AppLocalizations {
   /// No description provided for @importMenuFromPhotos.
   ///
   /// In en, this message translates to:
-  /// **'Import menu from photos'**
+  /// **'Import menu'**
   String get importMenuFromPhotos;
 
   /// No description provided for @importMenuHint.
@@ -11598,7 +11598,7 @@ abstract class AppLocalizations {
   /// No description provided for @pageDescPriceAdjustment.
   ///
   /// In en, this message translates to:
-  /// **'Raise or lower a store\'s prices by a percentage in one step.'**
+  /// **'Raise or lower prices by a percentage or a fixed amount — across the platform, one store or one category.'**
   String get pageDescPriceAdjustment;
 
   /// No description provided for @pageDescFinance.
@@ -12140,6 +12140,372 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Coupon codes, price campaigns and home-screen ads — what brings customers back.'**
   String get pageDescMarketing;
+
+  /// No description provided for @withOpenBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'With an open balance'**
+  String get withOpenBalance;
+
+  /// No description provided for @filterOpenBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Open balance'**
+  String get filterOpenBalance;
+
+  /// No description provided for @settleAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle'**
+  String get settleAction;
+
+  /// No description provided for @outstandingColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding'**
+  String get outstandingColumn;
+
+  /// No description provided for @partiesTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} in total'**
+  String partiesTotal(int count);
+
+  /// No description provided for @driverCashDueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash drivers collected and still hold'**
+  String get driverCashDueHint;
+
+  /// No description provided for @storePayablesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What the platform owes stores right now'**
+  String get storePayablesHint;
+
+  /// No description provided for @waitingForReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for review'**
+  String get waitingForReview;
+
+  /// No description provided for @requestsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =0{No requests} =1{1 request} other{{count} requests}}'**
+  String requestsCount(int count);
+
+  /// No description provided for @earlyPayoutsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =0{No early payouts} =1{1 early payout} other{{count} early payouts}}'**
+  String earlyPayoutsCount(int count);
+
+  /// No description provided for @requestedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get requestedOn;
+
+  /// No description provided for @partyColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Store or driver'**
+  String get partyColumn;
+
+  /// No description provided for @typeColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get typeColumn;
+
+  /// No description provided for @depositsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to check'**
+  String get depositsEmptyTitle;
+
+  /// No description provided for @depositsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When a driver says they handed cash over, it shows up here to check against the bank or the safe.'**
+  String get depositsEmptyBody;
+
+  /// No description provided for @requestsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Stores and drivers asking to be paid show up here, early payouts first.'**
+  String get requestsEmptyBody;
+
+  /// No description provided for @exportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV'**
+  String get exportCsv;
+
+  /// No description provided for @platformEarningsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What the platform keeps from delivered orders'**
+  String get platformEarningsHint;
+
+  /// No description provided for @orderValueSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Order value'**
+  String get orderValueSection;
+
+  /// No description provided for @orderValueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What customers paid, before anyone\'s share'**
+  String get orderValueHint;
+
+  /// No description provided for @owedOutHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Other people\'s money passing through the platform'**
+  String get owedOutHint;
+
+  /// No description provided for @paymentMix.
+  ///
+  /// In en, this message translates to:
+  /// **'How customers paid'**
+  String get paymentMix;
+
+  /// No description provided for @shareOfTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} of the total'**
+  String shareOfTotal(String percent);
+
+  /// No description provided for @discountsColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Discounts'**
+  String get discountsColumn;
+
+  /// No description provided for @commissionColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission'**
+  String get commissionColumn;
+
+  /// No description provided for @subscriptionShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription'**
+  String get subscriptionShort;
+
+  /// No description provided for @reportExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Report saved'**
+  String get reportExported;
+
+  /// No description provided for @previewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get previewLabel;
+
+  /// No description provided for @enterAmountFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount to see the change.'**
+  String get enterAmountFirst;
+
+  /// No description provided for @directionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Direction'**
+  String get directionLabel;
+
+  /// No description provided for @howMuchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'How much'**
+  String get howMuchLabel;
+
+  /// No description provided for @changeColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get changeColumn;
+
+  /// No description provided for @productsColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Products'**
+  String get productsColumn;
+
+  /// No description provided for @whenColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get whenColumn;
+
+  /// No description provided for @priceAdjustGuard.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices never go below the platform\'s minimum, and every run is recorded below so it can be reversed.'**
+  String get priceAdjustGuard;
+
+  /// No description provided for @chooseStoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a store'**
+  String get chooseStoreTitle;
+
+  /// No description provided for @chooseStoreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a store from the list to build its menu from a spreadsheet, photos or a link.'**
+  String get chooseStoreBody;
+
+  /// No description provided for @importSourceFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Spreadsheet or PDF'**
+  String get importSourceFile;
+
+  /// No description provided for @importSourceFileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV and Excel are read exactly as written. A PDF is read like a photo.'**
+  String get importSourceFileHint;
+
+  /// No description provided for @importSourcePhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos of the menu'**
+  String get importSourcePhotos;
+
+  /// No description provided for @importSourcePhotosHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to 5 photos. Every section and item is read for you to review before anything is saved.'**
+  String get importSourcePhotosHint;
+
+  /// No description provided for @photosAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {max} added'**
+  String photosAdded(int count, int max);
+
+  /// No description provided for @chooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file'**
+  String get chooseFile;
+
+  /// No description provided for @reviewItemsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check names in both languages and every price. Click an item to fix it; remove what should not be imported.'**
+  String get reviewItemsHint;
+
+  /// No description provided for @startOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Start over'**
+  String get startOver;
+
+  /// No description provided for @itemsAndOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'{items} items · {options} option groups'**
+  String itemsAndOptions(int items, int options);
+
+  /// No description provided for @missingTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =1{1 missing translation} other{{count} missing translations}}'**
+  String missingTranslations(int count);
+
+  /// No description provided for @categoriesSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} categories · {soon} coming soon'**
+  String categoriesSummary(int count, int soon);
+
+  /// No description provided for @comingSoonColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get comingSoonColumn;
+
+  /// No description provided for @arabicNameColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic name'**
+  String get arabicNameColumn;
+
+  /// No description provided for @subcategoriesColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-categories'**
+  String get subcategoriesColumn;
+
+  /// No description provided for @recommendedStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended stores'**
+  String get recommendedStores;
+
+  /// No description provided for @areasSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{active} of {total} areas taking orders'**
+  String areasSummary(int active, int total);
+
+  /// No description provided for @areaRadiusShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km radius'**
+  String areaRadiusShort(String km);
+
+  /// No description provided for @moreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get moreActions;
+
+  /// No description provided for @scopeAllProductsInline.
+  ///
+  /// In en, this message translates to:
+  /// **'every product on the platform'**
+  String get scopeAllProductsInline;
+
+  /// No description provided for @scopeColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied to'**
+  String get scopeColumn;
+
+  /// No description provided for @byColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'By'**
+  String get byColumn;
+
+  /// No description provided for @usesColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses'**
+  String get usesColumn;
+
+  /// No description provided for @photoSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get photoSection;
+
+  /// No description provided for @availabilitySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Availability'**
+  String get availabilitySection;
 }
 
 class _AppLocalizationsDelegate

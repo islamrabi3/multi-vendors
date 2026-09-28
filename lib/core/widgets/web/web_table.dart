@@ -7,11 +7,20 @@ import '../../../app/tokens.dart';
 /// column (a status badge, an amount) usually wants `flex: 0` with an
 /// explicit [width] instead.
 class WebTableColumn {
-  const WebTableColumn({required this.label, this.flex = 1, this.width});
+  const WebTableColumn({
+    required this.label,
+    this.flex = 1,
+    this.width,
+    this.numeric = false,
+  });
 
   final String label;
   final int flex;
   final double? width;
+
+  /// Amounts and counts: header and cells hug the end edge, so figures line
+  /// up by their last digit and can be read down the column.
+  final bool numeric;
 }
 
 /// A dense, brand-styled table for genuinely tabular admin/vendor lists —
@@ -50,7 +59,7 @@ class WebTable extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            color: AppColors.canvas,
+            color: AppColors.surface,
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpace.lg,
               vertical: AppSpace.md,
@@ -186,10 +195,13 @@ class _Cell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = column.numeric
+        ? Align(alignment: AlignmentDirectional.centerEnd, child: child)
+        : child;
     if (column.width != null) {
-      return SizedBox(width: column.width, child: child);
+      return SizedBox(width: column.width, child: content);
     }
-    return Expanded(flex: column.flex, child: child);
+    return Expanded(flex: column.flex, child: content);
   }
 }
 

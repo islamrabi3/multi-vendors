@@ -50,8 +50,11 @@ class AppColors {
   // Text
   static const textPrimary = ink;
   static const textSecondary = Color(0xFF6B5B62);
-  static const textMuted = Color(0xFF8C7A83);
-  static const textFaint = Color(0xFFB4A0A9);
+  // Both darkened for WCAG AA: muted was 3.8:1 on the canvas and carries
+  // descriptions and hints, so it now clears 4.5:1 (5.2:1); faint marks
+  // secondary labels and icons and clears 3:1 (3.7:1) instead of 2.3:1.
+  static const textMuted = Color(0xFF76646C);
+  static const textFaint = Color(0xFF8F7C85);
 
   // Soft accent fills (chips / badges)
   static const warmFill = Color(0xFFF5E9EE); // primary tint bg

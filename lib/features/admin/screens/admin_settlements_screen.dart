@@ -13,7 +13,9 @@ import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/proof_photo_field.dart';
+import '../../../core/widgets/web/console.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
+import '../../../core/widgets/web/web_table.dart';
 import 'admin_manage_screen.dart' show adminManageWebSections;
 import '../../../core/widgets/web/adaptive_sheet.dart';
 
@@ -63,6 +65,14 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   String? _error;
   String _driverQuery = '';
   String _vendorQuery = '';
+
+  /// Desktop only: hide parties with nothing outstanding. On by default —
+  /// the settled ones are history, and they used to push the few who are
+  /// owed money below the fold.
+  final Map<LedgerOwner, bool> _openOnly = {
+    LedgerOwner.driver: true,
+    LedgerOwner.vendor: true,
+  };
 
   @override
   void initState() {
@@ -666,6 +676,7 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   }
 
   Widget _requestsList() {
+    if (AppBreakpoints.isWebWide(context)) return _webRequests();
     // The fee sits above the queue it prices, not on a settings screen three
     // clicks away: this is where an operator sees what early payouts are
     // costing people and is therefore where they would think to change it.
@@ -867,6 +878,9 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
   }
 
   Widget _list(LedgerOwner ownerType, List<PartyBalance> allParties) {
+    if (AppBreakpoints.isWebWide(context)) {
+      return _webList(ownerType, allParties);
+    }
     final l10n = context.l10n;
     final isDriver = ownerType == LedgerOwner.driver;
     double outstandingOf(PartyBalance p) => isDriver ? p.cashDue : p.payable;
@@ -1030,13 +1044,378 @@ class _AdminSettlementsScreenState extends State<AdminSettlementsScreen> {
       ),
     );
   }
+
+  /// The desktop form of a balances tab: the total and who makes it up, then
+  /// one table row per party with the figures that explain the balance and
+  /// the action beside it.
+  Widget _webList(LedgerOwner ownerType, List<PartyBalance> allParties) {
+    final l10n = context.l10n;
+    final isDriver = ownerType == LedgerOwner.driver;
+    double outstandingOf(PartyBalance p) => isDriver ? p.cashDue : p.payable;
+
+    final open = allParties.where((p) => outstandingOf(p) > 0).toList();
+    final total = open.fold<double>(0, (sum, p) => sum + outstandingOf(p));
+    final openOnly = _openOnly[ownerType]!;
+    final query = (isDriver ? _driverQuery : _vendorQuery).trim().toLowerCase();
+    final parties =
+        [
+          for (final p in openOnly ? open : allParties)
+            if (query.isEmpty || p.name.toLowerCase().contains(query)) p,
+        ]..sort((a, b) {
+          final byAmount = outstandingOf(b).compareTo(outstandingOf(a));
+          return byAmount != 0 ? byAmount : a.name.compareTo(b.name);
+        });
+
+    final columns = [
+      WebTableColumn(
+        label: isDriver ? l10n.driverLabel : l10n.storeLabel,
+        flex: 3,
+      ),
+      WebTableColumn(label: l10n.totalEarned, flex: 2, numeric: true),
+      if (isDriver)
+        WebTableColumn(label: l10n.cashCollectedLabel, flex: 2, numeric: true),
+      WebTableColumn(label: l10n.alreadySettled, flex: 2, numeric: true),
+      WebTableColumn(
+        label: isDriver ? l10n.driverHolds : l10n.owedToStore,
+        flex: 2,
+        numeric: true,
+      ),
+    ];
+    const trailingWidth = 120.0;
+    TextStyle figure([Color color = AppColors.textSecondary]) =>
+        AppType.mono(13.5, weight: FontWeight.w600, color: color);
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+        children: [
+          ConsoleGrid(
+            maxColumns: 3,
+            children: [
+              ConsoleStat(
+                label: isDriver
+                    ? l10n.driverCashDueTotal
+                    : l10n.vendorPayableTotal,
+                value: formatMoney(total),
+                hint: isDriver
+                    ? l10n.driverCashDueHint
+                    : l10n.storePayablesHint,
+                icon: isDriver
+                    ? Icons.payments_outlined
+                    : Icons.account_balance_wallet_outlined,
+                tone: total > 0 && isDriver
+                    ? ConsoleTone.warn
+                    : ConsoleTone.plain,
+              ),
+              ConsoleStat(
+                label: l10n.withOpenBalance,
+                value: '${open.length}',
+                hint: l10n.partiesTotal(allParties.length),
+                icon: isDriver
+                    ? Icons.two_wheeler_rounded
+                    : Icons.storefront_outlined,
+              ),
+              ConsoleStat(
+                label: l10n.waitingForReview,
+                value:
+                    '${_pending.where((r) => r.ownerType == ownerType).length}',
+                hint: l10n.settlementRequestsTab,
+                icon: Icons.inbox_outlined,
+                onTap: () => DefaultTabController.of(context).animateTo(2),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.xl),
+          ConsoleToolbar(
+            search: ConsoleSearchField(
+              hint: l10n.searchByName,
+              initialValue: isDriver ? _driverQuery : _vendorQuery,
+              onChanged: (v) => setState(
+                () => isDriver ? _driverQuery = v : _vendorQuery = v,
+              ),
+            ),
+            filters: [
+              ConsoleFilterChip(
+                label: l10n.filterOpenBalance,
+                count: open.length,
+                selected: openOnly,
+                onSelected: () => setState(() => _openOnly[ownerType] = true),
+              ),
+              ConsoleFilterChip(
+                label: l10n.all,
+                count: allParties.length,
+                selected: !openOnly,
+                onSelected: () => setState(() => _openOnly[ownerType] = false),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          WebTable(
+            columns: columns,
+            trailingWidth: trailingWidth,
+            emptyState: ConsoleEmpty(
+              icon: Icons.task_alt_rounded,
+              title: openOnly ? l10n.statusSettled : l10n.noReportData,
+              message: openOnly ? l10n.partiesWithBalance(0) : null,
+            ),
+            rows: [
+              for (final party in parties)
+                WebTableRow.aligned(
+                  columns: columns,
+                  trailingWidth: trailingWidth,
+                  onTap: () => _showParty(ownerType, party),
+                  cells: [
+                    Row(
+                      children: [
+                        _PartyAvatar(
+                          isDriver: isDriver,
+                          muted: outstandingOf(party) <= 0,
+                          size: 32,
+                        ),
+                        const SizedBox(width: AppSpace.sm),
+                        Expanded(
+                          child: Text(
+                            party.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(formatMoney(party.totalEarnings), style: figure()),
+                    if (isDriver)
+                      Text(formatMoney(party.cashCollected), style: figure()),
+                    Text(formatMoney(party.totalSettlements), style: figure()),
+                    Text(
+                      formatMoney(outstandingOf(party)),
+                      style: AppType.mono(
+                        14,
+                        weight: FontWeight.w800,
+                        color: outstandingOf(party) <= 0
+                            ? AppColors.textFaint
+                            : (isDriver ? AppColors.amberInk : AppColors.ink),
+                      ),
+                    ),
+                  ],
+                  trailing: outstandingOf(party) <= 0
+                      ? Text(
+                          l10n.statusSettled,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
+                        )
+                      : OutlinedButton(
+                          onPressed: () => _settle(ownerType, party),
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                          ),
+                          child: Text(l10n.settleAction),
+                        ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The desktop request queue: the fee that prices early requests, then the
+  /// queue itself as a table, early ones first.
+  Widget _webRequests() {
+    final l10n = context.l10n;
+    final fee = _fee;
+    final columns = [
+      WebTableColumn(label: l10n.partyColumn, flex: 3),
+      WebTableColumn(label: l10n.typeColumn, width: 110),
+      WebTableColumn(label: l10n.requestedOn, width: 130),
+      WebTableColumn(label: l10n.amountValue, width: 140, numeric: true),
+    ];
+    const trailingWidth = 190.0;
+    final early = _pending.where((r) => r.isEarly).length;
+    final waiting = _pending.fold<double>(0, (sum, r) => sum + r.amount);
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+        children: [
+          ConsoleGrid(
+            maxColumns: 3,
+            children: [
+              ConsoleStat(
+                label: l10n.waitingForReview,
+                value: formatMoney(waiting),
+                hint: l10n.requestsCount(_pending.length),
+                icon: Icons.inbox_outlined,
+                tone: _pending.isEmpty ? ConsoleTone.plain : ConsoleTone.warn,
+              ),
+              ConsoleStat(
+                label: l10n.earlySettlementTag,
+                value: '$early',
+                hint: l10n.earlyPayoutsCount(early),
+                icon: Icons.bolt_rounded,
+              ),
+              if (fee != null)
+                ConsoleStat(
+                  label: l10n.earlyPayoutFeeTitle,
+                  value: '${trimZeros(fee.percent)}%',
+                  hint: l10n.earlyPayoutFeeSummary(
+                    trimZeros(fee.percent),
+                    formatMoneyCompact(fee.min),
+                  ),
+                  icon: Icons.tune_rounded,
+                  onTap: _editFee,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.xl),
+          Row(
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.settlementApprovalExternalNotice,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          WebTable(
+            columns: columns,
+            trailingWidth: trailingWidth,
+            emptyState: ConsoleEmpty(
+              icon: Icons.inbox_outlined,
+              title: l10n.noSettlementRequests,
+              message: l10n.requestsEmptyBody,
+            ),
+            rows: [
+              for (final request in _pending)
+                WebTableRow.aligned(
+                  columns: columns,
+                  trailingWidth: trailingWidth,
+                  onTap: () => showSettlementDetails(
+                    context,
+                    request,
+                    partyName: _partyName(request),
+                  ),
+                  cells: [
+                    Row(
+                      children: [
+                        _PartyAvatar(
+                          isDriver: request.ownerType == LedgerOwner.driver,
+                          size: 32,
+                        ),
+                        const SizedBox(width: AppSpace.sm),
+                        Flexible(
+                          child: Text(
+                            _partyName(request),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ),
+                        if (request.isEarly) ...[
+                          const SizedBox(width: AppSpace.sm),
+                          SoftBadge(
+                            label: l10n.earlySettlementTag,
+                            icon: Icons.bolt_rounded,
+                            fill: AppColors.amberFill,
+                            ink: AppColors.amberInk,
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      request.ownerType == LedgerOwner.driver
+                          ? l10n.driverLabel
+                          : l10n.storeLabel,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      financeDayLabel(context, request.createdAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      formatMoney(request.amount),
+                      style: AppType.mono(14, weight: FontWeight.w800),
+                    ),
+                  ],
+                  trailing: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => _reviewRequest(request, false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.dangerInk,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: Text(l10n.reject),
+                      ),
+                      const SizedBox(width: 4),
+                      FilledButton(
+                        onPressed: () => _reviewRequest(request, true),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                        child: Text(l10n.approve),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PartyAvatar extends StatelessWidget {
-  const _PartyAvatar({required this.isDriver, this.muted = false});
+  const _PartyAvatar({
+    required this.isDriver,
+    this.muted = false,
+    this.size = 40,
+  });
 
   final bool isDriver;
   final bool muted;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -1044,15 +1423,15 @@ class _PartyAvatar extends StatelessWidget {
         ? AppColors.textFaint
         : (isDriver ? AppColors.amberInk : AppColors.primary);
     return Container(
-      width: 40,
-      height: 40,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(
         isDriver ? Icons.two_wheeler_rounded : Icons.storefront_rounded,
-        size: 20,
+        size: size / 2,
         color: tone,
       ),
     );

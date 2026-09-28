@@ -1711,7 +1711,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get averageOrder => 'Average order';
 
   @override
-  String get deliveredOrders => 'Delivered Orders';
+  String get deliveredOrders => 'Delivered orders';
 
   @override
   String get cancelledOrders => 'Cancelled';
@@ -2250,7 +2250,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categoriesTab => 'Categories';
 
   @override
-  String get importMenuFromPhotos => 'Import menu from photos';
+  String get importMenuFromPhotos => 'Import menu';
 
   @override
   String get importMenuHint =>
@@ -6368,7 +6368,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pageDescPriceAdjustment =>
-      'Raise or lower a store\'s prices by a percentage in one step.';
+      'Raise or lower prices by a percentage or a fixed amount — across the platform, one store or one category.';
 
   @override
   String get pageDescFinance =>
@@ -6700,4 +6700,236 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pageDescMarketing =>
       'Coupon codes, price campaigns and home-screen ads — what brings customers back.';
+
+  @override
+  String get withOpenBalance => 'With an open balance';
+
+  @override
+  String get filterOpenBalance => 'Open balance';
+
+  @override
+  String get settleAction => 'Settle';
+
+  @override
+  String get outstandingColumn => 'Outstanding';
+
+  @override
+  String partiesTotal(int count) {
+    return '$count in total';
+  }
+
+  @override
+  String get driverCashDueHint => 'Cash drivers collected and still hold';
+
+  @override
+  String get storePayablesHint => 'What the platform owes stores right now';
+
+  @override
+  String get waitingForReview => 'Waiting for review';
+
+  @override
+  String requestsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count requests',
+      one: '1 request',
+      zero: 'No requests',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String earlyPayoutsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count early payouts',
+      one: '1 early payout',
+      zero: 'No early payouts',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get requestedOn => 'Requested';
+
+  @override
+  String get partyColumn => 'Store or driver';
+
+  @override
+  String get typeColumn => 'Type';
+
+  @override
+  String get depositsEmptyTitle => 'Nothing to check';
+
+  @override
+  String get depositsEmptyBody =>
+      'When a driver says they handed cash over, it shows up here to check against the bank or the safe.';
+
+  @override
+  String get requestsEmptyBody =>
+      'Stores and drivers asking to be paid show up here, early payouts first.';
+
+  @override
+  String get exportCsv => 'Export CSV';
+
+  @override
+  String get platformEarningsHint =>
+      'What the platform keeps from delivered orders';
+
+  @override
+  String get orderValueSection => 'Order value';
+
+  @override
+  String get orderValueHint => 'What customers paid, before anyone\'s share';
+
+  @override
+  String get owedOutHint =>
+      'Other people\'s money passing through the platform';
+
+  @override
+  String get paymentMix => 'How customers paid';
+
+  @override
+  String shareOfTotal(String percent) {
+    return '$percent of the total';
+  }
+
+  @override
+  String get discountsColumn => 'Discounts';
+
+  @override
+  String get commissionColumn => 'Commission';
+
+  @override
+  String get subscriptionShort => 'Subscription';
+
+  @override
+  String get reportExported => 'Report saved';
+
+  @override
+  String get previewLabel => 'Preview';
+
+  @override
+  String get enterAmountFirst => 'Enter an amount to see the change.';
+
+  @override
+  String get directionLabel => 'Direction';
+
+  @override
+  String get howMuchLabel => 'How much';
+
+  @override
+  String get changeColumn => 'Change';
+
+  @override
+  String get productsColumn => 'Products';
+
+  @override
+  String get whenColumn => 'When';
+
+  @override
+  String get priceAdjustGuard =>
+      'Prices never go below the platform\'s minimum, and every run is recorded below so it can be reversed.';
+
+  @override
+  String get chooseStoreTitle => 'Choose a store';
+
+  @override
+  String get chooseStoreBody =>
+      'Pick a store from the list to build its menu from a spreadsheet, photos or a link.';
+
+  @override
+  String get importSourceFile => 'Spreadsheet or PDF';
+
+  @override
+  String get importSourceFileHint =>
+      'CSV and Excel are read exactly as written. A PDF is read like a photo.';
+
+  @override
+  String get importSourcePhotos => 'Photos of the menu';
+
+  @override
+  String get importSourcePhotosHint =>
+      'Up to 5 photos. Every section and item is read for you to review before anything is saved.';
+
+  @override
+  String photosAdded(int count, int max) {
+    return '$count of $max added';
+  }
+
+  @override
+  String get chooseFile => 'Choose file';
+
+  @override
+  String get reviewItemsHint =>
+      'Check names in both languages and every price. Click an item to fix it; remove what should not be imported.';
+
+  @override
+  String get startOver => 'Start over';
+
+  @override
+  String itemsAndOptions(int items, int options) {
+    return '$items items · $options option groups';
+  }
+
+  @override
+  String missingTranslations(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count missing translations',
+      one: '1 missing translation',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String categoriesSummary(int count, int soon) {
+    return '$count categories · $soon coming soon';
+  }
+
+  @override
+  String get comingSoonColumn => 'Coming soon';
+
+  @override
+  String get arabicNameColumn => 'Arabic name';
+
+  @override
+  String get subcategoriesColumn => 'Sub-categories';
+
+  @override
+  String get recommendedStores => 'Recommended stores';
+
+  @override
+  String areasSummary(int active, int total) {
+    return '$active of $total areas taking orders';
+  }
+
+  @override
+  String areaRadiusShort(String km) {
+    return '$km km radius';
+  }
+
+  @override
+  String get moreActions => 'More actions';
+
+  @override
+  String get scopeAllProductsInline => 'every product on the platform';
+
+  @override
+  String get scopeColumn => 'Applied to';
+
+  @override
+  String get byColumn => 'By';
+
+  @override
+  String get usesColumn => 'Uses';
+
+  @override
+  String get photoSection => 'Photo';
+
+  @override
+  String get availabilitySection => 'Availability';
 }
