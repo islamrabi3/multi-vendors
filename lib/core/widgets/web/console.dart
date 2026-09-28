@@ -787,3 +787,98 @@ class ConsoleTabScope extends InheritedWidget {
   @override
   bool updateShouldNotify(ConsoleTabScope oldWidget) => false;
 }
+
+/// One entry in a [ConsoleMoreMenu].
+class ConsoleMenuAction {
+  const ConsoleMenuAction({
+    required this.label,
+    required this.icon,
+    required this.onSelected,
+    this.danger = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onSelected;
+
+  /// Deleting and ending: drawn in the danger colour so it is not picked by
+  /// accident.
+  final bool danger;
+}
+
+/// The "⋯" at the end of a table row: the row's less frequent actions, so a
+/// row carries one quiet button instead of a cluster of icons.
+class ConsoleMoreMenu extends StatelessWidget {
+  const ConsoleMoreMenu({super.key, required this.actions});
+
+  final List<ConsoleMenuAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<int>(
+      tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+      icon: const Icon(
+        Icons.more_horiz_rounded,
+        size: 20,
+        color: AppColors.textSecondary,
+      ),
+      onSelected: (i) => actions[i].onSelected(),
+      itemBuilder: (_) => [
+        for (var i = 0; i < actions.length; i++)
+          PopupMenuItem(
+            value: i,
+            child: Row(
+              children: [
+                Icon(
+                  actions[i].icon,
+                  size: 18,
+                  color: actions[i].danger
+                      ? AppColors.dangerInk
+                      : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  actions[i].label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: actions[i].danger
+                        ? AppColors.dangerInk
+                        : AppColors.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// A compact on/off switch for a table row, sized to sit beside a
+/// [ConsoleMoreMenu] without making the row taller.
+class ConsoleRowSwitch extends StatelessWidget {
+  const ConsoleRowSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.tooltip,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final control = SizedBox(
+      width: 48,
+      child: Transform.scale(
+        scale: 0.8,
+        child: Switch(value: value, onChanged: onChanged),
+      ),
+    );
+    return tooltip == null
+        ? control
+        : Tooltip(message: tooltip!, child: control);
+  }
+}

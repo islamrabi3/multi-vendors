@@ -39,15 +39,62 @@ class AdminPromosScreen extends StatelessWidget {
   }
 }
 
-class _PromosView extends StatelessWidget {
+enum _CouponFilter { all, live, scheduled, paused, ended }
+
+_CouponFilter _stateOf(Coupon c) => c.isExpired || c.isExhausted
+    ? _CouponFilter.ended
+    : c.isScheduled
+    ? _CouponFilter.scheduled
+    : c.isActive
+    ? _CouponFilter.live
+    : _CouponFilter.paused;
+
+class _PromosView extends StatefulWidget {
   const _PromosView({required this.embedded});
 
   final bool embedded;
 
   @override
+  State<_PromosView> createState() => _PromosViewState();
+}
+
+class _PromosViewState extends State<_PromosView> {
+  String _query = '';
+  _CouponFilter _filter = _CouponFilter.all;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final webWide = AppBreakpoints.isWebWide(context);
+
+    if (webWide) {
+      final page = _webPage(context);
+      if (widget.embedded) {
+        // Inside the Marketing tabs the tab names the page; standalone, the
+        // console header does.
+        if (ConsoleTabScope.of(context)) return page;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: ConsoleHeader(
+                title: l10n.promos,
+                description: l10n.pageDescPromos,
+              ),
+            ),
+            Expanded(child: page),
+          ],
+        );
+      }
+      return WebPageChrome(
+        forStaff: true,
+        activeId: 'manage:/admin-app/promos',
+        sections: adminManageWebSections(context),
+        pageTitle: l10n.promos,
+        child: page,
+      );
+    }
 
     final body = BlocListener<AdminCouponsCubit, AdminCouponsState>(
       listenWhen: (p, c) => p.error != c.error && c.error != null,
@@ -67,56 +114,6 @@ class _PromosView extends StatelessWidget {
       ),
     );
 
-    // The title on its own row duplicated whatever chrome already names this
-    // page — the AppBar on mobile, `WebPageChrome`'s own header on web —
-    // everywhere except `embedded`, which has no title anywhere else at all.
-    final header = Row(
-      children: [
-        // The console draws this page's title above it.
-        const Spacer(),
-        const _NewButton(),
-      ],
-    );
-
-    if (embedded) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // The console page header, with this page's main action in it.
-            ConsoleHeader(
-              title: l10n.promos,
-              description: l10n.pageDescPromos,
-              actions: const [_NewButton()],
-            ),
-            const SizedBox(height: AppSpace.lg),
-            Expanded(child: body),
-          ],
-        ),
-      );
-    }
-
-    if (webWide) {
-      return WebPageChrome(
-        forStaff: true,
-        activeId: 'manage:/admin-app/promos',
-        sections: adminManageWebSections(context),
-        pageTitle: l10n.promos,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              header,
-              const SizedBox(height: AppSpace.lg),
-              Expanded(child: body),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: AppColors.canvas,
       // Default leading rather than a hand-built `arrow_back_ios`: that
@@ -128,14 +125,132 @@ class _PromosView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 12, 16, 10),
-              child: header,
+            const Padding(
+              padding: EdgeInsets.fromLTRB(22, 12, 16, 10),
+              child: Row(children: [Spacer(), _NewButton()]),
             ),
             Expanded(child: body),
           ],
         ),
       ),
+    );
+  }
+
+  /// Desktop: how the codes are doing, then search and state filters beside
+  /// the one thing to create, then the codes.
+  Widget _webPage(BuildContext context) {
+    final l10n = context.l10n;
+    return BlocConsumer<AdminCouponsCubit, AdminCouponsState>(
+      listenWhen: (p, c) => p.error != c.error && c.error != null,
+      listener: (context, s) => showFailure(context, s.error!),
+      builder: (context, state) {
+        final cubit = context.read<AdminCouponsCubit>();
+        final coupons = state.coupons;
+        int count(_CouponFilter f) =>
+            coupons.where((c) => _stateOf(c) == f).length;
+        final query = _query.trim().toLowerCase();
+        final shown = [
+          for (final c in coupons)
+            if ((_filter == _CouponFilter.all || _stateOf(c) == _filter) &&
+                (query.isEmpty || c.code.toLowerCase().contains(query)))
+              c,
+        ];
+        final redeemed = coupons.fold<int>(0, (n, c) => n + c.usedCount);
+
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: cubit.load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+            children: [
+              ConsoleGrid(
+                children: [
+                  ConsoleStat(
+                    label: l10n.liveCodes,
+                    value: '${count(_CouponFilter.live)}',
+                    hint: l10n.partiesTotal(coupons.length),
+                    icon: Icons.confirmation_number_outlined,
+                  ),
+                  ConsoleStat(
+                    label: l10n.redemptions,
+                    value: '$redeemed',
+                    hint: l10n.redemptionsHint,
+                    icon: Icons.shopping_bag_outlined,
+                  ),
+                  ConsoleStat(
+                    label: l10n.couponScheduled,
+                    value: '${count(_CouponFilter.scheduled)}',
+                    icon: Icons.event_outlined,
+                  ),
+                  ConsoleStat(
+                    label: l10n.endedFilter,
+                    value: '${count(_CouponFilter.ended)}',
+                    icon: Icons.history_rounded,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpace.xl),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: ConsoleToolbar(
+                      search: ConsoleSearchField(
+                        hint: l10n.searchCodes,
+                        initialValue: _query,
+                        onChanged: (v) => setState(() => _query = v),
+                      ),
+                      filters: [
+                        for (final f in _CouponFilter.values)
+                          ConsoleFilterChip(
+                            label: switch (f) {
+                              _CouponFilter.all => l10n.all,
+                              _CouponFilter.live => l10n.active,
+                              _CouponFilter.scheduled => l10n.couponScheduled,
+                              _CouponFilter.paused => l10n.pausedLabel,
+                              _CouponFilter.ended => l10n.endedFilter,
+                            },
+                            count: f == _CouponFilter.all
+                                ? coupons.length
+                                : count(f),
+                            selected: _filter == f,
+                            onSelected: () => setState(() => _filter = f),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.md),
+                  FilledButton.icon(
+                    onPressed: () => _showCouponForm(context, cubit),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(l10n.newCoupon),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpace.md),
+              if (state.loading && coupons.isEmpty)
+                const SizedBox(height: 240, child: LoadingView())
+              else
+                _CouponTable(
+                  coupons: shown,
+                  cubit: cubit,
+                  storeNames: state.storeNames,
+                  empty: coupons.isEmpty
+                      ? ConsoleEmpty(
+                          icon: Icons.confirmation_number_outlined,
+                          title: l10n.couponsEmptyTitle,
+                          message: l10n.couponsEmptyBody,
+                        )
+                      : ConsoleEmpty(
+                          icon: Icons.search_off_rounded,
+                          title: l10n.noMatches,
+                        ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -250,65 +365,118 @@ class _CouponTable extends StatelessWidget {
     required this.coupons,
     required this.cubit,
     required this.storeNames,
+    this.empty,
   });
 
   final List<Coupon> coupons;
   final AdminCouponsCubit cubit;
   final Map<String, String> storeNames;
+  final Widget? empty;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final language = Localizations.localeOf(context).languageCode;
     final columns = [
       WebTableColumn(label: l10n.couponCode, flex: 2),
-      WebTableColumn(label: l10n.discount, flex: 2),
+      WebTableColumn(label: l10n.discount, flex: 3),
       WebTableColumn(label: l10n.couponAppliesTo, flex: 2),
-      WebTableColumn(label: l10n.usesColumn, width: 120),
+      WebTableColumn(label: l10n.usesColumn, width: 130),
       WebTableColumn(label: l10n.expiresLabel, width: 120),
-      WebTableColumn(label: l10n.statusLabel, width: 104),
+      WebTableColumn(label: l10n.statusLabel, width: 120),
     ];
+    const trailing = 96.0;
+    const muted = TextStyle(fontSize: 12, color: AppColors.textMuted);
 
     return WebTable(
       columns: columns,
-      trailingWidth: 96,
+      trailingWidth: trailing,
+      emptyState: empty,
       rows: [
         for (final coupon in coupons)
           WebTableRow.aligned(
             columns: columns,
-            trailingWidth: 96,
+            trailingWidth: trailing,
+            onTap: () => _showCouponForm(
+              context,
+              cubit,
+              coupon: coupon,
+              storeName: storeNames[coupon.vendorId],
+            ),
             cells: [
-              Text(
-                coupon.code,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.mono(13, weight: FontWeight.w800),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: coupon.isLive
+                          ? AppColors.warmFill
+                          : AppColors.neutralFill,
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                    child: Text(
+                      coupon.code,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.mono(
+                        13,
+                        weight: FontWeight.w800,
+                        color: coupon.isLive
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  if (coupon.firstOrderOnly) ...[
+                    const SizedBox(height: 3),
+                    Text(l10n.couponFirstOrderOnly, style: muted),
+                  ],
+                ],
               ),
-              Text(
-                _discount(context, coupon),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _value(context, coupon),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  if (_limits(context, coupon) case final limits?)
+                    Text(
+                      limits,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: muted,
+                    ),
+                ],
               ),
               _StoreScopeCell(
                 coupon: coupon,
                 storeName: storeNames[coupon.vendorId],
               ),
-              Text(
-                '${coupon.usedCount} / ${coupon.usageLimit ?? '∞'}',
-                style: AppType.mono(12.5, color: AppColors.textSecondary),
-              ),
+              _UsageCell(coupon: coupon),
               Text(
                 coupon.expiresAt == null
                     ? '—'
-                    : DateFormat(
-                        'MMM d, y',
-                        Localizations.localeOf(context).languageCode,
-                      ).format(coupon.expiresAt!),
+                    : DateFormat.yMMMd(language).format(coupon.expiresAt!),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  color: AppColors.textMuted,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: coupon.isExpired
+                      ? AppColors.dangerInk
+                      : AppColors.textSecondary,
                 ),
               ),
               _CouponStatus(coupon: coupon),
@@ -320,46 +488,32 @@ class _CouponTable extends StatelessWidget {
                 // Expired or exhausted codes cannot be switched back on by
                 // flipping a toggle — the date or the cap is what stopped
                 // them, so the switch would lie.
-                SizedBox(
-                  width: 44,
-                  child: Transform.scale(
-                    scale: 0.78,
-                    child: Switch(
-                      value: coupon.isActive,
-                      onChanged: coupon.isExpired || coupon.isExhausted
-                          ? null
-                          : (_) => cubit.toggleActive(coupon),
+                ConsoleRowSwitch(
+                  value: coupon.isActive,
+                  onChanged: coupon.isExpired || coupon.isExhausted
+                      ? null
+                      : (_) => cubit.toggleActive(coupon),
+                ),
+                ConsoleMoreMenu(
+                  actions: [
+                    ConsoleMenuAction(
+                      label: l10n.edit,
+                      icon: Icons.edit_outlined,
+                      onSelected: () => _showCouponForm(
+                        context,
+                        cubit,
+                        coupon: coupon,
+                        storeName: storeNames[coupon.vendorId],
+                      ),
                     ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: l10n.edit,
-                  onPressed: () => _showCouponForm(
-                    context,
-                    cubit,
-                    coupon: coupon,
-                    storeName: storeNames[coupon.vendorId],
-                  ),
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textMuted,
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 32,
-                    height: 32,
-                  ),
-                  padding: EdgeInsets.zero,
-                ),
-                IconButton(
-                  tooltip: l10n.delete,
-                  onPressed: () => _confirmDeleteCoupon(context, coupon, cubit),
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  color: AppColors.dangerInk,
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 32,
-                    height: 32,
-                  ),
-                  padding: EdgeInsets.zero,
+                    ConsoleMenuAction(
+                      label: l10n.delete,
+                      icon: Icons.delete_outline_rounded,
+                      danger: true,
+                      onSelected: () =>
+                          _confirmDeleteCoupon(context, coupon, cubit),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -368,19 +522,72 @@ class _CouponTable extends StatelessWidget {
     );
   }
 
-  String _discount(BuildContext context, Coupon coupon) {
+  String _value(BuildContext context, Coupon coupon) {
     final l10n = context.l10n;
     if (coupon.isFreeDelivery) return l10n.couponTypeFreeDelivery;
-    final value = coupon.isPercentage
-        ? '${coupon.value.toStringAsFixed(0)}%'
-        : formatMoney(coupon.value);
-    final cap = coupon.maxDiscount != null
-        ? ' · ${l10n.max} ${formatMoney(coupon.maxDiscount!)}'
-        : '';
-    final min = coupon.minOrderAmount > 0
-        ? ' · ${l10n.min} ${formatMoney(coupon.minOrderAmount)}'
-        : '';
-    return '$value$cap$min';
+    return coupon.isPercentage
+        ? '${coupon.value.toStringAsFixed(0)}% ${l10n.off}'
+        : '${formatMoney(coupon.value)} ${l10n.off}';
+  }
+
+  String? _limits(BuildContext context, Coupon coupon) {
+    final l10n = context.l10n;
+    final parts = [
+      if (coupon.minOrderAmount > 0)
+        '${l10n.min} ${formatMoney(coupon.minOrderAmount)}',
+      if (coupon.maxDiscount != null)
+        '${l10n.max} ${formatMoney(coupon.maxDiscount!)}',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+}
+
+/// How much of a code is gone: the count, and against a cap a bar and what
+/// is left.
+class _UsageCell extends StatelessWidget {
+  const _UsageCell({required this.coupon});
+
+  final Coupon coupon;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final limit = coupon.usageLimit;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          limit == null
+              ? '${coupon.usedCount}'
+              : '${coupon.usedCount} / $limit',
+          style: AppType.mono(13.5, weight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        if (limit != null && limit > 0) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: LinearProgressIndicator(
+              value: (coupon.usedCount / limit).clamp(0, 1).toDouble(),
+              minHeight: 4,
+              backgroundColor: AppColors.neutralFill,
+              color: coupon.isExhausted
+                  ? AppColors.dangerInk
+                  : AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            l10n.usesLeft((limit - coupon.usedCount).clamp(0, limit)),
+            style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+          ),
+        ] else
+          Text(
+            l10n.noUseLimit,
+            style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+          ),
+      ],
+    );
   }
 }
 

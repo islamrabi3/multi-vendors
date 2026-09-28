@@ -44,6 +44,10 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
   bool _loading = true;
   Object? _error;
 
+  /// Desktop list controls.
+  String _query = '';
+  _AdFilter _filter = _AdFilter.all;
+
   @override
   void initState() {
     super.initState();
@@ -150,113 +154,68 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
 
         body = RefreshIndicator(
           onRefresh: _load,
-          child: webWide
-              ? SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: AppSpace.xl),
-                  child: _AdTable(
-                    ads: sorted,
-                    canManage: canManage,
-                    onToggle: toggle,
-                    onDelete: _delete,
-                    onEdit: (ad) => _compose(ad: ad),
-                  ),
-                )
-              : ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpace.lg,
-                    AppSpace.lg,
-                    AppSpace.lg,
-                    // Room for the floating "New ad" button, plus the gesture
-                    // bar on a phone with no physical home button.
-                    96 + MediaQuery.paddingOf(context).bottom,
-                  ),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              AppSpace.lg,
+              AppSpace.lg,
+              // Room for the floating "New ad" button, plus the gesture
+              // bar on a phone with no physical home button.
+              96 + MediaQuery.paddingOf(context).bottom,
+            ),
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                    for (var i = 0; i < sorted.length; i++)
+                      _AdRow(
+                        ad: sorted[i],
+                        canManage: canManage,
+                        last: i == sorted.length - 1,
+                        onToggle: () => toggle(sorted[i]),
+                        onDelete: () => _delete(sorted[i]),
+                        onEdit: () => _compose(ad: sorted[i]),
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < sorted.length; i++)
-                            _AdRow(
-                              ad: sorted[i],
-                              canManage: canManage,
-                              last: i == sorted.length - 1,
-                              onToggle: () => toggle(sorted[i]),
-                              onDelete: () => _delete(sorted[i]),
-                              onEdit: () => _compose(ad: sorted[i]),
-                            ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
+              ),
+            ],
+          ),
         );
       }
     }
 
-    // A floating action button belongs to a Scaffold and reads as a phone
-    // affordance on a desktop pane; the same action becomes an ordinary
-    // button at the top of the content instead.
-    Widget webContent() => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (canManage) ...[
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: FilledButton.icon(
-              onPressed: _compose,
-              icon: const Icon(Icons.campaign_outlined, size: 18),
-              label: Text(l10n.newAd),
-            ),
-          ),
-          const SizedBox(height: AppSpace.lg),
-        ],
-        Expanded(child: body),
-      ],
-    );
-
-    if (widget.embedded) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-        child: Column(
+    if (webWide) {
+      final page = _webPage(canManage);
+      if (widget.embedded) {
+        if (ConsoleTabScope.of(context)) return page;
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // The console page header, with this page's main action in it.
-            ConsoleHeader(
-              title: l10n.adManager,
-              description: l10n.pageDescAds,
-              actions: [
-                if (canManage)
-                  FilledButton.icon(
-                    onPressed: _compose,
-                    icon: const Icon(Icons.campaign_outlined, size: 18),
-                    label: Text(l10n.newAd),
-                  ),
-              ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: ConsoleHeader(
+                title: l10n.adManager,
+                description: l10n.pageDescAds,
+              ),
             ),
-            const SizedBox(height: AppSpace.xl),
-            Expanded(child: body),
+            Expanded(child: page),
           ],
-        ),
-      );
-    }
-
-    if (webWide) {
+        );
+      }
       return WebPageChrome(
         forStaff: true,
         activeId: 'manage:/admin-app/ads',
         sections: adminManageWebSections(context),
         pageTitle: l10n.adManager,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.xl),
-          child: webContent(),
-        ),
+        child: page,
       );
     }
 
@@ -273,7 +232,162 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
       body: body,
     );
   }
+
+  Future<void> _toggle(BannerItem ad) async {
+    try {
+      await _repo.setActive(ad.id, !ad.isActive);
+    } catch (error) {
+      if (mounted) showFailure(context, error);
+    } finally {
+      if (mounted) _load();
+    }
+  }
+
+  /// Desktop: how the ad space is performing overall, filters beside the
+  /// create button, then every ad with its numbers in their own columns.
+  Widget _webPage(bool canManage) {
+    final l10n = context.l10n;
+    if (_loading) return const _AdsSkeleton();
+    if (_error != null) return FailureView(error: _error!, onRetry: _load);
+    final ads = _ads ?? const <BannerItem>[];
+
+    int count(_AdFilter f) => ads.where((a) => _adFilterOf(a) == f).length;
+    final views = ads.fold<int>(0, (n, a) => n + a.impressions);
+    final taps = ads.fold<int>(0, (n, a) => n + a.clicks);
+    final query = _query.trim().toLowerCase();
+    bool matches(BannerItem ad) =>
+        query.isEmpty ||
+        [
+          ad.title,
+          ad.advertiser,
+          placementLabel(context, ad.placement),
+        ].any((t) => t != null && t.toLowerCase().contains(query));
+    final shown =
+        [
+          for (final ad in ads)
+            if ((_filter == _AdFilter.all || _adFilterOf(ad) == _filter) &&
+                matches(ad))
+              ad,
+        ]..sort((a, b) {
+          final live = (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0);
+          if (live != 0) return live;
+          final placement = a.placement.index.compareTo(b.placement.index);
+          if (placement != 0) return placement;
+          return b.sortOrder.compareTo(a.sortOrder);
+        });
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+        children: [
+          ConsoleGrid(
+            children: [
+              ConsoleStat(
+                label: l10n.liveAds,
+                value: '${count(_AdFilter.live)}',
+                hint: l10n.partiesTotal(ads.length),
+                icon: Icons.campaign_outlined,
+                tone: count(_AdFilter.live) > 0
+                    ? ConsoleTone.good
+                    : ConsoleTone.plain,
+              ),
+              ConsoleStat(
+                label: l10n.viewsColumn,
+                value: _compact(views),
+                hint: l10n.allTimeTotal,
+                icon: Icons.visibility_outlined,
+              ),
+              ConsoleStat(
+                label: l10n.tapsColumn,
+                value: _compact(taps),
+                hint: l10n.allTimeTotal,
+                icon: Icons.touch_app_outlined,
+              ),
+              ConsoleStat(
+                label: l10n.tapRateColumn,
+                value: views == 0
+                    ? '—'
+                    : '${(taps / views * 100).toStringAsFixed(1)}%',
+                hint: l10n.tapRateHint,
+                icon: Icons.percent_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.xl),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: ConsoleToolbar(
+                  search: ConsoleSearchField(
+                    hint: l10n.searchAds,
+                    initialValue: _query,
+                    onChanged: (v) => setState(() => _query = v),
+                  ),
+                  filters: [
+                    for (final f in _AdFilter.values)
+                      ConsoleFilterChip(
+                        label: switch (f) {
+                          _AdFilter.all => l10n.all,
+                          _AdFilter.live => l10n.adLive,
+                          _AdFilter.scheduled => l10n.couponScheduled,
+                          _AdFilter.draft => l10n.statusDraft,
+                          _AdFilter.ended => l10n.endedFilter,
+                        },
+                        count: f == _AdFilter.all ? ads.length : count(f),
+                        selected: _filter == f,
+                        onSelected: () => setState(() => _filter = f),
+                      ),
+                  ],
+                ),
+              ),
+              if (canManage) ...[
+                const SizedBox(width: AppSpace.md),
+                FilledButton.icon(
+                  onPressed: _compose,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(l10n.newAd),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          _AdTable(
+            ads: shown,
+            canManage: canManage,
+            onToggle: _toggle,
+            onDelete: _delete,
+            onEdit: (ad) => _compose(ad: ad),
+            empty: ads.isEmpty
+                ? ConsoleEmpty(
+                    icon: Icons.campaign_outlined,
+                    title: l10n.noAdsYet,
+                    message: l10n.adsEmptyBody,
+                  )
+                : ConsoleEmpty(
+                    icon: Icons.search_off_rounded,
+                    title: l10n.noMatches,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+enum _AdFilter { all, live, scheduled, draft, ended }
+
+/// The same order of reasons as [_adStatus], as a filter bucket.
+_AdFilter _adFilterOf(BannerItem ad) => ad.hasEnded
+    ? _AdFilter.ended
+    : ad.isScheduled
+    ? _AdFilter.scheduled
+    : !ad.isActive
+    ? _AdFilter.draft
+    : _AdFilter.live;
 
 /// Shaped like a run of table/list rows, so the ads don't jump when they
 /// land.
@@ -424,6 +538,7 @@ class _AdTable extends StatelessWidget {
     required this.onToggle,
     required this.onDelete,
     required this.onEdit,
+    this.empty,
   });
 
   final List<BannerItem> ads;
@@ -431,6 +546,7 @@ class _AdTable extends StatelessWidget {
   final ValueChanged<BannerItem> onToggle;
   final ValueChanged<BannerItem> onDelete;
   final ValueChanged<BannerItem> onEdit;
+  final Widget? empty;
 
   @override
   Widget build(BuildContext context) {
@@ -438,49 +554,60 @@ class _AdTable extends StatelessWidget {
     final columns = [
       WebTableColumn(label: l10n.adManager, flex: 3),
       WebTableColumn(label: l10n.adPlacement, flex: 2),
-      WebTableColumn(label: l10n.adPerformanceLabel, width: 170),
-      WebTableColumn(label: l10n.scheduleLabel, width: 130),
-      WebTableColumn(label: l10n.statusLabel, width: 104),
+      WebTableColumn(label: l10n.viewsColumn, width: 80, numeric: true),
+      WebTableColumn(label: l10n.tapsColumn, width: 70, numeric: true),
+      WebTableColumn(label: l10n.tapRateColumn, width: 90, numeric: true),
+      WebTableColumn(label: l10n.scheduleLabel, width: 140),
+      WebTableColumn(label: l10n.statusLabel, width: 100),
     ];
+    final trailing = canManage ? 96.0 : 0.0;
+    final figure = AppType.mono(13, weight: FontWeight.w600);
 
     return WebTable(
       columns: columns,
-      trailingWidth: 132,
+      trailingWidth: trailing,
+      emptyState: empty,
       rows: [
         for (final ad in ads)
           WebTableRow.aligned(
             columns: columns,
-            trailingWidth: 132,
+            trailingWidth: trailing,
             onTap: canManage ? () => onEdit(ad) : null,
             cells: [
               Row(
                 children: [
                   _AdThumb(ad: ad),
-                  const SizedBox(width: AppSpace.sm),
+                  const SizedBox(width: AppSpace.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          ad.title ?? ad.advertiser ?? '—',
+                          ad.title ?? ad.advertiser ?? l10n.untitledAd,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: ad.title == null && ad.advertiser == null
+                                ? AppColors.textMuted
+                                : AppColors.ink,
+                          ),
+                        ),
+                        Text(
+                          [
+                            if (ad.advertiser != null && ad.title != null)
+                              ad.advertiser!,
+                            if (ad.isVideo) l10n.videoLabel,
+                          ].join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                            fontSize: 12,
+                            color: AppColors.textMuted,
                           ),
                         ),
-                        if (ad.advertiser != null && ad.title != null)
-                          Text(
-                            ad.advertiser!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -488,30 +615,28 @@ class _AdTable extends StatelessWidget {
               ),
               Text(
                 placementLabel(context, ad.placement),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 13,
                   color: AppColors.textSecondary,
                 ),
               ),
+              Text(_compact(ad.impressions), style: figure),
+              Text(_compact(ad.clicks), style: figure),
               Text(
-                l10n.adPerformanceCompact(
-                  _compact(ad.impressions),
-                  _compact(ad.clicks),
-                  (ad.clickRate * 100).toStringAsFixed(1),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.mono(12, color: AppColors.textSecondary),
+                ad.impressions == 0
+                    ? '—'
+                    : '${(ad.clickRate * 100).toStringAsFixed(1)}%',
+                style: figure,
               ),
               Text(
                 _adSchedule(context, ad),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
                 ),
               ),
               _AdStatus(ad: ad),
@@ -521,46 +646,27 @@ class _AdTable extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      SizedBox(
-                        width: 44,
-                        child: Transform.scale(
-                          scale: 0.78,
-                          child: Switch(
-                            value: ad.isActive,
-                            // An ended campaign cannot be switched back on —
-                            // its end date has passed, and toggling would
-                            // look like it worked while the server kept it
-                            // hidden.
-                            onChanged: ad.hasEnded ? null : (_) => onToggle(ad),
+                      // An ended campaign cannot be switched back on — its
+                      // end date has passed, and toggling would look like it
+                      // worked while the server kept it hidden.
+                      ConsoleRowSwitch(
+                        value: ad.isActive,
+                        onChanged: ad.hasEnded ? null : (_) => onToggle(ad),
+                      ),
+                      ConsoleMoreMenu(
+                        actions: [
+                          ConsoleMenuAction(
+                            label: l10n.edit,
+                            icon: Icons.edit_outlined,
+                            onSelected: () => onEdit(ad),
                           ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: l10n.edit,
-                        onPressed: () => onEdit(ad),
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        color: AppColors.textMuted,
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 32,
-                          height: 32,
-                        ),
-                        padding: EdgeInsets.zero,
-                      ),
-                      IconButton(
-                        tooltip: l10n.delete,
-                        onPressed: () => onDelete(ad),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
-                        ),
-                        color: AppColors.dangerInk,
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 32,
-                          height: 32,
-                        ),
-                        padding: EdgeInsets.zero,
+                          ConsoleMenuAction(
+                            label: l10n.delete,
+                            icon: Icons.delete_outline_rounded,
+                            danger: true,
+                            onSelected: () => onDelete(ad),
+                          ),
+                        ],
                       ),
                     ],
                   )

@@ -6886,4 +6886,105 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get availabilitySection => 'التوفر';
+
+  @override
+  String get systemGroup => 'النظام';
+
+  @override
+  String get liveCodes => 'أكواد شغالة';
+
+  @override
+  String get redemptions => 'مرات الاستخدام';
+
+  @override
+  String get redemptionsHint => 'عدد مرات استخدام الأكواد عند الدفع';
+
+  @override
+  String get endedFilter => 'منتهية';
+
+  @override
+  String get searchCodes => 'ابحث بالكود';
+
+  @override
+  String usesLeft(int count) {
+    return 'متبقي $count';
+  }
+
+  @override
+  String get noUseLimit => 'بدون حد';
+
+  @override
+  String get couponsEmptyTitle => 'مفيش كوبونات لسه';
+
+  @override
+  String get couponsEmptyBody =>
+      'اعمل كود العميل يكتبه عند الدفع — نسبة أو مبلغ ثابت أو توصيل مجاني.';
+
+  @override
+  String get noMatches => 'مفيش نتايج بالفلاتر دي.';
+
+  @override
+  String get campaignsRunning => 'شغالة دلوقتي';
+
+  @override
+  String get itemsRaisedStat => 'أصناف سعرها مرفوع';
+
+  @override
+  String get itemsRaisedHint => 'في الحملات الشغالة دلوقتي';
+
+  @override
+  String get searchCampaigns => 'ابحث في الحملات';
+
+  @override
+  String get campaignColumn => 'الحملة';
+
+  @override
+  String get upliftColumn => 'الزيادة';
+
+  @override
+  String get itemsColumn => 'الأصناف';
+
+  @override
+  String get runsColumn => 'المدة';
+
+  @override
+  String get untilEnded => 'لحد ما تنتهي';
+
+  @override
+  String get campaignsEmptyBody =>
+      'ارفع الأسعار لفترة عشان الخصم ما يكلفش المتاجر حاجة. الأسعار بترجع لما الحملة تخلص.';
+
+  @override
+  String get liveAds => 'إعلانات شغالة';
+
+  @override
+  String get viewsColumn => 'المشاهدات';
+
+  @override
+  String get tapsColumn => 'الضغطات';
+
+  @override
+  String get tapRateColumn => 'نسبة الضغط';
+
+  @override
+  String get tapRateHint => 'ضغطات لكل ١٠٠ مشاهدة';
+
+  @override
+  String get allTimeTotal => 'كل الإعلانات من البداية';
+
+  @override
+  String get untitledAd => 'إعلان بدون عنوان';
+
+  @override
+  String get searchAds => 'ابحث في الإعلانات';
+
+  @override
+  String get adsEmptyBody =>
+      'اعرض بانر أو فيديو أو متجر مميز للعملاء في الشاشة اللي تختارها.';
+
+  @override
+  String get videoLabel => 'فيديو';
+
+  @override
+  String get moneyOverview => 'ملخص الحسابات';
 }

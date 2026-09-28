@@ -12506,6 +12506,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Availability'**
   String get availabilitySection;
+
+  /// No description provided for @systemGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get systemGroup;
+
+  /// No description provided for @liveCodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Live codes'**
+  String get liveCodes;
+
+  /// No description provided for @redemptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Redemptions'**
+  String get redemptions;
+
+  /// No description provided for @redemptionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Times codes were used at checkout'**
+  String get redemptionsHint;
+
+  /// No description provided for @endedFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get endedFilter;
+
+  /// No description provided for @searchCodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Search codes'**
+  String get searchCodes;
+
+  /// No description provided for @usesLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left'**
+  String usesLeft(int count);
+
+  /// No description provided for @noUseLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No limit'**
+  String get noUseLimit;
+
+  /// No description provided for @couponsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No coupons yet'**
+  String get couponsEmptyTitle;
+
+  /// No description provided for @couponsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a code customers type at checkout — a percentage, a fixed amount or free delivery.'**
+  String get couponsEmptyBody;
+
+  /// No description provided for @noMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches these filters.'**
+  String get noMatches;
+
+  /// No description provided for @campaignsRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running now'**
+  String get campaignsRunning;
+
+  /// No description provided for @itemsRaisedStat.
+  ///
+  /// In en, this message translates to:
+  /// **'Items with raised prices'**
+  String get itemsRaisedStat;
+
+  /// No description provided for @itemsRaisedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Across campaigns running now'**
+  String get itemsRaisedHint;
+
+  /// No description provided for @searchCampaigns.
+  ///
+  /// In en, this message translates to:
+  /// **'Search campaigns'**
+  String get searchCampaigns;
+
+  /// No description provided for @campaignColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Campaign'**
+  String get campaignColumn;
+
+  /// No description provided for @upliftColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Uplift'**
+  String get upliftColumn;
+
+  /// No description provided for @itemsColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get itemsColumn;
+
+  /// No description provided for @runsColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get runsColumn;
+
+  /// No description provided for @untilEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'until ended'**
+  String get untilEnded;
+
+  /// No description provided for @campaignsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise prices for a while so a discount costs the stores nothing. Prices go back when the campaign ends.'**
+  String get campaignsEmptyBody;
+
+  /// No description provided for @liveAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Live ads'**
+  String get liveAds;
+
+  /// No description provided for @viewsColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Views'**
+  String get viewsColumn;
+
+  /// No description provided for @tapsColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Taps'**
+  String get tapsColumn;
+
+  /// No description provided for @tapRateColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap rate'**
+  String get tapRateColumn;
+
+  /// No description provided for @tapRateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Taps per 100 views'**
+  String get tapRateHint;
+
+  /// No description provided for @allTimeTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'All ads, all time'**
+  String get allTimeTotal;
+
+  /// No description provided for @untitledAd.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled ad'**
+  String get untitledAd;
+
+  /// No description provided for @searchAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Search ads'**
+  String get searchAds;
+
+  /// No description provided for @adsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Put a banner, a video or a featured store in front of customers, on the screen you choose.'**
+  String get adsEmptyBody;
+
+  /// No description provided for @videoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get videoLabel;
+
+  /// No description provided for @moneyOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Money overview'**
+  String get moneyOverview;
 }
 
 class _AppLocalizationsDelegate

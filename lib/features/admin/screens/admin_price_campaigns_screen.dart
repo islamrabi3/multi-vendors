@@ -9,7 +9,9 @@ import '../../../core/utils/l10n_extension.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/app_dialogs.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/widgets/web/adaptive_sheet.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
+import '../../../core/widgets/web/web_table.dart';
 import '../widgets/ad_destination_field.dart' show pickActiveStore;
 import 'admin_manage_screen.dart' show adminManageWebSections;
 
@@ -35,6 +37,10 @@ class _AdminPriceCampaignsScreenState extends State<AdminPriceCampaignsScreen> {
   List<PriceCampaign>? _campaigns;
   String? _error;
 
+  /// Desktop list controls.
+  String _query = '';
+  String _filter = 'all';
+
   @override
   void initState() {
     super.initState();
@@ -56,7 +62,7 @@ class _AdminPriceCampaignsScreenState extends State<AdminPriceCampaignsScreen> {
   }
 
   Future<void> _create() async {
-    final created = await showModalBottomSheet<bool>(
+    final created = await showAdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.canvas,
@@ -236,55 +242,30 @@ class _AdminPriceCampaignsScreenState extends State<AdminPriceCampaignsScreen> {
             ),
           );
 
-    if (widget.embedded) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-        child: Column(
+    if (webWide) {
+      final page = _webPage();
+      if (widget.embedded) {
+        if (ConsoleTabScope.of(context)) return page;
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // The console page header, with this page's main action in it.
-            ConsoleHeader(
-              title: l10n.campaignsTitle,
-              description: l10n.pageDescPriceCampaigns,
-              actions: [
-                FilledButton.icon(
-                  onPressed: _create,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(l10n.campaignNew),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: ConsoleHeader(
+                title: l10n.campaignsTitle,
+                description: l10n.pageDescPriceCampaigns,
+              ),
             ),
-            const SizedBox(height: AppSpace.xl),
-            Expanded(child: content),
+            Expanded(child: page),
           ],
-        ),
-      );
-    }
-
-    if (webWide) {
+        );
+      }
       return WebPageChrome(
         forStaff: true,
         activeId: 'manage:/admin-app/price-campaigns',
         sections: adminManageWebSections(context),
         pageTitle: l10n.campaignsTitle,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: FilledButton.icon(
-                  onPressed: _create,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(l10n.campaignNew),
-                ),
-              ),
-              const SizedBox(height: AppSpace.md),
-              Expanded(child: content),
-            ],
-          ),
-        ),
+        child: page,
       );
     }
 
@@ -297,6 +278,243 @@ class _AdminPriceCampaignsScreenState extends State<AdminPriceCampaignsScreen> {
         label: Text(l10n.campaignNew),
       ),
       body: SafeArea(top: false, child: content),
+    );
+  }
+
+  String _statusLabel(PriceCampaign campaign) {
+    final l10n = context.l10n;
+    return switch (campaign.status) {
+      'active' => l10n.active,
+      'ended' => l10n.campaignStatusEnded,
+      _ => l10n.couponScheduled,
+    };
+  }
+
+  /// Desktop: what is running and what it touches, filters beside the
+  /// create button, then every campaign as a table row.
+  Widget _webPage() {
+    final l10n = context.l10n;
+    final campaigns = _campaigns;
+    if (campaigns == null) {
+      return _error != null
+          ? FailureView(error: _error!, onRetry: _load)
+          : const LoadingView();
+    }
+    int count(String status) =>
+        campaigns.where((c) => c.status == status).length;
+    final running = campaigns.where((c) => c.isActive).toList();
+    final itemsRaised = running.fold<int>(0, (n, c) => n + c.itemCount);
+    final query = _query.trim().toLowerCase();
+    final shown = [
+      for (final c in campaigns)
+        if ((_filter == 'all' || c.status == _filter) &&
+            (query.isEmpty || c.name.toLowerCase().contains(query)))
+          c,
+    ];
+    final columns = [
+      WebTableColumn(label: l10n.campaignColumn, flex: 3),
+      WebTableColumn(label: l10n.upliftColumn, width: 90, numeric: true),
+      WebTableColumn(label: l10n.couponAppliesTo, flex: 2),
+      WebTableColumn(label: l10n.itemsColumn, width: 80, numeric: true),
+      WebTableColumn(label: l10n.runsColumn, flex: 3),
+      WebTableColumn(label: l10n.statusLabel, width: 110),
+    ];
+    const trailing = 140.0;
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+        children: [
+          ConsoleGrid(
+            children: [
+              ConsoleStat(
+                label: l10n.campaignsRunning,
+                value: '${running.length}',
+                hint: l10n.partiesTotal(campaigns.length),
+                icon: Icons.trending_up_rounded,
+                tone: running.isEmpty ? ConsoleTone.plain : ConsoleTone.good,
+              ),
+              ConsoleStat(
+                label: l10n.itemsRaisedStat,
+                value: '$itemsRaised',
+                hint: l10n.itemsRaisedHint,
+                icon: Icons.sell_outlined,
+              ),
+              ConsoleStat(
+                label: l10n.couponScheduled,
+                value: '${count('scheduled')}',
+                icon: Icons.event_outlined,
+              ),
+              ConsoleStat(
+                label: l10n.endedFilter,
+                value: '${count('ended')}',
+                icon: Icons.history_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.xl),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: ConsoleToolbar(
+                  search: ConsoleSearchField(
+                    hint: l10n.searchCampaigns,
+                    initialValue: _query,
+                    onChanged: (v) => setState(() => _query = v),
+                  ),
+                  filters: [
+                    for (final (key, label) in [
+                      ('all', l10n.all),
+                      ('active', l10n.active),
+                      ('scheduled', l10n.couponScheduled),
+                      ('ended', l10n.endedFilter),
+                    ])
+                      ConsoleFilterChip(
+                        label: label,
+                        count: key == 'all' ? campaigns.length : count(key),
+                        selected: _filter == key,
+                        onSelected: () => setState(() => _filter = key),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpace.md),
+              FilledButton.icon(
+                onPressed: _create,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(l10n.campaignNew),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.lg),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.campaignIntro,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          WebTable(
+            columns: columns,
+            trailingWidth: trailing,
+            emptyState: campaigns.isEmpty
+                ? ConsoleEmpty(
+                    icon: Icons.trending_up_rounded,
+                    title: l10n.campaignEmpty,
+                    message: l10n.campaignsEmptyBody,
+                  )
+                : ConsoleEmpty(
+                    icon: Icons.search_off_rounded,
+                    title: l10n.noMatches,
+                  ),
+            rows: [
+              for (final campaign in shown)
+                WebTableRow.aligned(
+                  columns: columns,
+                  trailingWidth: trailing,
+                  cells: [
+                    Text(
+                      campaign.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    Text(
+                      '+${campaign.markupPercent.toStringAsFixed(campaign.markupPercent % 1 == 0 ? 0 : 1)}%',
+                      style: AppType.mono(
+                        13.5,
+                        weight: FontWeight.w800,
+                        color: campaign.isEnded
+                            ? AppColors.textMuted
+                            : AppColors.successInk,
+                      ),
+                    ),
+                    Text(
+                      _scopeLabel(campaign),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '${campaign.itemCount}',
+                      style: AppType.mono(13.5, weight: FontWeight.w600),
+                    ),
+                    Text(
+                      '${formatDateTime(context, campaign.startsAt)} – '
+                      '${campaign.endsAt == null ? l10n.untilEnded : formatDateTime(context, campaign.endsAt!)}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: SoftBadge(
+                        label: _statusLabel(campaign),
+                        fill: campaign.isActive
+                            ? AppColors.successFill
+                            : campaign.isEnded
+                            ? AppColors.neutralFill
+                            : AppColors.amberFill,
+                        ink: campaign.isActive
+                            ? AppColors.successInk
+                            : campaign.isEnded
+                            ? AppColors.textMuted
+                            : AppColors.amberInk,
+                      ),
+                    ),
+                  ],
+                  trailing: campaign.isEnded
+                      ? const SizedBox.shrink()
+                      : Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: TextButton.icon(
+                            onPressed: () => _end(campaign),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.dangerInk,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            icon: const Icon(
+                              Icons.stop_circle_outlined,
+                              size: 17,
+                            ),
+                            label: Text(l10n.campaignEnd),
+                          ),
+                        ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

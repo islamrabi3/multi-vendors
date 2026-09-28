@@ -23,6 +23,13 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
       l10n.operations,
       [
         ManageNavItem(
+          icon: Icons.delivery_dining_outlined,
+          label: l10n.driverApprovals,
+          route: '/admin-app/drivers',
+          badgeKey: AdminActionBadges.driversPending,
+          permission: 'drivers.view',
+        ),
+        ManageNavItem(
           icon: Icons.report_problem_outlined,
           label: l10n.customerReports,
           route: '/admin-app/complaints',
@@ -35,43 +42,6 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           route: '/admin-app/support',
           badgeKey: AdminActionBadges.supportAwaiting,
           permission: 'support.handle',
-        ),
-        ManageNavItem(
-          icon: Icons.people_outline,
-          label: l10n.users,
-          route: '/admin-app/users',
-          permission: 'users.block',
-        ),
-        ManageNavItem(
-          icon: Icons.build_outlined,
-          label: l10n.maintenanceTitle,
-          route: '/admin-app/maintenance',
-          permission: 'staff.manage',
-        ),
-        ManageNavItem(
-          icon: Icons.admin_panel_settings_outlined,
-          label: l10n.managementRoles,
-          route: '/admin-app/roles',
-          permission: 'staff.manage',
-        ),
-        ManageNavItem(
-          icon: Icons.campaign_outlined,
-          label: l10n.announcements,
-          route: '/admin-app/announcements',
-          permission: 'notifications.send',
-        ),
-        ManageNavItem(
-          icon: Icons.payments_outlined,
-          label: l10n.salesAndFinancialReports,
-          route: '/admin-app/sales-reports',
-          permission: 'reports.view',
-        ),
-        ManageNavItem(
-          icon: Icons.delivery_dining_outlined,
-          label: l10n.driverApprovals,
-          route: '/admin-app/drivers',
-          badgeKey: AdminActionBadges.driversPending,
-          permission: 'drivers.view',
         ),
         ManageNavItem(
           icon: Icons.map_outlined,
@@ -105,15 +75,20 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
       ],
     ),
     (
-      // Money gets its own group: these three are the only screens that move
-      // real balances, and burying them under "operations" makes that easy
-      // to miss.
+      // Money gets its own group: the screens that report on or move real
+      // balances, kept together so none of them is missed.
       l10n.financeTitle,
       [
         ManageNavItem(
           icon: Icons.query_stats_outlined,
-          label: l10n.financeTitle,
+          label: l10n.moneyOverview,
           route: '/admin-app/finance',
+          permission: 'reports.view',
+        ),
+        ManageNavItem(
+          icon: Icons.payments_outlined,
+          label: l10n.salesAndFinancialReports,
+          route: '/admin-app/sales-reports',
           permission: 'reports.view',
         ),
         ManageNavItem(
@@ -130,12 +105,6 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           badgeKey: AdminActionBadges.depositsPending,
           permission: 'finance.settle',
         ),
-        ManageNavItem(
-          icon: Icons.tune_rounded,
-          label: l10n.platformSettings,
-          route: '/admin-app/platform-settings',
-          permission: 'reports.view',
-        ),
       ],
     ),
     (
@@ -143,7 +112,7 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
       [
         // Coupons, price campaigns and home-screen ads, as tabs of one page.
         ManageNavItem(
-          icon: Icons.campaign_outlined,
+          icon: Icons.sell_outlined,
           label: l10n.marketing,
           route: '/admin-app/marketing',
           permission: 'promos.manage',
@@ -158,6 +127,43 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           label: l10n.content,
           route: '/admin-app/content',
           permission: 'content.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.campaign_outlined,
+          label: l10n.announcements,
+          route: '/admin-app/announcements',
+          permission: 'notifications.send',
+        ),
+      ],
+    ),
+    (
+      // How the platform itself is set up and who may use it — last, where
+      // settings live in every console, rather than inside Money.
+      l10n.systemGroup,
+      [
+        ManageNavItem(
+          icon: Icons.settings_outlined,
+          label: l10n.platformSettings,
+          route: '/admin-app/platform-settings',
+          permission: 'reports.view',
+        ),
+        ManageNavItem(
+          icon: Icons.people_outline,
+          label: l10n.users,
+          route: '/admin-app/users',
+          permission: 'users.block',
+        ),
+        ManageNavItem(
+          icon: Icons.admin_panel_settings_outlined,
+          label: l10n.managementRoles,
+          route: '/admin-app/roles',
+          permission: 'staff.manage',
+        ),
+        ManageNavItem(
+          icon: Icons.build_outlined,
+          label: l10n.maintenanceTitle,
+          route: '/admin-app/maintenance',
+          permission: 'staff.manage',
         ),
       ],
     ),

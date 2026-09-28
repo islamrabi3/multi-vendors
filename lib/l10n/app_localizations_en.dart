@@ -6932,4 +6932,105 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get availabilitySection => 'Availability';
+
+  @override
+  String get systemGroup => 'System';
+
+  @override
+  String get liveCodes => 'Live codes';
+
+  @override
+  String get redemptions => 'Redemptions';
+
+  @override
+  String get redemptionsHint => 'Times codes were used at checkout';
+
+  @override
+  String get endedFilter => 'Ended';
+
+  @override
+  String get searchCodes => 'Search codes';
+
+  @override
+  String usesLeft(int count) {
+    return '$count left';
+  }
+
+  @override
+  String get noUseLimit => 'No limit';
+
+  @override
+  String get couponsEmptyTitle => 'No coupons yet';
+
+  @override
+  String get couponsEmptyBody =>
+      'Create a code customers type at checkout — a percentage, a fixed amount or free delivery.';
+
+  @override
+  String get noMatches => 'Nothing matches these filters.';
+
+  @override
+  String get campaignsRunning => 'Running now';
+
+  @override
+  String get itemsRaisedStat => 'Items with raised prices';
+
+  @override
+  String get itemsRaisedHint => 'Across campaigns running now';
+
+  @override
+  String get searchCampaigns => 'Search campaigns';
+
+  @override
+  String get campaignColumn => 'Campaign';
+
+  @override
+  String get upliftColumn => 'Uplift';
+
+  @override
+  String get itemsColumn => 'Items';
+
+  @override
+  String get runsColumn => 'Runs';
+
+  @override
+  String get untilEnded => 'until ended';
+
+  @override
+  String get campaignsEmptyBody =>
+      'Raise prices for a while so a discount costs the stores nothing. Prices go back when the campaign ends.';
+
+  @override
+  String get liveAds => 'Live ads';
+
+  @override
+  String get viewsColumn => 'Views';
+
+  @override
+  String get tapsColumn => 'Taps';
+
+  @override
+  String get tapRateColumn => 'Tap rate';
+
+  @override
+  String get tapRateHint => 'Taps per 100 views';
+
+  @override
+  String get allTimeTotal => 'All ads, all time';
+
+  @override
+  String get untitledAd => 'Untitled ad';
+
+  @override
+  String get searchAds => 'Search ads';
+
+  @override
+  String get adsEmptyBody =>
+      'Put a banner, a video or a featured store in front of customers, on the screen you choose.';
+
+  @override
+  String get videoLabel => 'Video';
+
+  @override
+  String get moneyOverview => 'Money overview';
 }

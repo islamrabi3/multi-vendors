@@ -168,7 +168,7 @@ class WebTableRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     for (var i = 0; i < cells.length; i++) ...[
-                      if (i > 0) const SizedBox(width: AppSpace.md),
+                      if (i > 0) SizedBox(width: _gapBefore(cells, i)),
                       cells[i],
                     ],
                   ],
@@ -185,6 +185,19 @@ class WebTableRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The space before cell [i]: wider after a figure that hugs its column's
+/// end, so the number does not run into the text that starts the next one.
+double _gapBefore(List<Object> cells, int i) {
+  bool numeric(Object cell) => switch (cell) {
+    _Cell(:final column) => column.numeric,
+    WebTableColumn(:final numeric) => numeric,
+    _ => false,
+  };
+  return numeric(cells[i - 1]) && !numeric(cells[i])
+      ? AppSpace.xxl
+      : AppSpace.md;
 }
 
 class _Cell extends StatelessWidget {
@@ -224,7 +237,7 @@ class _WebTableRowLayout extends StatelessWidget {
           child: Row(
             children: [
               for (var i = 0; i < columns.length; i++) ...[
-                if (i > 0) const SizedBox(width: AppSpace.md),
+                if (i > 0) SizedBox(width: _gapBefore(columns, i)),
                 _Cell(
                   column: columns[i],
                   child: Text(
