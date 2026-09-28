@@ -2134,5 +2134,13 @@
   "resetCodeResent": "A new code is on its way",
   "resetLinkAlsoWorks": "You can also tap the link in the email on this device.",
   "errInvalidResetCode": "That code is wrong or has expired. Check the latest email, or send a new code.",
-  "errResetRateLimited": "A code was sent a moment ago. Wait a minute before asking for another."
+  "errResetRateLimited": "A code was sent a moment ago. Wait a minute before asking for another.",
+  "sameFeeForAllStores": "Same fee for every store",
+  "sameFeeForAllStoresHelp": "Replaces every store's own delivery fee in one step. You can still change a single store afterwards.",
+  "applyToAllStores": "Apply to all stores",
+  "applyFeeToAllTitle": "Charge {fee} delivery at every store?",
+  "@applyFeeToAllTitle": {"placeholders": {"fee": {"type": "String"}}},
+  "applyFeeToAllMessage": "Every store's delivery fee changes to this now. Orders already placed keep the fee they were charged.",
+  "storesFeeUpdated": "{count, plural, =0{Every store already charged that} =1{1 store updated} other{{count} stores updated}}",
+  "@storesFeeUpdated": {"placeholders": {"count": {"type": "int"}}}
 }

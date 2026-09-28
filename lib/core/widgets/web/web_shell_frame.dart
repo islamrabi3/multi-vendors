@@ -120,6 +120,7 @@ class WebShellFrame extends StatelessWidget {
     this.accountName,
     this.accountDetail,
     this.search,
+    this.onOpenMessages,
   });
 
   final String activeId;
@@ -145,6 +146,10 @@ class WebShellFrame extends StatelessWidget {
 
   /// Data lookups the command palette offers beside the pages.
   final WebCommandSearch? search;
+
+  /// Where the top bar's messages icon leads inside this console. Null keeps
+  /// the icon's own route.
+  final VoidCallback? onOpenMessages;
 
   List<WebCommand> _pageCommands() => [
     for (final section in sections)
@@ -211,6 +216,7 @@ class WebShellFrame extends StatelessWidget {
                       title: pageTitle,
                       forStaff: forStaff,
                       onOpenPalette: () => _openPalette(context),
+                      onOpenMessages: onOpenMessages,
                     ),
                     const Divider(
                       height: 1,
@@ -683,12 +689,14 @@ class _TopBar extends StatelessWidget {
     required this.onOpenPalette,
     this.section,
     this.forStaff = false,
+    this.onOpenMessages,
   });
 
   final String? section;
   final String title;
   final VoidCallback onOpenPalette;
   final bool forStaff;
+  final VoidCallback? onOpenMessages;
 
   @override
   Widget build(BuildContext context) {
@@ -744,9 +752,9 @@ class _TopBar extends StatelessWidget {
           _PaletteButton(onTap: onOpenPalette),
           const Spacer(),
           if (forStaff)
-            const MessagesButton.staff(compact: true)
+            MessagesButton.staff(compact: true, onOpen: onOpenMessages)
           else
-            const MessagesButton(compact: true),
+            MessagesButton(compact: true, onOpen: onOpenMessages),
           const SizedBox(width: AppSpace.sm),
           const NotificationBell(compact: true),
           const SizedBox(width: AppSpace.sm),

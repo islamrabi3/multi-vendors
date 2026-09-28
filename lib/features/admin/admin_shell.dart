@@ -331,6 +331,9 @@ class _AdminWebShellState extends State<_AdminWebShell> {
           ? l10n.fullAccess
           : l10n.limitedAccess,
       search: (query) => _search(context, query),
+      // The support inbox is a sidebar page; the top bar's icon opens it
+      // there instead of pushing a second copy over the console.
+      onOpenMessages: () => _openManageRoute('/admin-app/support'),
       activeId: _manageRoute != null
           ? 'manage:$_manageRoute'
           : 'branch:${widget.shell.currentIndex}',

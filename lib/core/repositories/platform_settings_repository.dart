@@ -123,4 +123,13 @@ class PlatformSettingsRepository {
       'p_per_km_fee': rule.perKmFee,
     },
   );
+
+  /// Gives every store the same flat delivery fee. Returns how many changed.
+  Future<int> setAllStoreDeliveryFees(double fee) async {
+    final changed = await supabase.rpc(
+      'admin_set_all_vendor_delivery_fees',
+      params: {'p_fee': fee},
+    );
+    return (changed as num?)?.toInt() ?? 0;
+  }
 }

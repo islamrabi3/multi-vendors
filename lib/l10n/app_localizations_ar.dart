@@ -6459,4 +6459,38 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get errResetRateLimited =>
       'لسه باعتين كود من شوية. استنى دقيقة قبل ما تطلب كود تاني.';
+
+  @override
+  String get sameFeeForAllStores => 'رسوم واحدة لكل المتاجر';
+
+  @override
+  String get sameFeeForAllStoresHelp =>
+      'بتغيّر رسوم التوصيل لكل المتاجر مرة واحدة. وتقدر بعدها تعدّل أي متجر لوحده.';
+
+  @override
+  String get applyToAllStores => 'طبّق على كل المتاجر';
+
+  @override
+  String applyFeeToAllTitle(String fee) {
+    return 'تخلّي رسوم التوصيل $fee في كل المتاجر؟';
+  }
+
+  @override
+  String get applyFeeToAllMessage =>
+      'رسوم التوصيل في كل المتاجر هتتغير للمبلغ ده دلوقتي. الطلبات القديمة بتفضل برسومها.';
+
+  @override
+  String storesFeeUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'اتحدّث $count متجر',
+      many: 'اتحدّث $count متجر',
+      few: 'اتحدّث $count متاجر',
+      two: 'اتحدّث متجرين',
+      one: 'اتحدّث متجر واحد',
+      zero: 'كل المتاجر كانت بالرسوم دي أصلاً',
+    );
+    return '$_temp0';
+  }
 }

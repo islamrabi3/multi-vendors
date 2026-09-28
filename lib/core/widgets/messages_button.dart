@@ -17,8 +17,12 @@ import '../repositories/support_repository.dart';
 class MessagesButton extends StatefulWidget {
   /// A customer/vendor/driver's own thread: badges on *their* unread staff
   /// replies, opens `/support`.
-  const MessagesButton({super.key, this.compact = false, this.dark = false})
-    : _forStaff = false;
+  const MessagesButton({
+    super.key,
+    this.compact = false,
+    this.dark = false,
+    this.onOpen,
+  }) : _forStaff = false;
 
   /// The admin/staff view: badges on how many threads are waiting for a
   /// reply — a queue, not an unread count — and opens the admin inbox.
@@ -26,9 +30,15 @@ class MessagesButton extends StatefulWidget {
     super.key,
     this.compact = false,
     this.dark = false,
+    this.onOpen,
   }) : _forStaff = true;
 
   final bool _forStaff;
+
+  /// Opens the inbox somewhere other than a pushed route — the desktop
+  /// console shows it in its own content pane, beside the sidebar, rather
+  /// than as a page that covers the console.
+  final VoidCallback? onOpen;
   final bool compact;
   final bool dark;
 
@@ -83,9 +93,11 @@ class _MessagesButtonState extends State<MessagesButton> {
       builder: (context, snapshot) {
         final count = snapshot.data ?? 0;
         return InkWell(
-          onTap: () => context.push(
-            widget._forStaff ? '/admin-app/support' : '/messages',
-          ),
+          onTap:
+              widget.onOpen ??
+              () => context.push(
+                widget._forStaff ? '/admin-app/support' : '/messages',
+              ),
           borderRadius: BorderRadius.circular(21),
           child: Stack(
             clipBehavior: Clip.none,

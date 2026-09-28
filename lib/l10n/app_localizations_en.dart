@@ -6513,4 +6513,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errResetRateLimited =>
       'A code was sent a moment ago. Wait a minute before asking for another.';
+
+  @override
+  String get sameFeeForAllStores => 'Same fee for every store';
+
+  @override
+  String get sameFeeForAllStoresHelp =>
+      'Replaces every store\'s own delivery fee in one step. You can still change a single store afterwards.';
+
+  @override
+  String get applyToAllStores => 'Apply to all stores';
+
+  @override
+  String applyFeeToAllTitle(String fee) {
+    return 'Charge $fee delivery at every store?';
+  }
+
+  @override
+  String get applyFeeToAllMessage =>
+      'Every store\'s delivery fee changes to this now. Orders already placed keep the fee they were charged.';
+
+  @override
+  String storesFeeUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stores updated',
+      one: '1 store updated',
+      zero: 'Every store already charged that',
+    );
+    return '$_temp0';
+  }
 }

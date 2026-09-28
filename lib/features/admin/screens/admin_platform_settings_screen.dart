@@ -37,6 +37,8 @@ class _AdminPlatformSettingsScreenState
   final _baseFee = TextEditingController();
   final _baseKm = TextEditingController();
   final _perKm = TextEditingController();
+  final _allStoresFee = TextEditingController();
+  bool _applyingAll = false;
 
   String _mode = DeliveryFeeRule.storeMode;
   DeliveryFeeRule _saved = const DeliveryFeeRule();
@@ -49,7 +51,7 @@ class _AdminPlatformSettingsScreenState
   @override
   void initState() {
     super.initState();
-    for (final c in [_baseFee, _baseKm, _perKm]) {
+    for (final c in [_baseFee, _baseKm, _perKm, _allStoresFee]) {
       c.addListener(() => setState(() {}));
     }
     _load();
@@ -60,6 +62,7 @@ class _AdminPlatformSettingsScreenState
     _baseFee.dispose();
     _baseKm.dispose();
     _perKm.dispose();
+    _allStoresFee.dispose();
     super.dispose();
   }
 
@@ -107,6 +110,35 @@ class _AdminPlatformSettingsScreenState
       baseKm: km,
       perKmFee: perKm,
     );
+  }
+
+  /// Sets the same flat fee on every store at once, after saying how far
+  /// it reaches.
+  Future<void> _applyToAllStores() async {
+    final l10n = context.l10n;
+    final fee = _num(_allStoresFee);
+    if (fee == null || fee < 0) return;
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: l10n.applyFeeToAllTitle(formatMoney(fee)),
+      message: l10n.applyFeeToAllMessage,
+      confirmLabel: l10n.applyToAllStores,
+      cancelLabel: l10n.cancel,
+      icon: Icons.storefront_rounded,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _applyingAll = true);
+    try {
+      final changed = await _repo.setAllStoreDeliveryFees(fee);
+      if (!mounted) return;
+      setState(() => _applyingAll = false);
+      _allStoresFee.clear();
+      showSnack(context, l10n.storesFeeUpdated(changed));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _applyingAll = false);
+      showFailure(context, error);
+    }
   }
 
   Future<void> _saveDelivery() async {
@@ -311,6 +343,35 @@ class _AdminPlatformSettingsScreenState
               ),
             ),
           ),
+          // Store pricing: each store has its own fee, and this sets them all
+          // in one go instead of opening every store's page.
+          if (!byDistance && canEdit) ...[
+            const Divider(height: 32, color: AppColors.borderSoft),
+            ConsoleFieldRow(
+              label: l10n.sameFeeForAllStores,
+              help: l10n.sameFeeForAllStoresHelp,
+              child: Wrap(
+                spacing: AppSpace.sm,
+                runSpacing: AppSpace.sm,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  amountField(_allStoresFee, suffix: currencySymbol),
+                  OutlinedButton.icon(
+                    onPressed:
+                        _applyingAll ||
+                            _num(_allStoresFee) == null ||
+                            _num(_allStoresFee)! < 0
+                        ? null
+                        : _applyToAllStores,
+                    icon: _applyingAll
+                        ? const ButtonSpinner(size: 16)
+                        : const Icon(Icons.done_all_rounded, size: 18),
+                    label: Text(l10n.applyToAllStores),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (byDistance) ...[
             const Divider(height: 32, color: AppColors.borderSoft),
             ConsoleFieldRow(

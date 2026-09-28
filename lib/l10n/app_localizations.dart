@@ -11852,6 +11852,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A code was sent a moment ago. Wait a minute before asking for another.'**
   String get errResetRateLimited;
+
+  /// No description provided for @sameFeeForAllStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Same fee for every store'**
+  String get sameFeeForAllStores;
+
+  /// No description provided for @sameFeeForAllStoresHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaces every store\'s own delivery fee in one step. You can still change a single store afterwards.'**
+  String get sameFeeForAllStoresHelp;
+
+  /// No description provided for @applyToAllStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to all stores'**
+  String get applyToAllStores;
+
+  /// No description provided for @applyFeeToAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Charge {fee} delivery at every store?'**
+  String applyFeeToAllTitle(String fee);
+
+  /// No description provided for @applyFeeToAllMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Every store\'s delivery fee changes to this now. Orders already placed keep the fee they were charged.'**
+  String get applyFeeToAllMessage;
+
+  /// No description provided for @storesFeeUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Every store already charged that} =1{1 store updated} other{{count} stores updated}}'**
+  String storesFeeUpdated(int count);
 }
 
 class _AppLocalizationsDelegate
