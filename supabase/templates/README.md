@@ -1,12 +1,17 @@
 # Auth email templates
 
-`recovery.html` is the password-reset email: a 6-digit code (`{{ .Token }}`) that
-the app asks for after "Forgot password", plus the link for opening it on the
-same device. English and Arabic.
+`recovery.html` is the password-reset email, live on the project under
+Auth > Email Templates > Reset password. Arabic first, then English, around
+one 6-digit code (`{{ .Token }}`) that the app asks for after "Forgot
+password", plus a button for opening the link on the same device.
 
-Supabase refuses template changes on the free tier while the built-in mailer
-is in use, so this is not live yet. Once a custom SMTP provider is set under
-Auth > SMTP Settings, paste this file into Auth > Email Templates > Reset
-password, with the subject:
+Subject:
 
-    Your password reset code / كود إعادة تعيين كلمة السر
+    {{ .Token }} كود إعادة تعيين كلمة السر · Password reset code
+
+The code leads the subject so it can be read straight off the notification.
+
+To change it, edit this file and push it with the Management API
+(`PATCH /v1/projects/{ref}/config/auth`, fields `mailer_subjects_recovery`
+and `mailer_templates_recovery_content`) or paste it into the dashboard.
+Templates only take effect while a custom SMTP provider is configured.

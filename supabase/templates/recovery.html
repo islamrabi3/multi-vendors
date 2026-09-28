@@ -1,15 +1,115 @@
-<div dir="ltr" style="font-family:Arial,Helvetica,sans-serif;color:#1E1519;max-width:480px">
-<h2 style="color:#5C2340">Reset your password</h2>
-<p>Enter this code in the app to choose a new password:</p>
-<p style="font-size:30px;font-weight:bold;letter-spacing:6px;color:#5C2340">{{ .Token }}</p>
-<p>Or, on this device, <a href="{{ .ConfirmationURL }}">tap here to reset it</a>.</p>
-<p style="color:#8C7A83;font-size:13px">The code expires in one hour. If you didn't ask for this, ignore this email.</p>
-</div>
-<hr style="border:none;border-top:1px solid #EDE2E6;margin:24px 0">
-<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;color:#1E1519;max-width:480px">
-<h2 style="color:#5C2340">إعادة تعيين كلمة السر</h2>
-<p>اكتب الكود ده في التطبيق عشان تختار كلمة سر جديدة:</p>
-<p style="font-size:30px;font-weight:bold;letter-spacing:6px;color:#5C2340">{{ .Token }}</p>
-<p>أو من نفس الجهاز <a href="{{ .ConfirmationURL }}">دوس هنا</a>.</p>
-<p style="color:#8C7A83;font-size:13px">الكود صالح لمدة ساعة. لو مش إنت اللي طلبت ده، تجاهل الإيميل.</p>
-</div>
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Kitchen IN</title>
+</head>
+<body style="margin:0;padding:0;background:#FBF7F9;">
+<!-- Preview line shown in the inbox list, before the email is opened. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">كود إعادة تعيين كلمة السر: {{ .Token }} · Your password reset code: {{ .Token }}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FBF7F9;">
+<tr>
+<td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+
+<!-- Brand -->
+<tr>
+<td align="center" style="padding:0 0 20px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding:0 10px 0 0;"><img src="https://multi-rest-app.web.app/icons/Icon-192.png" width="36" height="36" alt="" style="display:block;border-radius:9px;"></td>
+<td style="font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:bold;color:#1E1519;">Kitchen IN</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<!-- Card -->
+<tr>
+<td style="background:#FFFFFF;border:1px solid #EDE2E6;border-radius:14px;">
+
+<!-- Arabic -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl">
+<tr>
+<td dir="rtl" align="right" style="padding:32px 32px 8px;font-family:Tahoma,Arial,sans-serif;text-align:right;">
+<h1 style="margin:0 0 10px;font-size:22px;line-height:1.35;color:#1E1519;">إعادة تعيين كلمة السر</h1>
+<p style="margin:0;font-size:15px;line-height:1.7;color:#4A3B42;">وصلنا طلب لتغيير كلمة السر لحسابك. اكتب الكود ده في التطبيق، في الخانة اللي ظهرت بعد «نسيت كلمة السر»:</p>
+</td>
+</tr>
+</table>
+
+<!-- Code, shared by both languages -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" style="padding:20px 32px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" dir="ltr" style="background:#F5E9EE;border:1px solid #E7CFDA;border-radius:12px;padding:16px 28px;font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:bold;letter-spacing:10px;color:#5C2340;">{{ .Token }}</td>
+</tr>
+</table>
+<p style="margin:12px 0 0;font-family:Tahoma,Arial,sans-serif;font-size:13px;line-height:1.6;color:#76646C;">الكود صالح لمدة ساعة · Valid for one hour</p>
+</td>
+</tr>
+</table>
+
+<!-- Arabic: link and safety note -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl">
+<tr>
+<td dir="rtl" align="right" style="padding:4px 32px 0;font-family:Tahoma,Arial,sans-serif;text-align:right;">
+<p style="margin:0 0 16px;font-size:14px;line-height:1.7;color:#4A3B42;">أو لو فاتح الإيميل على نفس الجهاز اللي عليه التطبيق، استخدم الزرار:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="background:#5C2340;border-radius:10px;">
+<a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 24px;font-family:Tahoma,Arial,sans-serif;font-size:15px;font-weight:bold;color:#FFFFFF;text-decoration:none;">غيّر كلمة السر</a>
+</td>
+</tr>
+</table>
+<p style="margin:20px 0 0;font-size:13px;line-height:1.7;color:#76646C;">لو مش إنت اللي طلبت ده، تجاهل الإيميل وكلمة السر مش هتتغير. ومتبعتش الكود لأي حد، حتى لو قال إنه من خدمة العملاء.</p>
+</td>
+</tr>
+</table>
+
+<!-- Divider -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:28px 32px;"><div style="border-top:1px solid #EDE2E6;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+</table>
+
+<!-- English -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="ltr">
+<tr>
+<td dir="ltr" align="left" style="padding:0 32px 32px;font-family:Arial,Helvetica,sans-serif;text-align:left;">
+<h2 style="margin:0 0 10px;font-size:19px;line-height:1.35;color:#1E1519;">Reset your password</h2>
+<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#4A3B42;">We received a request to reset the password for your account. Enter the code above in the app, in the box that appeared after “Forgot password”.</p>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#4A3B42;">Reading this on the device with the app? Use the button instead:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="background:#5C2340;border-radius:10px;">
+<a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#FFFFFF;text-decoration:none;">Reset password</a>
+</td>
+</tr>
+</table>
+<p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#76646C;">If you didn’t ask for this, ignore this email and your password won’t change. Never share this code with anyone, even someone who says they are from support.</p>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td align="center" style="padding:20px 16px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#76646C;">
+Kitchen IN · <a href="{{ .SiteURL }}" style="color:#76646C;">multi-rest-app.web.app</a><br>
+<span dir="rtl">اتبعت لـ <span dir="ltr">{{ .Email }}</span></span><br>
+<span dir="ltr">Sent to {{ .Email }}</span>
+</td>
+</tr>
+
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>
