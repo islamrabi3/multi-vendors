@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/models/admin_role.dart';
 import '../../../core/widgets/web/web_shell_frame.dart';
 import '../../auth/auth_cubit.dart';
 import '../admin_action_badges.dart';
@@ -164,6 +165,15 @@ List<(String, List<ManageNavItem>)> adminManageGroups(BuildContext context) {
           label: l10n.maintenanceTitle,
           route: '/admin-app/maintenance',
           permission: 'staff.manage',
+        ),
+        // A key only ever carries its owner's permissions, so every member
+        // of staff may have one, whatever their role holds.
+        ManageNavItem(
+          icon: Icons.key_outlined,
+          label: l10n.claudeKeys,
+          route: '/admin-app/claude-keys',
+          permission: 'staff.manage',
+          anyPermission: [for (final p in AdminPermission.all) p.key],
         ),
       ],
     ),

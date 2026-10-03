@@ -6,3 +6,8 @@ verify_jwt = true
 # Paymob calls this endpoint directly; authenticity is HMAC-verified in code.
 [functions.paymob-webhook]
 verify_jwt = false
+
+# Called by Claude with an admin's own key, not a Supabase session; the key is
+# checked in code and every tool then runs as the admin who owns it.
+[functions.admin-mcp]
+verify_jwt = false

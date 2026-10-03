@@ -7036,4 +7036,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get passwordHint => 'Your password';
+
+  @override
+  String get claudeKeys => 'Claude keys';
+
+  @override
+  String get pageDescClaudeKeys =>
+      'Let Claude work this console as you. A key carries your permissions, and everything done with it is logged under your name.';
+
+  @override
+  String get claudeKeysIntro =>
+      'A key lets Claude look things up and act in this console as you, with your permissions and no more. Everything it does is recorded in the admin log as done through Claude. Money actions and suspending accounts stay here in the dashboard.';
+
+  @override
+  String get claudeKeysEmpty => 'No keys yet';
+
+  @override
+  String get claudeKeyCreate => 'New key';
+
+  @override
+  String get claudeKeyName => 'Key name';
+
+  @override
+  String get claudeKeyNameHint => 'Where it will be used, e.g. My laptop';
+
+  @override
+  String get claudeKeyExpiry => 'Valid for';
+
+  @override
+  String claudeKeyDays(int days) {
+    return '$days days';
+  }
+
+  @override
+  String get claudeKeyCreatedTitle => 'Copy your key now';
+
+  @override
+  String get claudeKeyCreatedBody =>
+      'This is the only time the key is shown. Anyone who has it can act as you until it expires or you revoke it, so keep it out of chats and shared files.';
+
+  @override
+  String get claudeKeyConnect => 'Connect Claude Code';
+
+  @override
+  String get claudeKeyCopyKey => 'Copy key';
+
+  @override
+  String get claudeKeyCopyCommand => 'Copy command';
+
+  @override
+  String get claudeKeyRevoke => 'Revoke';
+
+  @override
+  String get claudeKeyRevokeTitle => 'Revoke this key?';
+
+  @override
+  String claudeKeyRevokeBody(String name) {
+    return 'Claude stops working with \"$name\" at once. This cannot be undone; you can make a new key afterwards.';
+  }
+
+  @override
+  String get claudeKeyRevokedToast => 'Key revoked';
+
+  @override
+  String get claudeKeyStatusRevoked => 'Revoked';
+
+  @override
+  String get claudeKeyStatusExpired => 'Expired';
+
+  @override
+  String get claudeKeyNeverUsed => 'Never used';
+
+  @override
+  String claudeKeyLastUsed(String when) {
+    return 'Last used $when';
+  }
+
+  @override
+  String claudeKeyExpiresOn(String when) {
+    return 'Expires $when';
+  }
+
+  @override
+  String get claudeKeyTooMany =>
+      'You already have 10 working keys. Revoke one first.';
 }

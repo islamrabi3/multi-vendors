@@ -13,6 +13,7 @@ import '../support/my_support_screen.dart' show AdminSupportScreen;
 import 'screens/admin_ads_screen.dart';
 import 'screens/admin_announcements_screen.dart';
 import 'screens/admin_categories_screen.dart';
+import 'screens/admin_claude_keys_screen.dart';
 import 'screens/admin_complaints_screen.dart';
 import 'screens/admin_content_screen.dart';
 import 'screens/admin_deposits_screen.dart';
@@ -193,6 +194,7 @@ class _AdminWebShellState extends State<_AdminWebShell> {
     '/admin-app/support' => const AdminSupportScreen(embedded: true),
     '/admin-app/users' => const AdminUsersScreen(embedded: true),
     '/admin-app/roles' => const AdminRolesScreen(embedded: true),
+    '/admin-app/claude-keys' => const AdminClaudeKeysScreen(embedded: true),
     '/admin-app/announcements' => const AdminAnnouncementsScreen(
       embedded: true,
     ),
@@ -279,6 +281,7 @@ class _AdminWebShellState extends State<_AdminWebShell> {
       '/admin-app/users' => l10n.pageDescUsers,
       '/admin-app/maintenance' => l10n.pageDescMaintenance,
       '/admin-app/roles' => l10n.pageDescRoles,
+      '/admin-app/claude-keys' => l10n.pageDescClaudeKeys,
       '/admin-app/announcements' => l10n.pageDescAnnouncements,
       '/admin-app/sales-reports' => l10n.pageDescReports,
       '/admin-app/drivers' => l10n.pageDescDrivers,

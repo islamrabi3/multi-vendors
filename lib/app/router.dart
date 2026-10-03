@@ -30,6 +30,7 @@ import '../features/support/messages_screen.dart';
 import '../features/support/complaints/complaint_thread_screen.dart';
 import '../features/support/complaints/my_complaints_screen.dart';
 import '../features/admin/admin_shell.dart';
+import '../features/admin/screens/admin_claude_keys_screen.dart';
 import '../features/admin/screens/admin_complaints_screen.dart';
 import '../features/admin/screens/admin_content_screen.dart';
 import '../features/admin/screens/admin_dashboard_screen.dart';
@@ -598,6 +599,10 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/admin-app/maintenance',
         builder: (_, _) => const AdminMaintenanceScreen(),
+      ),
+      GoRoute(
+        path: '/admin-app/claude-keys',
+        builder: (_, _) => const AdminClaudeKeysScreen(),
       ),
       GoRoute(
         path: '/admin-app/marketing',

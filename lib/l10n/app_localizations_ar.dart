@@ -6990,4 +6990,88 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get passwordHint => 'كلمة المرور بتاعتك';
+
+  @override
+  String get claudeKeys => 'مفاتيح Claude';
+
+  @override
+  String get pageDescClaudeKeys =>
+      'خلّي Claude يشتغل على لوحة التحكم باسمك. المفتاح بياخد صلاحياتك، وكل اللي بيتعمل بيه بيتسجل باسمك.';
+
+  @override
+  String get claudeKeysIntro =>
+      'المفتاح بيخلّي Claude يدوّر وينفّذ في لوحة التحكم باسمك، بصلاحياتك بس ومش أكتر. كل حاجة بيعملها بتتسجل في سجل الإدارة على إنها اتعملت عن طريق Claude. عمليات الفلوس وإيقاف الحسابات بتفضل هنا في لوحة التحكم.';
+
+  @override
+  String get claudeKeysEmpty => 'مفيش مفاتيح لسه';
+
+  @override
+  String get claudeKeyCreate => 'مفتاح جديد';
+
+  @override
+  String get claudeKeyName => 'اسم المفتاح';
+
+  @override
+  String get claudeKeyNameHint => 'هيتستخدم فين، مثلاً: اللابتوب بتاعي';
+
+  @override
+  String get claudeKeyExpiry => 'صالح لمدة';
+
+  @override
+  String claudeKeyDays(int days) {
+    return '$days يوم';
+  }
+
+  @override
+  String get claudeKeyCreatedTitle => 'انسخ المفتاح دلوقتي';
+
+  @override
+  String get claudeKeyCreatedBody =>
+      'دي المرة الوحيدة اللي المفتاح هيظهر فيها. أي حد معاه المفتاح يقدر يتصرف باسمك لحد ما ينتهي أو تلغيه، فمتحطوش في شات أو ملف مشترك.';
+
+  @override
+  String get claudeKeyConnect => 'ربط Claude Code';
+
+  @override
+  String get claudeKeyCopyKey => 'نسخ المفتاح';
+
+  @override
+  String get claudeKeyCopyCommand => 'نسخ الأمر';
+
+  @override
+  String get claudeKeyRevoke => 'إلغاء';
+
+  @override
+  String get claudeKeyRevokeTitle => 'تلغي المفتاح ده؟';
+
+  @override
+  String claudeKeyRevokeBody(String name) {
+    return 'Claude هيوقف الشغل بالمفتاح \"$name\" فوراً. مفيش رجوع في ده، بس تقدر تعمل مفتاح جديد بعدها.';
+  }
+
+  @override
+  String get claudeKeyRevokedToast => 'المفتاح اتلغى';
+
+  @override
+  String get claudeKeyStatusRevoked => 'ملغي';
+
+  @override
+  String get claudeKeyStatusExpired => 'منتهي';
+
+  @override
+  String get claudeKeyNeverUsed => 'لم يُستخدم بعد';
+
+  @override
+  String claudeKeyLastUsed(String when) {
+    return 'آخر استخدام $when';
+  }
+
+  @override
+  String claudeKeyExpiresOn(String when) {
+    return 'ينتهي $when';
+  }
+
+  @override
+  String get claudeKeyTooMany =>
+      'عندك ١٠ مفاتيح شغالة بالفعل. الغي واحد الأول.';
 }

@@ -12704,6 +12704,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your password'**
   String get passwordHint;
+
+  /// No description provided for @claudeKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude keys'**
+  String get claudeKeys;
+
+  /// No description provided for @pageDescClaudeKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Let Claude work this console as you. A key carries your permissions, and everything done with it is logged under your name.'**
+  String get pageDescClaudeKeys;
+
+  /// No description provided for @claudeKeysIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'A key lets Claude look things up and act in this console as you, with your permissions and no more. Everything it does is recorded in the admin log as done through Claude. Money actions and suspending accounts stay here in the dashboard.'**
+  String get claudeKeysIntro;
+
+  /// No description provided for @claudeKeysEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No keys yet'**
+  String get claudeKeysEmpty;
+
+  /// No description provided for @claudeKeyCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'New key'**
+  String get claudeKeyCreate;
+
+  /// No description provided for @claudeKeyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Key name'**
+  String get claudeKeyName;
+
+  /// No description provided for @claudeKeyNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it will be used, e.g. My laptop'**
+  String get claudeKeyNameHint;
+
+  /// No description provided for @claudeKeyExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid for'**
+  String get claudeKeyExpiry;
+
+  /// No description provided for @claudeKeyDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days'**
+  String claudeKeyDays(int days);
+
+  /// No description provided for @claudeKeyCreatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy your key now'**
+  String get claudeKeyCreatedTitle;
+
+  /// No description provided for @claudeKeyCreatedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the only time the key is shown. Anyone who has it can act as you until it expires or you revoke it, so keep it out of chats and shared files.'**
+  String get claudeKeyCreatedBody;
+
+  /// No description provided for @claudeKeyConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect Claude Code'**
+  String get claudeKeyConnect;
+
+  /// No description provided for @claudeKeyCopyKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy key'**
+  String get claudeKeyCopyKey;
+
+  /// No description provided for @claudeKeyCopyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy command'**
+  String get claudeKeyCopyCommand;
+
+  /// No description provided for @claudeKeyRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get claudeKeyRevoke;
+
+  /// No description provided for @claudeKeyRevokeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke this key?'**
+  String get claudeKeyRevokeTitle;
+
+  /// No description provided for @claudeKeyRevokeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude stops working with \"{name}\" at once. This cannot be undone; you can make a new key afterwards.'**
+  String claudeKeyRevokeBody(String name);
+
+  /// No description provided for @claudeKeyRevokedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Key revoked'**
+  String get claudeKeyRevokedToast;
+
+  /// No description provided for @claudeKeyStatusRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoked'**
+  String get claudeKeyStatusRevoked;
+
+  /// No description provided for @claudeKeyStatusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get claudeKeyStatusExpired;
+
+  /// No description provided for @claudeKeyNeverUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Never used'**
+  String get claudeKeyNeverUsed;
+
+  /// No description provided for @claudeKeyLastUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used {when}'**
+  String claudeKeyLastUsed(String when);
+
+  /// No description provided for @claudeKeyExpiresOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {when}'**
+  String claudeKeyExpiresOn(String when);
+
+  /// No description provided for @claudeKeyTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have 10 working keys. Revoke one first.'**
+  String get claudeKeyTooMany;
 }
 
 class _AppLocalizationsDelegate
