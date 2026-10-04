@@ -139,10 +139,9 @@ why the file carries that version.
 supabase functions deploy admin-mcp   # verify_jwt = false is set in config.toml
 ```
 
-Do not use `supabase db push` on this project without checking
-`supabase migration list` first: the server's migration history and
-`supabase/migrations` are not fully in step, and a push would try to re-run
-whatever it finds only locally.
+New migrations go out with `supabase db push`. The server's migration history
+and `supabase/migrations` are in step (checked with `supabase migration list`),
+so a push applies only what is new.
 
 The function reads `SUPABASE_DB_URL`, `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY`, all of which Supabase provides to every Edge

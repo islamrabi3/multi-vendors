@@ -1,0 +1,32 @@
+-- Security pass finding: three internal ledger functions were reachable by
+-- any signed-in client (`finance_settle_order`, `finance_wallet_for`) or even
+-- by an unauthenticated one (`finance_rebuild_wallet`, `finance_wallet_for`),
+-- with no permission check inside them at all. None of the three are called
+-- from the app or an edge function — every real caller is another
+-- SECURITY DEFINER function in this database (`update_order_status` on a
+-- delivery, `finance_backfill_settlements` under `is_admin()`, `finance_post`
+-- for the wallet lookup) — so the broad grant bought nothing and cost real
+-- surface:
+--
+-- - `finance_settle_order(p_order_id)` is the settlement engine itself: given
+--   any delivered order's id, `authenticated` could call it directly and post
+--   real ledger rows for an order that was never theirs, ahead of whenever
+--   the order's own status transition would have triggered it. The amounts
+--   are computed from real order data (no attacker-controlled figure), but
+--   direct access to an internal financial engine is not something a
+--   customer, vendor or driver account should have.
+-- - `finance_wallet_for(owner_type, owner_id)` would find-or-create a wallet
+--   row for any owner id `anon` supplied — usable to spam empty wallet rows
+--   or probe which ids already have financial activity.
+-- - `finance_rebuild_wallet(p_wallet_id)` recomputes a wallet's stored
+--   totals from the ledger — self-correcting and not itself a fund-diversion
+--   path, but `anon` triggering a recompute of an arbitrary wallet on demand
+--   is still not a capability the public role should hold.
+--
+-- Revoking `anon`/`authenticated` does not touch the callers above: a
+-- SECURITY DEFINER function's own body runs as its owner, so
+-- `update_order_status` calling `finance_settle_order` internally needs the
+-- owner's rights, not the original caller's.
+revoke all on function public.finance_settle_order(uuid) from anon, authenticated;
+revoke all on function public.finance_wallet_for(public.ledger_owner_type, uuid) from anon, authenticated;
+revoke all on function public.finance_rebuild_wallet(uuid) from anon, authenticated;;
