@@ -19,7 +19,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createYournaccount => 'Create your account';
 
   @override
-  String get howWillYouUseKitchenIn => 'How will you use Kitchen IN?';
+  String howWillYouUseKitchenIn(String app) {
+    return 'How will you use $app?';
+  }
 
   @override
   String get continueText => 'Continue';
@@ -5580,8 +5582,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addDriverAccount => 'New driver';
 
   @override
-  String shareVendorMessage(String name) {
-    return 'Check out $name on KitchenIn';
+  String shareVendorMessage(String name, String app) {
+    return 'Check out $name on $app';
   }
 
   @override
@@ -7120,4 +7122,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get claudeKeyTooMany =>
       'You already have 10 working keys. Revoke one first.';
+
+  @override
+  String get deleteStorePermanently => 'Delete store permanently';
+
+  @override
+  String deleteStoreWarning(String name) {
+    return '\"$name\" will be deleted for good, with its menu, categories, hours and staff links. A store-only owner login is deleted too. This cannot be undone.';
+  }
+
+  @override
+  String get storeDeleted => 'Store deleted.';
+
+  @override
+  String get errVendorHasOrders =>
+      'This store has order history, so it cannot be deleted. Suspend it instead.';
 }

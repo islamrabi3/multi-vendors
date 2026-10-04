@@ -3,7 +3,8 @@
   "missingSupabaseConfigurationnn": "Missing Supabase configuration.",
   "retry": "Retry",
   "createYournaccount": "Create your account",
-  "howWillYouUseKitchenIn": "How will you use Kitchen IN?",
+  "howWillYouUseKitchenIn": "How will you use {app}?",
+  "@howWillYouUseKitchenIn": {"placeholders": {"app": {"type": "String"}}},
   "continueText": "Continue",
   "fullName": "Full name",
   "phoneNumber": "Phone number",
@@ -1840,8 +1841,8 @@
   "errStoreDetailsRequired": "Store name, category and address are required.",
   "addStoreAccount": "New store",
   "addDriverAccount": "New driver",
-  "shareVendorMessage": "Check out {name} on KitchenIn",
-  "@shareVendorMessage": {"placeholders": {"name": {"type": "String"}}},
+  "shareVendorMessage": "Check out {name} on {app}",
+  "@shareVendorMessage": {"placeholders": {"name": {"type": "String"}, "app": {"type": "String"}}},
   "changePassword": "Change password",
   "setAPassword": "Set a password",
   "currentPassword": "Current password",
@@ -2320,5 +2321,10 @@
   "@claudeKeyLastUsed": {"placeholders": {"when": {"type": "String"}}},
   "claudeKeyExpiresOn": "Expires {when}",
   "@claudeKeyExpiresOn": {"placeholders": {"when": {"type": "String"}}},
-  "claudeKeyTooMany": "You already have 10 working keys. Revoke one first."
+  "claudeKeyTooMany": "You already have 10 working keys. Revoke one first.",
+  "deleteStorePermanently": "Delete store permanently",
+  "deleteStoreWarning": "\"{name}\" will be deleted for good, with its menu, categories, hours and staff links. A store-only owner login is deleted too. This cannot be undone.",
+  "@deleteStoreWarning": {"placeholders": {"name": {"type": "String"}}},
+  "storeDeleted": "Store deleted.",
+  "errVendorHasOrders": "This store has order history, so it cannot be deleted. Suspend it instead."
 }

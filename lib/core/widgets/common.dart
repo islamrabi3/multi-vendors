@@ -686,6 +686,9 @@ String readableError(Object error) {
     'CANNOT_DELETE_SELF': 'You cannot delete your own account from here.',
     'CANNOT_BLOCK_ADMIN': 'Admin accounts cannot be blocked.',
     'CANNOT_DELETE_ADMIN': 'Admin accounts cannot be deleted.',
+    'VENDOR_HAS_ORDERS':
+        'This store has order history, so it cannot be deleted. Suspend it '
+        'instead.',
   };
   for (final entry in known.entries) {
     if (text.contains(entry.key)) return entry.value;

@@ -3,7 +3,7 @@
   "missingSupabaseConfigurationnn": "إعدادات Supabase مفقودة.",
   "retry": "إعادة المحاولة",
   "createYournaccount": "إنشاء حسابك",
-  "howWillYouUseKitchenIn": "كيف ستستخدم Kitchen IN؟",
+  "howWillYouUseKitchenIn": "كيف ستستخدم {app}؟",
   "continueText": "متابعة",
   "fullName": "الاسم الكامل",
   "phoneNumber": "رقم الهاتف",
@@ -1727,7 +1727,7 @@
   "errStoreDetailsRequired": "اسم المتجر والتصنيف والعنوان مطلوبين.",
   "addStoreAccount": "متجر جديد",
   "addDriverAccount": "سائق جديد",
-  "shareVendorMessage": "شوف {name} على KitchenIn",
+  "shareVendorMessage": "شوف {name} على {app}",
   "changePassword": "تغيير كلمة المرور",
   "setAPassword": "تعيين كلمة مرور",
   "currentPassword": "كلمة المرور الحالية",
@@ -2155,5 +2155,9 @@
   "claudeKeyNeverUsed": "لم يُستخدم بعد",
   "claudeKeyLastUsed": "آخر استخدام {when}",
   "claudeKeyExpiresOn": "ينتهي {when}",
-  "claudeKeyTooMany": "عندك ١٠ مفاتيح شغالة بالفعل. الغي واحد الأول."
+  "claudeKeyTooMany": "عندك ١٠ مفاتيح شغالة بالفعل. الغي واحد الأول.",
+  "deleteStorePermanently": "حذف المتجر نهائيًا",
+  "deleteStoreWarning": "سيتم حذف \"{name}\" نهائيًا مع المنيو والأقسام والمواعيد وروابط الموظفين، وحساب المالك لو كان خاصًا بالمتجر فقط. لا يمكن التراجع عن ذلك.",
+  "storeDeleted": "تم حذف المتجر.",
+  "errVendorHasOrders": "لا يمكن حذف هذا المتجر لأن له طلبات سابقة. أوقفه بدلًا من ذلك."
 }

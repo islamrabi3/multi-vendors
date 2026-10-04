@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/tokens.dart';
+import '../../../core/config/brand.dart';
 import '../../../core/utils/email.dart';
 import '../../../core/widgets/web/web_auth_frame.dart';
 import '../../../core/utils/platform_capabilities.dart';
@@ -144,7 +145,7 @@ class _SignupFormState extends State<SignupForm> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    context.l10n.howWillYouUseKitchenIn,
+                    context.l10n.howWillYouUseKitchenIn(Brand.displayName),
                     style: TextStyle(fontSize: 14, color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 22),

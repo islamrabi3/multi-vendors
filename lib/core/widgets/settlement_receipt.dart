@@ -10,6 +10,7 @@ import '../../app/tokens.dart';
 import '../models/finance.dart';
 import '../utils/money.dart';
 import '../utils/settlement_format.dart';
+import '../config/brand.dart';
 import 'brand_logo.dart';
 
 /// Renders [settlement] off-screen and hands the PNG to the share sheet.
@@ -102,7 +103,7 @@ class _ReceiptCard extends StatelessWidget {
               KitchenInMark(size: 28),
               SizedBox(width: AppSpace.sm),
               Text(
-                'Kitchen IN',
+                Brand.displayName,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
               ),
             ],

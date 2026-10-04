@@ -11,26 +11,42 @@ import 'package:google_fonts/google_fonts.dart';
 /// fills are *derived* from them — the design system ships an identity, not a
 /// full scale — and are tinted toward the aubergine hue so nothing in the app
 /// reads as a leftover from the previous warm/orange palette.
+///
+/// The five brand colours are set per client at build time (see [Brand] and
+/// `flavors/<client>/dart_defines.json`); the values written here are Kitchen
+/// IN's and are what a build with no client file gets. They stay compile-time
+/// constants so the tokens keep working inside `const` widgets. The derived
+/// neutrals below are shared by every client.
 class AppColors {
   AppColors._();
 
   // Brand — aubergine and pistachio.
   /// Aubergine. The brand colour: CTAs, active nav, focus rings, links.
-  static const primary = Color(0xFF5C2340);
+  static const primary = Color(
+    int.fromEnvironment('BRAND_PRIMARY', defaultValue: 0xFF5C2340),
+  );
 
   /// The deep end of the brand gradient; pressed states, gradient tails.
-  static const primaryDark = Color(0xFF431829);
+  static const primaryDark = Color(
+    int.fromEnvironment('BRAND_PRIMARY_DARK', defaultValue: 0xFF431829),
+  );
 
   /// The light end of the brand gradient; gradient heads, hover tints.
-  static const primaryLight = Color(0xFF8F4468);
+  static const primaryLight = Color(
+    int.fromEnvironment('BRAND_PRIMARY_LIGHT', defaultValue: 0xFF8F4468),
+  );
 
   /// The accent — the dot inside the arch. Used sparingly: it is a highlight,
   /// never a surface.
-  static const pistachio = Color(0xFF9DBE3F);
+  static const pistachio = Color(
+    int.fromEnvironment('BRAND_ACCENT', defaultValue: 0xFF9DBE3F),
+  );
 
   /// [pistachio] lightened for legibility on an aubergine surface — this is the
   /// tone "IN" takes in the wordmark on dark.
-  static const onDarkPistachio = Color(0xFFC3DE84);
+  static const onDarkPistachio = Color(
+    int.fromEnvironment('BRAND_ACCENT_ON_DARK', defaultValue: 0xFFC3DE84),
+  );
 
   static const rating = Color(0xFFFFB400);
   static const success = Color(0xFF18A957);

@@ -1,0 +1,44 @@
+# One entry per client. Run after adding or changing one:
+#
+#   dart pub global run flutter_flavorizr
+#
+# (flavorizr 2.6.0 is used as a global tool, not a dev dependency: it needs
+# xml ^7, and the `excel` package the app uses still needs xml <7.)
+#
+# This file is only the native half — app name, bundle id, icon and Firebase
+# files for Android and iOS. Everything the Dart code needs (colours, backend,
+# Firebase options for web) is in flavors/<client>/dart_defines.json.
+#
+# The flutter:* instructions are left out on purpose: they would overwrite
+# lib/main.dart and lib/app.dart with flavorizr's sample app. So is
+# android:androidManifest: the manifest already takes its label from
+# @string/app_name and its icon from @mipmap/ic_launcher, both of which each
+# flavor supplies, and the instruction would only reformat the whole file.
+instructions:
+  - assets:download
+  - assets:extract
+  - android:flavorizrGradle
+  - android:buildGradle
+  - android:icons
+  - ios:podfile
+  - ios:xcconfig
+  - ios:buildTargets
+  - ios:schema
+  - ios:icons
+  - ios:plist
+  - google:firebase
+  - assets:clean
+
+flavors:
+  kitchenin:
+    app:
+      name: "KitchenIn"
+      icon: "flavors/kitchenin/icon.png"
+    android:
+      applicationId: "com.kitchenin.app"
+      firebase:
+        config: "flavors/kitchenin/firebase/google-services.json"
+    ios:
+      bundleId: "com.kitchenin.app"
+      firebase:
+        config: "flavors/kitchenin/firebase/GoogleService-Info.plist"

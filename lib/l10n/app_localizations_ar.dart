@@ -18,7 +18,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createYournaccount => 'إنشاء حسابك';
 
   @override
-  String get howWillYouUseKitchenIn => 'كيف ستستخدم Kitchen IN؟';
+  String howWillYouUseKitchenIn(String app) {
+    return 'كيف ستستخدم $app؟';
+  }
 
   @override
   String get continueText => 'متابعة';
@@ -5537,8 +5539,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addDriverAccount => 'سائق جديد';
 
   @override
-  String shareVendorMessage(String name) {
-    return 'شوف $name على KitchenIn';
+  String shareVendorMessage(String name, String app) {
+    return 'شوف $name على $app';
   }
 
   @override
@@ -7074,4 +7076,19 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get claudeKeyTooMany =>
       'عندك ١٠ مفاتيح شغالة بالفعل. الغي واحد الأول.';
+
+  @override
+  String get deleteStorePermanently => 'حذف المتجر نهائيًا';
+
+  @override
+  String deleteStoreWarning(String name) {
+    return 'سيتم حذف \"$name\" نهائيًا مع المنيو والأقسام والمواعيد وروابط الموظفين، وحساب المالك لو كان خاصًا بالمتجر فقط. لا يمكن التراجع عن ذلك.';
+  }
+
+  @override
+  String get storeDeleted => 'تم حذف المتجر.';
+
+  @override
+  String get errVendorHasOrders =>
+      'لا يمكن حذف هذا المتجر لأن له طلبات سابقة. أوقفه بدلًا من ذلك.';
 }

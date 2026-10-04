@@ -199,4 +199,22 @@ class AdminVendorsCubit extends Cubit<AdminVendorsState> {
       return false;
     }
   }
+
+  /// Permanently deletes a store. Errors surface through [state.error].
+  Future<bool> deleteVendor(String vendorId) async {
+    try {
+      await _repository.deleteVendor(vendorId);
+      if (isClosed) return true;
+      emit(
+        state.copyWith(
+          vendors: state.vendors.where((v) => v.id != vendorId).toList(),
+        ),
+      );
+      await load();
+      return true;
+    } catch (e) {
+      if (!isClosed) emit(state.copyWith(error: e.toString()));
+      return false;
+    }
+  }
 }

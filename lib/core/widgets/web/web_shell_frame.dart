@@ -13,6 +13,7 @@ import '../../utils/l10n_extension.dart';
 import '../brand_logo.dart';
 import '../count_badge.dart';
 import '../messages_button.dart';
+import '../../config/brand.dart';
 import '../notification_bell.dart';
 
 /// One row in a [WebShellFrame] sidebar.
@@ -334,7 +335,7 @@ class _Sidebar extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Kitchen IN',
+                            Brand.displayName,
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 15.5,

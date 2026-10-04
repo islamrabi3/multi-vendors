@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
+import '../config/brand.dart';
 
 /// The Kitchen IN identity.
 ///
@@ -59,6 +60,20 @@ class KitchenInMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A client with its own logo shows that; the arch below is Kitchen IN's.
+    if (Brand.hasLogoAsset) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.24),
+        child: Image.asset(
+          Brand.logoAsset,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          semanticLabel: Brand.displayName,
+        ),
+      );
+    }
+
     final monoColor = style == KitchenInMarkStyle.mono
         ? (IconTheme.of(context).color ?? AppColors.ink)
         : null;
@@ -244,9 +259,9 @@ class KitchenInWordmark extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: [
-          const TextSpan(text: 'Kitchen'),
+          const TextSpan(text: Brand.wordmarkLead),
           const TextSpan(
-            text: 'IN',
+            text: Brand.wordmarkAccent,
             style: TextStyle(color: AppColors.onDarkPistachio),
           ),
         ],
@@ -255,7 +270,7 @@ class KitchenInWordmark extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       // The two spans are one word to anyone who cannot see the colour split.
-      semanticsLabel: 'KitchenIN',
+      semanticsLabel: Brand.name,
     );
   }
 }

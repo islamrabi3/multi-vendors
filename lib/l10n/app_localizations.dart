@@ -119,8 +119,8 @@ abstract class AppLocalizations {
   /// No description provided for @howWillYouUseKitchenIn.
   ///
   /// In en, this message translates to:
-  /// **'How will you use Kitchen IN?'**
-  String get howWillYouUseKitchenIn;
+  /// **'How will you use {app}?'**
+  String howWillYouUseKitchenIn(String app);
 
   /// No description provided for @continueText.
   ///
@@ -10278,8 +10278,8 @@ abstract class AppLocalizations {
   /// No description provided for @shareVendorMessage.
   ///
   /// In en, this message translates to:
-  /// **'Check out {name} on KitchenIn'**
-  String shareVendorMessage(String name);
+  /// **'Check out {name} on {app}'**
+  String shareVendorMessage(String name, String app);
 
   /// No description provided for @changePassword.
   ///
@@ -12848,6 +12848,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You already have 10 working keys. Revoke one first.'**
   String get claudeKeyTooMany;
+
+  /// No description provided for @deleteStorePermanently.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete store permanently'**
+  String get deleteStorePermanently;
+
+  /// No description provided for @deleteStoreWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" will be deleted for good, with its menu, categories, hours and staff links. A store-only owner login is deleted too. This cannot be undone.'**
+  String deleteStoreWarning(String name);
+
+  /// No description provided for @storeDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Store deleted.'**
+  String get storeDeleted;
+
+  /// No description provided for @errVendorHasOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'This store has order history, so it cannot be deleted. Suspend it instead.'**
+  String get errVendorHasOrders;
 }
 
 class _AppLocalizationsDelegate

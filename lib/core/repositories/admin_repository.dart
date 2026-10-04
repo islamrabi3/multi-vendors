@@ -346,6 +346,19 @@ class AdminRepository {
     return result is Map && result['hard_deleted'] == true;
   }
 
+  /// Permanently removes a store and its menu.
+  ///
+  /// Refused with VENDOR_HAS_ORDERS for a store that has ever taken an order —
+  /// those carry the ledger and must be suspended instead. Returns whether the
+  /// owner's login went too (only when it was a store-only account).
+  Future<bool> deleteVendor(String vendorId) async {
+    final result = await supabase.rpc(
+      'admin_delete_vendor',
+      params: {'p_vendor_id': vendorId},
+    );
+    return result is Map && result['owner_login_deleted'] == true;
+  }
+
   /// Who runs this store's orders — see [OrderFlow]. Its pending orders
   /// follow; anything already under way finishes the way it started.
   Future<void> setVendorOrderFlow(String vendorId, OrderFlow flow) =>

@@ -1,5 +1,8 @@
 /// Backend configuration.
 ///
+/// Per client: each build points at that client's own Supabase project, from
+/// `flavors/<client>/dart_defines.json`. The defaults are Kitchen IN's.
+///
 /// The anon key is public by design (RLS protects the data) but is injected
 /// at build time so it never lives in source control:
 ///

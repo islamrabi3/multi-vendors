@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:multi_vendor/l10n/app_localizations.dart';
 import 'locale_cubit.dart';
 import 'tokens.dart';
+import '../core/config/brand.dart';
 
 import '../core/repositories/auth_repository.dart';
 import '../core/repositories/cart_repository.dart';
@@ -113,7 +114,7 @@ class _MultiVendorAppState extends State<MultiVendorApp> {
             // across the Arabic app. Money formats pin their own locale.
             Intl.defaultLocale = locale.languageCode;
             return MaterialApp.router(
-              onGenerateTitle: (context) => context.l10n.multiVendor,
+              onGenerateTitle: (_) => Brand.name,
               debugShowCheckedModeBanner: false,
               theme: buildTheme(),
               routerConfig: _router,

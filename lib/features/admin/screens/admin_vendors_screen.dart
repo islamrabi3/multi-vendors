@@ -352,6 +352,7 @@ class _VendorList extends StatelessWidget {
             ...state.active.map(
               (v) => _VendorRow(
                 vendor: v,
+                cubit: cubit,
                 selected: v.id == selectedId,
                 onSelect: onSelect,
               ),
@@ -363,6 +364,7 @@ class _VendorList extends StatelessWidget {
               ...state.suspended.map(
                 (v) => _VendorRow(
                   vendor: v,
+                  cubit: cubit,
                   selected: v.id == selectedId,
                   onSelect: onSelect,
                 ),
@@ -379,6 +381,7 @@ class _VendorList extends StatelessWidget {
                     )
                   : _VendorRow(
                       vendor: v,
+                      cubit: cubit,
                       selected: v.id == selectedId,
                       onSelect: onSelect,
                     ),
@@ -501,6 +504,10 @@ class _PendingCard extends StatelessWidget {
                   fill: AppColors.warmFill,
                   ink: AppColors.primaryDark,
                 ),
+                if (context.select(
+                  (AuthCubit c) => c.state.can('users.delete'),
+                ))
+                  _DeleteVendorButton(vendor: vendor, cubit: cubit),
               ],
             ),
             const SizedBox(height: 12),
@@ -559,14 +566,58 @@ Future<void> _rejectVendor(
   if (ok == true) await cubit.setStatus(vendor.id, 'suspended');
 }
 
+/// Permanently deletes a store after an explicit confirmation. A store with
+/// order history is refused by the server (VENDOR_HAS_ORDERS) and the reason
+/// is shown through the cubit's error listener.
+Future<void> _deleteVendor(
+  BuildContext context,
+  Vendor vendor,
+  AdminVendorsCubit cubit,
+) async {
+  final l10n = context.l10n;
+  final ok = await AppDialogs.showConfirmDialog(
+    context: context,
+    title: l10n.deleteStorePermanently,
+    message: l10n.deleteStoreWarning(vendor.name),
+    confirmText: l10n.delete,
+    cancelText: l10n.cancel,
+    isDestructive: true,
+    icon: Icons.delete_forever_rounded,
+  );
+  if (ok != true || !context.mounted) return;
+  final deleted = await cubit.deleteVendor(vendor.id);
+  if (deleted && context.mounted) showSnack(context, l10n.storeDeleted);
+}
+
+/// Trash button shown on a store row to admins allowed to delete.
+class _DeleteVendorButton extends StatelessWidget {
+  const _DeleteVendorButton({required this.vendor, required this.cubit});
+
+  final Vendor vendor;
+  final AdminVendorsCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: context.l10n.deleteStorePermanently,
+      color: AppColors.dangerInk,
+      visualDensity: VisualDensity.compact,
+      icon: const Icon(Icons.delete_outline_rounded, size: 20),
+      onPressed: () => _deleteVendor(context, vendor, cubit),
+    );
+  }
+}
+
 class _VendorRow extends StatelessWidget {
   const _VendorRow({
     required this.vendor,
+    required this.cubit,
     this.selected = false,
     this.onSelect,
   });
 
   final Vendor vendor;
+  final AdminVendorsCubit cubit;
   final bool selected;
   final ValueChanged<Vendor>? onSelect;
 
@@ -636,6 +687,12 @@ class _VendorRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _StatusPill(vendor: vendor),
+              if (context.select(
+                (AuthCubit c) => c.state.can('users.delete'),
+              )) ...[
+                const SizedBox(width: 4),
+                _DeleteVendorButton(vendor: vendor, cubit: cubit),
+              ],
             ],
           ),
         ),
@@ -743,6 +800,11 @@ class _WebVendorsPage extends StatelessWidget {
     final canApprove = context.select(
       (AuthCubit c) => c.state.can('vendors.approve'),
     );
+    final canDelete = context.select(
+      (AuthCubit c) => c.state.can('users.delete'),
+    );
+    final trailingWidth =
+        (canApprove ? 190.0 : 0.0) + (canDelete ? 48.0 : 0.0);
     final vendors = [...state.pending, ...state.active, ...state.suspended];
     final shown = state.filter == VendorFilter.all ? vendors : state.visible;
 
@@ -818,7 +880,7 @@ class _WebVendorsPage extends StatelessWidget {
           else
             WebTable(
               columns: columns,
-              trailingWidth: canApprove ? 190 : 20,
+              trailingWidth: trailingWidth < 20 ? 20 : trailingWidth,
               emptyState: ConsoleEmpty(
                 icon: Icons.storefront_outlined,
                 title: l10n.noVendorsHere,
@@ -829,25 +891,34 @@ class _WebVendorsPage extends StatelessWidget {
                   WebTableRow.aligned(
                     key: ValueKey(vendor.id),
                     columns: columns,
-                    trailingWidth: canApprove ? 190 : 20,
+                    trailingWidth: trailingWidth < 20 ? 20 : trailingWidth,
                     onTap: () => _open(context, vendor),
-                    trailing: vendor.isPending && canApprove
+                    trailing: (vendor.isPending && canApprove) || canDelete
                         ? Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              TextButton(
-                                onPressed: () =>
-                                    _rejectVendor(context, vendor, cubit),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.textMuted,
+                              if (vendor.isPending && canApprove) ...[
+                                TextButton(
+                                  onPressed: () =>
+                                      _rejectVendor(context, vendor, cubit),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.textMuted,
+                                  ),
+                                  child: Text(l10n.reject),
                                 ),
-                                child: Text(l10n.reject),
-                              ),
-                              const SizedBox(width: 6),
-                              FilledButton(
-                                onPressed: () => _open(context, vendor),
-                                child: Text(l10n.review),
-                              ),
+                                const SizedBox(width: 6),
+                                FilledButton(
+                                  onPressed: () => _open(context, vendor),
+                                  child: Text(l10n.review),
+                                ),
+                              ],
+                              if (canDelete) ...[
+                                const SizedBox(width: 4),
+                                _DeleteVendorButton(
+                                  vendor: vendor,
+                                  cubit: cubit,
+                                ),
+                              ],
                             ],
                           )
                         : null,

@@ -82,6 +82,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  # Which client a plain `flutter run` builds. See flavors/ and flavorizr.yaml.
+  default-flavor: kitchenin
   generate: true
   uses-material-design: true
 
